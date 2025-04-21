@@ -1,0 +1,33 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Objective
+
+MCP server to host tools which allow AI to work with a local Unifi Network application. 
+
+# Code
+
+- Use idiomatic python 3.13.
+- Use CONST for strings
+- Use uv to manage virtual enviroment and package dependencies
+- Leverage the aiounfi library and its established patterns for unifi network controller connectivity
+- Leverage official MCP sdk for python anlong with it's established patterns and best practices
+- All mcp tools should be prefixed with "unifi_"
+
+# Usage
+
+- To be installed and hosted locally for local agent access only
+- Ensure all tools that modify state or disrupt availability require explicit confirmation to execute
+
+# Documentation
+
+- Keep the [README.md](mdc:README.md) up to date with the latest change
+- Do NOT add unnecessary comments to the code, if comments are needed for reference, maintain a changelog.md file in the root of the project and ensure it's added to .gitignore
+
+# Resources
+
+- The model context protocol (MCP) SDK for python https://github.com/modelcontextprotocol/python-sdk
+- The aiounifi library for python https://github.com/Kane610/aiounifi

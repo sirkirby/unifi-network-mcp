@@ -1,0 +1,58 @@
+unifi:
+  host: ${UNIFI_HOST}
+  username: ${UNIFI_USERNAME}
+  password: ${UNIFI_PASSWORD}
+  port: ${UNIFI_PORT}
+  site: ${UNIFI_SITE}
+  verify_ssl: ${UNIFI_VERIFY_SSL}
+
+server:
+  host: 0.0.0.0
+  port: 3000
+  log_level: INFO
+  
+permissions:
+
+  default:
+    create: true
+    update: true
+
+  firewall_policies:
+    create: true
+    update: true
+    
+  traffic_routes:
+    create: true
+    update: true
+    
+  port_forwards:
+    create: true
+    update: true
+    
+  qos_rules:
+    create: true
+    update: true
+    
+  vpn_clients:
+    create: true
+    update: true
+
+  networks:
+    create: false  # Provisioning a new network can disrupt traffic
+    update: false  # Changing subnets, VLANs, DHCP ranges requires care
+
+  wlans:
+    create: false
+    update: false
+
+  devices:
+    create: false  # Adoption / provisioning – normally handled by controller, not tools
+    update: false  # Firmware upgrade, rename, etc.
+
+  clients:
+    create: false  # Not applicable, but kept for symmetry
+    update: false  # Block/unblock, rename, reconnect
+
+  vpn_servers:
+    create: false
+    update: true

@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  unifi-network-mcp:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - UNIFI_HOST=${UNIFI_HOST:-localhost}
+      - UNIFI_USERNAME=${UNIFI_USERNAME}
+      - UNIFI_PASSWORD=${UNIFI_PASSWORD}
+      - UNIFI_PORT=${UNIFI_PORT:-443}
+      - UNIFI_SITE=${UNIFI_SITE:-default}
+      - UNIFI_VERIFY_SSL=${UNIFI_VERIFY_SSL:-false}
+      - CONFIG_PATH=/app/config/config.yaml
+      - PYTHONPATH=/app
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
