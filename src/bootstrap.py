@@ -17,6 +17,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
+import importlib.resources
 
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
@@ -80,18 +81,57 @@ class UniFiSettings:
 # Config loading  -----------------------------------------------------------
 # ---------------------------------------------------------------------------
 
-CONFIG_PATH = os.getenv("CONFIG_PATH", "config/config.yaml")
+def load_config(path_override: str | Path | None = None) -> OmegaConf:
+    """Load YAML config with environment variable substitution.
 
+    Order of precedence:
+    1. Environment variable `CONFIG_PATH`
+    2. Path provided via `path_override` argument
+    3. Relative path `config/config.yaml` in current working directory
+    4. Default `config.yaml` bundled within the package (`src/config/`)
+    """
+    config_path_str: str | None = os.getenv("CONFIG_PATH")
+    if path_override:
+        config_path_str = str(path_override)
 
-def load_config(path: str | Path = CONFIG_PATH) -> OmegaConf:
-    """Load YAML config with environment variable substitution."""
-    path = Path(path).expanduser()
-    
-    if not path.exists():
-        logger.error("Configuration file not found: %s", path)
-        raise SystemExit(2)
+    resolved_path: Path | None = None
 
-    cfg = OmegaConf.load(str(path))
+    if config_path_str:
+        # 1. Check env var / explicit override
+        path = Path(config_path_str).expanduser()
+        if path.exists() and path.is_file():
+            resolved_path = path
+            logger.info("Using configuration file from CONFIG_PATH/override: %s", path)
+        else:
+            logger.error("Configuration file specified by CONFIG_PATH/override not found: %s", path)
+            raise SystemExit(2)  # Exit if specified path is invalid
+    else:
+        # 2. Check relative path in CWD
+        relative_path = Path("config/config.yaml")
+        if relative_path.exists() and relative_path.is_file():
+            resolved_path = relative_path
+            logger.info("Using configuration file from relative path: %s", relative_path)
+        else:
+            # 3. Use bundled default config
+            try:
+                # Use importlib.resources to safely access package data
+                config_file_ref = importlib.resources.files('src.config').joinpath('config.yaml')
+                if config_file_ref.is_file():
+                    resolved_path = Path(str(config_file_ref))  # Convert Traversable to Path
+                    logger.info("Using bundled default configuration: %s", resolved_path)
+                else:
+                    logger.error("Bundled default configuration file could not be accessed (not a file).")
+                    raise SystemExit(3)  # Exit if bundled config isn't a file
+            except (ModuleNotFoundError, FileNotFoundError, Exception) as e:
+                logger.error("Could not find or access bundled default configuration: %s", e)
+                raise SystemExit(3)  # Exit if bundled config cannot be loaded
+
+    if resolved_path is None:
+        # Should not be reachable if logic above is correct, but safeguard
+        logger.critical("Failed to determine configuration file path.")
+        raise SystemExit(4)
+
+    cfg = OmegaConf.load(str(resolved_path))
 
     # Merge env vars for UniFi settings so they override YAML
     unifi_env_overrides: dict[str, Any] = {}

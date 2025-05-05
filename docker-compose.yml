@@ -12,8 +12,8 @@ services:
       - UNIFI_PORT=${UNIFI_PORT:-443}
       - UNIFI_SITE=${UNIFI_SITE:-default}
       - UNIFI_VERIFY_SSL=${UNIFI_VERIFY_SSL:-false}
-      - CONFIG_PATH=/app/config/config.yaml
+      - CONFIG_PATH=/app/src/config/config.yaml
       - PYTHONPATH=/app
     volumes:
-      - ./config:/app/config
+      - ./src/config:/app/src/config
     restart: unless-stopped
