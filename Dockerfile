@@ -15,5 +15,5 @@ COPY . .
 # Expose port for MCP server
 EXPOSE 3000
 
-# Command to run the application
-CMD ["python", "src/main.py"]
+# Command to run the application using the installed entry point
+CMD ["mcp-server-unifi-network"]

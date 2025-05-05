@@ -86,8 +86,8 @@ Add (or update) the `unifi-network-mcp` block under `mcpServers` in your `claude
 
 ```jsonc
 "unifi-network-mcp": {
-  "command": "/Users/you/.local/bin/uvx",      // activates the UV env then runs
-  "args": ["mcp-server-unifi-network"],
+  "command": "/path/to/your/.local/bin/uvx",
+  "args": ["--quiet", "unifi-network-mcp", "mcp-server-unifi-network"],
   "env": {
     "UNIFI_HOST": "192.168.1.1",
     "UNIFI_USERNAME": "admin",
@@ -97,7 +97,10 @@ Add (or update) the `unifi-network-mcp` block under `mcpServers` in your `claude
 }
 ```
 
-`uvx` mirrors the built-in `mcp-server-fetch` behavior – no need to activate the venv manually.
+* `uvx` handles installing/running the package in its own environment.
+* The `--quiet` flag prevents `uvx` warnings from interfering with MCP communication.
+* The first argument (`unifi-network-mcp`) is the package name.
+* The second argument (`mcp-server-unifi-network`) is the executable script provided by the package.
 
 ### Option 2 – Claude starts a Docker container
 

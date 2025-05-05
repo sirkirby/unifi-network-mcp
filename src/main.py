@@ -4,14 +4,13 @@
 Responsibilities:
 • configure permissions wrappers
 • initialise UniFi connection
-• start FastMCP (stdio) + optional Uvicorn SSE app
+• start FastMCP (stdio)
 """
 
 import asyncio
 import logging
 import traceback
-import uvicorn
-import sys
+import sys # Removed uvicorn import
 
 from src.bootstrap import logger  # ensures logging/env setup early
 
@@ -81,106 +80,73 @@ try:
 except Exception as e:
     logger.error(f"Error inspecting server: {e}")
 
-# Load config globally via bootstrap helper
-config = config
+# Config is loaded globally via bootstrap helper
 logger.info("Loaded configuration globally.")
 
-# --- Global Connection and Managers --- 
-# Initialize connection manager globally after config is loaded
-connection_manager = connection_manager
-logger.info("Created global ConnectionManager instance.")
+# --- Global Connection and Managers ---
+# ConnectionManager is instantiated globally by src.runtime import
+logger.info("Using global ConnectionManager instance.")
 
-# Instantiate other managers globally, using the global connection_manager
-client_manager = client_manager
-device_manager = device_manager
-stats_manager = stats_manager
-qos_manager = qos_manager
-vpn_manager = vpn_manager
-network_manager = network_manager
-system_manager = system_manager
-firewall_manager = firewall_manager
-logger.info("Created global Manager instances.")
+# Other Managers are instantiated globally by src.runtime import
+logger.info("Using global Manager instances.")
 
 # Dynamic tool loader helper already imported above
 
-async def setup_server():
-    """Sets up the MCP server: connects to Unifi, handles tool registration (implicitly)."""
+async def main_async():
+    """Main asynchronous function to setup and run the server."""
     # Config is now loaded globally
     log_level = config.server.get("log_level", "INFO").upper()
     # Ensure logging is configured (might be redundant if already set)
-    logging.basicConfig(level=getattr(logging, log_level, logging.INFO), force=True) 
+    logging.basicConfig(level=getattr(logging, log_level, logging.INFO), force=True)
     logger.info(f"Log level set to {log_level}")
 
-    # ConnectionManager is now global, just initialize the connection
+    # Initialize the global Unifi connection
     logger.info("Initializing global Unifi connection...")
     if not await connection_manager.initialize():
         logger.error("Failed to connect to Unifi Controller. Tool functionality may be impaired.")
-        # Decide if we should exit or continue with limited functionality
+        # Consider exiting if connection is critical:
+        # sys.exit("Failed to connect to Unifi Controller.")
     else:
         logger.info("Global Unifi connection initialized successfully.")
-    
-    # Load tool modules after connection is established
+
+    # Load tool modules after connection is established (or attempted)
     auto_load_tools()
-    
-    # List all registered tools for debugging - proper place to await the async method
+
+    # List all registered tools for debugging
     try:
         tools = await server.list_tools()
         logger.info(f"Registered tools: {[tool.name for tool in tools]}")
     except Exception as e:
         logger.error(f"Error listing tools: {e}")
-    
-    logger.info("Tool registration handled by module imports.")
 
     logger.info("Handing off to FastMCP stdio transport (blocking run)...")
     try:
         await server.run_stdio_async()
+        # This line will only be reached if the server shuts down gracefully
+        logger.info("FastMCP stdio server finished.")
     except Exception as e:
         logger.error(f"Error running FastMCP stdio server: {e}")
         logger.error(traceback.format_exc())
-        raise
-
-    logger.info("Server setup complete.")
-    # Since server.run_stdio_async() in setup_server() is blocking and handles all incoming
-    # requests via stdio, we do not need to start a separate Uvicorn HTTP server.
-    logger.info("FastMCP stdio transport active; skipping launch of Uvicorn.")
-    return
+        raise # Reraise the exception so asyncio.run reports it
 
 def main():
-    """Run the setup and then start the server with uvicorn."""
+    """Synchronous entry point."""
     logger.debug("Starting main()")
     try:
-        # Run the setup tasks first
-        logger.info("Starting server setup…")
-        asyncio.run(setup_server())
-        logger.info("Server setup complete.")
-
-        # Read host/port/log_level for uvicorn
-        host = config.server.host
-        port = config.server.port
-        log_level = config.server.get("log_level", "info").lower()
-
-        logger.info(f"Starting Uvicorn server on {host}:{port}...")
-        
-        try:
-            # Use the sse_app() method to get the Starlette app, not server.app
-            starlette_app = server.sse_app()
-            uvicorn.run(starlette_app, host=host, port=port, log_level=log_level)
-            # Note: uvicorn.run is blocking, code after this won't run until server stops.
-        except Exception as e:
-            logger.error(f"Error running Uvicorn server: {e}")
-            logger.error(traceback.format_exc())
-            raise
-
+        asyncio.run(main_async())
     except KeyboardInterrupt:
         logger.info("Server stopped by user (KeyboardInterrupt).")
     except Exception as e:
-        logger.exception("Unhandled exception in main: %s", e)
+        # asyncio.run() should propagate exceptions from main_async
+        logger.exception("Unhandled exception during server run: %s", e)
     finally:
-        logger.info("Server process exiting.") # Log when the main function exits
+        logger.info("Server process exiting.")
 
 # Ensure other modules can `import src.main` even when this file is executed as __main__
+# --- This block might not be strictly necessary depending on imports, but harmless ---
 if "src.main" not in sys.modules:
     sys.modules["src.main"] = sys.modules[__name__]
+# --- End potentially unnecessary block ---
 
 if __name__ == "__main__":
     main()
