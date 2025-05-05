@@ -13,7 +13,7 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
   * [Install from PyPI](#install-from-pypi)
 * [Using with Claude Desktop](#using-with-claude-desktop)
 * [Runtime Configuration](#runtime-configuration)
-* [📚 Tool Catalogue](#-tool-catalogue)
+* [📚 Tool Catalog](#-tool-catalog)
 * [Releasing / Publishing](#releasing--publishing)
 
 ---
@@ -124,12 +124,13 @@ After editing the config **restart Claude Desktop**, then test with:
 
 ## Runtime Configuration
 
-The server merges settings from **environment variables**, an optional `.env` file, and `config/config.yaml` (listed in order of precedence).
+The server merges settings from **environment variables**, an optional `.env` file, and `src/config/config.yaml` (listed in order of precedence).
 
 ### Essential variables
 
 | Variable | Description |
 |----------|-------------|
+| `CONFIG_PATH` | Full path to a custom config YAML file. If not set, checks CWD for `config/config.yaml`, then falls back to the bundled default (`src/config/config.yaml`). |
 | `UNIFI_HOST` | IP / hostname of the controller |
 | `UNIFI_USERNAME` | Local UniFi admin |
 | `UNIFI_PASSWORD` | Admin password |
@@ -137,7 +138,7 @@ The server merges settings from **environment variables**, an optional `.env` fi
 | `UNIFI_SITE` | Site name (default `default`) |
 | `UNIFI_VERIFY_SSL` | Set to `false` if using self-signed certs |
 
-### `config/config.yaml`
+### `src/config/config.yaml`
 
 Defines HTTP bind host/port (`0.0.0.0:3000` by default) plus granular permission flags. Examples below assume the default port.
 
