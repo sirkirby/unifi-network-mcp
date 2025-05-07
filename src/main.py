@@ -94,6 +94,27 @@ logger.info("Using global Manager instances.")
 
 async def main_async():
     """Main asynchronous function to setup and run the server."""
+
+    loop = asyncio.get_event_loop()
+
+    def handle_asyncio_exception(loop, context):
+        exc = context.get("exception", context["message"])
+        log_message = f"Global asyncio exception handler caught: {exc}\\n"
+        if 'future' in context and context['future']:
+            log_message += f"Future: {context['future']}\\n"
+        if 'handle' in context and context['handle']:
+            log_message += f"Handle: {context['handle']}\\n"
+        
+        logger.error(log_message)
+        if context.get("exception"):
+            orig_traceback = ''.join(traceback.format_exception(type(context["exception"]), context["exception"], context["exception"].__traceback__))
+            logger.error(f"Original traceback for asyncio exception:\\n{orig_traceback}")
+
+
+    loop.set_exception_handler(handle_asyncio_exception)
+    logger.info("Global asyncio exception handler set.")
+    # --- End asyncio global exception handler ---
+
     # Config is now loaded globally
     log_level = config.server.get("log_level", "INFO").upper()
     # Ensure logging is configured (might be redundant if already set)
