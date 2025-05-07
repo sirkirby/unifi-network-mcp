@@ -95,6 +95,15 @@ logger.info("Using global Manager instances.")
 async def main_async():
     """Main asynchronous function to setup and run the server."""
 
+    # ---- VERY EARLY ASYNC LOG TEST ----
+    try:
+        from src.bootstrap import logger as bootstrap_logger_async
+        bootstrap_logger_async.critical("ASYNCHRONOUS main_async() FUNCTION ENTERED - TEST MESSAGE")
+    except Exception as e:
+        # Fallback print if logger itself fails
+        print(f"Logging in main_async() failed: {e}", file=sys.stderr)
+    # ---- END VERY EARLY ASYNC LOG TEST ----
+
     loop = asyncio.get_event_loop()
 
     def handle_asyncio_exception(loop, context):
@@ -152,7 +161,16 @@ async def main_async():
 
 def main():
     """Synchronous entry point."""
-    logger.debug("Starting main()")
+    # ---- VERY EARLY LOG TEST ----
+    try:
+        from src.bootstrap import logger as bootstrap_logger
+        bootstrap_logger.critical("SYNCHRONOUS main() FUNCTION ENTERED - TEST MESSAGE")
+    except Exception as e:
+        # Fallback print if logger itself fails
+        print(f"Logging in main() failed: {e}", file=sys.stderr)
+    # ---- END VERY EARLY LOG TEST ----
+    
+    logger.debug("Starting main()") # This uses the logger from bootstrap via global scope
     try:
         asyncio.run(main_async())
     except KeyboardInterrupt:
