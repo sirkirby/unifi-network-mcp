@@ -1,6 +1,6 @@
 [project]
 name = "unifi-network-mcp"
-version = "0.1.0b6"
+version = "0.1.0b7"
 description = "Unifi Network MCP Server"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -31,4 +31,4 @@ dev-dependencies = [
 
 [project.scripts]
 # CLI entrypoint that launches the UniFi Network MCP server
-mcp-server-unifi-network = "src.main:main"
+unifi-network-mcp = "src.main:main"
