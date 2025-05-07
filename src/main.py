@@ -100,44 +100,41 @@ async def main_async():
         from src.bootstrap import logger as bootstrap_logger_async
         bootstrap_logger_async.critical("ASYNCHRONOUS main_async() FUNCTION ENTERED - TEST MESSAGE")
     except Exception as e:
-        # Fallback print if logger itself fails
-        print(f"Logging in main_async() failed: {e}", file=sys.stderr)
+        print(f"Logging in main_async() failed: {e}", file=sys.stderr) # Fallback
     # ---- END VERY EARLY ASYNC LOG TEST ----
 
+    # --- Add asyncio global exception handler ---
     loop = asyncio.get_event_loop()
 
     def handle_asyncio_exception(loop, context):
         exc = context.get("exception", context["message"])
-        log_message = f"Global asyncio exception handler caught: {exc}\\n"
+        log_message = f"Global asyncio exception handler caught: {exc}"
         if 'future' in context and context['future']:
-            log_message += f"Future: {context['future']}\\n"
+            log_message += f"\nFuture: {context['future']}"
         if 'handle' in context and context['handle']:
-            log_message += f"Handle: {context['handle']}\\n"
-        
+            log_message += f"\nHandle: {context['handle']}"
         logger.error(log_message)
         if context.get("exception"):
             orig_traceback = ''.join(traceback.format_exception(type(context["exception"]), context["exception"], context["exception"].__traceback__))
-            logger.error(f"Original traceback for asyncio exception:\\n{orig_traceback}")
-
+            logger.error(f"Original traceback for global asyncio exception:\n{orig_traceback}")
 
     loop.set_exception_handler(handle_asyncio_exception)
     logger.info("Global asyncio exception handler set.")
     # --- End asyncio global exception handler ---
 
-    # Config is now loaded globally
+    # Config is now loaded globally (from src.runtime -> src.bootstrap)
     log_level = config.server.get("log_level", "INFO").upper()
-    # Ensure logging is configured (might be redundant if already set)
-    logging.basicConfig(level=getattr(logging, log_level, logging.INFO), force=True)
-    logger.info(f"Log level set to {log_level}")
+    # Ensure logging is configured (might be redundant if already set by bootstrap)
+    # but this ensures the level is applied if changed post-bootstrap.
+    logging.basicConfig(level=getattr(logging, log_level, logging.INFO), force=True) # Use default format
+    logger.info(f"Log level set to {log_level} in main_async.")
 
     # Initialize the global Unifi connection
-    logger.info("Initializing global Unifi connection...")
+    logger.info("Initializing global Unifi connection from main_async...")
     if not await connection_manager.initialize():
-        logger.error("Failed to connect to Unifi Controller. Tool functionality may be impaired.")
-        # Consider exiting if connection is critical:
-        # sys.exit("Failed to connect to Unifi Controller.")
+        logger.error("Failed to connect to Unifi Controller from main_async. Tool functionality may be impaired.")
     else:
-        logger.info("Global Unifi connection initialized successfully.")
+        logger.info("Global Unifi connection initialized successfully from main_async.")
 
     # Load tool modules after connection is established (or attempted)
     auto_load_tools()
@@ -145,19 +142,18 @@ async def main_async():
     # List all registered tools for debugging
     try:
         tools = await server.list_tools()
-        logger.info(f"Registered tools: {[tool.name for tool in tools]}")
+        logger.info(f"Registered tools in main_async: {[tool.name for tool in tools]}")
     except Exception as e:
-        logger.error(f"Error listing tools: {e}")
+        logger.error(f"Error listing tools in main_async: {e}")
 
-    logger.info("Handing off to FastMCP stdio transport (blocking run)...")
+    logger.info("Handing off to FastMCP stdio transport (blocking run) from main_async...")
     try:
         await server.run_stdio_async()
-        # This line will only be reached if the server shuts down gracefully
-        logger.info("FastMCP stdio server finished.")
+        logger.info("FastMCP stdio server finished gracefully from main_async.")
     except Exception as e:
-        logger.error(f"Error running FastMCP stdio server: {e}")
-        logger.error(traceback.format_exc())
-        raise # Reraise the exception so asyncio.run reports it
+        logger.error(f"Error running FastMCP stdio server from main_async: {e}")
+        logger.error(traceback.format_exc()) # Log the full traceback
+        raise # Reraise the exception so asyncio.run reports it and it gets logged by main()
 
 def main():
     """Synchronous entry point."""
@@ -166,8 +162,7 @@ def main():
         from src.bootstrap import logger as bootstrap_logger
         bootstrap_logger.critical("SYNCHRONOUS main() FUNCTION ENTERED - TEST MESSAGE")
     except Exception as e:
-        # Fallback print if logger itself fails
-        print(f"Logging in main() failed: {e}", file=sys.stderr)
+        print(f"Logging in main() failed: {e}", file=sys.stderr) # Fallback
     # ---- END VERY EARLY LOG TEST ----
     
     logger.debug("Starting main()") # This uses the logger from bootstrap via global scope
@@ -176,8 +171,7 @@ def main():
     except KeyboardInterrupt:
         logger.info("Server stopped by user (KeyboardInterrupt).")
     except Exception as e:
-        # asyncio.run() should propagate exceptions from main_async
-        logger.exception("Unhandled exception during server run: %s", e)
+        logger.exception("Unhandled exception during server run (from asyncio.run): %s", e)
     finally:
         logger.info("Server process exiting.")
 
