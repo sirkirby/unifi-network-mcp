@@ -16,4 +16,4 @@ COPY . .
 EXPOSE 3000
 
 # Command to run the application using the installed entry point
-CMD ["mcp-server-unifi-network"]
+CMD ["unifi-network-mcp"]
