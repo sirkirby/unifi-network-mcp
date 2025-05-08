@@ -2,9 +2,9 @@ unifi:
   host: ${UNIFI_HOST}
   username: ${UNIFI_USERNAME}
   password: ${UNIFI_PASSWORD}
-  port: ${UNIFI_PORT}
-  site: ${UNIFI_SITE}
-  verify_ssl: ${UNIFI_VERIFY_SSL}
+  port: ${oc.env:UNIFI_PORT,443}
+  site: ${oc.env:UNIFI_SITE,default}
+  verify_ssl: ${oc.env:UNIFI_VERIFY_SSL,false}
 
 server:
   host: 0.0.0.0

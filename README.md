@@ -1,5 +1,16 @@
 # 📡 UniFi Network MCP Server
 
+[![License][license-shield]](LICENSE)
+![Project Maintenance][maintenance-shield]
+[![GitHub Activity][commits-shield]][commits]
+
+[![GitHub Release][release-shield]][releases]
+[![issues][issues-shield]][issues-link]
+[![validate-badge]][validate-workflow]
+[![validate-docker-badge]][validate-docker-workflow]
+
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/sirkirby)
+
 A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) (MCP) server that turns your UniFi Network Controller into a rich set of programmable tools. Every capability is exposed via standard MCP **tools** prefixed with `unifi_`, so any LLM or agent that speaks MCP (e.g. Claude Desktop, `mcp-cli`, LangChain, etc.) can query, analyse **and** – when explicitly confirmed – modify your network.
 
 ---
@@ -14,7 +25,7 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
 * [Using with Claude Desktop](#using-with-claude-desktop)
 * [Runtime Configuration](#runtime-configuration)
 * [📚 Tool Catalog](#-tool-catalog)
-* [Releasing / Publishing](#releasing--publishing)
+* [Contributing: Releasing / Publishing](#contributing-releasing--publishing)
 
 ---
 
@@ -37,10 +48,14 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
 docker pull ghcr.io/sirkirby/unifi-network-mcp:latest
 
 # 2. Run – supply UniFi credentials via env-vars or a mounted .env file
+# Ensure all UNIFI_* variables are set as needed (see Runtime Configuration table)
 docker run -i --rm \
   -e UNIFI_HOST=192.168.1.1 \
   -e UNIFI_USERNAME=admin \
   -e UNIFI_PASSWORD=secret \
+  -e UNIFI_PORT=443 \
+  -e UNIFI_SITE=default \
+  -e UNIFI_VERIFY_SSL=false \
   ghcr.io/sirkirby/unifi-network-mcp:latest
 ```
 
@@ -60,6 +75,9 @@ source .venv/bin/activate
 uv pip install --no-deps -e .
 
 # 3. Provide credentials (either export vars or create .env)
+# Ensure your .env file (or exported variables) include all required UNIFI_*
+# settings as detailed in the Runtime Configuration table below (e.g., UNIFI_HOST,
+# UNIFI_USERNAME, UNIFI_PASSWORD, UNIFI_PORT, UNIFI_SITE, UNIFI_VERIFY_SSL).
 cp .env.example .env  # then edit values
 
 # 4. Launch
@@ -87,20 +105,22 @@ Add (or update) the `unifi-network-mcp` block under `mcpServers` in your `claude
 ```jsonc
 "unifi-network-mcp": {
   "command": "/path/to/your/.local/bin/uvx",
-  "args": ["--quiet", "unifi-network-mcp", "mcp-server-unifi-network"],
+  "args": ["--quiet", "unifi-network-mcp"], // Or "unifi-network-mcp==<version>"
   "env": {
     "UNIFI_HOST": "192.168.1.1",
     "UNIFI_USERNAME": "admin",
     "UNIFI_PASSWORD": "secret",
-    "UNIFI_SITE": "default"
+    "UNIFI_PORT": "443",
+    "UNIFI_SITE": "default",
+    "UNIFI_VERIFY_SSL": "false"
   }
 }
 ```
 
 * `uvx` handles installing/running the package in its own environment.
-* The `--quiet` flag prevents `uvx` warnings from interfering with MCP communication.
-* The first argument (`unifi-network-mcp`) is the package name.
-* The second argument (`mcp-server-unifi-network`) is the executable script provided by the package.
+* The `--quiet` flag is recommended if `uvx` outputs non-JSON messages.
+* If you want to pin to a specific version, use `"unifi-network-mcp==<version_number>"` as the package name.
+* If your script name in `pyproject.toml` differs from the package name, use `["--quiet", "<package-name>", "<script-name>"]`.
 
 ### Option 2 – Claude starts a Docker container
 
@@ -112,6 +132,9 @@ Add (or update) the `unifi-network-mcp` block under `mcpServers` in your `claude
     "-e", "UNIFI_HOST=192.168.1.1",
     "-e", "UNIFI_USERNAME=admin",
     "-e", "UNIFI_PASSWORD=secret",
+    "-e", "UNIFI_PORT=443",
+    "-e", "UNIFI_SITE=default",
+    "-e", "UNIFI_VERIFY_SSL=false",
     "ghcr.io/sirkirby/unifi-network-mcp:latest"
   ]
 }
@@ -247,7 +270,7 @@ Defines HTTP bind host/port (`0.0.0.0:3000` by default) plus granular permission
 
 ---
 
-## Releasing / Publishing
+## Contributing: Releasing / Publishing
 
 This project uses [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/) via a [GitHub Actions workflow](.github/workflows/publish-to-pypi.yml).
 
@@ -267,3 +290,20 @@ uv pip install unifi-network-mcp
 ### License
 
 [MIT](LICENSE)
+
+[commits-shield]: https://img.shields.io/github/commit-activity/y/sirkirby/unifi-network-mcp?style=for-the-badge
+[commits]: https://github.com/sirkirby/unifi-network-mcp/commits/main
+[license-shield]: https://img.shields.io/github/license/sirkirby/unifi-network-mcp.svg?style=for-the-badge
+[maintenance-shield]: https://img.shields.io/badge/maintainer-sirkirby-blue.svg?style=for-the-badge
+
+[releases]: https://github.com/sirkirby/unifi-network-mcp/releases
+[release-shield]: https://img.shields.io/github/v/release/sirkirby/unifi-network-mcp?style=flat
+
+[issues-shield]: https://img.shields.io/github/issues/sirkirby/unifi-network-mcp?style=flat
+[issues-link]: https://github.com/sirkirby/unifi-network-mcp/issues
+
+[validate-badge]: https://github.com/sirkirby/unifi-network-mcp/actions/workflows/publish-to-pypi.yml/badge.svg
+[validate-workflow]: https://github.com/sirkirby/unifi-network-mcp/actions/workflows/publish-to-pypi.yml
+
+[validate-docker-badge]: https://github.com/sirkirby/unifi-network-mcp/actions/workflows/docker-publish.yml/badge.svg
+[validate-docker-workflow]: https://github.com/sirkirby/unifi-network-mcp/actions/workflows/docker-publish.yml
