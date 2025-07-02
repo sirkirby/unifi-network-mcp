@@ -2,18 +2,23 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# Install UV
-RUN pip install uv
+RUN pip install --upgrade pip \
+ && pip install uv
 
-# Copy pyproject.toml and README.md first to leverage Docker cache
+#Copy only metadata to leverage layer caching
 COPY pyproject.toml README.md ./
-RUN uv pip install --system .
 
-# Copy the rest of the application
+# bring in package code
+COPY src ./src
+
+#build & install packages
+RUN pip install .
+
+#bring in the rest of the code
 COPY . .
 
-# Expose port for MCP server
+#Expose the MCP server port
 EXPOSE 3000
 
-# Command to run the application using the installed entry point
+#console-script entrypoint
 CMD ["unifi-network-mcp"]
