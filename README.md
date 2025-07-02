@@ -285,6 +285,22 @@ Once published, users can install it via:
 uv pip install unifi-network-mcp
 ```
 
+## Local Development
+
+Docker:
+
+```bash
+docker compose up --build
+```
+
+Python:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install .
+```
+
 ---
 
 ### License
