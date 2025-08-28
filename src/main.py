@@ -165,13 +165,13 @@ async def main_async():
         async def run_http():
             try:
                 logger.info(f"Starting FastMCP HTTP SSE server on {host}:{port} ...")
-                # Prefer SSE API with explicit host/port if available
-                try:
-                    await server.run_sse_async(host=host, port=port)  # type: ignore[arg-type]
-                except TypeError:
-                    # Fallback to streamable HTTP API without args (older signatures)
-                    logger.info("Falling back to run_streamable_http_async() without host/port arguments ...")
-                    await server.run_streamable_http_async()
+                if hasattr(server, "run_sse_async"):
+                    await getattr(server, "run_sse_async")(host=host, port=port)
+                elif hasattr(server, "run_streamable_http_async"):
+                    # Older SDKs: no host/port args
+                    await getattr(server, "run_streamable_http_async")()
+                else:
+                    logger.warning("HTTP SSE not supported by this FastMCP version; skipping.")
             except Exception as http_e:
                 logger.error(f"HTTP SSE server failed to start: {http_e}")
                 logger.error(traceback.format_exc())

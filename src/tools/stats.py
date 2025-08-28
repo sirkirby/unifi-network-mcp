@@ -24,14 +24,23 @@ async def get_network_stats(duration: str = "hourly") -> Dict[str, Any]:
     try:
         duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(duration, 1)
         stats = await stats_manager.get_network_stats(duration_hours=duration_hours)
+        def _first_non_none(*values):
+            for v in values:
+                if v is not None:
+                    return v
+            return 0
+
         summary = {
-            "total_rx_bytes": sum(e.get("rx_bytes", 0) for e in stats),
-            "total_tx_bytes": sum(e.get("tx_bytes", 0) for e in stats),
+            "total_rx_bytes": sum(int(e.get("rx_bytes", 0) or 0) for e in stats),
+            "total_tx_bytes": sum(int(e.get("tx_bytes", 0) or 0) for e in stats),
             "total_bytes": sum(
-                e.get("bytes", e.get("rx_bytes", 0) + e.get("tx_bytes", 0)) for e in stats
+                int(
+                    (e.get("bytes") if e.get("bytes") is not None else (e.get("rx_bytes", 0) or 0) + (e.get("tx_bytes", 0) or 0))
+                )
+                for e in stats
             ),
             "avg_clients": int(
-                sum(e.get("num_user", 0) or e.get("num_active_user", 0) or e.get("num_sta", 0) for e in stats)
+                sum(_first_non_none(e.get("num_user"), e.get("num_active_user"), e.get("num_sta")) for e in stats)
                 / max(1, len(stats))
             ) if stats else 0,
         }

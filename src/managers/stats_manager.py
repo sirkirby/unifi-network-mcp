@@ -134,21 +134,29 @@ class StatsManager:
         clients_raw = [c.raw if hasattr(c, "raw") else c for c in online_clients]
 
         aggregated_stats: List[Dict[str, Any]] = []
+        def _safe_int(value: Any) -> int:
+            try:
+                if value is None:
+                    return 0
+                if isinstance(value, bool):
+                    return int(value)
+                return int(str(value))
+            except Exception:
+                return 0
+
         for client in clients_raw:
             mac = client.get("mac")
             if not mac:
                 continue
 
             # Prefer explicit total if present, otherwise sum rx/tx (wifi + wired)
-            rx = (
-                int(client.get("rx_bytes", 0))
-                + int(client.get("wired_rx_bytes", client.get("wired-rx_bytes", 0)))
+            rx = _safe_int(client.get("rx_bytes")) + _safe_int(
+                client.get("wired_rx_bytes") or client.get("wired-rx_bytes")
             )
-            tx = (
-                int(client.get("tx_bytes", 0))
-                + int(client.get("wired_tx_bytes", client.get("wired-tx_bytes", 0)))
+            tx = _safe_int(client.get("tx_bytes")) + _safe_int(
+                client.get("wired_tx_bytes") or client.get("wired-tx_bytes")
             )
-            total = int(client.get("bytes", rx + tx))
+            total = _safe_int(client.get("bytes")) or (rx + tx)
 
             aggregated_stats.append(
                 {
