@@ -24,11 +24,25 @@ async def get_network_stats(duration: str = "hourly") -> Dict[str, Any]:
     try:
         duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(duration, 1)
         stats = await stats_manager.get_network_stats(duration_hours=duration_hours)
+        def _first_non_none(*values):
+            for v in values:
+                if v is not None:
+                    return v
+            return 0
+
         summary = {
-            "total_rx_bytes": sum(e.get("rx_bytes", 0) for e in stats),
-            "total_tx_bytes": sum(e.get("tx_bytes", 0) for e in stats),
-            "total_bytes": sum((e.get("rx_bytes", 0) + e.get("tx_bytes", 0)) for e in stats),
-            "avg_clients": int(sum(e.get("num_user", 0) or e.get("num_active_user", 0) for e in stats) / max(1, len(stats))) if stats else 0
+            "total_rx_bytes": sum(int(e.get("rx_bytes", 0) or 0) for e in stats),
+            "total_tx_bytes": sum(int(e.get("tx_bytes", 0) or 0) for e in stats),
+            "total_bytes": sum(
+                int(
+                    (e.get("bytes") if e.get("bytes") is not None else (e.get("rx_bytes", 0) or 0) + (e.get("tx_bytes", 0) or 0))
+                )
+                for e in stats
+            ),
+            "avg_clients": int(
+                sum(_first_non_none(e.get("num_user"), e.get("num_active_user"), e.get("num_sta")) for e in stats)
+                / max(1, len(stats))
+            ) if stats else 0,
         }
         return {"success": True, "site": stats_manager._connection.site, "duration": duration, "summary": summary, "stats": stats}
     except Exception as e:
@@ -46,15 +60,20 @@ async def get_client_stats(client_id: str, duration: str = "hourly") -> Dict[str
         client_details = await client_manager.get_client_details(client_id)
         if not client_details:
             return {"success": False, "error": f"Client '{client_id}' not found"}
-        
-        client_name = client_details.get("name") or client_details.get("hostname") or client_details.get("mac", "Unknown")
-        actual_client_id = client_details.get("_id", client_id)
-        
-        stats = await stats_manager.get_client_stats(actual_client_id, duration_hours=duration_hours)
+
+        # Support aiounifi Client objects as well as dicts
+        client_raw = client_details.raw if hasattr(client_details, "raw") else client_details
+        client_mac = client_raw.get("mac", client_id)
+        client_name = client_raw.get("name") or client_raw.get("hostname") or client_mac
+
+        # Stats endpoint expects MAC, not _id
+        stats = await stats_manager.get_client_stats(client_mac, duration_hours=duration_hours)
         summary = {
             "total_rx_bytes": sum(e.get("rx_bytes", 0) for e in stats),
             "total_tx_bytes": sum(e.get("tx_bytes", 0) for e in stats),
-            "total_bytes": sum((e.get("rx_bytes", 0) + e.get("tx_bytes", 0)) for e in stats),
+            "total_bytes": sum(
+                e.get("bytes", e.get("rx_bytes", 0) + e.get("tx_bytes", 0)) for e in stats
+            ),
         }
         return {"success": True, "site": stats_manager._connection.site, "client_id": client_id, "client_name": client_name, "duration": duration, "summary": summary, "stats": stats}
     except Exception as e:
@@ -81,7 +100,9 @@ async def get_device_stats(device_id: str, duration: str = "hourly") -> Dict[str
         summary = {
             "total_rx_bytes": sum(e.get("rx_bytes", 0) for e in stats),
             "total_tx_bytes": sum(e.get("tx_bytes", 0) for e in stats),
-            "total_bytes": sum((e.get("rx_bytes", 0) + e.get("tx_bytes", 0)) for e in stats),
+            "total_bytes": sum(
+                e.get("bytes", e.get("rx_bytes", 0) + e.get("tx_bytes", 0)) for e in stats
+            ),
         }
         if device_type == "uap" and stats:
             summary["avg_clients"] = int(sum(e.get("num_sta", 0) for e in stats) / max(1, len(stats)))
@@ -108,10 +129,9 @@ async def get_top_clients(duration: str = "daily", limit: int = 10) -> Dict[str,
             name = "Unknown"
             if mac:
                 details = await client_manager.get_client_details(mac)
-                if details and hasattr(details, 'raw'):
-                    name = details.raw.get("name") or details.raw.get("hostname") or mac
-                elif details:
-                     name = mac
+                if details:
+                    raw = details.raw if hasattr(details, "raw") else details
+                    name = raw.get("name") or raw.get("hostname") or mac
             entry["name"] = name
             enhanced_clients.append(entry)
             

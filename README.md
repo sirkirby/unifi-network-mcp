@@ -33,8 +33,8 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
 
 * Full catalog of UniFi controller operations – firewall, traffic-routes, port-forwards, QoS, VPN, WLANs, stats, devices, clients **and more**.
 * All mutating tools require `confirm=true` so nothing can change your network by accident.
-* Works over **stdio** (FastMCP) *and* exposes an SSE HTTP endpoint (defaults to `:3000`).
-* One-liner launch via the console-script **`mcp-server-unifi-network`**.
+* Works over **stdio** (FastMCP). Optional SSE HTTP endpoint can be enabled via config.
+* One-liner launch via the console-script **`unifi-network-mcp`**.
 * Idiomatic Python ≥ 3.10, packaged with **pyproject.toml** and ready for PyPI.
 
 ---
@@ -81,7 +81,7 @@ uv pip install --no-deps -e .
 cp .env.example .env  # then edit values
 
 # 4. Launch
-mcp-server-unifi-network
+unifi-network-mcp
 ```
 
 ### Install from PyPI
@@ -92,7 +92,7 @@ mcp-server-unifi-network
 uv pip install unifi-network-mcp  # or: pip install unifi-network-mcp
 ```
 
-The `mcp-server-unifi-network` entry-point will be added to your `$PATH`.
+The `unifi-network-mcp` entry-point will be added to your `$PATH`.
 
 ---
 
@@ -140,11 +140,46 @@ Add (or update) the `unifi-network-mcp` block under `mcpServers` in your `claude
 }
 ```
 
+### Option 3 – Claude attaches to an existing Docker container (recommended for compose)
+
+1) Using the container name as specified in `docker-compose.yml` from the repository root:
+
+```yaml
+docker-compose up --build
+```
+
+2) Then configure Claude Desktop:
+
+```jsonc
+"unifi-network-mcp": {
+  "command": "docker",
+  "args": ["exec", "-i", "unifi-network-mcp", "unifi-network-mcp"]
+}
+```
+
+Notes:
+- Use `-T` only with `docker compose exec` (it disables TTY for clean JSON). Do not use `-T` with `docker exec`.
+- Ensure the compose service is running (`docker compose up -d`) before attaching.
+
 After editing the config **restart Claude Desktop**, then test with:
 
 ```text
 @unifi-network-mcp list tools
 ```
+
+### Optional HTTP SSE endpoint (off by default)
+
+For environments where HTTP is acceptable (e.g., local development), you can enable the HTTP SSE server and expose it explicitly:
+
+```bash
+docker run -i --rm \
+  -p 3000:3000 \
+  -e UNIFI_MCP_HTTP_ENABLED=true \
+  ...
+  ghcr.io/sirkirby/unifi-network-mcp:latest
+```
+
+Security note: Leave this disabled in production or sensitive environments. The stdio transport remains the default and recommended mode.
 
 ---
 
@@ -163,6 +198,7 @@ The server merges settings from **environment variables**, an optional `.env` fi
 | `UNIFI_PORT` | HTTPS port (default `443`) |
 | `UNIFI_SITE` | Site name (default `default`) |
 | `UNIFI_VERIFY_SSL` | Set to `false` if using self-signed certs |
+| `UNIFI_MCP_HTTP_ENABLED` | Set `true` to enable optional HTTP SSE server (default `false`) |
 
 ### `src/config/config.yaml`
 

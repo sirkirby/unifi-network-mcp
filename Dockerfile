@@ -5,20 +5,22 @@ WORKDIR /app
 RUN pip install --upgrade pip \
  && pip install uv
 
-#Copy only metadata to leverage layer caching
+# Copy only metadata to leverage layer caching
 COPY pyproject.toml README.md ./
 
-# bring in package code
+# Bring in package code needed for installation
 COPY src ./src
 
-#build & install packages
+# Build & install package (pulls aiounifi from PyPI per pyproject)
 RUN pip install .
 
-#bring in the rest of the code
-COPY . .
+# Do NOT copy the entire repository to avoid shadowing installed deps with
+# similarly named top-level folders (e.g., aiounifi/). If you need runtime
+# config defaults available without a bind mount, copy only config.
+COPY src/config ./src/config
 
-#Expose the MCP server port
+# Expose the MCP server port (for optional HTTP SSE mode)
 EXPOSE 3000
 
-#console-script entrypoint
+# Console-script entrypoint
 CMD ["unifi-network-mcp"]

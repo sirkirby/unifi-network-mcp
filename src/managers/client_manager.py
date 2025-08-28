@@ -33,6 +33,23 @@ class ClientManager:
         try:
             await self._connection.controller.clients.update()
             clients: List[Client] = list(self._connection.controller.clients.values())
+            # Fallback rationale:
+            # - Some controller models/versions may not populate the collection
+            #   via controller.clients.update().
+            # - UniFi API semantics: active/online clients are served from
+            #   /stat/sta, while historical/all clients are under /rest/user.
+            #   Therefore for "online" we fallback to GET /stat/sta.
+            if not clients:
+                try:
+                    raw_clients = await self._connection.request(
+                        ApiRequest(method="get", path="/stat/sta")
+                    )
+                    if isinstance(raw_clients, list) and raw_clients:
+                        # Cache raw dicts; tool layer handles dict or Client
+                        self._connection._update_cache(cache_key, raw_clients)
+                        return raw_clients  # type: ignore[return-value]
+                except Exception as fallback_e:
+                    logger.debug(f"Raw clients fallback failed: {fallback_e}")
             self._connection._update_cache(cache_key, clients)
             return clients
         except Exception as e:
@@ -52,6 +69,22 @@ class ClientManager:
         try:
             await self._connection.controller.clients_all.update()
             all_clients: List[Client] = list(self._connection.controller.clients_all.values())
+            # Fallback rationale:
+            # - When the clients_all collection is empty, query the canonical
+            #   UniFi endpoint for all/historical client records.
+            # - UniFi API semantics: GET /rest/user returns all known clients
+            #   (legacy naming "user" == client record), not only currently
+            #   connected. This complements GET /stat/sta used for online-only.
+            if not all_clients:
+                try:
+                    raw_all = await self._connection.request(
+                        ApiRequest(method="get", path="/rest/user")
+                    )
+                    if isinstance(raw_all, list) and raw_all:
+                        self._connection._update_cache(cache_key, raw_all)
+                        return raw_all  # type: ignore[return-value]
+                except Exception as fallback_e:
+                    logger.debug(f"Raw all-clients fallback failed: {fallback_e}")
             self._connection._update_cache(cache_key, all_clients)
             return all_clients
         except Exception as e:
