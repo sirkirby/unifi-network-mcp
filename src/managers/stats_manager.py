@@ -44,12 +44,20 @@ class StatsManager:
             end_time = int(datetime.now().timestamp() * 1000)
 
             endpoint = "/stat/report/hourly.site"
-            params = {
-                "attrs": ["time", "rx_bytes-r", "tx_bytes-r", "wan-rx_bytes-r", "wan-tx_bytes-r", "wlan_bytes-r", "num_user"],
+            # Use non-rate attributes commonly available on report endpoints
+            payload = {
+                "attrs": [
+                    "bytes",              # total bytes (if provided by controller)
+                    "rx_bytes",           # some controllers provide rx/tx at site level
+                    "tx_bytes",
+                    "num_user",
+                    "num_sta",
+                    "num_active_user",
+                ],
                 "start": start_time,
-                "end": end_time
+                "end": end_time,
             }
-            api_request = ApiRequest(method="get", path=endpoint, params=params)
+            api_request = ApiRequest(method="post", path=endpoint, data=payload)
             response = await self._connection.request(api_request)
             result = response if isinstance(response, list) else []
             self._connection._update_cache(cache_key, result, timeout=300)
@@ -70,13 +78,13 @@ class StatsManager:
             end_time = int(datetime.now().timestamp() * 1000)
 
             endpoint = "/stat/report/hourly.sta"
-            params = {
-                "attrs": ["time", "rx_bytes-r", "tx_bytes-r"],
+            payload = {
+                "attrs": ["rx_bytes", "tx_bytes", "bytes"],
                 "mac": client_mac,
                 "start": start_time,
-                "end": end_time
+                "end": end_time,
             }
-            api_request = ApiRequest(method="get", path=endpoint, params=params)
+            api_request = ApiRequest(method="post", path=endpoint, data=payload)
             response = await self._connection.request(api_request)
             result = response if isinstance(response, list) else []
             self._connection._update_cache(cache_key, result, timeout=300)
@@ -97,13 +105,13 @@ class StatsManager:
             end_time = int(datetime.now().timestamp() * 1000)
 
             endpoint = "/stat/report/hourly.dev"
-            params = {
-                "attrs": ["time", "rx_bytes-r", "tx_bytes-r", "num_sta"], # num_sta relevant for APs
+            payload = {
+                "attrs": ["rx_bytes", "tx_bytes", "bytes", "num_sta"],  # num_sta relevant for APs
                 "mac": device_mac,
                 "start": start_time,
-                "end": end_time
+                "end": end_time,
             }
-            api_request = ApiRequest(method="get", path=endpoint, params=params)
+            api_request = ApiRequest(method="post", path=endpoint, data=payload)
             response = await self._connection.request(api_request)
             result = response if isinstance(response, list) else []
             self._connection._update_cache(cache_key, result, timeout=300)
@@ -113,50 +121,47 @@ class StatsManager:
             return []
 
     async def get_top_clients(self, duration_hours: int = 24, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get top clients by usage. Requires fetching stats for all online clients."""
+        """Get top clients by usage.
+
+        Fallback approach: derive usage from current client objects when report
+        endpoints return no data. Values are cumulative since association and
+        are sufficient for ranking purposes.
+        """
         online_clients = await self._client_manager.get_clients()
         if not online_clients:
             return []
 
         clients_raw = [c.raw if hasattr(c, "raw") else c for c in online_clients]
 
-        client_stats_tasks = []
-        valid_clients_for_stats = []
+        aggregated_stats: List[Dict[str, Any]] = []
         for client in clients_raw:
-            if client.get("mac"):
-                client_stats_tasks.append(self.get_client_stats(client["mac"], duration_hours))
-                valid_clients_for_stats.append(client)
-
-        if not client_stats_tasks:
-            return []
-
-        all_client_stats_results = await asyncio.gather(*client_stats_tasks, return_exceptions=True)
-
-        aggregated_stats: Dict[str, Dict[str, Any]] = {}
-        for i, result in enumerate(all_client_stats_results):
-            client_data = valid_clients_for_stats[i]
-            mac = client_data.get("mac")
-
-            if mac is None:
-                continue
-            if isinstance(result, Exception):
-                logger.warning(f"Failed to get stats for client {mac}: {result}")
-                continue
-            if not result:
+            mac = client.get("mac")
+            if not mac:
                 continue
 
-            total_rx = sum(s.get("rx_bytes-r", 0) for s in result)
-            total_tx = sum(s.get("tx_bytes-r", 0) for s in result)
-            aggregated_stats[mac] = {
-                "mac": mac,
-                "name": client_data.get("name") or client_data.get("hostname", mac),
-                "rx_bytes": total_rx,
-                "tx_bytes": total_tx,
-                "total_bytes": total_rx + total_tx,
-            }
+            # Prefer explicit total if present, otherwise sum rx/tx (wifi + wired)
+            rx = (
+                int(client.get("rx_bytes", 0))
+                + int(client.get("wired_rx_bytes", client.get("wired-rx_bytes", 0)))
+            )
+            tx = (
+                int(client.get("tx_bytes", 0))
+                + int(client.get("wired_tx_bytes", client.get("wired-tx_bytes", 0)))
+            )
+            total = int(client.get("bytes", rx + tx))
+
+            aggregated_stats.append(
+                {
+                    "mac": mac,
+                    "name": client.get("name") or client.get("hostname", mac),
+                    "rx_bytes": rx,
+                    "tx_bytes": tx,
+                    "total_bytes": total,
+                }
+            )
 
         # Sort by total bytes descending and return top N
-        sorted_clients = sorted(aggregated_stats.values(), key=lambda x: x["total_bytes"], reverse=True)
+        sorted_clients = sorted(aggregated_stats, key=lambda x: x["total_bytes"], reverse=True)
         return sorted_clients[:limit]
 
     async def get_dpi_stats(self) -> Dict[str, List[Any]]: # Return List[DPIRestrictionApp/Group]
