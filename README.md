@@ -33,8 +33,8 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
 
 * Full catalog of UniFi controller operations – firewall, traffic-routes, port-forwards, QoS, VPN, WLANs, stats, devices, clients **and more**.
 * All mutating tools require `confirm=true` so nothing can change your network by accident.
-* Works over **stdio** (FastMCP) *and* exposes an SSE HTTP endpoint (defaults to `:3000`).
-* One-liner launch via the console-script **`mcp-server-unifi-network`**.
+* Works over **stdio** (FastMCP). Optional SSE HTTP endpoint can be enabled via config.
+* One-liner launch via the console-script **`unifi-network-mcp`**.
 * Idiomatic Python ≥ 3.10, packaged with **pyproject.toml** and ready for PyPI.
 
 ---
@@ -81,7 +81,7 @@ uv pip install --no-deps -e .
 cp .env.example .env  # then edit values
 
 # 4. Launch
-mcp-server-unifi-network
+unifi-network-mcp
 ```
 
 ### Install from PyPI
@@ -145,6 +145,24 @@ After editing the config **restart Claude Desktop**, then test with:
 ```text
 @unifi-network-mcp list tools
 ```
+
+Note about Docker builds:
+
+- The image deliberately avoids copying the entire repository into the container to prevent vendored libraries (like a local `aiounifi/` folder) from shadowing PyPI dependencies. If you override the container’s filesystem (e.g., with a bind mount), avoid mounting the repo root; mount only what you need, such as `src/config` for configuration files.
+
+### Optional HTTP SSE endpoint (off by default)
+
+For environments where HTTP is acceptable (e.g., local development), you can enable the HTTP SSE server and expose it explicitly:
+
+```bash
+docker run -i --rm \
+  -p 3000:3000 \
+  -e UNIFI_MCP_HTTP_ENABLED=true \
+  ...
+  ghcr.io/sirkirby/unifi-network-mcp:latest
+```
+
+Security note: Leave this disabled in production or sensitive environments. The stdio transport remains the default and recommended mode.
 
 ---
 

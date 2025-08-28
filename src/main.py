@@ -146,14 +146,44 @@ async def main_async():
     except Exception as e:
         logger.error(f"Error listing tools in main_async: {e}")
 
-    logger.info("Handing off to FastMCP stdio transport (blocking run) from main_async...")
-    try:
+    # Run stdio always; optionally run HTTP SSE based on config flag
+    host = config.server.get("host", "0.0.0.0")
+    port = int(config.server.get("port", 3000))
+    http_cfg = config.server.get("http", {})
+    http_enabled_raw = http_cfg.get("enabled", False)
+    if isinstance(http_enabled_raw, str):
+        http_enabled = http_enabled_raw.strip().lower() in {"1", "true", "yes", "on"}
+    else:
+        http_enabled = bool(http_enabled_raw)
+
+    async def run_stdio():
+        logger.info("Starting FastMCP stdio server ...")
         await server.run_stdio_async()
-        logger.info("FastMCP stdio server finished gracefully from main_async.")
+
+    tasks = [run_stdio()]
+    if http_enabled:
+        async def run_http():
+            try:
+                logger.info(f"Starting FastMCP HTTP SSE server on {host}:{port} ...")
+                # Prefer SSE API with explicit host/port if available
+                try:
+                    await server.run_sse_async(host=host, port=port)  # type: ignore[arg-type]
+                except TypeError:
+                    # Fallback to streamable HTTP API without args (older signatures)
+                    logger.info("Falling back to run_streamable_http_async() without host/port arguments ...")
+                    await server.run_streamable_http_async()
+            except Exception as http_e:
+                logger.error(f"HTTP SSE server failed to start: {http_e}")
+                logger.error(traceback.format_exc())
+        tasks.append(run_http())
+
+    try:
+        await asyncio.gather(*tasks)
+        logger.info("FastMCP servers exited.")
     except Exception as e:
-        logger.error(f"Error running FastMCP stdio server from main_async: {e}")
-        logger.error(traceback.format_exc()) # Log the full traceback
-        raise # Reraise the exception so asyncio.run reports it and it gets logged by main()
+        logger.error(f"Error running FastMCP servers from main_async: {e}")
+        logger.error(traceback.format_exc())
+        raise
 
 def main():
     """Synchronous entry point."""

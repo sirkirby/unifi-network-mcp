@@ -62,3 +62,4 @@ aiounifi/*
 aiounifi
 
 .env.template
+claude_config.json

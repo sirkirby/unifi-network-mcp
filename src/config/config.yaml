@@ -10,6 +10,8 @@ server:
   host: 0.0.0.0
   port: 3000
   log_level: INFO
+  http:
+    enabled: ${oc.env:UNIFI_MCP_HTTP_ENABLED,false}
   
 permissions:
 
