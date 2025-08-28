@@ -92,7 +92,7 @@ unifi-network-mcp
 uv pip install unifi-network-mcp  # or: pip install unifi-network-mcp
 ```
 
-The `mcp-server-unifi-network` entry-point will be added to your `$PATH`.
+The `unifi-network-mcp` entry-point will be added to your `$PATH`.
 
 ---
 
@@ -140,15 +140,32 @@ Add (or update) the `unifi-network-mcp` block under `mcpServers` in your `claude
 }
 ```
 
+### Option 3 – Claude attaches to an existing Docker container (recommended for compose)
+
+1) Using the container name as specified in `docker-compose.yml` from the repository root:
+
+```yaml
+docker-compose up --build
+```
+
+2) Then configure Claude Desktop:
+
+```jsonc
+"unifi-network-mcp": {
+  "command": "docker",
+  "args": ["exec", "-i", "unifi-network-mcp", "unifi-network-mcp"]
+}
+```
+
+Notes:
+- Use `-T` only with `docker compose exec` (it disables TTY for clean JSON). Do not use `-T` with `docker exec`.
+- Ensure the compose service is running (`docker compose up -d`) before attaching.
+
 After editing the config **restart Claude Desktop**, then test with:
 
 ```text
 @unifi-network-mcp list tools
 ```
-
-Note about Docker builds:
-
-- The image deliberately avoids copying the entire repository into the container to prevent vendored libraries (like a local `aiounifi/` folder) from shadowing PyPI dependencies. If you override the container’s filesystem (e.g., with a bind mount), avoid mounting the repo root; mount only what you need, such as `src/config` for configuration files.
 
 ### Optional HTTP SSE endpoint (off by default)
 
@@ -181,6 +198,7 @@ The server merges settings from **environment variables**, an optional `.env` fi
 | `UNIFI_PORT` | HTTPS port (default `443`) |
 | `UNIFI_SITE` | Site name (default `default`) |
 | `UNIFI_VERIFY_SSL` | Set to `false` if using self-signed certs |
+| `UNIFI_MCP_HTTP_ENABLED` | Set `true` to enable optional HTTP SSE server (default `false`) |
 
 ### `src/config/config.yaml`
 
