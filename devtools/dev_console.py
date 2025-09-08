@@ -44,8 +44,42 @@ def _prompt(prompt: str, default: Optional[str] = None) -> str:
     return val if val else (default or "")
 
 
-def _parse_json_input(hint: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    print("Enter JSON arguments (single line). Press Enter for {}.")
+def _coerce_value(val: str, schema: Optional[Dict[str, Any]]) -> Any:
+    if schema is None:
+        return val
+    t = schema.get("type") if isinstance(schema, dict) else None
+    if val == "" and schema.get("default") is not None:
+        return schema["default"]
+    if t == "boolean":
+        return val.strip().lower() in {"1", "true", "yes", "on"}
+    if t == "integer":
+        try:
+            return int(val)
+        except Exception:
+            return val
+    if t == "number":
+        try:
+            return float(val)
+        except Exception:
+            return val
+    if t in {"array", "object"}:
+        # allow JSON input for complex types
+        try:
+            parsed = json.loads(val)
+            return parsed
+        except Exception:
+            return val
+    return val
+
+
+def _parse_args_with_schema(params_schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    print("Enter JSON arguments (single line). Press Enter for guided prompts.")
+    hint = None
+    if params_schema and isinstance(params_schema, dict):
+        hint = {
+            "properties": params_schema.get("properties", {}),
+            "required": params_schema.get("required", []),
+        }
     if hint:
         try:
             print("Hint (not validated):")
@@ -53,17 +87,40 @@ def _parse_json_input(hint: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         except Exception:
             pass
     line = input("> ").strip()
-    if not line:
-        return {}
-    try:
-        data = json.loads(line)
-        if isinstance(data, dict):
-            return data
-        logger.warning("Top-level JSON must be an object; ignoring input.")
-        return {}
-    except Exception as exc:
-        logger.error(f"Invalid JSON: {exc}. Using empty args.")
-        return {}
+
+    # If user pasted JSON, parse directly
+    if line.startswith("{") or line.startswith("["):
+        try:
+            data = json.loads(line)
+            return data if isinstance(data, dict) else {}
+        except Exception as exc:
+            logger.error(f"Invalid JSON: {exc}. Proceeding to guided prompts.")
+
+    # If non-empty and single required param, treat as simple value
+    if line and params_schema:
+        req = params_schema.get("required", []) or []
+        props = params_schema.get("properties", {}) or {}
+        if isinstance(req, list) and len(req) == 1 and isinstance(props, dict) and req[0] in props:
+            only_key = req[0]
+            coerced = _coerce_value(line, props.get(only_key))
+            return {only_key: coerced}
+
+    # Guided prompts for required fields
+    args: Dict[str, Any] = {}
+    if params_schema and isinstance(params_schema, dict):
+        props = params_schema.get("properties", {}) or {}
+        required = params_schema.get("required", []) or []
+        for key in required:
+            sch = props.get(key) if isinstance(props, dict) else None
+            default = sch.get("default") if isinstance(sch, dict) else None
+            val = _prompt(f"{key}", str(default) if default is not None else None)
+            args[key] = _coerce_value(val, sch)
+        # Optionally allow optional properties quickly
+        # If user wants to add more, they can paste JSON on next run
+        return args
+
+    # No schema: if user typed nothing, return empty; if something non-JSON, ask as key=value JSON next time
+    return {}
 
 
 async def _invoke_tool(server, tool) -> None:
@@ -73,12 +130,7 @@ async def _invoke_tool(server, tool) -> None:
     _print("Tool", {"name": name, "description": desc})
 
     args: Dict[str, Any] = {}
-    if params and isinstance(params, dict) and params.get("properties"):
-        # Show properties as a hint and accept JSON dict
-        args = _parse_json_input({"properties": params.get("properties", {}), "required": params.get("required", [])})
-    else:
-        # No schema provided; still allow raw JSON args
-        args = _parse_json_input()
+    args = _parse_args_with_schema(params if isinstance(params, dict) else None)
 
     confirm_default = None
     if "confirm" in (params.get("properties", {}) if isinstance(params, dict) else {}):
@@ -95,10 +147,43 @@ async def _invoke_tool(server, tool) -> None:
             args["confirm"] = False
 
     _print("Invoking", {"tool": name, "args": args})
+
+    def _extract_missing_fields_from_exc(e: Exception) -> List[str]:
+        txt = str(e)
+        fields: List[str] = []
+        try:
+            lines = txt.splitlines()
+            for i, ln in enumerate(lines):
+                s = ln.strip()
+                # Heuristic: a bare identifier line followed by a 'Field required' line
+                if s and s.replace("_", "").isalnum() and " " not in s:
+                    if i + 1 < len(lines) and "Field required" in lines[i + 1]:
+                        fields.append(s)
+        except Exception:
+            pass
+        return fields
+
     try:
         result = await server.call_tool(name, args)
         _print("Result", result)
     except Exception as exc:
+        # If we had no args and no schema, try to guide based on validation error
+        if not args and not (isinstance(params, dict) and params.get("properties")):
+            missing = _extract_missing_fields_from_exc(exc)
+            if missing:
+                logger.info(f"Missing required fields: {missing}")
+                fixed: Dict[str, Any] = {}
+                for key in missing:
+                    val = _prompt(key)
+                    fixed[key] = val
+                _print("Re-invoking", {"tool": name, "args": fixed})
+                try:
+                    result = await server.call_tool(name, fixed)
+                    _print("Result", result)
+                    return
+                except Exception as exc2:
+                    logger.error(f"Tool execution failed after prompting: {exc2}")
+                    return
         logger.error(f"Tool execution failed: {exc}")
 
 

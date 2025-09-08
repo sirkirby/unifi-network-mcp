@@ -160,8 +160,8 @@ docker-compose up --build
 ```
 
 Notes:
-- Use `-T` only with `docker compose exec` (it disables TTY for clean JSON). Do not use `-T` with `docker exec`.
-- Ensure the compose service is running (`docker compose up -d`) before attaching.
+* Use `-T` only with `docker compose exec` (it disables TTY for clean JSON). Do not use `-T` with `docker exec`.
+* Ensure the compose service is running (`docker compose up -d`) before attaching.
 
 After editing the config **restart Claude Desktop**, then test with:
 
@@ -225,16 +225,16 @@ server:
 
 Environment overrides:
 
-- `UNIFI_MCP_DIAGNOSTICS` (true/false)
-- `UNIFI_MCP_DIAG_LOG_TOOL_ARGS` (true/false)
-- `UNIFI_MCP_DIAG_LOG_TOOL_RESULT` (true/false)
-- `UNIFI_MCP_DIAG_MAX_PAYLOAD` (integer)
+* `UNIFI_MCP_DIAGNOSTICS` (true/false)
+* `UNIFI_MCP_DIAG_LOG_TOOL_ARGS` (true/false)
+* `UNIFI_MCP_DIAG_LOG_TOOL_RESULT` (true/false)
+* `UNIFI_MCP_DIAG_MAX_PAYLOAD` (integer)
 
 Notes:
 
-- Logs are emitted via standard Python logging under `unifi-network-mcp.diagnostics`.
-- Set `server.log_level` (or `UNIFI_MCP_LOG_LEVEL`) to `INFO`/`DEBUG` to surface entries.
-- Tool calls log timing and optional redacted args/results; API calls log method, path, timing, and redacted request/response snapshots.
+* Logs are emitted via standard Python logging under `unifi-network-mcp.diagnostics`.
+* Set `server.log_level` (or `UNIFI_MCP_LOG_LEVEL`) to `INFO`/`DEBUG` to surface entries.
+* Tool calls log timing and optional redacted args/results; API calls log method, path, timing, and redacted request/response snapshots.
 
 ---
 
@@ -252,16 +252,37 @@ python devtools/dev_console.py
 
 What it does:
 
-- Loads config and initializes the UniFi connection.
-- Auto-loads all `unifi_*` tools.
-- Lists available tools with descriptions.
-- On selection, shows a schema hint (when available) and prompts for JSON arguments.
-- Executes the tool via the MCP server and prints the JSON result.
+* Loads config and initializes the UniFi connection.
+* Auto-loads all `unifi_*` tools.
+* Lists available tools with descriptions.
+* On selection, shows a schema hint (when available) and prompts for JSON arguments.
+* Executes the tool via the MCP server and prints the JSON result.
 
 Tips:
 
-- Combine with Diagnostics for deep visibility: set `UNIFI_MCP_DIAGNOSTICS=true` (or enable in `src/config/config.yaml`).
-- For mutating tools, set `{"confirm": true}` in the JSON input when prompted.
+* Combine with Diagnostics for deep visibility: set `UNIFI_MCP_DIAGNOSTICS=true` (or enable in `src/config/config.yaml`).
+* For mutating tools, set `{"confirm": true}` in the JSON input when prompted.
+
+### Supplying arguments
+
+You can provide tool arguments in three ways:
+
+* Paste a JSON object (recommended for complex inputs):
+  ```json
+  {"mac_address": "14:1b:4f:dc:5b:cf"}
+  ```
+
+* Type a single value when the tool has exactly one required parameter. The console maps it automatically to that key. Example for `unifi_get_client_details`:
+```bash
+  14:2b:2f:cd:5b:fc
+  ```
+* Press Enter to skip JSON and the console will interactively prompt for missing required fields (e.g., it will ask for `mac_address`).
+
+Notes:
+
+* For arrays or nested objects, paste valid JSON.
+* The console shows a schema hint (when available). Defaults from the schema are used if you press Enter on a prompt.
+* If validation fails, the console extracts required fields from the error and prompts for them.
 
 ### Environment setup
 
