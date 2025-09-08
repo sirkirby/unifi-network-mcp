@@ -30,6 +30,7 @@ from src.runtime import (
 )
 
 from src.utils.tool_loader import auto_load_tools
+from src.utils.diagnostics import diagnostics_enabled, wrap_tool
 from src.utils.permissions import parse_permission  # noqa: E402
 
 _original_tool_decorator = server.tool  # keep reference to wrap later
@@ -57,7 +58,9 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
             allowed = False
 
         if allowed:
-            return _original_tool_decorator(*d_args, **d_kwargs)(func)
+            # Wrap with diagnostics if enabled
+            wrapped = wrap_tool(func, tool_name or getattr(func, "__name__", "<tool>")) if diagnostics_enabled() else func
+            return _original_tool_decorator(*d_args, **d_kwargs)(wrapped)
 
         logger.info(
             "[permissions] Skipping registration of tool '%s' (category=%s, action=%s)",
@@ -65,6 +68,7 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
             category,
             action,
         )
+        # Still return original function (unregistered) for import side-effects/testing
         return func
 
     return decorator

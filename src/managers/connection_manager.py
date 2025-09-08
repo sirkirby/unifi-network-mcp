@@ -4,6 +4,7 @@ import time
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import aiohttp
+import time as _time
 
 from aiounifi.controller import Controller
 from aiounifi.models.configuration import Configuration
@@ -167,7 +168,17 @@ class ConnectionManager:
         request_method = self.controller.connectivity._request if return_raw else self.controller.request
 
         try:
+            # Diagnostics: capture timing and payloads without leaking secrets
+            start_ts = _time.perf_counter()
             response = await request_method(api_request)
+            duration_ms = (_time.perf_counter() - start_ts) * 1000.0
+            try:
+                from src.utils.diagnostics import log_api_request, diagnostics_enabled  # lazy import to avoid cycles
+                if diagnostics_enabled():
+                    payload = getattr(api_request, "json", None) or getattr(api_request, "data", None)
+                    log_api_request(api_request.method, api_request.path, payload, response, duration_ms, True)
+            except Exception:
+                pass
             return response if return_raw else response.get("data")
 
         except LoginRequired:
@@ -177,7 +188,16 @@ class ConnectionManager:
                      raise ConnectionError("Re-login failed, controller not available.")
                 logger.info("Re-login successful, retrying original request...")
                 try:
+                    start_ts = _time.perf_counter()
                     retry_response = await request_method(api_request)
+                    duration_ms = (_time.perf_counter() - start_ts) * 1000.0
+                    try:
+                        from src.utils.diagnostics import log_api_request, diagnostics_enabled
+                        if diagnostics_enabled():
+                            payload = getattr(api_request, "json", None) or getattr(api_request, "data", None)
+                            log_api_request(api_request.method, api_request.path, payload, retry_response, duration_ms, True)
+                    except Exception:
+                        pass
                     return retry_response if return_raw else retry_response.get("data")
                 except Exception as retry_e:
                     logger.error(f"API request failed even after re-login: {api_request.method.upper()} {api_request.path} - {retry_e}")
@@ -186,9 +206,23 @@ class ConnectionManager:
                 raise ConnectionError("Re-login failed, cannot proceed with request.")
         except (RequestError, ResponseError, aiohttp.ClientError) as e:
             logger.error(f"API request error: {api_request.method.upper()} {api_request.path} - {e}")
+            try:
+                from src.utils.diagnostics import log_api_request, diagnostics_enabled
+                if diagnostics_enabled():
+                    payload = getattr(api_request, "json", None) or getattr(api_request, "data", None)
+                    log_api_request(api_request.method, api_request.path, payload, {"error": str(e)}, 0.0, False)
+            except Exception:
+                pass
             raise
         except Exception as e:
             logger.error(f"Unexpected error during API request: {api_request.method.upper()} {api_request.path} - {e}", exc_info=True)
+            try:
+                from src.utils.diagnostics import log_api_request, diagnostics_enabled
+                if diagnostics_enabled():
+                    payload = getattr(api_request, "json", None) or getattr(api_request, "data", None)
+                    log_api_request(api_request.method, api_request.path, payload, {"error": str(e)}, 0.0, False)
+            except Exception:
+                pass
             raise
 
     # --- Cache Management ---
