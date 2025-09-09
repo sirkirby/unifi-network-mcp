@@ -11,6 +11,7 @@ import asyncio
 import logging
 import traceback
 import sys # Removed uvicorn import
+import os
 
 from src.bootstrap import logger  # ensures logging/env setup early
 
@@ -159,6 +160,12 @@ async def main_async():
         http_enabled = http_enabled_raw.strip().lower() in {"1", "true", "yes", "on"}
     else:
         http_enabled = bool(http_enabled_raw)
+
+    # Only the main container process (PID 1) should bind the HTTP SSE port.
+    is_main_container_process = os.getpid() == 1
+    if http_enabled and not is_main_container_process:
+        logger.info("HTTP SSE enabled in config but skipped in exec session (PID %s != 1)", os.getpid())
+        http_enabled = False
 
     async def run_stdio():
         logger.info("Starting FastMCP stdio server ...")
