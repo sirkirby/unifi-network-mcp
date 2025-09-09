@@ -11,7 +11,7 @@
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/sirkirby)
 
-A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) (MCP) server that turns your UniFi Network Controller into a rich set of programmable tools. Every capability is exposed via standard MCP **tools** prefixed with `unifi_`, so any LLM or agent that speaks MCP (e.g. Claude Desktop, `mcp-cli`, LangChain, etc.) can query, analyse **and** – when explicitly confirmed – modify your network.
+A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) (MCP) server that turns your UniFi Network Controller into a rich set of interactive tools. Every capability is exposed via standard MCP **tools** prefixed with `unifi_`, so any LLM or agent that speaks MCP (e.g. Claude Desktop, `mcp-cli`, LangChain, etc.) can query, analyze **and** – when explicitly authorized – modify your network. These tools must have local access to your UniFi Network Controller, by either running locally or in the cloud connected via a secure reverse proxy. Please consider the [security implications](#security-considerations) of running these tools in the cloud as they contain sensitive information and access to your network.
 
 ---
 
@@ -22,10 +22,12 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
   * [Docker](#docker)
   * [Python / UV](#python--uv)
   * [Install from PyPI](#install-from-pypi)
+* [Using with Local LLMs and Agents](#using-with-local-llms-and-agents)
 * [Using with Claude Desktop](#using-with-claude-desktop)
 * [Runtime Configuration](#runtime-configuration)
 * [Diagnostics (Advanced Logging)](#diagnostics-advanced-logging)
 * [Developer Console (Local Tool Tester)](#developer-console-local-tool-tester)
+* [Security Considerations](#security-considerations)
 * [📚 Tool Catalog](#-tool-catalog)
 * [Contributing: Releasing / Publishing](#contributing-releasing--publishing)
 
@@ -98,6 +100,22 @@ The `unifi-network-mcp` entry-point will be added to your `$PATH`.
 
 ---
 
+## Using with Local LLMs and Agents
+
+No internet access is required, everything runs locally. It's recommend you have an M-Series Mac or Windows/Linux with a very modern GPU (Nvidia RTX 4000 series or better)
+
+### Recommended
+
+Install [LM Studio](https://lmstudio.ai) and edit the mcp.json file `chat prompt --> tool icon --> edit mcp.json` to add the unifi-network-mcp server tools, allowing you to prompt using a locally run LLM of your choice. Configure just as you would for Claude desktop. I recommend loading a tool capable model like OpenAI's [gp-oss](https://lmstudio.ai/models/openai/gpt-oss-20b), and prompt it to use the UniFi tools.
+
+```text
+Example prompt: using the unifi tools, list my most active clients on the network and include the type of traffic and total bandwidth used.
+```
+
+### Alternative
+
+Use [Ollama](https://ollama.com/) with [ollmcp](https://github.com/jonigl/mcp-client-for-ollama), allowing you to use a locally run LLM capable of tool calling via your favorite [terminal](https://app.warp.dev/referral/EJK58L).
+
 ## Using with Claude Desktop
 
 Add (or update) the `unifi-network-mcp` block under `mcpServers` in your `claude_desktop_config.json`.
@@ -160,6 +178,7 @@ docker-compose up --build
 ```
 
 Notes:
+
 * Use `-T` only with `docker compose exec` (it disables TTY for clean JSON). Do not use `-T` with `docker exec`.
 * Ensure the compose service is running (`docker compose up -d`) before attaching.
 
@@ -240,7 +259,7 @@ Notes:
 
 ## Developer Console (Local Tool Tester)
 
-A lightweight interactive console to list and invoke tools locally without LLM tool calling. It uses your normal config and the same runtime, so diagnostics apply automatically when enabled.
+A lightweight interactive console to list and invoke tools locally without LLM tool calling. It uses your normal config and the same runtime, so diagnostics apply automatically when enabled. Grab your [favorite terminal](https://app.warp.dev/referral/EJK58L) to get started.
 
 Location: `devtools/dev_console.py`
 
@@ -274,7 +293,7 @@ You can provide tool arguments in three ways:
 
 * Type a single value when the tool has exactly one required parameter. The console maps it automatically to that key. Example for `unifi_get_client_details`:
 ```bash
-  14:2b:2f:cd:5b:fc
+  14:1b:4f:dc:5b:cf
   ```
 * Press Enter to skip JSON and the console will interactively prompt for missing required fields (e.g., it will ask for `mac_address`).
 
@@ -324,6 +343,19 @@ pip install mcp
 # 4) Run the console
 python devtools/dev_console.py
 ```
+
+---
+
+## Security Considerations
+
+These tools will give any LLM or agent configured to use them full access to your UniFi Network Controller. While this can be for very useful for analysis and configuration of your network, there is potential for abuse if not configured correctly. By default, all tools that can modify state or disrupt availability are disabled, and must be explicitly enabled in the `src/config/config.yaml` file. When you have a use case for a tool, like updating a firewall policy, you must explicitly enable it in the `src/config/config.yaml` and restart the MCP server. The tools are build directly on the UniFi Network Controller API, so they can operate with similar functionality to the UniFi web interface.
+
+### General Recommendations
+
+* Use LM Studio or Ollama run tool capable models locally if possible. This is the recommended and safest way to use these tools.
+* If you opt to use cloud based LLMs, like Claude, Gemini, and ChatGPT, for analysis. Enable read-only tools, which is the default configuration.
+* Create, update, and removal tools should be used with caution and only enabled when necessary.
+* Do not host outside of your network unless using a secure reverse proxy like Cloudflare Tunnel or Ngrok. Even then, an additional layer of authentication is recommended.
 
 ---
 
