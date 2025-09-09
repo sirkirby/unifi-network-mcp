@@ -24,6 +24,8 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
   * [Install from PyPI](#install-from-pypi)
 * [Using with Claude Desktop](#using-with-claude-desktop)
 * [Runtime Configuration](#runtime-configuration)
+* [Diagnostics (Advanced Logging)](#diagnostics-advanced-logging)
+* [Developer Console (Local Tool Tester)](#developer-console-local-tool-tester)
 * [📚 Tool Catalog](#-tool-catalog)
 * [Contributing: Releasing / Publishing](#contributing-releasing--publishing)
 
@@ -158,8 +160,8 @@ docker-compose up --build
 ```
 
 Notes:
-- Use `-T` only with `docker compose exec` (it disables TTY for clean JSON). Do not use `-T` with `docker exec`.
-- Ensure the compose service is running (`docker compose up -d`) before attaching.
+* Use `-T` only with `docker compose exec` (it disables TTY for clean JSON). Do not use `-T` with `docker exec`.
+* Ensure the compose service is running (`docker compose up -d`) before attaching.
 
 After editing the config **restart Claude Desktop**, then test with:
 
@@ -203,6 +205,125 @@ The server merges settings from **environment variables**, an optional `.env` fi
 ### `src/config/config.yaml`
 
 Defines HTTP bind host/port (`0.0.0.0:3000` by default) plus granular permission flags. Examples below assume the default port.
+
+---
+
+## Diagnostics (Advanced Logging)
+
+Enable a global diagnostics mode to emit structured logs for every tool call and controller API request. Only recommended for debugging.
+
+Configuration in `src/config/config.yaml`:
+
+```yaml
+server:
+  diagnostics:
+    enabled: false            # toggle globally
+    log_tool_args: true       # include tool args/kwargs (safely redacted)
+    log_tool_result: true     # include tool results (redacted)
+    max_payload_chars: 2000   # truncate large payloads
+```
+
+Environment overrides:
+
+* `UNIFI_MCP_DIAGNOSTICS` (true/false)
+* `UNIFI_MCP_DIAG_LOG_TOOL_ARGS` (true/false)
+* `UNIFI_MCP_DIAG_LOG_TOOL_RESULT` (true/false)
+* `UNIFI_MCP_DIAG_MAX_PAYLOAD` (integer)
+
+Notes:
+
+* Logs are emitted via standard Python logging under `unifi-network-mcp.diagnostics`.
+* Set `server.log_level` (or `UNIFI_MCP_LOG_LEVEL`) to `INFO`/`DEBUG` to surface entries.
+* Tool calls log timing and optional redacted args/results; API calls log method, path, timing, and redacted request/response snapshots.
+
+---
+
+## Developer Console (Local Tool Tester)
+
+A lightweight interactive console to list and invoke tools locally without LLM tool calling. It uses your normal config and the same runtime, so diagnostics apply automatically when enabled.
+
+Location: `devtools/dev_console.py`
+
+Run:
+
+```bash
+python devtools/dev_console.py
+```
+
+What it does:
+
+* Loads config and initializes the UniFi connection.
+* Auto-loads all `unifi_*` tools.
+* Lists available tools with descriptions.
+* On selection, shows a schema hint (when available) and prompts for JSON arguments.
+* Executes the tool via the MCP server and prints the JSON result.
+
+Tips:
+
+* Combine with Diagnostics for deep visibility: set `UNIFI_MCP_DIAGNOSTICS=true` (or enable in `src/config/config.yaml`).
+* For mutating tools, set `{"confirm": true}` in the JSON input when prompted.
+
+### Supplying arguments
+
+You can provide tool arguments in three ways:
+
+* Paste a JSON object (recommended for complex inputs):
+  ```json
+  {"mac_address": "14:1b:4f:dc:5b:cf"}
+  ```
+
+* Type a single value when the tool has exactly one required parameter. The console maps it automatically to that key. Example for `unifi_get_client_details`:
+```bash
+  14:2b:2f:cd:5b:fc
+  ```
+* Press Enter to skip JSON and the console will interactively prompt for missing required fields (e.g., it will ask for `mac_address`).
+
+Notes:
+
+* For arrays or nested objects, paste valid JSON.
+* The console shows a schema hint (when available). Defaults from the schema are used if you press Enter on a prompt.
+* If validation fails, the console extracts required fields from the error and prompts for them.
+
+### Environment setup
+
+Using UV (recommended):
+
+```bash
+# 1) Install UV if needed
+curl -fsSL https://astral.sh/uv/install.sh | bash
+
+# 2) Create and activate a virtual environment
+uv venv
+source .venv/bin/activate  # macOS/Linux
+# .venv\Scripts\activate   # Windows PowerShell: .venv\\Scripts\\Activate.ps1
+
+# 3) Install project and dependencies
+uv pip install -e .
+
+# 4) (If you see "ModuleNotFoundError: mcp") install the MCP SDK explicitly
+uv pip install mcp
+
+# 5) Run the console
+python devtools/dev_console.py
+```
+
+Using Python venv + pip:
+
+```bash
+# 1) Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # macOS/Linux
+# .venv\Scripts\activate   # Windows PowerShell: .venv\\Scripts\\Activate.ps1
+
+# 2) Install project (and dependencies)
+pip install -e .
+
+# 3) (If you see "ModuleNotFoundError: mcp") install the MCP SDK explicitly
+pip install mcp
+
+# 4) Run the console
+python devtools/dev_console.py
+```
 
 ---
 

@@ -11,6 +11,7 @@ import asyncio
 import logging
 import traceback
 import sys # Removed uvicorn import
+import os
 
 from src.bootstrap import logger  # ensures logging/env setup early
 
@@ -30,6 +31,7 @@ from src.runtime import (
 )
 
 from src.utils.tool_loader import auto_load_tools
+from src.utils.diagnostics import diagnostics_enabled, wrap_tool
 from src.utils.permissions import parse_permission  # noqa: E402
 
 _original_tool_decorator = server.tool  # keep reference to wrap later
@@ -57,7 +59,9 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
             allowed = False
 
         if allowed:
-            return _original_tool_decorator(*d_args, **d_kwargs)(func)
+            # Wrap with diagnostics if enabled
+            wrapped = wrap_tool(func, tool_name or getattr(func, "__name__", "<tool>")) if diagnostics_enabled() else func
+            return _original_tool_decorator(*d_args, **d_kwargs)(wrapped)
 
         logger.info(
             "[permissions] Skipping registration of tool '%s' (category=%s, action=%s)",
@@ -65,6 +69,7 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
             category,
             action,
         )
+        # Still return original function (unregistered) for import side-effects/testing
         return func
 
     return decorator
@@ -156,6 +161,12 @@ async def main_async():
     else:
         http_enabled = bool(http_enabled_raw)
 
+    # Only the main container process (PID 1) should bind the HTTP SSE port.
+    is_main_container_process = os.getpid() == 1
+    if http_enabled and not is_main_container_process:
+        logger.info("HTTP SSE enabled in config but skipped in exec session (PID %s != 1)", os.getpid())
+        http_enabled = False
+
     async def run_stdio():
         logger.info("Starting FastMCP stdio server ...")
         await server.run_stdio_async()
@@ -165,13 +176,11 @@ async def main_async():
         async def run_http():
             try:
                 logger.info(f"Starting FastMCP HTTP SSE server on {host}:{port} ...")
-                if hasattr(server, "run_sse_async"):
-                    await getattr(server, "run_sse_async")(host=host, port=port)
-                elif hasattr(server, "run_streamable_http_async"):
-                    # Older SDKs: no host/port args
-                    await getattr(server, "run_streamable_http_async")()
-                else:
-                    logger.warning("HTTP SSE not supported by this FastMCP version; skipping.")
+                # MCP SDK >= 1.10 (pinned to 1.13.1): configure host/port via settings
+                server.settings.host = host
+                server.settings.port = port
+                await server.run_sse_async()
+                logger.info("HTTP SSE started via run_sse_async() using server.settings host/port.")
             except Exception as http_e:
                 logger.error(f"HTTP SSE server failed to start: {http_e}")
                 logger.error(traceback.format_exc())

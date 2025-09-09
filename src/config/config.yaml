@@ -12,6 +12,11 @@ server:
   log_level: INFO
   http:
     enabled: ${oc.env:UNIFI_MCP_HTTP_ENABLED,false}
+  diagnostics:
+    enabled: ${oc.env:UNIFI_MCP_DIAGNOSTICS,false}
+    log_tool_args: ${oc.env:UNIFI_MCP_DIAG_LOG_TOOL_ARGS,true}
+    log_tool_result: ${oc.env:UNIFI_MCP_DIAG_LOG_TOOL_RESULT,true}
+    max_payload_chars: ${oc.env:UNIFI_MCP_DIAG_MAX_PAYLOAD,2000}
   
 permissions:
 

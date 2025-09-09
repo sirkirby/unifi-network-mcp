@@ -12,6 +12,11 @@ services:
       - UNIFI_VERIFY_SSL=${UNIFI_VERIFY_SSL:-false}
       - CONFIG_PATH=/app/src/config/config.yaml
       - UNIFI_MCP_HTTP_ENABLED=${UNIFI_MCP_HTTP_ENABLED:-false}
+      - UNIFI_MCP_DIAGNOSTICS=${UNIFI_MCP_DIAGNOSTICS:-false}
+      - UNIFI_MCP_DIAG_LOG_TOOL_ARGS=${UNIFI_MCP_DIAG_LOG_TOOL_ARGS:-true}
+      - UNIFI_MCP_DIAG_LOG_TOOL_RESULT=${UNIFI_MCP_DIAG_LOG_TOOL_RESULT:-true}
+      - UNIFI_MCP_DIAG_MAX_PAYLOAD=${UNIFI_MCP_DIAG_MAX_PAYLOAD:-2000}
+      - UNIFI_MCP_LOG_LEVEL=${UNIFI_MCP_LOG_LEVEL:-INFO}
     volumes:
       - ./src/config:/app/src/config
     restart: unless-stopped
