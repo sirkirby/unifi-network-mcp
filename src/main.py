@@ -151,7 +151,7 @@ async def main_async():
     except Exception as e:
         logger.error(f"Error listing tools in main_async: {e}")
 
-    # Run stdio always; optionally run HTTP SSE based on config flag
+    # Run stdio always; optionally run HTTP transport based on config flag
     host = config.server.get("host", "0.0.0.0")
     port = int(config.server.get("port", 3000))
     http_cfg = config.server.get("http", {})
@@ -161,10 +161,19 @@ async def main_async():
     else:
         http_enabled = bool(http_enabled_raw)
 
-    # Only the main container process (PID 1) should bind the HTTP SSE port.
+    # Get transport type (http is now default/recommended, sse for backward compatibility)
+    http_transport = http_cfg.get("transport", "http").lower()
+    if http_transport not in {"http", "sse"}:
+        logger.warning(f"Invalid HTTP transport '{http_transport}', defaulting to 'http'")
+        http_transport = "http"
+    
+    # Get optional path for HTTP transport
+    http_path = http_cfg.get("path", "/mcp")
+
+    # Only the main container process (PID 1) should bind the HTTP port.
     is_main_container_process = os.getpid() == 1
     if http_enabled and not is_main_container_process:
-        logger.info("HTTP SSE enabled in config but skipped in exec session (PID %s != 1)", os.getpid())
+        logger.info("HTTP transport enabled in config but skipped in exec session (PID %s != 1)", os.getpid())
         http_enabled = False
 
     async def run_stdio():
@@ -173,18 +182,31 @@ async def main_async():
 
     tasks = [run_stdio()]
     if http_enabled:
-        async def run_http():
+        async def run_http_transport():
             try:
-                logger.info(f"Starting FastMCP HTTP SSE server on {host}:{port} ...")
-                # MCP SDK >= 1.10 (pinned to 1.13.1): configure host/port via settings
-                server.settings.host = host
-                server.settings.port = port
-                await server.run_sse_async()
-                logger.info("HTTP SSE started via run_sse_async() using server.settings host/port.")
+                if http_transport == "sse":
+                    logger.info(f"Starting FastMCP HTTP SSE server on {host}:{port} (legacy mode) ...")
+                    logger.warning("SSE transport is legacy - consider migrating to HTTP transport for new deployments")
+                    # MCP SDK >= 1.10 (pinned to 1.13.1): configure host/port via settings
+                    server.settings.host = host
+                    server.settings.port = port
+                    await server.run_sse_async()
+                    logger.info("HTTP SSE started via run_sse_async() using server.settings host/port.")
+                else:  # http_transport == "http"
+                    logger.info(f"Starting FastMCP HTTP server on {host}:{port}{http_path} (streamable HTTP) ...")
+                    # Configure server settings for HTTP transport
+                    server.settings.host = host
+                    server.settings.port = port
+                    # Configure server settings for HTTP transport
+                    server.settings.host = host
+                    server.settings.port = port
+                    await server.run_streamable_http_async()
+                    logger.info("HTTP server started via run_streamable_http_async() using streamable HTTP transport.")
             except Exception as http_e:
-                logger.error(f"HTTP SSE server failed to start: {http_e}")
+                transport_name = "SSE" if http_transport == "sse" else "HTTP"
+                logger.error(f"HTTP {transport_name} server failed to start: {http_e}")
                 logger.error(traceback.format_exc())
-        tasks.append(run_http())
+        tasks.append(run_http_transport())
 
     try:
         await asyncio.gather(*tasks)

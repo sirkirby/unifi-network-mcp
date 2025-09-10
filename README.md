@@ -37,7 +37,7 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
 
 * Full catalog of UniFi controller operations – firewall, traffic-routes, port-forwards, QoS, VPN, WLANs, stats, devices, clients **and more**.
 * All mutating tools require `confirm=true` so nothing can change your network by accident.
-* Works over **stdio** (FastMCP). Optional SSE HTTP endpoint can be enabled via config.
+* Works over **stdio** (FastMCP). Optional HTTP transport (streamable HTTP/SSE) can be enabled via config.
 * One-liner launch via the console-script **`unifi-network-mcp`**.
 * Idiomatic Python ≥ 3.10, packaged with **pyproject.toml** and ready for PyPI.
 
@@ -188,14 +188,24 @@ After editing the config **restart Claude Desktop**, then test with:
 @unifi-network-mcp list tools
 ```
 
-### Optional HTTP SSE endpoint (off by default)
+### Optional HTTP transport endpoint (off by default)
 
-For environments where HTTP is acceptable (e.g., local development), you can enable the HTTP SSE server and expose it explicitly:
+For environments where HTTP is acceptable (e.g., local development), you can enable the HTTP server and expose it explicitly:
 
 ```bash
+# Using modern HTTP transport (recommended)
 docker run -i --rm \
   -p 3000:3000 \
   -e UNIFI_MCP_HTTP_ENABLED=true \
+  -e UNIFI_MCP_HTTP_TRANSPORT=http \
+  ...
+  ghcr.io/sirkirby/unifi-network-mcp:latest
+
+# Using legacy SSE transport (backward compatibility)
+docker run -i --rm \
+  -p 3000:3000 \
+  -e UNIFI_MCP_HTTP_ENABLED=true \
+  -e UNIFI_MCP_HTTP_TRANSPORT=sse \
   ...
   ghcr.io/sirkirby/unifi-network-mcp:latest
 ```
@@ -219,7 +229,9 @@ The server merges settings from **environment variables**, an optional `.env` fi
 | `UNIFI_PORT` | HTTPS port (default `443`) |
 | `UNIFI_SITE` | Site name (default `default`) |
 | `UNIFI_VERIFY_SSL` | Set to `false` if using self-signed certs |
-| `UNIFI_MCP_HTTP_ENABLED` | Set `true` to enable optional HTTP SSE server (default `false`) |
+| `UNIFI_MCP_HTTP_ENABLED` | Set `true` to enable optional HTTP server (default `false`) |
+| `UNIFI_MCP_HTTP_TRANSPORT` | HTTP transport type: `http` (recommended) or `sse` (legacy) |
+| `UNIFI_MCP_HTTP_PATH` | HTTP endpoint path (default `/mcp`, applies to HTTP transport only) |
 
 ### `src/config/config.yaml`
 

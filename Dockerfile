@@ -19,7 +19,7 @@ RUN pip install .
 # config defaults available without a bind mount, copy only config.
 COPY src/config ./src/config
 
-# Expose the MCP server port (for optional HTTP SSE mode)
+# Expose the MCP server port (for optional HTTP transport mode)
 EXPOSE 3000
 
 # Console-script entrypoint
