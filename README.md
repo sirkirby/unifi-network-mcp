@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/sirkirby-unifi-network-mcp-badge.png)](https://mseep.ai/app/sirkirby-unifi-network-mcp)
+
 # 📡 UniFi Network MCP Server
 
 [![License][license-shield]](LICENSE)
