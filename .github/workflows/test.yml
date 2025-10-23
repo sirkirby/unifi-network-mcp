@@ -34,15 +34,15 @@ jobs:
 
     - name: Run unit tests
       run: |
-        uv run pytest tests/unit/ -v --tb=short
+        uv run python -m pytest tests/unit/ -v --tb=short
 
     - name: Run integration tests
       run: |
-        uv run pytest tests/integration/ -v --tb=short
+        uv run python -m pytest tests/integration/ -v --tb=short
 
     - name: Run all tests with coverage
       run: |
-        uv run pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=xml
+        uv run python -m pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=xml
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
