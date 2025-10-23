@@ -63,6 +63,7 @@ class UniFiSettings:
     port: int = 443
     site: str = "default"
     verify_ssl: bool = False
+    controller_type: str = "auto"
 
     @classmethod
     def from_omegaconf(cls, cfg: Any) -> "UniFiSettings":
@@ -74,6 +75,7 @@ class UniFiSettings:
             port=int(cfg.get("port", 443)),
             site=str(cfg.get("site", "default")),
             verify_ssl=bool(cfg.get("verify_ssl", False)),
+            controller_type=str(cfg.get("controller_type", "auto")),
         )
 
 
@@ -135,14 +137,35 @@ def load_config(path_override: str | Path | None = None) -> OmegaConf:
 
     # Merge env vars for UniFi settings so they override YAML
     unifi_env_overrides: dict[str, Any] = {}
-    for key in ("host", "username", "password", "port", "site", "verify_ssl"):
+    for key in ("host", "username", "password", "port", "site", "verify_ssl", "controller_type"):
         env_key = f"UNIFI_{key.upper()}"
         if (val := os.getenv(env_key)) is not None:
             if key == "verify_ssl":
                 val = val.lower() in {"1", "true", "yes"}
+            elif key == "controller_type":
+                val = val.lower()
             unifi_env_overrides[key] = val
     if unifi_env_overrides:
         logger.debug("Applying env overrides to Unifi config: %s", unifi_env_overrides)
         cfg.unifi = OmegaConf.merge(cfg.unifi, unifi_env_overrides)
 
-    return cfg 
+    return cfg
+
+
+# ---------------------------------------------------------------------------
+# Controller Type Configuration
+# ---------------------------------------------------------------------------
+
+# Controller type determines API path structure
+# Valid values: "auto" (detect), "proxy" (UniFi OS), "direct" (standard)
+VALID_CONTROLLER_TYPES = {"auto", "proxy", "direct"}
+UNIFI_CONTROLLER_TYPE = os.getenv("UNIFI_CONTROLLER_TYPE", "auto").lower()
+
+# Validate controller type
+if UNIFI_CONTROLLER_TYPE not in VALID_CONTROLLER_TYPES:
+    logger.warning(
+        f"Invalid UNIFI_CONTROLLER_TYPE: '{UNIFI_CONTROLLER_TYPE}'. "
+        f"Must be one of: {', '.join(sorted(VALID_CONTROLLER_TYPES))}. "
+        f"Defaulting to 'auto'."
+    )
+    UNIFI_CONTROLLER_TYPE = "auto"

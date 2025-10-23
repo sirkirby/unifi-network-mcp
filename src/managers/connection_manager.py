@@ -13,6 +13,163 @@ from aiounifi.models.api import ApiRequest, ApiRequestV2, TypedApiResponse
 
 logger = logging.getLogger("unifi-network-mcp")
 
+
+async def detect_with_retry(
+    session: aiohttp.ClientSession,
+    base_url: str,
+    max_retries: int = 3,
+    timeout: int = 5
+) -> Optional[bool]:
+    """
+    Detect UniFi OS with exponential backoff retry.
+
+    Args:
+        session: Active aiohttp.ClientSession
+        base_url: Base URL of controller
+        max_retries: Maximum retry attempts (default: 3)
+        timeout: Detection timeout per attempt in seconds (default: 5)
+
+    Returns:
+        True: UniFi OS detected
+        False: Standard controller detected
+        None: Detection failed after all retries
+
+    Implementation:
+        - Retries up to max_retries times
+        - Uses exponential backoff: 1s, 2s, 4s, ...
+        - Logs retry attempts at debug level
+        - Returns None if all attempts fail
+    """
+    for attempt in range(max_retries):
+        try:
+            result = await detect_unifi_os_proactively(session, base_url, timeout)
+            if result is not None:
+                return result
+        except Exception as e:
+            if attempt < max_retries - 1:
+                delay = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                logger.debug(
+                    f"Detection attempt {attempt + 1}/{max_retries} failed: {e}. "
+                    f"Retrying in {delay}s..."
+                )
+                await asyncio.sleep(delay)
+            else:
+                logger.warning(
+                    f"Detection failed after {max_retries} attempts: {e}"
+                )
+
+    return None
+
+
+def _generate_detection_failure_message(base_url: str, port: int) -> str:
+    """Generate user-friendly troubleshooting message for detection failures."""
+    return f"""
+UniFi controller path detection failed.
+
+Troubleshooting Steps:
+1. Verify network connectivity to {base_url}
+2. Check controller is accessible on port {port}
+3. Manually set controller type using environment variable:
+   - For UniFi OS (Cloud Gateway, UDM-Pro): export UNIFI_CONTROLLER_TYPE=proxy
+   - For standalone controllers: export UNIFI_CONTROLLER_TYPE=direct
+
+For more help, see: https://github.com/sirkirby/unifi-network-mcp/issues/19
+"""
+
+
+async def _probe_endpoint(
+    session: aiohttp.ClientSession,
+    url: str,
+    timeout: aiohttp.ClientTimeout,
+    endpoint_name: str
+) -> bool:
+    """
+    Probe a single UniFi endpoint to check if it responds successfully.
+
+    Args:
+        session: Active aiohttp.ClientSession for making requests
+        url: Full URL to probe
+        timeout: Request timeout configuration
+        endpoint_name: Human-readable name for logging (e.g., "UniFi OS", "standard")
+
+    Returns:
+        True if endpoint responds with 200 and valid JSON containing "data" key
+        False otherwise
+    """
+    try:
+        logger.debug(f"Probing {endpoint_name} endpoint: {url}")
+
+        async with session.get(url, timeout=timeout, ssl=False) as response:
+            if response.status == 200:
+                try:
+                    data = await response.json()
+                    if "data" in data:
+                        logger.debug(f"{endpoint_name} endpoint responded successfully")
+                        return True
+                except Exception as e:
+                    logger.debug(f"{endpoint_name} endpoint returned 200 but invalid JSON: {e}")
+    except asyncio.TimeoutError:
+        logger.debug(f"{endpoint_name} endpoint probe timed out")
+    except aiohttp.ClientError as e:
+        logger.debug(f"{endpoint_name} endpoint probe failed: {e}")
+    except Exception as e:
+        logger.debug(f"Unexpected error probing {endpoint_name} endpoint: {e}")
+
+    return False
+
+
+async def detect_unifi_os_proactively(
+    session: aiohttp.ClientSession,
+    base_url: str,
+    timeout: int = 5
+) -> Optional[bool]:
+    """
+    Detect if controller is UniFi OS by testing endpoint variants.
+
+    Probes both UniFi OS (/proxy/network/api/self/sites) and standard
+    (/api/self/sites) endpoints to empirically determine path requirement.
+
+    Args:
+        session: Active aiohttp.ClientSession for making requests
+        base_url: Base URL of controller (e.g., 'https://192.168.1.1:443')
+        timeout: Detection timeout in seconds (default: 5)
+
+    Returns:
+        True: UniFi OS detected (requires /proxy/network prefix)
+        False: Standard controller detected (uses /api paths)
+        None: Detection failed, fall back to aiounifi's check_unifi_os()
+
+    Implementation Notes:
+        - Tries UniFi OS endpoint first (newer controllers)
+        - Falls back to standard endpoint if UniFi OS fails
+        - Returns None if both fail (timeout, network error, etc.)
+        - Per FR-012: If both succeed, prefers direct (returns False)
+    """
+    client_timeout = aiohttp.ClientTimeout(total=timeout)
+
+    # Probe both endpoints
+    unifi_os_url = f"{base_url}/proxy/network/api/self/sites"
+    standard_url = f"{base_url}/api/self/sites"
+
+    unifi_os_result = await _probe_endpoint(session, unifi_os_url, client_timeout, "UniFi OS")
+    standard_result = await _probe_endpoint(session, standard_url, client_timeout, "standard")
+
+    # Determine result based on probe outcomes
+    if unifi_os_result and standard_result:
+        # FR-012: Both succeed, prefer direct (standard)
+        logger.info("Both endpoints succeeded - preferring standard (direct) paths")
+        return False
+    elif unifi_os_result:
+        logger.info("Detected UniFi OS controller (proxy paths required)")
+        return True
+    elif standard_result:
+        logger.info("Detected standard controller (direct paths)")
+        return False
+    else:
+        logger.warning("Auto-detection failed - both endpoints unsuccessful")
+        return None
+
+
 class ConnectionManager:
     """Manages the connection and session with the Unifi Network Controller."""
 
@@ -45,6 +202,15 @@ class ConnectionManager:
         self._cache: Dict[str, Any] = {}
         self._last_cache_update: Dict[str, float] = {}
 
+        # Path detection state
+        self._unifi_os_override: Optional[bool] = None
+        """
+        Override for is_unifi_os flag:
+        - None: Use aiounifi's detection (no override)
+        - True: Force UniFi OS paths (/proxy/network)
+        - False: Force standard paths (/api)
+        """
+
     @property
     def url_base(self) -> str:
         proto = "https"
@@ -76,6 +242,16 @@ class ConnectionManager:
                     )
                     session_created = True
 
+                    # Manual override configuration (FR-004: runs before login, no auth needed)
+                    from src.bootstrap import UNIFI_CONTROLLER_TYPE
+
+                    if UNIFI_CONTROLLER_TYPE == "proxy":
+                        self._unifi_os_override = True
+                        logger.info("Controller type forced to UniFi OS (proxy) via config")
+                    elif UNIFI_CONTROLLER_TYPE == "direct":
+                        self._unifi_os_override = False
+                        logger.info("Controller type forced to standard (direct) via config")
+
                     config = Configuration(
                         session=self._aiohttp_session,
                         host=self.host,
@@ -88,6 +264,29 @@ class ConnectionManager:
                     self.controller = Controller(config=config)
 
                     await self.controller.login()
+
+                    # Auto-detection (FR-002: runs after login for authenticated probes)
+                    if UNIFI_CONTROLLER_TYPE == "auto":
+                        # Check if already detected (session cache - FR-011)
+                        if self._unifi_os_override is None:
+                            # Proactive detection with retry (FR-001, FR-005, FR-008)
+                            detected = await detect_with_retry(
+                                self._aiohttp_session,
+                                self.url_base,
+                                max_retries=3,
+                                timeout=5
+                            )
+                            if detected is not None:
+                                self._unifi_os_override = detected
+                                mode = "UniFi OS (proxy)" if detected else "standard (direct)"
+                                logger.info(f"Auto-detected controller type: {mode}")
+                            else:
+                                # Show clear error message (FR-009)
+                                error_msg = _generate_detection_failure_message(self.url_base, self.port)
+                                logger.warning(error_msg)
+                                logger.warning("Falling back to aiounifi's check_unifi_os()")
+                        else:
+                            logger.debug(f"Using cached detection result: {self._unifi_os_override}")
 
                     self._initialized = True
                     logger.info(f"Successfully connected to Unifi controller at {self.host} for site '{self.site}'")
@@ -165,6 +364,17 @@ class ConnectionManager:
         if not await self.ensure_connected() or not self.controller:
             raise ConnectionError("Unifi Controller is not connected.")
 
+        # Apply override if we have better detection (FR-003: use cached detection)
+        original_is_unifi_os = None
+        if self._unifi_os_override is not None:
+            original_is_unifi_os = self.controller.connectivity.is_unifi_os
+            if original_is_unifi_os != self._unifi_os_override:
+                logger.debug(
+                    f"Overriding is_unifi_os from {original_is_unifi_os} "
+                    f"to {self._unifi_os_override} for this request"
+                )
+                self.controller.connectivity.is_unifi_os = self._unifi_os_override
+
         request_method = self.controller.connectivity._request if return_raw else self.controller.request
 
         try:
@@ -224,6 +434,10 @@ class ConnectionManager:
             except Exception:
                 pass
             raise
+        finally:
+            # Always restore original value (FR-003: maintain session state)
+            if original_is_unifi_os is not None:
+                self.controller.connectivity.is_unifi_os = original_is_unifi_os
 
     # --- Cache Management ---
 
