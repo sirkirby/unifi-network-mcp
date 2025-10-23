@@ -1,33 +1,55 @@
 ---
-description: 
-globs: 
+description: UniFi Network MCP Server development rules - references project constitution
+globs:
 alwaysApply: true
 ---
 
-# Objective
+# Source of Truth
 
-MCP server to host tools which allow AI to work with a local Unifi Network application. 
+**All development standards, patterns, and practices are defined in the project constitution.**
 
-# Code
+See: `.specify/memory/constitution.md`
 
-- Use idiomatic python 3.13.
-- Use CONST for strings
-- Use uv to manage virtual enviroment and package dependencies
-- Leverage the aiounfi library and its established patterns for unifi network controller connectivity
-- Leverage official MCP sdk for python anlong with it's established patterns and best practices
-- All mcp tools should be prefixed with "unifi_"
+This file provides quick-reference guidance for Cursor IDE. For authoritative standards,
+consult the constitution.
 
-# Usage
+---
 
-- To be installed and hosted locally for local agent access only
-- Ensure all tools that modify state or disrupt availability require explicit confirmation to execute
+# Quick Reference
 
-# Documentation
+## Objective
 
-- Keep the [README.md](mdc:README.md) up to date with the latest change
-- Do NOT add unnecessary comments to the code, if comments are needed for reference, maintain a changelog.md file in the root of the project and ensure it's added to .gitignore
+MCP server to host tools which allow AI to work with a local UniFi Network application.
 
-# Resources
+## Core Standards (from Constitution)
 
-- The model context protocol (MCP) SDK for python https://github.com/modelcontextprotocol/python-sdk
-- The aiounifi library for python https://github.com/Kane610/aiounifi
+### Code Style
+- Use idiomatic Python 3.13+
+- Use CONST naming for module-level strings
+- Follow type hints strictly
+- Use uv for virtual environment and package dependencies
+- Leverage aiounifi library patterns for UniFi controller connectivity
+- Leverage official MCP SDK for Python and its established patterns
+- All MCP tools MUST be prefixed with `unifi_`
+
+### Security
+- Local installation and hosting for local agent access only
+- All tools that modify state or disrupt availability MUST require explicit confirmation
+- Mutating operations disabled by default in configuration
+
+### Documentation
+- Keep README.md up to date with all changes
+- Do NOT add unnecessary comments to code
+- Use docstrings for public APIs
+- If extensive comments needed, maintain changelog.md in root (add to .gitignore)
+
+## Resources
+
+- Constitution: `.specify/memory/constitution.md` (PRIMARY REFERENCE)
+- MCP SDK: https://github.com/modelcontextprotocol/python-sdk
+- aiounifi: https://github.com/Kane610/aiounifi
+- README: `README.md` (user-facing documentation)
+
+---
+
+For questions about architectural decisions or edge cases, consult `.specify/memory/constitution.md`.
