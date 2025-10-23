@@ -5,6 +5,7 @@ unifi:
   port: ${oc.env:UNIFI_PORT,443}
   site: ${oc.env:UNIFI_SITE,default}
   verify_ssl: ${oc.env:UNIFI_VERIFY_SSL,false}
+  controller_type: ${oc.env:UNIFI_CONTROLLER_TYPE,auto}
 
 server:
   host: 0.0.0.0

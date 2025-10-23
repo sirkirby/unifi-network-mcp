@@ -26,6 +26,17 @@ async def _ensure_connected(connection_manager) -> bool:
     ok = await connection_manager.initialize()
     if not ok:
         logger.error("Unable to establish UniFi connection. Check your config/credentials.")
+        return False
+
+    # Display detection result
+    if hasattr(connection_manager, '_unifi_os_override'):
+        if connection_manager._unifi_os_override is True:
+            print("✓ Controller Type: UniFi OS (proxy paths)")
+        elif connection_manager._unifi_os_override is False:
+            print("✓ Controller Type: Standard (direct paths)")
+        else:
+            print("⚠ Controller Type: Using aiounifi auto-detection")
+
     return ok
 
 

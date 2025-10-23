@@ -6,6 +6,7 @@
 
 [![GitHub Release][release-shield]][releases]
 [![issues][issues-shield]][issues-link]
+[![test-badge]][test-workflow]
 [![validate-badge]][validate-workflow]
 [![validate-docker-badge]][validate-docker-workflow]
 
@@ -29,6 +30,7 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
 * [Developer Console (Local Tool Tester)](#developer-console-local-tool-tester)
 * [Security Considerations](#security-considerations)
 * [📚 Tool Catalog](#-tool-catalog)
+* [Testing](#testing)
 * [Contributing: Releasing / Publishing](#contributing-releasing--publishing)
 
 ---
@@ -61,6 +63,8 @@ docker run -i --rm \
   -e UNIFI_SITE=default \
   -e UNIFI_VERIFY_SSL=false \
   ghcr.io/sirkirby/unifi-network-mcp:latest
+  # Optional: Set controller type (auto-detected if omitted)
+  # -e UNIFI_CONTROLLER_TYPE=auto \
 ```
 
 ### Python / UV
@@ -79,9 +83,8 @@ source .venv/bin/activate
 uv pip install --no-deps -e .
 
 # 3. Provide credentials (either export vars or create .env)
-# Ensure your .env file (or exported variables) include all required UNIFI_*
-# settings as detailed in the Runtime Configuration table below (e.g., UNIFI_HOST,
-# UNIFI_USERNAME, UNIFI_PASSWORD, UNIFI_PORT, UNIFI_SITE, UNIFI_VERIFY_SSL).
+# The server will auto-detect your controller type (UniFi OS vs standard)
+# Use UNIFI_CONTROLLER_TYPE to manually override if needed
 cp .env.example .env  # then edit values
 
 # 4. Launch
@@ -133,6 +136,7 @@ Add (or update) the `unifi-network-mcp` block under `mcpServers` in your `claude
     "UNIFI_PORT": "443",
     "UNIFI_SITE": "default",
     "UNIFI_VERIFY_SSL": "false"
+    // Optional: "UNIFI_CONTROLLER_TYPE": "auto"
   }
 }
 ```
@@ -155,6 +159,7 @@ Add (or update) the `unifi-network-mcp` block under `mcpServers` in your `claude
     "-e", "UNIFI_PORT=443",
     "-e", "UNIFI_SITE=default",
     "-e", "UNIFI_VERIFY_SSL=false",
+    // Optional: "-e", "UNIFI_CONTROLLER_TYPE=auto",
     "ghcr.io/sirkirby/unifi-network-mcp:latest"
   ]
 }
@@ -219,7 +224,53 @@ The server merges settings from **environment variables**, an optional `.env` fi
 | `UNIFI_PORT` | HTTPS port (default `443`) |
 | `UNIFI_SITE` | Site name (default `default`) |
 | `UNIFI_VERIFY_SSL` | Set to `false` if using self-signed certs |
+| `UNIFI_CONTROLLER_TYPE` | Controller API path type: `auto` (detect), `proxy` (UniFi OS), `direct` (standalone). Default `auto` |
 | `UNIFI_MCP_HTTP_ENABLED` | Set `true` to enable optional HTTP SSE server (default `false`) |
+
+### Controller Type Detection
+
+The server automatically detects whether your UniFi controller requires UniFi OS proxy paths (`/proxy/network/api/...`) or standard direct paths (`/api/...`). This eliminates 404 errors on newer UniFi OS controllers without manual configuration.
+
+#### Automatic Detection (Default)
+
+```bash
+# No configuration needed - detection happens automatically
+UNIFI_CONTROLLER_TYPE=auto  # or omit entirely
+```
+
+The server will:
+1. Probe both path structures during connection initialization
+2. Cache the result for the session lifetime
+3. Automatically use the correct paths for all API requests
+
+**Detection Time**: Adds ~300ms to initial connection time (within 2-second target).
+
+#### Manual Override
+
+If automatic detection fails or you want to force a specific mode:
+
+```bash
+# For UniFi OS controllers (Cloud Gateway, UDM-Pro, self-hosted UniFi OS 4.x+)
+export UNIFI_CONTROLLER_TYPE=proxy
+
+# For standalone UniFi Network controllers
+export UNIFI_CONTROLLER_TYPE=direct
+```
+
+#### Troubleshooting
+
+If you encounter connection errors:
+
+1. **Check controller accessibility**: Verify you can reach the controller on the configured port
+2. **Try manual override**: Set `UNIFI_CONTROLLER_TYPE=proxy` or `direct` based on your controller type
+3. **Check logs**: Look for detection messages in the server output
+4. **See issue #19**: [UniFi OS path compatibility](https://github.com/sirkirby/unifi-network-mcp/issues/19)
+
+**When to use manual override**:
+- Detection fails (network issues, firewall blocking probes)
+- Running in restricted network environment
+- Want to skip detection for faster startup
+- Testing specific path configuration
 
 ### `src/config/config.yaml`
 
@@ -459,6 +510,81 @@ These tools will give any LLM or agent configured to use them full access to you
 
 ---
 
+## Testing
+
+The project includes comprehensive unit and integration tests for all features, including the UniFi OS controller type detection.
+
+### Running Tests Locally
+
+**Prerequisites:**
+```bash
+# Install UV (if not already installed)
+curl -fsSL https://astral.sh/uv/install.sh | bash
+
+# Clone the repository
+git clone https://github.com/sirkirby/unifi-network-mcp.git
+cd unifi-network-mcp
+
+# Install dependencies (includes test dependencies)
+uv sync
+```
+
+**Run all tests:**
+```bash
+uv run pytest tests/ -v
+```
+
+**Run only unit tests:**
+```bash
+uv run pytest tests/unit/ -v
+```
+
+**Run only integration tests:**
+```bash
+uv run pytest tests/integration/ -v
+```
+
+**Run with coverage report:**
+```bash
+uv run pytest tests/ --cov=src --cov-report=term-missing
+```
+
+**Run specific test file:**
+```bash
+uv run pytest tests/unit/test_path_detection.py -v
+```
+
+**Run specific test:**
+```bash
+uv run pytest tests/unit/test_path_detection.py::TestPathDetection::test_detects_unifi_os_correctly -v
+```
+
+### Test Structure
+
+```
+tests/
+├── conftest.py              # Pytest configuration
+├── unit/                    # Unit tests (fast, isolated)
+│   └── test_path_detection.py
+└── integration/             # Integration tests (slower, with mocks)
+    └── test_path_interceptor.py
+```
+
+### Test Coverage
+
+The test suite includes:
+- **8 unit tests** for UniFi OS path detection logic
+- **5 integration tests** for path interception and manual override
+- Coverage for automatic detection, manual override, retry logic, and error handling
+
+All tests use `pytest-asyncio` for async support and `aioresponses` for HTTP mocking.
+
+### Continuous Integration
+
+Tests run automatically on every push and pull request via GitHub Actions. See [`.github/workflows/test.yml`](.github/workflows/test.yml) for the CI configuration.
+
+---
+
 ## Contributing: Releasing / Publishing
 
 This project uses [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/) via a [GitHub Actions workflow](.github/workflows/publish-to-pypi.yml).
@@ -506,6 +632,9 @@ pip install .
 
 [issues-shield]: https://img.shields.io/github/issues/sirkirby/unifi-network-mcp?style=flat
 [issues-link]: https://github.com/sirkirby/unifi-network-mcp/issues
+
+[test-badge]: https://github.com/sirkirby/unifi-network-mcp/actions/workflows/test.yml/badge.svg
+[test-workflow]: https://github.com/sirkirby/unifi-network-mcp/actions/workflows/test.yml
 
 [validate-badge]: https://github.com/sirkirby/unifi-network-mcp/actions/workflows/publish-to-pypi.yml/badge.svg
 [validate-workflow]: https://github.com/sirkirby/unifi-network-mcp/actions/workflows/publish-to-pypi.yml
