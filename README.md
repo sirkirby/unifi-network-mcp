@@ -25,12 +25,19 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
   * [Install from PyPI](#install-from-pypi)
 * [Using with Local LLMs and Agents](#using-with-local-llms-and-agents)
 * [Using with Claude Desktop](#using-with-claude-desktop)
+* [Code Execution Mode](#code-execution-mode)
+  * [Overview](#overview)
+  * [Context Optimization](#context-optimization)
+  * [Tool Index](#tool-index)
+  * [Async Operations](#async-operations)
 * [Runtime Configuration](#runtime-configuration)
 * [Diagnostics (Advanced Logging)](#diagnostics-advanced-logging)
 * [Developer Console (Local Tool Tester)](#developer-console-local-tool-tester)
 * [Security Considerations](#security-considerations)
 * [📚 Tool Catalog](#-tool-catalog)
+* [📖 Documentation](#-documentation)
 * [Testing](#testing)
+* [Local Development](#local-development)
 * [Contributing: Releasing / Publishing](#contributing-releasing--publishing)
 
 ---
@@ -40,8 +47,9 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
 * Full catalog of UniFi controller operations – firewall, traffic-routes, port-forwards, QoS, VPN, WLANs, stats, devices, clients **and more**.
 * All mutating tools require `confirm=true` so nothing can change your network by accident.
 * Works over **stdio** (FastMCP). Optional SSE HTTP endpoint can be enabled via config.
+* **Code execution mode** with tool index, async operations, and TypeScript examples.
 * One-liner launch via the console-script **`unifi-network-mcp`**.
-* Idiomatic Python ≥ 3.10, packaged with **pyproject.toml** and ready for PyPI.
+* Idiomatic Python ≥ 3.13, packaged with **pyproject.toml** and ready for PyPI.
 
 ---
 
@@ -118,6 +126,276 @@ Example prompt: using the unifi tools, list my most active clients on the networ
 ### Alternative
 
 Use [Ollama](https://ollama.com/) with [ollmcp](https://github.com/jonigl/mcp-client-for-ollama), allowing you to use a locally run LLM capable of tool calling via your favorite [terminal](https://app.warp.dev/referral/EJK58L).
+
+---
+
+## Code Execution Mode
+
+The UniFi Network MCP server supports **code-execution mode**, enabling agents to write code that interacts with tools programmatically. This approach reduces token usage by up to 98% compared to traditional tool calls, as agents can filter and transform data in code before presenting results.
+
+### Overview
+
+Code execution mode consists of three key components:
+
+1. **Tool Index** - Machine-readable catalog of all available tools with JSON schemas
+2. **Async Operations** - Background job execution for long-running operations
+3. **Reference Implementations** - Example clients showing code-execution patterns
+
+This implementation follows the patterns described in [Anthropic's Code Execution with MCP article](https://www.anthropic.com/engineering/code-execution-with-mcp).
+
+### 🚀 Context Optimization (New in v0.2.0)
+
+The server now supports **lazy tool registration** to dramatically reduce LLM context usage.
+
+**🎯 DEFAULT: Lazy Mode (lazy)** ⭐⭐⭐ **Active in v0.2.0!**
+- Registers only 3 meta-tools initially
+- ~200 tokens consumed (96% reduction!)
+- Tools loaded automatically on first use
+- **Seamless UX** - no manual discovery needed
+- **Best of both worlds!**
+- **Active by default** - no configuration needed
+
+**Eager Mode (eager):**
+- Registers all 67 tools immediately
+- ~5,000 tokens consumed for tool schemas
+- All tools visible in context from start
+- **Best for:** Dev console, automation scripts
+- **How to enable:** Set `UNIFI_TOOL_REGISTRATION_MODE=eager`
+
+**Meta-Only Mode (meta_only):**
+- Registers only 3 meta-tools initially
+- ~200 tokens consumed (96% reduction!)
+- Requires `unifi_tool_index` call for discovery
+- **Best for:** Maximum control
+- **How to enable:** Set `UNIFI_TOOL_REGISTRATION_MODE=meta_only`
+
+**Upgrading from v0.1.x?**
+
+If you're upgrading and want to restore the previous behavior (all tools registered immediately), add this to your config:
+
+```json
+{
+  "mcpServers": {
+    "unifi": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/unifi-network-mcp", "run", "python", "-m", "src.main"],
+      "env": {
+        "UNIFI_HOST": "192.168.1.1",
+        "UNIFI_USERNAME": "admin",
+        "UNIFI_PASSWORD": "password",
+        "UNIFI_TOOL_REGISTRATION_MODE": "eager"
+      }
+    }
+  }
+}
+```
+
+**Default behavior (lazy mode - recommended):**
+
+```json
+{
+  "mcpServers": {
+    "unifi": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/unifi-network-mcp", "run", "python", "-m", "src.main"],
+      "env": {
+        "UNIFI_HOST": "192.168.1.1",
+        "UNIFI_USERNAME": "admin",
+        "UNIFI_PASSWORD": "password"
+        // UNIFI_TOOL_REGISTRATION_MODE defaults to "lazy" - no need to set!
+      }
+    }
+  }
+}
+```
+
+**Result:** Claude starts with minimal context, tools load transparently when called - 96% token savings with zero UX compromise!
+
+### Tool Index
+
+The server exposes a special `unifi_tool_index` tool that returns a complete list of all registered tools with their schemas:
+
+```json
+{
+  "name": "unifi_tool_index",
+  "arguments": {}
+}
+```
+
+**Response:**
+```json
+{
+  "tools": [
+    {
+      "name": "unifi_list_clients",
+      "schema": {
+        "name": "unifi_list_clients",
+        "description": "List all network clients",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "filter": {"type": "string"},
+            "limit": {"type": "integer"}
+          }
+        }
+      }
+    },
+    ...
+  ]
+}
+```
+
+**Use Cases:**
+- Programmatic tool discovery
+- Wrapper/SDK generation
+- Dynamic client configuration
+- IDE autocomplete support
+
+### Async Operations
+
+For long-running operations (device upgrades, bulk configuration changes), the server provides async job execution:
+
+**Start a background job:**
+```json
+{
+  "name": "unifi_async_start",
+  "arguments": {
+    "tool": "unifi_upgrade_device",
+    "arguments": {
+      "mac_address": "aa:bb:cc:dd:ee:ff",
+      "confirm": true
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jobId": "af33b233cbdc860c"
+}
+```
+
+**Check job status:**
+```json
+{
+  "name": "unifi_async_status",
+  "arguments": {
+    "jobId": "af33b233cbdc860c"
+  }
+}
+```
+
+**Response (running):**
+```json
+{
+  "status": "running",
+  "started": 1234567890.123
+}
+```
+
+**Response (completed):**
+```json
+{
+  "status": "done",
+  "result": {...},
+  "started": 1234567890.123,
+  "finished": 1234567891.456
+}
+```
+
+**Response (error):**
+```json
+{
+  "status": "error",
+  "error": "Device not found",
+  "started": 1234567890.123,
+  "finished": 1234567891.456
+}
+```
+
+**Notes:**
+- Jobs are stored in-memory only (no persistence)
+- Job IDs are unique per server session
+- Failed jobs capture exception details in the `error` field
+
+### Using with Claude Desktop
+
+Claude Desktop has built-in code execution that automatically uses the tool index:
+
+```
+You: "Show me the top 10 wireless clients by traffic, excluding guest networks"
+```
+
+Claude will:
+1. Query `unifi_tool_index` to discover tools
+2. Call `unifi_list_clients` to fetch data
+3. Write and execute code to filter/sort in its sandbox
+4. Show you only the final top 10 results
+
+**Token savings:** Instead of processing 500+ clients in context, Claude processes them in code and shows only the summary.
+
+See [`examples/CLAUDE_DESKTOP.md`](examples/CLAUDE_DESKTOP.md) for detailed usage guide.
+
+### Python Client Examples
+
+Practical examples showing programmatic usage:
+
+```python
+from mcp import ClientSession, stdio_client
+
+# Query tool index
+result = await session.call_tool("unifi_tool_index", {})
+
+# Use async jobs for long operations
+job = await session.call_tool("unifi_async_start", {
+    "tool": "unifi_upgrade_device",
+    "arguments": {"mac_address": "...", "confirm": True}
+})
+
+# Check job status
+status = await session.call_tool("unifi_async_status", {"jobId": job["jobId"]})
+```
+
+**Three complete examples:**
+- `query_tool_index.py` - Discover available tools
+- `use_async_jobs.py` - Background job management
+- `programmatic_client.py` - Build custom Python clients
+
+See [`examples/python/README.md`](examples/python/README.md) for complete examples.
+
+### MCP Identity
+
+The server advertises its capabilities via an MCP identity file at [`.well-known/mcp-server.json`](.well-known/mcp-server.json):
+
+```json
+{
+  "name": "unifi-network-mcp",
+  "version": "0.2.0",
+  "transports": ["stdio", "http+sse"],
+  "capabilities": {
+    "tools": true,
+    "tool_index": true,
+    "async_operations": true
+  },
+  "features": {
+    "tool_index": {
+      "tool": "unifi_tool_index"
+    },
+    "async_operations": {
+      "start_tool": "unifi_async_start",
+      "status_tool": "unifi_async_status"
+    }
+  }
+}
+```
+
+This enables:
+- Programmatic capability discovery
+- Future MCP registry integration
+- Client auto-configuration
+
+---
 
 ## Using with Claude Desktop
 
@@ -324,14 +602,22 @@ What it does:
 
 * Loads config and initializes the UniFi connection.
 * Auto-loads all `unifi_*` tools.
-* Lists available tools with descriptions.
+* **Shows ALL tools** (including those disabled by permissions) with status indicators.
 * On selection, shows a schema hint (when available) and prompts for JSON arguments.
 * Executes the tool via the MCP server and prints the JSON result.
+* Prevents execution of disabled tools with helpful permission guidance.
+
+**New in v0.2.0:** The dev console now displays all 64 tools regardless of permission settings:
+* Enabled tools are marked with ✓
+* Disabled tools are marked with ✗ [DISABLED]
+* Attempting to run a disabled tool shows permission instructions
+* See [docs/permissions.md](docs/permissions.md) for how to enable specific tools
 
 Tips:
 
 * Combine with Diagnostics for deep visibility: set `UNIFI_MCP_DIAGNOSTICS=true` (or enable in `src/config/config.yaml`).
 * For mutating tools, set `{"confirm": true}` in the JSON input when prompted.
+* To enable disabled tools, set environment variables like `UNIFI_PERMISSIONS_NETWORKS_CREATE=true` before running the console.
 
 ### Supplying arguments
 
@@ -399,13 +685,61 @@ python devtools/dev_console.py
 
 ## Security Considerations
 
-These tools will give any LLM or agent configured to use them full access to your UniFi Network Controller. While this can be for very useful for analysis and configuration of your network, there is potential for abuse if not configured correctly. By default, all tools that can modify state or disrupt availability are disabled, and must be explicitly enabled in the `src/config/config.yaml` file. When you have a use case for a tool, like updating a firewall policy, you must explicitly enable it in the `src/config/config.yaml` and restart the MCP server. The tools are build directly on the UniFi Network Controller API, so they can operate with similar functionality to the UniFi web interface.
+These tools will give any LLM or agent configured to use them full access to your UniFi Network Controller. While this can be very useful for analysis and configuration of your network, there is potential for abuse if not configured correctly. By default, all tools that can modify state or disrupt availability are disabled and must be explicitly enabled via **environment variables**. The tools are built directly on the UniFi Network Controller API, so they can operate with similar functionality to the UniFi web interface.
+
+### Permission System 🔐 **NEW in v0.2.0**
+
+The server includes a comprehensive permission system with **safe defaults**:
+
+**Disabled by Default (High-Risk):**
+- Network creation/modification (`unifi_create_network`, `unifi_update_network`)
+- Wireless configuration (`unifi_create_wlan`, `unifi_update_wlan`)
+- Device operations (`unifi_adopt_device`, `unifi_upgrade_device`, `unifi_reboot_device`)
+- Client operations (`unifi_block_client`, `unifi_authorize_guest`)
+
+**Enabled by Default (Lower Risk):**
+- Firewall policies, traffic routes, port forwards, QoS rules
+- All read-only operations
+
+**How to Enable Permissions:**
+
+**Recommended: Environment Variables** (works with Docker, PyPI installs, uvx)
+
+```bash
+# For Claude Desktop - add to env section:
+"env": {
+  "UNIFI_PERMISSIONS_NETWORKS_CREATE": "true",
+  "UNIFI_PERMISSIONS_DEVICES_UPDATE": "true"
+}
+
+# For command line:
+export UNIFI_PERMISSIONS_NETWORKS_CREATE=true
+export UNIFI_PERMISSIONS_DEVICES_UPDATE=true
+
+# For Docker:
+docker run -e UNIFI_PERMISSIONS_NETWORKS_CREATE=true ...
+```
+
+**Alternative: Config File** (only for local git clone development)
+
+If you're running from a local git clone, you can modify `src/config/config.yaml` and regenerate the manifest:
+
+```bash
+# Edit permissions in src/config/config.yaml
+make manifest  # Regenerate tool manifest
+# Restart the server
+```
+
+**Note:** Most users should use environment variables. Config file changes require rebuilding the manifest and are primarily for local development.
+
+See [docs/permissions.md](docs/permissions.md) for complete documentation including all permission variables.
 
 ### General Recommendations
 
-* Use LM Studio or Ollama run tool capable models locally if possible. This is the recommended and safest way to use these tools.
-* If you opt to use cloud based LLMs, like Claude, Gemini, and ChatGPT, for analysis. Enable read-only tools, which is the default configuration.
-* Create, update, and removal tools should be used with caution and only enabled when necessary.
+* Use LM Studio or Ollama to run tool-capable models locally if possible. This is the recommended and safest way to use these tools.
+* If you opt to use cloud-based LLMs like Claude, Gemini, and ChatGPT for analysis, stick with read-only tools (the default configuration).
+* **Review permissions carefully** before enabling high-risk operations. Use environment variables for runtime control.
+* Create, update, and delete tools should be used with caution and only enabled when necessary.
 * Do not host outside of your network unless using a secure reverse proxy like Cloudflare Tunnel or Ngrok. Even then, an additional layer of authentication is recommended.
 
 ---
@@ -510,9 +844,25 @@ These tools will give any LLM or agent configured to use them full access to you
 
 ---
 
+## 📖 Documentation
+
+Comprehensive documentation is available in the [docs/](docs/) directory:
+
+### Quick Links
+
+- **[Documentation Index](docs/README.md)** - Complete documentation overview
+- **[Quick Start Guide](QUICKSTART.md)** - Get started in 5 minutes
+
+### Key Guides
+
+- **[Context Optimization](docs/context-optimization-comparison.md)** - Visual comparison of modes
+- **[Tool Index API](docs/tool-index.md)** - Programmatic tool discovery
+
+---
+
 ## Testing
 
-The project includes comprehensive unit and integration tests for all features, including the UniFi OS controller type detection.
+The project includes comprehensive unit and integration tests for all features, including async jobs and lazy tool loading.
 
 ### Running Tests Locally
 
@@ -602,18 +952,140 @@ uv pip install unifi-network-mcp
 
 ## Local Development
 
-Docker:
+### Option 1: Using Docker
+
+Test with Docker and Claude Desktop:
 
 ```bash
 docker compose up --build
 ```
 
-Python:
+Then configure Claude Desktop to use the Docker container (see [Configuration](#configuration) above).
+
+### Option 2: Using Python/uv (Recommended for Development)
+
+For local development and testing without Docker:
+
+**1. Install dependencies:**
+
+```bash
+# Install UV (if not already installed)
+curl -fsSL https://astral.sh/uv/install.sh | bash
+
+# Clone and setup
+git clone https://github.com/sirkirby/unifi-network-mcp.git
+cd unifi-network-mcp
+
+# Install dependencies
+uv sync
+```
+
+**2. Configure environment:**
+
+```bash
+# Create .env file (or set environment variables)
+cat > .env << EOF
+UNIFI_HOST=your-controller-ip
+UNIFI_USERNAME=your-username
+UNIFI_PASSWORD=your-password
+UNIFI_PORT=443
+UNIFI_SITE=default
+UNIFI_VERIFY_SSL=false
+EOF
+```
+
+**3. Test with the dev console (interactive):**
+
+```bash
+# Launch interactive tool tester
+uv run python devtools/dev_console.py
+
+# You'll see a menu of all tools including:
+# - unifi_tool_index (list all tools with schemas)
+# - unifi_async_start (start background jobs)
+# - unifi_async_status (check job status)
+# - All 60+ UniFi tools (clients, devices, networks, etc.)
+```
+
+**4. Test with Python examples:**
+
+```bash
+# Query the tool index
+uv run python examples/python/query_tool_index.py
+
+# Test async jobs
+uv run python examples/python/use_async_jobs.py
+
+# Use the programmatic client
+uv run python examples/python/programmatic_client.py
+```
+
+**5. Test with Claude Desktop (local Python server):**
+
+Update your Claude Desktop config to use the local Python server instead of Docker:
+
+```json
+{
+  "mcpServers": {
+    "unifi": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/path/to/unifi-network-mcp",
+        "run",
+        "python",
+        "-m",
+        "src.main"
+      ],
+      "env": {
+        "UNIFI_HOST": "your-controller-ip",
+        "UNIFI_USERNAME": "your-username",
+        "UNIFI_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
+Then restart Claude Desktop and test:
+- "What UniFi tools are available?" (uses `unifi_tool_index`)
+- "Show me my top 10 wireless clients" (uses code execution mode)
+- "List all my UniFi devices"
+
+**6. Test with LM Studio or other local LLMs:**
+
+For testing with local LLMs that support MCP, you can run the server in stdio mode:
+
+```bash
+# Start the MCP server
+uv run python -m src.main
+
+# The server will listen on stdin/stdout for MCP protocol messages
+# Configure your LLM client to use this as an MCP server
+```
+
+**7. Run unit tests:**
+
+```bash
+# Run all tests
+uv run pytest tests/ -v
+
+# Run just async job tests (new in v0.2.0)
+uv run pytest tests/test_async_jobs.py -v
+
+# Run with coverage
+uv run pytest tests/ --cov=src --cov-report=term-missing
+```
+
+### Alternative: Traditional venv
+
+If you prefer not to use uv:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install .
+pip install -e .
+python devtools/dev_console.py
 ```
 
 ---

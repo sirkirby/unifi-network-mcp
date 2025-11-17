@@ -5,39 +5,40 @@ This module provides MCP tools to manage devices in a Unifi Network Controller.
 """
 
 import logging
-import json
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from datetime import datetime, timedelta
 
 # Import the global FastMCP server instance, config, and managers
 from src.runtime import server, config, device_manager
-import mcp.types as types # Import the types module
 from src.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
+
 
 def get_wifi_bands(device: Dict[str, Any]) -> List[str]:
     """Extract active WiFi bands from device radio table."""
     bands = set()
     for radio in device.get("radio_table", []):
-        if radio.get("radio") == "na": bands.add("5GHz")
-        elif radio.get("radio") == "ng": bands.add("2.4GHz")
-        elif radio.get("radio") == "wifi6e": bands.add("6GHz")
+        if radio.get("radio") == "na":
+            bands.add("5GHz")
+        elif radio.get("radio") == "ng":
+            bands.add("2.4GHz")
+        elif radio.get("radio") == "wifi6e":
+            bands.add("6GHz")
     return sorted(list(bands))
+
 
 @server.tool(
     name="unifi_list_devices",
-    description="List devices adopted by the Unifi Network controller for the current site"
+    description="List devices adopted by the Unifi Network controller for the current site",
 )
 async def list_devices(
-    device_type: str = "all",
-    status: str = "all",
-    include_details: bool = False
+    device_type: str = "all", status: str = "all", include_details: bool = False
 ) -> Dict[str, Any]:
     """Implementation for listing devices."""
     try:
         devices = await device_manager.get_devices()
-        
+
         # Convert Device objects to plain dictionaries for easier filtering
         devices_raw = [d.raw if hasattr(d, "raw") else d for d in devices]
 
@@ -51,7 +52,9 @@ async def list_devices(
             }
             prefixes = prefix_map.get(device_type)
             if prefixes:
-                devices_raw = [d for d in devices_raw if d.get("type", "").startswith(prefixes)]
+                devices_raw = [
+                    d for d in devices_raw if d.get("type", "").startswith(prefixes)
+                ]
 
         # Filter by status
         if status != "all":
@@ -82,7 +85,9 @@ async def list_devices(
 
         for device in devices_raw:
             device_state = device.get("state", 0)
-            device_status_str = state_map.get(device_state, f"unknown_state ({device_state})")
+            device_status_str = state_map.get(
+                device_state, f"unknown_state ({device_state})"
+            )
 
             device_info = {
                 "mac": device.get("mac", ""),
@@ -91,7 +96,9 @@ async def list_devices(
                 "type": device.get("type", ""),
                 "ip": device.get("ip", ""),
                 "status": device_status_str,
-                "uptime": str(timedelta(seconds=device.get("uptime", 0))) if device.get("uptime") else "N/A",
+                "uptime": str(timedelta(seconds=device.get("uptime", 0)))
+                if device.get("uptime")
+                else "N/A",
                 "last_seen": (
                     datetime.fromtimestamp(device.get("last_seen", 0)).isoformat()
                     if device.get("last_seen")
@@ -152,19 +159,23 @@ async def list_devices(
                 device_info.update(details_to_add)
 
             formatted_devices.append(device_info)
-        
+
         return {
-            "success": True, "site": device_manager._connection.site,
-            "filter_type": device_type, "filter_status": status,
-            "count": len(formatted_devices), "devices": formatted_devices
+            "success": True,
+            "site": device_manager._connection.site,
+            "filter_type": device_type,
+            "filter_status": status,
+            "count": len(formatted_devices),
+            "devices": formatted_devices,
         }
     except Exception as e:
         logger.error(f"Error listing devices: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
+
 @server.tool(
     name="unifi_get_device_details",
-    description="Get detailed information about a specific device by MAC address"
+    description="Get detailed information about a specific device by MAC address",
 )
 async def get_device_details(mac_address: str) -> Dict[str, Any]:
     """Implementation for getting device details."""
@@ -176,93 +187,124 @@ async def get_device_details(mac_address: str) -> Dict[str, Any]:
                 "site": device_manager._connection.site,
                 "device": device.raw if hasattr(device, "raw") else device,
             }
-        return {"success": False, "error": f"Device not found with MAC address: {mac_address}"}
+        return {
+            "success": False,
+            "error": f"Device not found with MAC address: {mac_address}",
+        }
     except Exception as e:
-        logger.error(f"Error getting device details for {mac_address}: {e}", exc_info=True)
+        logger.error(
+            f"Error getting device details for {mac_address}: {e}", exc_info=True
+        )
         return {"success": False, "error": str(e)}
+
 
 @server.tool(
     name="unifi_reboot_device",
-    description="Reboot a specific device by MAC address"
+    description="Reboot a specific device by MAC address",
+    permission_category="devices",
+    permission_action="update",
 )
 async def reboot_device(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for rebooting a device."""
     if not parse_permission(config.permissions, "device", "reboot"):
         logger.warning(f"Permission denied for rebooting device ({mac_address}).")
         return {"success": False, "error": "Permission denied to reboot device."}
-    
+
     if not confirm:
         return {"success": False, "error": "Confirmation required. Set confirm=true."}
-    
+
     try:
         logger.info(f"Attempting to reboot device: {mac_address}")
         success = await device_manager.reboot_device(mac_address)
-        
+
         if success:
-            return {"success": True, "message": f"Reboot initiated for device: {mac_address}"}
+            return {
+                "success": True,
+                "message": f"Reboot initiated for device: {mac_address}",
+            }
         else:
-            return {"success": False, "error": f"Failed to reboot device: {mac_address}"}
+            return {
+                "success": False,
+                "error": f"Failed to reboot device: {mac_address}",
+            }
     except Exception as e:
         logger.error(f"Error rebooting device {mac_address}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
+
 @server.tool(
     name="unifi_rename_device",
-    description="Rename a device in the Unifi Network controller by MAC address"
+    description="Rename a device in the Unifi Network controller by MAC address",
+    permission_category="devices",
+    permission_action="update",
 )
-async def rename_device(mac_address: str, name: str, confirm: bool = False) -> Dict[str, Any]:
+async def rename_device(
+    mac_address: str, name: str, confirm: bool = False
+) -> Dict[str, Any]:
     """Implementation for renaming a device."""
     if not parse_permission(config.permissions, "device", "update"):
         logger.warning(f"Permission denied for renaming device ({mac_address}).")
         return {"success": False, "error": "Permission denied to rename device."}
-    
+
     if not confirm:
         return {"success": False, "error": "Confirmation required. Set confirm=true."}
-    
+
     try:
         success = await device_manager.rename_device(mac_address, name)
         if success:
-            return {"success": True, "message": f"Device {mac_address} renamed to '{name}' successfully."}
+            return {
+                "success": True,
+                "message": f"Device {mac_address} renamed to '{name}' successfully.",
+            }
         return {"success": False, "error": f"Failed to rename device {mac_address}."}
     except Exception as e:
         logger.error(f"Error renaming device {mac_address}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
+
 @server.tool(
     name="unifi_adopt_device",
-    description="Adopt a pending device into the Unifi Network by MAC address"
+    description="Adopt a pending device into the Unifi Network by MAC address",
+    permission_category="devices",
+    permission_action="create",
 )
 async def adopt_device(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for adopting a device."""
     if not parse_permission(config.permissions, "device", "adopt"):
         logger.warning(f"Permission denied for adopting device ({mac_address}).")
         return {"success": False, "error": "Permission denied to adopt device."}
-    
+
     if not confirm:
         return {"success": False, "error": "Confirmation required. Set confirm=true."}
-    
+
     try:
         success = await device_manager.adopt_device(mac_address)
         if success:
-            return {"success": True, "message": f"Adoption initiated for device: {mac_address}"}
+            return {
+                "success": True,
+                "message": f"Adoption initiated for device: {mac_address}",
+            }
         return {"success": False, "error": f"Failed to adopt device {mac_address}."}
     except Exception as e:
         logger.error(f"Error adopting device {mac_address}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
+
 @server.tool(
     name="unifi_upgrade_device",
-    description="Initiate a firmware upgrade for a device by MAC address (uses cached firmware by default)"
+    description="Initiate a firmware upgrade for a device by MAC address (uses cached firmware by default)",
+    permission_category="devices",
+    permission_action="update",
 )
 async def upgrade_device(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for upgrading a device."""
     if not parse_permission(config.permissions, "device", "upgrade"):
         logger.warning(f"Permission denied for upgrading device ({mac_address}).")
         return {"success": False, "error": "Permission denied to upgrade device."}
-    
+
     if not confirm:
         return {"success": False, "error": "Confirmation required. Set confirm=true."}
-    
+
     try:
         upgrade_info = None
         try:
@@ -273,12 +315,15 @@ async def upgrade_device(mac_address: str, confirm: bool = False) -> Dict[str, A
                     upgrade_info = "available" if upgrade_info else "none"
         except Exception as e:
             logger.warning(f"Could not fetch upgrade info for {mac_address}: {e}")
-            
+
         success = await device_manager.upgrade_device(mac_address)
         if success:
             info_msg = f" (Upgrade info: {upgrade_info})" if upgrade_info else ""
-            return {"success": True, "message": f"Upgrade initiated for device: {mac_address}{info_msg}"}
+            return {
+                "success": True,
+                "message": f"Upgrade initiated for device: {mac_address}{info_msg}",
+            }
         return {"success": False, "error": f"Failed to upgrade device {mac_address}."}
     except Exception as e:
         logger.error(f"Error upgrading device {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)} 
+        return {"success": False, "error": str(e)}

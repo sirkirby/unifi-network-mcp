@@ -1,0 +1,1127 @@
+{
+  "count": 64,
+  "generated_by": "scripts/generate_tool_manifest.py",
+  "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
+  "tools": [
+    {
+      "description": "Adopt a pending device into the Unifi Network by MAC address",
+      "name": "unifi_adopt_device",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "mac_address": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Authorize a guest client to access the guest network by MAC address",
+      "name": "unifi_authorize_guest",
+      "schema": {
+        "input": {
+          "properties": {
+            "bytes_quota": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
+            },
+            "down_kbps": {
+              "type": "string"
+            },
+            "mac_address": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": "integer"
+            },
+            "up_kbps": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Block a client/device from the network by MAC address",
+      "name": "unifi_block_client",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "mac_address": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a new firewall policy with schema validation.",
+      "name": "unifi_create_firewall_policy",
+      "schema": {
+        "input": {
+          "properties": {
+            "policy_data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "policy_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a new network (LAN/VLAN) with schema validation.",
+      "name": "unifi_create_network",
+      "schema": {
+        "input": {
+          "properties": {
+            "network_data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "network_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a new port forwarding rule on your Unifi Network controller using schema validation.",
+      "name": "unifi_create_port_forward",
+      "schema": {
+        "input": {
+          "properties": {
+            "port_forward_data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "port_forward_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a new QoS rule on the Unifi Network controller.",
+      "name": "unifi_create_qos_rule",
+      "schema": {
+        "input": {
+          "properties": {
+            "qos_data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "qos_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a firewall policy using a simplified high-level schema. Accepts friendly src/dst selectors and returns a preview unless confirm=true.",
+      "name": "unifi_create_simple_firewall_policy",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "policy": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "policy"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a port forward using a simplified schema. Returns a preview unless confirm=true.",
+      "name": "unifi_create_simple_port_forward",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "rule": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rule"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a QoS rule using a simplified high-level schema. Returns a preview unless confirm=true.",
+      "name": "unifi_create_simple_qos_rule",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "rule": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rule"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a traffic route with a simplified high-level schema. Provides preview when confirm=false.",
+      "name": "unifi_create_simple_traffic_route",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "route": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "route"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a new traffic route (Policy-Based Routing rule) using V2 API schema.",
+      "name": "unifi_create_traffic_route",
+      "schema": {
+        "input": {
+          "properties": {
+            "route_data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "route_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a new Wireless LAN (WLAN/SSID) with schema validation.",
+      "name": "unifi_create_wlan",
+      "schema": {
+        "input": {
+          "properties": {
+            "wlan_data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "wlan_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Force a client to reconnect to the network (kick) by MAC address",
+      "name": "unifi_force_reconnect_client",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "mac_address": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get recent alerts from the Unifi Network controller",
+      "name": "unifi_get_alerts",
+      "schema": {
+        "input": {
+          "properties": {
+            "include_archived": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get detailed information about a specific client/device by MAC address",
+      "name": "unifi_get_client_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "mac_address": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get statistics for a specific client/device",
+      "name": "unifi_get_client_stats",
+      "schema": {
+        "input": {
+          "properties": {
+            "client_id": {
+              "type": "string"
+            },
+            "duration": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "client_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get detailed information about a specific device by MAC address",
+      "name": "unifi_get_device_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "mac_address": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get statistics for a specific device (access point, switch, etc.)",
+      "name": "unifi_get_device_stats",
+      "schema": {
+        "input": {
+          "properties": {
+            "device_id": {
+              "type": "string"
+            },
+            "duration": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "device_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get Deep Packet Inspection (DPI) statistics (applications and categories)",
+      "name": "unifi_get_dpi_stats",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get detailed configuration for a specific firewall policy by ID.",
+      "name": "unifi_get_firewall_policy_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "policy_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "policy_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get details for a specific network by ID.",
+      "name": "unifi_get_network_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "network_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "network_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get the current network health summary (WAN status, device counts).",
+      "name": "unifi_get_network_health",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get network statistics from the Unifi Network controller",
+      "name": "unifi_get_network_stats",
+      "schema": {
+        "input": {
+          "properties": {
+            "duration": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get a specific port forwarding rule by ID from your Unifi Network controller.",
+      "name": "unifi_get_port_forward",
+      "schema": {
+        "input": {
+          "properties": {
+            "port_forward_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "port_forward_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get details for a specific QoS rule by ID.",
+      "name": "unifi_get_qos_rule_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "rule_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rule_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get current site settings (e.g., country code, timezone, connectivity monitoring).",
+      "name": "unifi_get_site_settings",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get general system information from the Unifi Network controller (version, uptime, etc).",
+      "name": "unifi_get_system_info",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get a list of top clients by usage (sorted by total bytes)",
+      "name": "unifi_get_top_clients",
+      "schema": {
+        "input": {
+          "properties": {
+            "duration": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get detailed configuration for a specific traffic route by ID (V2 API based).",
+      "name": "unifi_get_traffic_route_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "route_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "route_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get details for a specific VPN client by ID.",
+      "name": "unifi_get_vpn_client_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "client_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "client_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get details for a specific VPN server by ID.",
+      "name": "unifi_get_vpn_server_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "server_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "server_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get details for a specific WLAN by ID.",
+      "name": "unifi_get_wlan_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "wlan_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "wlan_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List clients/devices that are currently blocked from the network",
+      "name": "unifi_list_blocked_clients",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List clients/devices connected to the Unifi Network",
+      "name": "unifi_list_clients",
+      "schema": {
+        "input": {
+          "properties": {
+            "filter_type": {
+              "type": "string"
+            },
+            "include_offline": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List devices adopted by the Unifi Network controller for the current site",
+      "name": "unifi_list_devices",
+      "schema": {
+        "input": {
+          "properties": {
+            "device_type": {
+              "type": "string"
+            },
+            "include_details": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List firewall policies configured on the Unifi Network controller.",
+      "name": "unifi_list_firewall_policies",
+      "schema": {
+        "input": {
+          "properties": {
+            "include_predefined": {
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List controller firewall zones (V2 API).",
+      "name": "unifi_list_firewall_zones",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List IP groups configured on the controller (V2 API).",
+      "name": "unifi_list_ip_groups",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List all configured networks (LAN, WAN, VLAN-only) on the Unifi Network controller (V1 API based).",
+      "name": "unifi_list_networks",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List all port forwarding rules on your Unifi Network controller.",
+      "name": "unifi_list_port_forwards",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List all QoS rules on the Unifi Network controller for the current site.",
+      "name": "unifi_list_qos_rules",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List traffic routing rules (V2 API based) configured on the Unifi Network controller for the current site.",
+      "name": "unifi_list_traffic_routes",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List all configured VPN clients (Wireguard, OpenVPN, etc).",
+      "name": "unifi_list_vpn_clients",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List all configured VPN servers (Wireguard, OpenVPN, L2TP, etc).",
+      "name": "unifi_list_vpn_servers",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List all configured Wireless LANs (WLANs) on the Unifi Network controller.",
+      "name": "unifi_list_wlans",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Reboot a specific device by MAC address",
+      "name": "unifi_reboot_device",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "mac_address": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Rename a client/device in the Unifi Network controller by MAC address",
+      "name": "unifi_rename_client",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "mac_address": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address",
+            "name"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Rename a device in the Unifi Network controller by MAC address",
+      "name": "unifi_rename_device",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "mac_address": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address",
+            "name"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Enable or disable a specific firewall policy by ID.",
+      "name": "unifi_toggle_firewall_policy",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "policy_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "policy_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Toggle a port forwarding rule on or off on your Unifi Network controller.",
+      "name": "unifi_toggle_port_forward",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "port_forward_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "port_forward_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Enable or disable a specific QoS rule by ID. Requires confirmation.",
+      "name": "unifi_toggle_qos_rule_enabled",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "rule_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rule_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Enable or disable a specific traffic route by ID.",
+      "name": "unifi_toggle_traffic_route",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "route_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "route_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Revoke authorization for a guest client by MAC address",
+      "name": "unifi_unauthorize_guest",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "mac_address": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Unblock a previously blocked client/device by MAC address",
+      "name": "unifi_unblock_client",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "mac_address": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Update specific fields of an existing firewall policy by ID.",
+      "name": "unifi_update_firewall_policy",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "policy_id": {
+              "type": "string"
+            },
+            "update_data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "policy_id",
+            "update_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Update specific fields of an existing network (LAN/VLAN). Requires confirmation.",
+      "name": "unifi_update_network",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "network_id": {
+              "type": "string"
+            },
+            "update_data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "network_id",
+            "update_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Update specific fields of an existing port forwarding rule using schema validation. Requires confirmation.",
+      "name": "unifi_update_port_forward",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "port_forward_id": {
+              "type": "string"
+            },
+            "update_data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "port_forward_id",
+            "update_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Update specific fields of an existing QoS rule. Requires confirmation.",
+      "name": "unifi_update_qos_rule",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "rule_id": {
+              "type": "string"
+            },
+            "update_data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rule_id",
+            "update_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Update specific fields of an existing traffic route using V2 API schema. Requires confirmation.",
+      "name": "unifi_update_traffic_route",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "route_id": {
+              "type": "string"
+            },
+            "update_data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "route_id",
+            "update_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Enable or disable a specific VPN client by ID.",
+      "name": "unifi_update_vpn_client_state",
+      "schema": {
+        "input": {
+          "properties": {
+            "client_id": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "client_id",
+            "enabled"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Enable or disable a specific VPN server by ID.",
+      "name": "unifi_update_vpn_server_state",
+      "schema": {
+        "input": {
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "server_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "server_id",
+            "enabled"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Update specific fields of an existing WLAN (SSID). Requires confirmation.",
+      "name": "unifi_update_wlan",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "update_data": {
+              "type": "string"
+            },
+            "wlan_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "wlan_id",
+            "update_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Initiate a firmware upgrade for a device by MAC address (uses cached firmware by default)",
+      "name": "unifi_upgrade_device",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "mac_address": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  ]
+}

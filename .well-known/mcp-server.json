@@ -1,0 +1,55 @@
+{
+  "name": "unifi-network-mcp",
+  "version": "0.2.0",
+  "description": "UniFi Network management via Model Context Protocol",
+  "transports": [
+    "stdio",
+    "http+sse"
+  ],
+  "endpoints": {
+    "stdio": {
+      "command": "unifi-network-mcp",
+      "args": ["--stdio"]
+    },
+    "sse": {
+      "url": "http://localhost:3000",
+      "note": "Optional HTTP SSE endpoint (disabled by default)"
+    }
+  },
+  "capabilities": {
+    "tools": true,
+    "tool_index": true,
+    "async_operations": true,
+    "resources": false,
+    "prompts": false
+  },
+  "scopes": [
+    "read:unifi",
+    "write:unifi:confirm"
+  ],
+  "tools_prefix": "unifi_",
+  "metadata": {
+    "homepage": "https://github.com/sirkirby/unifi-network-mcp",
+    "repository": "https://github.com/sirkirby/unifi-network-mcp",
+    "license": "MIT",
+    "author": "sirkirby",
+    "keywords": [
+      "mcp",
+      "unifi",
+      "network",
+      "automation",
+      "code-execution"
+    ]
+  },
+  "features": {
+    "tool_index": {
+      "tool": "unifi_tool_index",
+      "description": "Returns machine-readable list of all available tools with schemas"
+    },
+    "async_operations": {
+      "start_tool": "unifi_async_start",
+      "status_tool": "unifi_async_status",
+      "description": "Background job execution for long-running operations"
+    }
+  }
+}

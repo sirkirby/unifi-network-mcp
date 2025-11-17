@@ -34,4 +34,4 @@ def auto_load_tools(base_package: str = "src.tools") -> None:
             # Keep going even if one module fails so the rest still load
             logger.warning(f"Failed to import tool module '{mod_name}': {exc}")
 
-    logger.info("Finished auto‑loading MCP tool modules") 
+    logger.info("Finished auto‑loading MCP tool modules")

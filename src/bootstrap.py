@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 from __future__ import annotations
 
 """Bootstrap utilities for the UniFi‑Network MCP server.
@@ -55,6 +56,7 @@ logger = setup_logging()
 # Domain config dataclasses  -------------------------------------------------
 # ---------------------------------------------------------------------------
 
+
 @dataclass(slots=True)
 class UniFiSettings:
     host: str
@@ -83,6 +85,7 @@ class UniFiSettings:
 # Config loading  -----------------------------------------------------------
 # ---------------------------------------------------------------------------
 
+
 def load_config(path_override: str | Path | None = None) -> OmegaConf:
     """Load YAML config with environment variable substitution.
 
@@ -105,27 +108,42 @@ def load_config(path_override: str | Path | None = None) -> OmegaConf:
             resolved_path = path
             logger.info("Using configuration file from CONFIG_PATH/override: %s", path)
         else:
-            logger.error("Configuration file specified by CONFIG_PATH/override not found: %s", path)
+            logger.error(
+                "Configuration file specified by CONFIG_PATH/override not found: %s",
+                path,
+            )
             raise SystemExit(2)  # Exit if specified path is invalid
     else:
         # 2. Check relative path in CWD
         relative_path = Path("config/config.yaml")
         if relative_path.exists() and relative_path.is_file():
             resolved_path = relative_path
-            logger.info("Using configuration file from relative path: %s", relative_path)
+            logger.info(
+                "Using configuration file from relative path: %s", relative_path
+            )
         else:
             # 3. Use bundled default config
             try:
                 # Use importlib.resources to safely access package data
-                config_file_ref = importlib.resources.files('src.config').joinpath('config.yaml')
+                config_file_ref = importlib.resources.files("src.config").joinpath(
+                    "config.yaml"
+                )
                 if config_file_ref.is_file():
-                    resolved_path = Path(str(config_file_ref))  # Convert Traversable to Path
-                    logger.info("Using bundled default configuration: %s", resolved_path)
+                    resolved_path = Path(
+                        str(config_file_ref)
+                    )  # Convert Traversable to Path
+                    logger.info(
+                        "Using bundled default configuration: %s", resolved_path
+                    )
                 else:
-                    logger.error("Bundled default configuration file could not be accessed (not a file).")
+                    logger.error(
+                        "Bundled default configuration file could not be accessed (not a file)."
+                    )
                     raise SystemExit(3)  # Exit if bundled config isn't a file
             except (ModuleNotFoundError, FileNotFoundError, Exception) as e:
-                logger.error("Could not find or access bundled default configuration: %s", e)
+                logger.error(
+                    "Could not find or access bundled default configuration: %s", e
+                )
                 raise SystemExit(3)  # Exit if bundled config cannot be loaded
 
     if resolved_path is None:
@@ -137,7 +155,15 @@ def load_config(path_override: str | Path | None = None) -> OmegaConf:
 
     # Merge env vars for UniFi settings so they override YAML
     unifi_env_overrides: dict[str, Any] = {}
-    for key in ("host", "username", "password", "port", "site", "verify_ssl", "controller_type"):
+    for key in (
+        "host",
+        "username",
+        "password",
+        "port",
+        "site",
+        "verify_ssl",
+        "controller_type",
+    ):
         env_key = f"UNIFI_{key.upper()}"
         if (val := os.getenv(env_key)) is not None:
             if key == "verify_ssl":
@@ -169,3 +195,18 @@ if UNIFI_CONTROLLER_TYPE not in VALID_CONTROLLER_TYPES:
         f"Defaulting to 'auto'."
     )
     UNIFI_CONTROLLER_TYPE = "auto"
+
+# Tool registration mode (for LLM context optimization)
+# Valid values: "eager" (all tools immediately), "lazy" (on-demand loading), "meta_only" (just meta-tools)
+# DEFAULT: "lazy" (New in v0.2.0) - Provides 96% token savings with seamless UX
+VALID_REGISTRATION_MODES = {"lazy", "eager", "meta_only"}
+UNIFI_TOOL_REGISTRATION_MODE = os.getenv("UNIFI_TOOL_REGISTRATION_MODE", "lazy").lower()
+
+# Validate registration mode
+if UNIFI_TOOL_REGISTRATION_MODE not in VALID_REGISTRATION_MODES:
+    logger.warning(
+        f"Invalid UNIFI_TOOL_REGISTRATION_MODE: '{UNIFI_TOOL_REGISTRATION_MODE}'. "
+        f"Must be one of: {', '.join(sorted(VALID_REGISTRATION_MODES))}. "
+        f"Defaulting to 'lazy'."
+    )
+    UNIFI_TOOL_REGISTRATION_MODE = "lazy"
