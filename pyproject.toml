@@ -1,11 +1,11 @@
 [project]
 name = "unifi-network-mcp"
-version = "0.1.4"
+version = "0.2.0"
 description = "Unifi Network MCP Server"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "mcp[cli]==1.13.1",
+    "mcp[cli]>=1.21.2",
     "aiohttp>=3.8.5",
     "aiounifi>=87.0.0",
     "pyyaml>=6.0",
@@ -21,6 +21,22 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+".well-known" = "share/unifi-network-mcp/.well-known"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/.well-known",
+    "/README.md",
+    "/LICENSE",
+]
+
+# Ensure config files and tool manifest are included in the package
+[tool.hatch.build.targets.wheel.force-include]
+"src/config/config.yaml" = "src/config/config.yaml"
+"src/tools_manifest.json" = "src/tools_manifest.json"
 
 [dependency-groups]
 dev = [

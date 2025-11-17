@@ -4,13 +4,8 @@ Tests the integration between ConnectionManager and aiounifi library to verify
 that path overrides work correctly when making actual API requests.
 """
 
-import asyncio
-import os
-from typing import Optional, List
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock, MagicMock
 import pytest
-import pytest_asyncio
-import aiohttp
 from aioresponses import aioresponses
 
 from aiounifi.models.api import ApiRequest
@@ -47,7 +42,7 @@ class TestPathInterception:
             password="test_password",
             port=443,
             site="default",
-            verify_ssl=False
+            verify_ssl=False,
         )
 
         # Create a mock controller
@@ -66,7 +61,9 @@ class TestPathInterception:
 
         async def mock_request_method(api_request):
             """Mock request that captures is_unifi_os state."""
-            is_unifi_os_during_request.append(manager.controller.connectivity.is_unifi_os)
+            is_unifi_os_during_request.append(
+                manager.controller.connectivity.is_unifi_os
+            )
             return {"meta": {"rc": "ok"}, "data": [{"test": "data"}]}
 
         manager.controller.request = mock_request_method
@@ -118,7 +115,7 @@ class TestPathInterception:
             password="test_password",
             port=443,
             site="default",
-            verify_ssl=False
+            verify_ssl=False,
         )
 
         # Create a mock controller
@@ -137,7 +134,9 @@ class TestPathInterception:
 
         async def mock_request_method(api_request):
             """Mock request that captures is_unifi_os state."""
-            is_unifi_os_during_request.append(manager.controller.connectivity.is_unifi_os)
+            is_unifi_os_during_request.append(
+                manager.controller.connectivity.is_unifi_os
+            )
             return {"meta": {"rc": "ok"}, "data": [{"test": "data"}]}
 
         manager.controller.request = mock_request_method
@@ -188,7 +187,7 @@ class TestPathInterception:
             mock.post(
                 "https://192.168.1.1:443/api/auth/login",
                 status=200,
-                payload={"meta": {"rc": "ok"}, "data": []}
+                payload={"meta": {"rc": "ok"}, "data": []},
             )
 
             detection_called = []
@@ -200,14 +199,17 @@ class TestPathInterception:
 
             # Patch both the environment variable and the detection function
             with patch("src.bootstrap.UNIFI_CONTROLLER_TYPE", "proxy"):
-                with patch("src.managers.connection_manager.detect_unifi_os_proactively", mock_detect):
+                with patch(
+                    "src.managers.connection_manager.detect_unifi_os_proactively",
+                    mock_detect,
+                ):
                     manager = ConnectionManager(
                         host="192.168.1.1",
                         username="test_user",
                         password="test_password",
                         port=443,
                         site="default",
-                        verify_ssl=False
+                        verify_ssl=False,
                     )
 
                     # Initialize
@@ -250,7 +252,7 @@ class TestPathInterception:
             mock.post(
                 "https://192.168.1.1:443/api/login",
                 status=200,
-                payload={"meta": {"rc": "ok"}, "data": []}
+                payload={"meta": {"rc": "ok"}, "data": []},
             )
 
             detection_called = []
@@ -262,14 +264,17 @@ class TestPathInterception:
 
             # Patch both the environment variable and the detection function
             with patch("src.bootstrap.UNIFI_CONTROLLER_TYPE", "direct"):
-                with patch("src.managers.connection_manager.detect_unifi_os_proactively", mock_detect):
+                with patch(
+                    "src.managers.connection_manager.detect_unifi_os_proactively",
+                    mock_detect,
+                ):
                     manager = ConnectionManager(
                         host="192.168.1.1",
                         username="test_user",
                         password="test_password",
                         port=443,
                         site="default",
-                        verify_ssl=False
+                        verify_ssl=False,
                     )
 
                     # Initialize
@@ -315,7 +320,7 @@ class TestPathInterception:
             password="test_password",
             port=443,
             site="default",
-            verify_ssl=False
+            verify_ssl=False,
         )
 
         # Create a mock controller
@@ -337,7 +342,9 @@ class TestPathInterception:
 
         async def mock_request_method(api_request):
             """Mock request that captures is_unifi_os state."""
-            state_changes.append(("during", manager.controller.connectivity.is_unifi_os))
+            state_changes.append(
+                ("during", manager.controller.connectivity.is_unifi_os)
+            )
             return {"meta": {"rc": "ok"}, "data": [{"test": "data"}]}
 
         manager.controller.request = mock_request_method
@@ -347,13 +354,15 @@ class TestPathInterception:
 
         # Make a request
         request = ApiRequest(method="get", path="/stat/sta")
-        result = await manager.request(request)
+        await manager.request(request)
 
         # Capture final state
         state_changes.append(("after", manager.controller.connectivity.is_unifi_os))
 
         # Verify state transitions
-        assert len(state_changes) == 3, f"Should have 3 state captures. Got: {state_changes}"
+        assert len(state_changes) == 3, (
+            f"Should have 3 state captures. Got: {state_changes}"
+        )
 
         before_state = [s for s in state_changes if s[0] == "before"][0][1]
         during_state = [s for s in state_changes if s[0] == "during"][0][1]

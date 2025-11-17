@@ -11,6 +11,14 @@ server:
   host: 0.0.0.0
   port: 3000
   log_level: INFO
+
+  # Tool registration mode (New in v0.2.0)
+  # Options: eager, lazy, meta_only
+  # - eager: Register all 67 tools immediately (~5,000 tokens) - Best for dev console, automation
+  # - lazy: Register 3 meta-tools, load others on-demand (~225 tokens) - RECOMMENDED for LLMs
+  # - meta_only: Register only 3 meta-tools, manual discovery (~225 tokens) - Maximum control
+  tool_registration_mode: ${oc.env:UNIFI_TOOL_REGISTRATION_MODE,lazy}
+
   http:
     enabled: ${oc.env:UNIFI_MCP_HTTP_ENABLED,false}
   diagnostics:

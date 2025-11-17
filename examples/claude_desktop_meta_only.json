@@ -1,0 +1,46 @@
+{
+  "mcpServers": {
+    "unifi": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/path/to/unifi-network-mcp",
+        "run",
+        "python",
+        "-m",
+        "src.main"
+      ],
+      "env": {
+        "UNIFI_HOST": "192.168.1.1",
+        "UNIFI_USERNAME": "admin",
+        "UNIFI_PASSWORD": "your-password",
+        "UNIFI_PORT": "443",
+        "UNIFI_SITE": "default",
+        "UNIFI_VERIFY_SSL": "false",
+        "UNIFI_TOOL_REGISTRATION_MODE": "meta_only"
+      }
+    }
+  },
+  "_comment": "This configuration uses meta_only mode for maximum efficiency",
+  "_benefits": [
+    "Only 3 meta-tools registered initially (vs. 67 in eager mode)",
+    "Saves ~4,800 tokens in context (96% reduction!)",
+    "Claude will use unifi_tool_index to discover tools on-demand",
+    "Faster initial responses due to smaller context",
+    "Same functionality, better performance"
+  ],
+  "_how_it_works": [
+    "Claude starts with only: unifi_tool_index, unifi_async_start, unifi_async_status",
+    "When user asks about UniFi, Claude calls unifi_tool_index",
+    "Tool index returns all 64+ tools with schemas",
+    "Claude then calls the specific tool needed",
+    "Result: Only relevant tools consume context"
+  ],
+  "_example_prompts": [
+    "What can you do with my UniFi network?",
+    "Show me my top 10 wireless clients by bandwidth",
+    "List all my UniFi devices",
+    "Which devices are offline?",
+    "Start a background job to reboot my access points"
+  ]
+}

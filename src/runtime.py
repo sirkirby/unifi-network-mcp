@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 from __future__ import annotations
 
 """Shared runtime objects for the UniFi‑Network MCP server.
@@ -28,6 +29,7 @@ from src.managers.vpn_manager import VpnManager
 from src.managers.network_manager import NetworkManager
 from src.managers.system_manager import SystemManager
 from src.managers.firewall_manager import FirewallManager
+from src.tool_index import TOOL_REGISTRY
 
 # ---------------------------------------------------------------------------
 # Core singletons
@@ -109,6 +111,12 @@ def get_firewall_manager() -> FirewallManager:
     return FirewallManager(get_connection_manager())
 
 
+@lru_cache
+def get_tool_registry() -> dict[str, Any]:
+    """Return the global tool registry for runtime access."""
+    return TOOL_REGISTRY
+
+
 # ---------------------------------------------------------------------------
 # Shorthand aliases (import‑time singletons) --------------------------------
 # ---------------------------------------------------------------------------
@@ -127,5 +135,6 @@ vpn_manager = get_vpn_manager()
 network_manager = get_network_manager()
 system_manager = get_system_manager()
 firewall_manager = get_firewall_manager()
+tool_registry = get_tool_registry()
 
-logger.debug("runtime.py: shared singletons initialised") 
+logger.debug("runtime.py: shared singletons initialised")

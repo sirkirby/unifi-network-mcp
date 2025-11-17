@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import time
-from typing import Any, Dict, Iterable
+from typing import Any, Dict
 
 _logger = logging.getLogger("unifi-network-mcp.diagnostics")
 
@@ -38,7 +38,7 @@ def _server_diag_cfg_from_env() -> Dict[str, Any]:
 def _server_diag_cfg_from_config() -> Dict[str, Any]:
     try:
         # Import lazily to avoid circular imports at module load time
-        from src.runtime import config  # noqa: WPS433
+        from src.runtime import config
 
         server_cfg = getattr(config, "server", {}) or {}
         diag_cfg = server_cfg.get("diagnostics", {}) or {}
@@ -84,9 +84,12 @@ def _redact_value(key: str, value: Any) -> Any:
 def _redact(obj: Any) -> Any:
     try:
         if isinstance(obj, dict):
-            return {k: _redact(v) if k.lower() not in _REDACT_KEYS else "***REDACTED***" for k, v in obj.items()}
+            return {
+                k: _redact(v) if k.lower() not in _REDACT_KEYS else "***REDACTED***"
+                for k, v in obj.items()
+            }
         if isinstance(obj, (list, tuple)):
-            return [ _redact(v) for v in obj ]
+            return [_redact(v) for v in obj]
         return obj
     except Exception:
         return obj
@@ -110,7 +113,14 @@ def _safe_json(data: Any, limit: int) -> str:
     return _truncate(as_text, limit)
 
 
-def log_tool_call(tool_name: str, args: Any, kwargs: Dict[str, Any], result: Any | None, duration_ms: float, error: Exception | None = None) -> None:
+def log_tool_call(
+    tool_name: str,
+    args: Any,
+    kwargs: Dict[str, Any],
+    result: Any | None,
+    duration_ms: float,
+    error: Exception | None = None,
+) -> None:
     if not diagnostics_enabled():
         return
     cfg = _diag_cfg()
@@ -153,10 +163,13 @@ def wrap_tool(func, tool_name: str):
             except Exception:
                 # Never let diagnostics break the tool
                 pass
+
     return _wrapper
 
 
-def log_api_request(method: str, path: str, payload: Any, response: Any, duration_ms: float, ok: bool) -> None:
+def log_api_request(
+    method: str, path: str, payload: Any, response: Any, duration_ms: float, ok: bool
+) -> None:
     if not diagnostics_enabled():
         return
     cfg = _diag_cfg()
@@ -166,9 +179,11 @@ def log_api_request(method: str, path: str, payload: Any, response: Any, duratio
         "path": path,
         "ok": ok,
         "duration_ms": int(duration_ms),
-        "request": json.loads(_safe_json(payload, max_chars)) if payload is not None else None,
-        "response": json.loads(_safe_json(response, max_chars)) if response is not None else None,
+        "request": json.loads(_safe_json(payload, max_chars))
+        if payload is not None
+        else None,
+        "response": json.loads(_safe_json(response, max_chars))
+        if response is not None
+        else None,
     }
     _logger.info("API %s", _safe_json(entry, max_chars))
-
-

@@ -1,12 +1,13 @@
 import logging
 from typing import Dict, List, Optional, Any
 
-from aiounifi.models.api import ApiRequest, ApiRequestV2
+from aiounifi.models.api import ApiRequestV2
 from .connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
 
 CACHE_PREFIX_QOS = "qos_rules"
+
 
 class QosManager:
     """Manages QoS (Quality of Service) rules on the Unifi Controller."""
@@ -29,7 +30,13 @@ class QosManager:
         try:
             api_request = ApiRequestV2(method="get", path="/qos-rules")
             response = await self._connection.request(api_request)
-            rules = response if isinstance(response, list) else response.get('data', []) if isinstance(response, dict) else []
+            rules = (
+                response
+                if isinstance(response, list)
+                else response.get("data", [])
+                if isinstance(response, dict)
+                else []
+            )
             self._connection._update_cache(cache_key, rules)
             return rules
         except Exception as e:
@@ -45,7 +52,9 @@ class QosManager:
                 logger.warning(f"QoS rule {rule_id} not found in fetched list.")
             return rule
         except Exception as e:
-            logger.error(f"Error getting QoS rule details for {rule_id}: {e}", exc_info=True)
+            logger.error(
+                f"Error getting QoS rule details for {rule_id}: {e}", exc_info=True
+            )
             return None
 
     async def update_qos_rule(self, rule_id: str, update_data: Dict[str, Any]) -> bool:
@@ -62,35 +71,39 @@ class QosManager:
             return False
         if not update_data:
             logger.warning(f"No update data provided for QoS rule {rule_id}.")
-            return True # No action needed
-            
+            return True  # No action needed
+
         try:
             # 1. Fetch existing rule data
             existing_rule = await self.get_qos_rule_details(rule_id)
             if not existing_rule:
                 logger.error(f"QoS rule {rule_id} not found for update.")
                 return False
-                
+
             # 2. Merge updates into existing data
             merged_data = existing_rule.copy()
             for key, value in update_data.items():
                 merged_data[key] = value
-                
+
             # 3. Send the full merged data using V2 PUT
             api_request = ApiRequestV2(
                 method="put",
                 path=f"/qos-rules/{rule_id}",
-                data=merged_data # Send full merged object
+                data=merged_data,  # Send full merged object
             )
             await self._connection.request(api_request)
             logger.info(f"Update command sent for QoS rule {rule_id} with merged data.")
-            self._connection._invalidate_cache(f"{CACHE_PREFIX_QOS}_{self._connection.site}")
+            self._connection._invalidate_cache(
+                f"{CACHE_PREFIX_QOS}_{self._connection.site}"
+            )
             return True
         except Exception as e:
             logger.error(f"Error updating QoS rule {rule_id}: {e}", exc_info=True)
             return False
 
-    async def create_qos_rule(self, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def create_qos_rule(
+        self, rule_data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Create a new QoS rule.
 
         Args:
@@ -103,24 +116,35 @@ class QosManager:
             required_fields = ["name", "enabled"]
             for field in required_fields:
                 if field not in rule_data:
-                    logger.error(f"Missing required field '{field}' for QoS rule creation")
+                    logger.error(
+                        f"Missing required field '{field}' for QoS rule creation"
+                    )
                     return None
 
-            api_request = ApiRequestV2(
-                method="post",
-                path="/qos-rules",
-                data=rule_data
-            )
+            api_request = ApiRequestV2(method="post", path="/qos-rules", data=rule_data)
             response = await self._connection.request(api_request)
             logger.info(f"Create command sent for QoS rule '{rule_data.get('name')}'")
-            self._connection._invalidate_cache(f"{CACHE_PREFIX_QOS}_{self._connection.site}")
+            self._connection._invalidate_cache(
+                f"{CACHE_PREFIX_QOS}_{self._connection.site}"
+            )
 
-            if isinstance(response, dict) and "data" in response and isinstance(response["data"], list) and len(response["data"]) > 0:
+            if (
+                isinstance(response, dict)
+                and "data" in response
+                and isinstance(response["data"], list)
+                and len(response["data"]) > 0
+            ):
                 return response["data"][0]
-            elif isinstance(response, list) and len(response) > 0 and isinstance(response[0], dict): # Handle cases where API returns a list
-                 return response[0]
-            logger.warning(f"Could not extract created QoS rule data from response: {response}")
-            return response # Return raw response if extraction fails
+            elif (
+                isinstance(response, list)
+                and len(response) > 0
+                and isinstance(response[0], dict)
+            ):  # Handle cases where API returns a list
+                return response[0]
+            logger.warning(
+                f"Could not extract created QoS rule data from response: {response}"
+            )
+            return response  # Return raw response if extraction fails
 
         except Exception as e:
             logger.error(f"Error creating QoS rule: {e}")
@@ -136,14 +160,13 @@ class QosManager:
             bool: True if successful, False otherwise
         """
         try:
-            api_request = ApiRequestV2(
-                method="delete",
-                path=f"/qos-rules/{rule_id}"
-            )
+            api_request = ApiRequestV2(method="delete", path=f"/qos-rules/{rule_id}")
             await self._connection.request(api_request)
             logger.info(f"Delete command sent for QoS rule {rule_id}")
-            self._connection._invalidate_cache(f"{CACHE_PREFIX_QOS}_{self._connection.site}")
+            self._connection._invalidate_cache(
+                f"{CACHE_PREFIX_QOS}_{self._connection.site}"
+            )
             return True
         except Exception as e:
             logger.error(f"Error deleting QoS rule {rule_id}: {e}")
-            return False 
+            return False

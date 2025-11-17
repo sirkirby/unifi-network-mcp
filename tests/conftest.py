@@ -1,4 +1,5 @@
 """Pytest configuration for unifi-network-mcp tests."""
+
 import sys
 from pathlib import Path
 
