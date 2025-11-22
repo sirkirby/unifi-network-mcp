@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import time
+from functools import wraps
 from typing import Any, Dict
 
 _logger = logging.getLogger("unifi-network-mcp.diagnostics")
@@ -144,6 +145,7 @@ def log_tool_call(
 
 
 def wrap_tool(func, tool_name: str):
+    @wraps(func)
     async def _wrapper(*args, **kwargs):
         if not diagnostics_enabled():
             return await func(*args, **kwargs)
