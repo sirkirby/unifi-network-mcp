@@ -340,3 +340,85 @@ async def unauthorize_guest(mac_address: str, confirm: bool = False) -> Dict[str
     except Exception as e:
         logger.error(f"Error unauthorizing guest {mac_address}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
+
+
+@server.tool(
+    name="unifi_set_client_ip_settings",
+    description="Set fixed IP address and/or local DNS record for a client by MAC address. Requires UniFi Network 7.2+ for local DNS records.",
+    permission_category="clients",
+    permission_action="update",
+)
+async def set_client_ip_settings(
+    mac_address: str,
+    use_fixedip: Optional[bool] = None,
+    fixed_ip: Optional[str] = None,
+    local_dns_record_enabled: Optional[bool] = None,
+    local_dns_record: Optional[str] = None,
+    confirm: bool = False,
+) -> Dict[str, Any]:
+    """Implementation for setting client IP settings (fixed IP and/or local DNS record).
+
+    Args:
+        mac_address: MAC address of the client to update.
+        use_fixedip: Enable (True) or disable (False) fixed IP for this client.
+        fixed_ip: The fixed IP address to assign (e.g., "192.168.1.100").
+        local_dns_record_enabled: Enable (True) or disable (False) local DNS record.
+        local_dns_record: The DNS hostname to assign (e.g., "mydevice.local").
+        confirm: Must be True to execute the change.
+
+    Returns:
+        Dict with success status and message or error.
+    """
+    if not parse_permission(config.permissions, "client", "update"):
+        logger.warning(
+            f"Permission denied for updating IP settings of client ({mac_address})."
+        )
+        return {
+            "success": False,
+            "error": "Permission denied to update client IP settings.",
+        }
+
+    if not confirm:
+        return {"success": False, "error": "Confirmation required. Set confirm=true."}
+
+    # Validate that at least one setting is provided
+    if all(
+        v is None
+        for v in [use_fixedip, fixed_ip, local_dns_record_enabled, local_dns_record]
+    ):
+        return {
+            "success": False,
+            "error": "At least one IP setting must be provided (use_fixedip, fixed_ip, local_dns_record_enabled, or local_dns_record).",
+        }
+
+    try:
+        success = await client_manager.set_client_ip_settings(
+            client_mac=mac_address,
+            use_fixedip=use_fixedip,
+            fixed_ip=fixed_ip,
+            local_dns_record_enabled=local_dns_record_enabled,
+            local_dns_record=local_dns_record,
+        )
+        if success:
+            settings_changed = []
+            if use_fixedip is not None or fixed_ip is not None:
+                settings_changed.append(
+                    f"fixed IP: {fixed_ip if fixed_ip else ('enabled' if use_fixedip else 'disabled')}"
+                )
+            if local_dns_record_enabled is not None or local_dns_record is not None:
+                settings_changed.append(
+                    f"local DNS: {local_dns_record if local_dns_record else ('enabled' if local_dns_record_enabled else 'disabled')}"
+                )
+            return {
+                "success": True,
+                "message": f"Client {mac_address} IP settings updated successfully ({', '.join(settings_changed)}).",
+            }
+        return {
+            "success": False,
+            "error": f"Failed to update IP settings for client {mac_address}.",
+        }
+    except Exception as e:
+        logger.error(
+            f"Error updating IP settings for client {mac_address}: {e}", exc_info=True
+        )
+        return {"success": False, "error": str(e)}

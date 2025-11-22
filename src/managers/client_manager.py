@@ -240,3 +240,97 @@ class ClientManager:
         except Exception as e:
             logger.error(f"Error unauthorizing guest {client_mac}: {e}")
             return False
+
+    async def set_client_ip_settings(
+        self,
+        client_mac: str,
+        use_fixedip: Optional[bool] = None,
+        fixed_ip: Optional[str] = None,
+        local_dns_record_enabled: Optional[bool] = None,
+        local_dns_record: Optional[str] = None,
+    ) -> bool:
+        """Set fixed IP and/or local DNS record for a client.
+
+        This method updates client IP settings via the REST API endpoint
+        PUT /rest/user/{client_id}. Available in UniFi Network 7.2+ for
+        local DNS records and all versions for fixed IP.
+
+        Args:
+            client_mac: MAC address of the client to update.
+            use_fixedip: Enable (True) or disable (False) fixed IP for this client.
+            fixed_ip: The fixed IP address to assign (required if use_fixedip=True).
+            local_dns_record_enabled: Enable (True) or disable (False) local DNS record.
+            local_dns_record: The DNS hostname to assign (e.g., "mydevice.local.domain").
+
+        Returns:
+            True if the update was successful, False otherwise.
+        """
+        try:
+            client = await self.get_client_details(client_mac)
+            if not client:
+                logger.error(
+                    f"Cannot update IP settings for client {client_mac}: Client not found."
+                )
+                return False
+
+            client_raw = client.raw if hasattr(client, "raw") else client
+            if "_id" not in client_raw:
+                logger.error(
+                    f"Cannot update IP settings for client {client_mac}: Missing client ID."
+                )
+                return False
+
+            client_id = client_raw["_id"]
+
+            # Build the payload with only the fields that were explicitly provided
+            payload: dict = {}
+
+            if use_fixedip is not None:
+                payload["use_fixedip"] = use_fixedip
+                if use_fixedip and fixed_ip:
+                    payload["fixed_ip"] = fixed_ip
+                elif not use_fixedip:
+                    # When disabling, clear the fixed_ip field
+                    payload["fixed_ip"] = ""
+
+            if fixed_ip is not None and use_fixedip is None:
+                # If only fixed_ip is provided, assume enabling fixed IP
+                payload["use_fixedip"] = True
+                payload["fixed_ip"] = fixed_ip
+
+            if local_dns_record_enabled is not None:
+                payload["local_dns_record_enabled"] = local_dns_record_enabled
+                if local_dns_record_enabled and local_dns_record:
+                    payload["local_dns_record"] = local_dns_record
+                elif not local_dns_record_enabled:
+                    # When disabling, clear the DNS record
+                    payload["local_dns_record"] = ""
+
+            if local_dns_record is not None and local_dns_record_enabled is None:
+                # If only local_dns_record is provided, assume enabling it
+                payload["local_dns_record_enabled"] = True
+                payload["local_dns_record"] = local_dns_record
+
+            if not payload:
+                logger.warning(
+                    f"No IP settings provided for client {client_mac}. Nothing to update."
+                )
+                return False
+
+            api_request = ApiRequest(
+                method="put",
+                path=f"/rest/user/{client_id}",
+                json=payload,
+            )
+            await self._connection.request(api_request)
+            logger.info(
+                f"IP settings updated for client {client_mac}: {payload}"
+            )
+            self._connection._invalidate_cache(f"{CACHE_PREFIX_CLIENTS}")
+            return True
+        except Exception as e:
+            logger.error(
+                f"Error updating IP settings for client {client_mac}: {e}",
+                exc_info=True,
+            )
+            return False
