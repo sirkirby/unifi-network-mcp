@@ -320,7 +320,7 @@ class ClientManager:
             api_request = ApiRequest(
                 method="put",
                 path=f"/rest/user/{client_id}",
-                json=payload,
+                data=payload,
             )
             await self._connection.request(api_request)
             logger.info(
