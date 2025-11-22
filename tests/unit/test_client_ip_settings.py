@@ -33,13 +33,28 @@ class TestClientManagerSetClientIpSettings:
 
     @pytest.fixture
     def mock_client(self):
-        """Create a mock client object."""
+        """Create a mock client object (already noted)."""
         client = MagicMock()
         client.raw = {
             "_id": "test_client_id_12345",
             "mac": "aa:bb:cc:dd:ee:ff",
             "name": "Test Device",
             "ip": "192.168.1.50",
+            "noted": True,  # Client is already noted
+        }
+        client.mac = "aa:bb:cc:dd:ee:ff"
+        return client
+
+    @pytest.fixture
+    def mock_client_not_noted(self):
+        """Create a mock client object that is not yet noted."""
+        client = MagicMock()
+        client.raw = {
+            "_id": "test_client_id_12345",
+            "mac": "aa:bb:cc:dd:ee:ff",
+            "hostname": "test-device",
+            "ip": "192.168.1.50",
+            "noted": False,
         }
         client.mac = "aa:bb:cc:dd:ee:ff"
         return client
@@ -257,6 +272,7 @@ class TestClientManagerSetClientIpSettings:
             "_id": "test_client_id_12345",
             "mac": "aa:bb:cc:dd:ee:ff",
             "name": "Test Device",
+            "noted": True,
         }
 
         with patch.object(
@@ -272,6 +288,36 @@ class TestClientManagerSetClientIpSettings:
             assert result is True
             call_args = client_manager._connection.request.call_args[0][0]
             assert call_args.path == "/rest/user/test_client_id_12345"
+
+    @pytest.mark.asyncio
+    async def test_auto_note_client_before_update(
+        self, client_manager, mock_client_not_noted
+    ):
+        """Test that client is automatically noted before updating IP settings."""
+        with patch.object(
+            client_manager, "get_client_details", new_callable=AsyncMock
+        ) as mock_get_client:
+            mock_get_client.return_value = mock_client_not_noted
+
+            result = await client_manager.set_client_ip_settings(
+                client_mac="aa:bb:cc:dd:ee:ff",
+                fixed_ip="192.168.1.100",
+            )
+
+            assert result is True
+            # Should have been called twice: once for noting, once for IP settings
+            assert client_manager._connection.request.call_count == 2
+
+            # First call should be to note the client
+            first_call = client_manager._connection.request.call_args_list[0][0][0]
+            assert first_call.method == "put"
+            assert first_call.data.get("noted") is True
+            assert first_call.data.get("name") == "test-device"  # hostname used as name
+
+            # Second call should be for IP settings
+            second_call = client_manager._connection.request.call_args_list[1][0][0]
+            assert second_call.data.get("use_fixedip") is True
+            assert second_call.data.get("fixed_ip") == "192.168.1.100"
 
 
 class TestMcpToolSetClientIpSettingsLogic:

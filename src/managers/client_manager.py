@@ -282,6 +282,32 @@ class ClientManager:
 
             client_id = client_raw["_id"]
 
+            # Check if client is "noted" (known client) - required for IP settings
+            # If not noted, mark it as noted first to enable IP configuration
+            if not client_raw.get("noted"):
+                logger.info(
+                    f"Client {client_mac} is not noted. Marking as noted first..."
+                )
+                note_payload = {"noted": True}
+                # Preserve existing name or use hostname
+                if not client_raw.get("name"):
+                    hostname = client_raw.get("hostname", "")
+                    if hostname:
+                        note_payload["name"] = hostname
+                try:
+                    note_request = ApiRequest(
+                        method="put",
+                        path=f"/rest/user/{client_id}",
+                        data=note_payload,
+                    )
+                    await self._connection.request(note_request)
+                    logger.info(f"Client {client_mac} marked as noted successfully.")
+                except Exception as note_err:
+                    logger.warning(
+                        f"Could not mark client {client_mac} as noted: {note_err}. "
+                        "Continuing with IP settings update anyway."
+                    )
+
             # Build the payload with only the fields that were explicitly provided
             payload: dict = {}
 
