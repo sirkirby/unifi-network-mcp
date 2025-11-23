@@ -31,6 +31,10 @@ CATEGORY_MAP = {
     "guest": "guests",
     "traffic_route": "traffic_routes",
     "port_forward": "port_forwards",
+    "voucher": "vouchers",
+    "usergroup": "usergroups",
+    "route": "routes",
+    "event": "events",
 }
 
 DEFAULT_PERMISSIONS_KEY = "default"

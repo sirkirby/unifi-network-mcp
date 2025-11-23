@@ -17,6 +17,11 @@ from .schemas import (
     TRAFFIC_ROUTE_SIMPLE_SCHEMA,
     QOS_RULE_SIMPLE_SCHEMA,
     PORT_FORWARD_SIMPLE_SCHEMA,
+    VOUCHER_SCHEMA,
+    USERGROUP_SCHEMA,
+    USERGROUP_UPDATE_SCHEMA,
+    ROUTE_SCHEMA,
+    ROUTE_UPDATE_SCHEMA,
 )
 
 
@@ -54,6 +59,11 @@ class UniFiValidatorRegistry:
         "port_forward_simple": ResourceValidator(
             PORT_FORWARD_SIMPLE_SCHEMA, "Simple Port Forward Rule"
         ),
+        "voucher": ResourceValidator(VOUCHER_SCHEMA, "Hotspot Voucher"),
+        "usergroup": ResourceValidator(USERGROUP_SCHEMA, "User Group"),
+        "usergroup_update": ResourceValidator(USERGROUP_UPDATE_SCHEMA, "User Group Update"),
+        "route": ResourceValidator(ROUTE_SCHEMA, "Static Route"),
+        "route_update": ResourceValidator(ROUTE_UPDATE_SCHEMA, "Static Route Update"),
     }
 
     @classmethod

@@ -876,6 +876,158 @@ PORT_FORWARD_SIMPLE_SCHEMA = {
     },
 }
 
+# Hotspot Voucher schema
+VOUCHER_SCHEMA = {
+    "type": "object",
+    "required": ["expire_minutes"],
+    "properties": {
+        "expire_minutes": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Minutes the voucher is valid after activation",
+        },
+        "count": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Number of vouchers to create",
+        },
+        "quota": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 1,
+            "description": "Usage quota: 0=multi-use, 1=single-use, n=n-times usable",
+        },
+        "note": {
+            "type": "string",
+            "description": "Optional note for the voucher (e.g., for printing)",
+        },
+        "up_limit_kbps": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Upload speed limit in Kbps",
+        },
+        "down_limit_kbps": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Download speed limit in Kbps",
+        },
+        "bytes_limit_mb": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Data transfer limit in MB",
+        },
+    },
+}
+
+# User Group schema (for bandwidth limits)
+USERGROUP_SCHEMA = {
+    "type": "object",
+    "required": ["name"],
+    "properties": {
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name of the user group",
+        },
+        "qos_rate_max_down": {
+            "type": "integer",
+            "minimum": -1,
+            "description": "Download rate limit in Kbps (-1 for unlimited)",
+        },
+        "qos_rate_max_up": {
+            "type": "integer",
+            "minimum": -1,
+            "description": "Upload rate limit in Kbps (-1 for unlimited)",
+        },
+    },
+}
+
+# User Group update schema
+USERGROUP_UPDATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name of the user group",
+        },
+        "qos_rate_max_down": {
+            "type": "integer",
+            "minimum": -1,
+            "description": "Download rate limit in Kbps (-1 for unlimited)",
+        },
+        "qos_rate_max_up": {
+            "type": "integer",
+            "minimum": -1,
+            "description": "Upload rate limit in Kbps (-1 for unlimited)",
+        },
+    },
+}
+
+# Static Route schema
+ROUTE_SCHEMA = {
+    "type": "object",
+    "required": ["name", "network", "nexthop"],
+    "properties": {
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name of the static route",
+        },
+        "network": {
+            "type": "string",
+            "description": "Destination network in CIDR notation (e.g., '10.0.0.0/8')",
+        },
+        "nexthop": {
+            "type": "string",
+            "description": "Next-hop IP address or interface",
+        },
+        "distance": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 255,
+            "default": 1,
+            "description": "Administrative distance (1-255, lower = higher priority)",
+        },
+        "enabled": {
+            "type": "boolean",
+            "default": True,
+            "description": "Whether the route is enabled",
+        },
+    },
+}
+
+# Static Route update schema
+ROUTE_UPDATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name of the static route",
+        },
+        "network": {
+            "type": "string",
+            "description": "Destination network in CIDR notation",
+        },
+        "nexthop": {
+            "type": "string",
+            "description": "Next-hop IP address or interface",
+        },
+        "distance": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 255,
+            "description": "Administrative distance",
+        },
+        "enabled": {
+            "type": "boolean",
+            "description": "Whether the route is enabled",
+        },
+    },
+}
+
 
 class UniFiResourceRegistry:
     """Registry for UniFi Network resource schemas and validators."""
@@ -899,6 +1051,11 @@ class UniFiResourceRegistry:
         "firewall_policy_simple": FIREWALL_POLICY_SIMPLE_SCHEMA,
         "qos_rule_simple": QOS_RULE_SIMPLE_SCHEMA,
         "port_forward_simple": PORT_FORWARD_SIMPLE_SCHEMA,
+        "voucher": VOUCHER_SCHEMA,
+        "usergroup": USERGROUP_SCHEMA,
+        "usergroup_update": USERGROUP_UPDATE_SCHEMA,
+        "route": ROUTE_SCHEMA,
+        "route_update": ROUTE_UPDATE_SCHEMA,
     }
 
     @classmethod

@@ -29,6 +29,10 @@ from src.managers.vpn_manager import VpnManager
 from src.managers.network_manager import NetworkManager
 from src.managers.system_manager import SystemManager
 from src.managers.firewall_manager import FirewallManager
+from src.managers.hotspot_manager import HotspotManager
+from src.managers.usergroup_manager import UserGroupManager
+from src.managers.routing_manager import RoutingManager
+from src.managers.event_manager import EventManager
 from src.tool_index import TOOL_REGISTRY
 
 # ---------------------------------------------------------------------------
@@ -112,6 +116,26 @@ def get_firewall_manager() -> FirewallManager:
 
 
 @lru_cache
+def get_hotspot_manager() -> HotspotManager:
+    return HotspotManager(get_connection_manager())
+
+
+@lru_cache
+def get_usergroup_manager() -> UserGroupManager:
+    return UserGroupManager(get_connection_manager())
+
+
+@lru_cache
+def get_routing_manager() -> RoutingManager:
+    return RoutingManager(get_connection_manager())
+
+
+@lru_cache
+def get_event_manager() -> EventManager:
+    return EventManager(get_connection_manager())
+
+
+@lru_cache
 def get_tool_registry() -> dict[str, Any]:
     """Return the global tool registry for runtime access."""
     return TOOL_REGISTRY
@@ -135,6 +159,10 @@ vpn_manager = get_vpn_manager()
 network_manager = get_network_manager()
 system_manager = get_system_manager()
 firewall_manager = get_firewall_manager()
+hotspot_manager = get_hotspot_manager()
+usergroup_manager = get_usergroup_manager()
+routing_manager = get_routing_manager()
+event_manager = get_event_manager()
 tool_registry = get_tool_registry()
 
 logger.debug("runtime.py: shared singletons initialised")

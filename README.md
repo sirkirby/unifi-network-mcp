@@ -38,6 +38,7 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
 * [📖 Documentation](#-documentation)
 * [Testing](#testing)
 * [Local Development](#local-development)
+* [Multi-Machine Deployment with Dotfiles](#multi-machine-deployment-with-dotfiles)
 * [Contributing: Releasing / Publishing](#contributing-releasing--publishing)
 
 ---
@@ -1087,6 +1088,104 @@ source .venv/bin/activate
 pip install -e .
 python devtools/dev_console.py
 ```
+
+---
+
+## Multi-Machine Deployment with Dotfiles
+
+If you manage multiple machines (e.g., Mac mini + MacBook) and want consistent MCP configuration across all of them, you can integrate this server with your dotfiles.
+
+### Prerequisites
+
+- Dotfiles repository managed with [GNU Stow](https://www.gnu.org/software/stow/)
+- [mcp-funnel](https://github.com/chris-schra/mcp-funnel) for MCP server aggregation
+- [uv](https://astral.sh/uv/) package manager
+
+### Setup
+
+**1. Clone this repository to a consistent path on all machines:**
+
+```bash
+# IMPORTANT: Use ~/Developer/unifi-network-mcp on all machines
+cd ~/Developer
+git clone git@github.com:YOUR_USERNAME/unifi-network-mcp.git
+# Or for the upstream repo:
+# git clone https://github.com/sirkirby/unifi-network-mcp.git
+```
+
+**2. Add mcp-funnel config to your dotfiles:**
+
+Create `dot-mcp-funnel.json` in your dotfiles repo (it will become `~/.mcp-funnel.json` after stow):
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/gptscript-ai/mcp-funnel/main/config.schema.json",
+  "defaultSecretProviders": [
+    { "type": "dotenv", "config": { "path": "~/.mcp-secrets.env" } }
+  ],
+  "servers": {
+    "unifi": {
+      "command": "uv",
+      "args": ["run", "--directory", "~/Developer/unifi-network-mcp", "unifi-network-mcp"],
+      "env": {
+        "UNIFI_HOST": "${UNIFI_HOST}",
+        "UNIFI_USERNAME": "${UNIFI_USERNAME}",
+        "UNIFI_PASSWORD": "${UNIFI_PASSWORD}",
+        "UNIFI_PORT": "${UNIFI_PORT}",
+        "UNIFI_SITE": "${UNIFI_SITE}",
+        "UNIFI_VERIFY_SSL": "${UNIFI_VERIFY_SSL}",
+        "UNIFI_TOOL_REGISTRATION_MODE": "eager"
+      }
+    }
+  }
+}
+```
+
+**3. Create a secrets file on each machine (NOT in git!):**
+
+```bash
+# Copy the template
+cp mcp-secrets.env.example ~/.mcp-secrets.env
+
+# Edit with your credentials
+vim ~/.mcp-secrets.env
+```
+
+Example `~/.mcp-secrets.env`:
+```bash
+UNIFI_HOST=192.168.1.1
+UNIFI_USERNAME=mcp_admin
+UNIFI_PASSWORD=your_secure_password
+UNIFI_PORT=443
+UNIFI_SITE=default
+UNIFI_VERIFY_SSL=false
+```
+
+**4. Deploy dotfiles:**
+
+```bash
+cd ~/dotfiles
+stow .
+```
+
+**5. Restart Claude Desktop**
+
+### File Structure
+
+```
+~/
+├── .mcp-funnel.json          # Symlinked from dotfiles (no secrets)
+├── .mcp-secrets.env          # Local only, machine-specific credentials
+└── Developer/
+    └── unifi-network-mcp/    # Cloned repo (same path on all machines)
+```
+
+### Security Notes
+
+- Never commit `~/.mcp-secrets.env` to git
+- The `mcp-secrets.env.example` template is provided for reference
+- Use different credentials per machine if desired
+- Consider using 1Password CLI or similar for secret injection
 
 ---
 
