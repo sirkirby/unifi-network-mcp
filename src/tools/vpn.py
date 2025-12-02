@@ -6,9 +6,9 @@ including managing VPN clients and servers.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
-from src.runtime import server, config, vpn_manager
+from src.runtime import config, server, vpn_manager
 from src.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
@@ -43,9 +43,7 @@ async def list_vpn_clients() -> Dict[str, Any]:
 async def get_vpn_client_details(client_id: str) -> Dict[str, Any]:
     """Implementation for getting VPN client details."""
     if not parse_permission(config.permissions, "vpn_client", "read"):
-        logger.warning(
-            f"Permission denied for getting VPN client details ({client_id})."
-        )
+        logger.warning(f"Permission denied for getting VPN client details ({client_id}).")
         return {
             "success": False,
             "error": "Permission denied to get VPN client details.",
@@ -62,9 +60,7 @@ async def get_vpn_client_details(client_id: str) -> Dict[str, Any]:
         else:
             return {"success": False, "error": f"VPN client '{client_id}' not found."}
     except Exception as e:
-        logger.error(
-            f"Error getting VPN client details for {client_id}: {e}", exc_info=True
-        )
+        logger.error(f"Error getting VPN client details for {client_id}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 
@@ -77,9 +73,7 @@ async def get_vpn_client_details(client_id: str) -> Dict[str, Any]:
 async def update_vpn_client_state(client_id: str, enabled: bool) -> Dict[str, Any]:
     """Implementation for updating VPN client state."""
     if not parse_permission(config.permissions, "vpn_client", "update"):
-        logger.warning(
-            f"Permission denied for updating VPN client state ({client_id})."
-        )
+        logger.warning(f"Permission denied for updating VPN client state ({client_id}).")
         return {
             "success": False,
             "error": "Permission denied to update VPN client state.",
@@ -88,9 +82,7 @@ async def update_vpn_client_state(client_id: str, enabled: bool) -> Dict[str, An
         success = await vpn_manager.update_vpn_client_state(client_id, enabled)
         if success:
             client_details = await vpn_manager.get_vpn_client_details(client_id)
-            name = (
-                client_details.get("name", client_id) if client_details else client_id
-            )
+            name = client_details.get("name", client_id) if client_details else client_id
             state = "enabled" if enabled else "disabled"
             return {
                 "success": True,
@@ -98,17 +90,13 @@ async def update_vpn_client_state(client_id: str, enabled: bool) -> Dict[str, An
             }
         else:
             client_details = await vpn_manager.get_vpn_client_details(client_id)
-            name = (
-                client_details.get("name", client_id) if client_details else client_id
-            )
+            name = client_details.get("name", client_id) if client_details else client_id
             return {
                 "success": False,
                 "error": f"Failed to update state for VPN client '{name}'.",
             }
     except Exception as e:
-        logger.error(
-            f"Error updating state for VPN client {client_id}: {e}", exc_info=True
-        )
+        logger.error(f"Error updating state for VPN client {client_id}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 
@@ -141,9 +129,7 @@ async def list_vpn_servers() -> Dict[str, Any]:
 async def get_vpn_server_details(server_id: str) -> Dict[str, Any]:
     """Implementation for getting VPN server details."""
     if not parse_permission(config.permissions, "vpn_server", "read"):
-        logger.warning(
-            f"Permission denied for getting VPN server details ({server_id})."
-        )
+        logger.warning(f"Permission denied for getting VPN server details ({server_id}).")
         return {
             "success": False,
             "error": "Permission denied to get VPN server details.",
@@ -160,9 +146,7 @@ async def get_vpn_server_details(server_id: str) -> Dict[str, Any]:
         else:
             return {"success": False, "error": f"VPN server '{server_id}' not found."}
     except Exception as e:
-        logger.error(
-            f"Error getting VPN server details for {server_id}: {e}", exc_info=True
-        )
+        logger.error(f"Error getting VPN server details for {server_id}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 
@@ -175,9 +159,7 @@ async def get_vpn_server_details(server_id: str) -> Dict[str, Any]:
 async def update_vpn_server_state(server_id: str, enabled: bool) -> Dict[str, Any]:
     """Implementation for updating VPN server state."""
     if not parse_permission(config.permissions, "vpn_server", "update"):
-        logger.warning(
-            f"Permission denied for updating VPN server state ({server_id})."
-        )
+        logger.warning(f"Permission denied for updating VPN server state ({server_id}).")
         return {
             "success": False,
             "error": "Permission denied to update VPN server state.",
@@ -186,9 +168,7 @@ async def update_vpn_server_state(server_id: str, enabled: bool) -> Dict[str, An
         success = await vpn_manager.update_vpn_server_state(server_id, enabled)
         if success:
             server_details = await vpn_manager.get_vpn_server_details(server_id)
-            name = (
-                server_details.get("name", server_id) if server_details else server_id
-            )
+            name = server_details.get("name", server_id) if server_details else server_id
             state = "enabled" if enabled else "disabled"
             return {
                 "success": True,
@@ -196,15 +176,11 @@ async def update_vpn_server_state(server_id: str, enabled: bool) -> Dict[str, An
             }
         else:
             server_details = await vpn_manager.get_vpn_server_details(server_id)
-            name = (
-                server_details.get("name", server_id) if server_details else server_id
-            )
+            name = server_details.get("name", server_id) if server_details else server_id
             return {
                 "success": False,
                 "error": f"Failed to update state for VPN server '{name}'.",
             }
     except Exception as e:
-        logger.error(
-            f"Error updating state for VPN server {server_id}: {e}", exc_info=True
-        )
+        logger.error(f"Error updating state for VPN server {server_id}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}

@@ -18,6 +18,7 @@ services:
       - UNIFI_MCP_DIAG_MAX_PAYLOAD=${UNIFI_MCP_DIAG_MAX_PAYLOAD:-2000}
       - UNIFI_MCP_LOG_LEVEL=${UNIFI_MCP_LOG_LEVEL:-INFO}
       - UNIFI_CONTROLLER_TYPE=${UNIFI_CONTROLLER_TYPE:-auto}
+      - UNIFI_AUTO_CONFIRM=${UNIFI_AUTO_CONFIRM:-false}
     volumes:
       - ./src/config:/app/src/config
     restart: unless-stopped

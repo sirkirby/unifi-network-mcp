@@ -8,14 +8,13 @@ import logging
 from typing import Any, Dict
 
 from mcp.server import Server
+
 from src.managers.system_manager import SystemManager
 
 logger = logging.getLogger(__name__)
 
 
-def register_config_tools(
-    server: Server, system_manager: SystemManager, permissions: Dict[str, bool]
-) -> None:
+def register_config_tools(server: Server, system_manager: SystemManager, permissions: Dict[str, bool]) -> None:
     """Register configuration tools with the MCP server.
 
     Args:
@@ -32,12 +31,8 @@ def register_config_tools(
     async def get_site_settings(ctx) -> Dict[str, Any]:
         """Get current site settings."""
         try:
-            settings = [
-                {"setting": "placeholder", "value": "site_settings_not_implemented"}
-            ]
-            logger.warning(
-                "get_site_settings tool called, but depends on unimplemented manager method."
-            )
+            settings = [{"setting": "placeholder", "value": "site_settings_not_implemented"}]
+            logger.warning("get_site_settings tool called, but depends on unimplemented manager method.")
             return {"success": True, "settings": settings}
         except AttributeError:
             logger.error("Controller/Manager object lacks 'get_site_settings' method.")

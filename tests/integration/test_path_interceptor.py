@@ -4,12 +4,13 @@ Tests the integration between ConnectionManager and aiounifi library to verify
 that path overrides work correctly when making actual API requests.
 """
 
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from aioresponses import aioresponses
-
-from aiounifi.models.api import ApiRequest
 from aiounifi.controller import Controller
+from aiounifi.models.api import ApiRequest
+
 from src.managers.connection_manager import ConnectionManager
 
 
@@ -61,9 +62,7 @@ class TestPathInterception:
 
         async def mock_request_method(api_request):
             """Mock request that captures is_unifi_os state."""
-            is_unifi_os_during_request.append(
-                manager.controller.connectivity.is_unifi_os
-            )
+            is_unifi_os_during_request.append(manager.controller.connectivity.is_unifi_os)
             return {"meta": {"rc": "ok"}, "data": [{"test": "data"}]}
 
         manager.controller.request = mock_request_method
@@ -80,9 +79,7 @@ class TestPathInterception:
 
         # Verify is_unifi_os was set to True during request
         assert len(is_unifi_os_during_request) == 1, "Should have captured state once"
-        assert is_unifi_os_during_request[0] is True, (
-            "is_unifi_os should be True during request (override applied)"
-        )
+        assert is_unifi_os_during_request[0] is True, "is_unifi_os should be True during request (override applied)"
 
         # Verify is_unifi_os was restored to False after request
         assert manager.controller.connectivity.is_unifi_os is False, (
@@ -134,9 +131,7 @@ class TestPathInterception:
 
         async def mock_request_method(api_request):
             """Mock request that captures is_unifi_os state."""
-            is_unifi_os_during_request.append(
-                manager.controller.connectivity.is_unifi_os
-            )
+            is_unifi_os_during_request.append(manager.controller.connectivity.is_unifi_os)
             return {"meta": {"rc": "ok"}, "data": [{"test": "data"}]}
 
         manager.controller.request = mock_request_method
@@ -153,9 +148,7 @@ class TestPathInterception:
 
         # Verify is_unifi_os was set to False during request
         assert len(is_unifi_os_during_request) == 1, "Should have captured state once"
-        assert is_unifi_os_during_request[0] is False, (
-            "is_unifi_os should be False during request (override applied)"
-        )
+        assert is_unifi_os_during_request[0] is False, "is_unifi_os should be False during request (override applied)"
 
         # Verify is_unifi_os was restored to True after request
         assert manager.controller.connectivity.is_unifi_os is True, (
@@ -221,9 +214,7 @@ class TestPathInterception:
                     )
 
                     # Verify detection was NOT called
-                    assert len(detection_called) == 0, (
-                        "Detection should NOT be called when manual override is set"
-                    )
+                    assert len(detection_called) == 0, "Detection should NOT be called when manual override is set"
 
                     await manager.cleanup()
 
@@ -286,9 +277,7 @@ class TestPathInterception:
                     )
 
                     # Verify detection was NOT called
-                    assert len(detection_called) == 0, (
-                        "Detection should NOT be called when manual override is set"
-                    )
+                    assert len(detection_called) == 0, "Detection should NOT be called when manual override is set"
 
                     await manager.cleanup()
 
@@ -342,9 +331,7 @@ class TestPathInterception:
 
         async def mock_request_method(api_request):
             """Mock request that captures is_unifi_os state."""
-            state_changes.append(
-                ("during", manager.controller.connectivity.is_unifi_os)
-            )
+            state_changes.append(("during", manager.controller.connectivity.is_unifi_os))
             return {"meta": {"rc": "ok"}, "data": [{"test": "data"}]}
 
         manager.controller.request = mock_request_method
@@ -360,20 +347,12 @@ class TestPathInterception:
         state_changes.append(("after", manager.controller.connectivity.is_unifi_os))
 
         # Verify state transitions
-        assert len(state_changes) == 3, (
-            f"Should have 3 state captures. Got: {state_changes}"
-        )
+        assert len(state_changes) == 3, f"Should have 3 state captures. Got: {state_changes}"
 
         before_state = [s for s in state_changes if s[0] == "before"][0][1]
         during_state = [s for s in state_changes if s[0] == "during"][0][1]
         after_state = [s for s in state_changes if s[0] == "after"][0][1]
 
-        assert before_state is False, (
-            f"Before request: is_unifi_os should be False. Got: {before_state}"
-        )
-        assert during_state is True, (
-            f"During request: is_unifi_os should be True (overridden). Got: {during_state}"
-        )
-        assert after_state is False, (
-            f"After request: is_unifi_os should be restored to False. Got: {after_state}"
-        )
+        assert before_state is False, f"Before request: is_unifi_os should be False. Got: {before_state}"
+        assert during_state is True, f"During request: is_unifi_os should be True (overridden). Got: {during_state}"
+        assert after_state is False, f"After request: is_unifi_os should be restored to False. Got: {after_state}"

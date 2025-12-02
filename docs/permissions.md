@@ -340,6 +340,83 @@ Planned for future releases:
 3. **Dynamic permissions** - Runtime permission changes without restart
 4. **Audit logging** - Track all permission-gated operations
 
+## Confirmation System
+
+All mutating tools (create, update, toggle, delete operations) implement a **preview-then-confirm** pattern for safety:
+
+### How It Works
+
+1. **Without confirmation** (`confirm=false`, the default): Tool returns a preview of what will change
+2. **With confirmation** (`confirm=true`): Tool executes the operation
+
+**Example preview response:**
+```json
+{
+  "success": false,
+  "requires_confirmation": true,
+  "action": "toggle",
+  "resource_type": "port_forward",
+  "resource_id": "abc123",
+  "resource_name": "SSH Access",
+  "preview": {
+    "current": {"enabled": true},
+    "proposed": {"enabled": false}
+  },
+  "message": "Will disable port_forward 'SSH Access'. Set confirm=true to execute."
+}
+```
+
+This gives LLM agents context to make informed decisions before executing changes.
+
+### Three Levels of Confirmation Control
+
+| Level | Method | Use Case |
+|-------|--------|----------|
+| **Per-call** | Pass `confirm=true` in tool arguments | LLM explicitly confirms each operation |
+| **Per-session** | System prompt instructs agent to auto-confirm | Agent follows user's standing instructions |
+| **Per-environment** | `UNIFI_AUTO_CONFIRM=true` env var | Workflow automation (n8n, Make, Zapier) |
+
+### Auto-Confirm for Workflow Automation
+
+For workflow automation tools where the two-step confirmation adds unnecessary complexity:
+
+**Environment variable:**
+```bash
+export UNIFI_AUTO_CONFIRM=true
+```
+
+**Docker:**
+```bash
+docker run -e UNIFI_AUTO_CONFIRM=true ...
+```
+
+**Claude Desktop / n8n:**
+```json
+{
+  "env": {
+    "UNIFI_AUTO_CONFIRM": "true"
+  }
+}
+```
+
+When `UNIFI_AUTO_CONFIRM=true`:
+- All mutating operations execute immediately
+- Preview step is skipped
+- No changes to your workflow logic required
+
+**Accepted values:** `true`, `1`, `yes` (case-insensitive)
+
+### Dev Console Behavior
+
+The developer console (`devtools/dev_console.py`) automatically sets `confirm=true` for testing convenience, displaying a warning:
+
+```
+⚠️  DEV CONSOLE: Auto-setting confirm=true for testing
+   (In production, LLMs must explicitly confirm operations)
+```
+
+This makes testing faster while reminding developers about production behavior.
+
 ## Related Documentation
 
 - [Configuration Guide](configuration.md)

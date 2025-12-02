@@ -19,16 +19,21 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from src.bootstrap import logger, load_config
-from src.managers.connection_manager import ConnectionManager
+from src.bootstrap import load_config, logger
 from src.managers.client_manager import ClientManager
+from src.managers.connection_manager import ConnectionManager
 from src.managers.device_manager import DeviceManager
-from src.managers.stats_manager import StatsManager
-from src.managers.qos_manager import QosManager
-from src.managers.vpn_manager import VpnManager
-from src.managers.network_manager import NetworkManager
-from src.managers.system_manager import SystemManager
+from src.managers.event_manager import EventManager
 from src.managers.firewall_manager import FirewallManager
+from src.managers.hotspot_manager import HotspotManager
+from src.managers.network_manager import NetworkManager
+from src.managers.qos_manager import QosManager
+from src.managers.routing_manager import RoutingManager
+from src.managers.stats_manager import StatsManager
+from src.managers.system_manager import SystemManager
+from src.managers.traffic_route_manager import TrafficRouteManager
+from src.managers.usergroup_manager import UsergroupManager
+from src.managers.vpn_manager import VpnManager
 from src.tool_index import TOOL_REGISTRY
 
 # ---------------------------------------------------------------------------
@@ -112,6 +117,31 @@ def get_firewall_manager() -> FirewallManager:
 
 
 @lru_cache
+def get_event_manager() -> EventManager:
+    return EventManager(get_connection_manager())
+
+
+@lru_cache
+def get_hotspot_manager() -> HotspotManager:
+    return HotspotManager(get_connection_manager())
+
+
+@lru_cache
+def get_usergroup_manager() -> UsergroupManager:
+    return UsergroupManager(get_connection_manager())
+
+
+@lru_cache
+def get_routing_manager() -> RoutingManager:
+    return RoutingManager(get_connection_manager())
+
+
+@lru_cache
+def get_traffic_route_manager() -> TrafficRouteManager:
+    return TrafficRouteManager(get_connection_manager())
+
+
+@lru_cache
 def get_tool_registry() -> dict[str, Any]:
     """Return the global tool registry for runtime access."""
     return TOOL_REGISTRY
@@ -135,6 +165,11 @@ vpn_manager = get_vpn_manager()
 network_manager = get_network_manager()
 system_manager = get_system_manager()
 firewall_manager = get_firewall_manager()
+event_manager = get_event_manager()
+hotspot_manager = get_hotspot_manager()
+usergroup_manager = get_usergroup_manager()
+routing_manager = get_routing_manager()
+traffic_route_manager = get_traffic_route_manager()
 tool_registry = get_tool_registry()
 
 logger.debug("runtime.py: shared singletons initialised")

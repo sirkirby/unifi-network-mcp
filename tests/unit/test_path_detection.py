@@ -5,15 +5,16 @@ through empirical endpoint probing.
 """
 
 import asyncio
-from unittest.mock import patch, AsyncMock, MagicMock
-import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import aiohttp
+import pytest
 from aioresponses import aioresponses
 
 from src.managers.connection_manager import (
+    ConnectionManager,
     detect_unifi_os_proactively,
     detect_with_retry,
-    ConnectionManager,
 )
 
 
@@ -44,9 +45,7 @@ class TestPathDetection:
             )
 
             async with aiohttp.ClientSession() as session:
-                result = await detect_unifi_os_proactively(
-                    session=session, base_url=base_url, timeout=5
-                )
+                result = await detect_unifi_os_proactively(session=session, base_url=base_url, timeout=5)
 
             assert result is True, "Should detect UniFi OS when proxy endpoint succeeds"
 
@@ -76,13 +75,9 @@ class TestPathDetection:
             )
 
             async with aiohttp.ClientSession() as session:
-                result = await detect_unifi_os_proactively(
-                    session=session, base_url=base_url, timeout=5
-                )
+                result = await detect_unifi_os_proactively(session=session, base_url=base_url, timeout=5)
 
-            assert result is False, (
-                "Should detect standard controller when only direct path works"
-            )
+            assert result is False, "Should detect standard controller when only direct path works"
 
     @pytest.mark.asyncio
     async def test_detection_failure_returns_none(self):
@@ -103,9 +98,7 @@ class TestPathDetection:
             mock.get(f"{base_url}/api/self/sites", status=404)
 
             async with aiohttp.ClientSession() as session:
-                result = await detect_unifi_os_proactively(
-                    session=session, base_url=base_url, timeout=5
-                )
+                result = await detect_unifi_os_proactively(session=session, base_url=base_url, timeout=5)
 
             assert result is None, "Should return None when both endpoints fail"
 
@@ -137,13 +130,9 @@ class TestPathDetection:
             )
 
             async with aiohttp.ClientSession() as session:
-                result = await detect_unifi_os_proactively(
-                    session=session, base_url=base_url, timeout=5
-                )
+                result = await detect_unifi_os_proactively(session=session, base_url=base_url, timeout=5)
 
-            assert result is False, (
-                "Should prefer direct path when both succeed (FR-012)"
-            )
+            assert result is False, "Should prefer direct path when both succeed (FR-012)"
 
     @pytest.mark.asyncio
     async def test_detection_timeout_handling(self):
@@ -173,9 +162,7 @@ class TestPathDetection:
             )
 
             async with aiohttp.ClientSession() as session:
-                result = await detect_unifi_os_proactively(
-                    session=session, base_url=base_url, timeout=5
-                )
+                result = await detect_unifi_os_proactively(session=session, base_url=base_url, timeout=5)
 
             assert result is None, "Should return None when requests timeout"
 
@@ -213,24 +200,16 @@ class TestPathDetection:
                 side_effect=mock_detect,
             ):
                 with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
-                    result = await detect_with_retry(
-                        session, base_url, max_retries=3, timeout=5
-                    )
+                    result = await detect_with_retry(session, base_url, max_retries=3, timeout=5)
 
                     # Verify result
-                    assert result is False, (
-                        "Should detect standard controller on 3rd attempt"
-                    )
+                    assert result is False, "Should detect standard controller on 3rd attempt"
                     assert call_count == 3, "Should call detection function 3 times"
 
                     # Verify exponential backoff delays
-                    assert mock_sleep.call_count == 2, (
-                        "Should sleep twice (after 1st and 2nd failures)"
-                    )
+                    assert mock_sleep.call_count == 2, "Should sleep twice (after 1st and 2nd failures)"
                     sleep_calls = [call.args[0] for call in mock_sleep.call_args_list]
-                    assert sleep_calls == [1, 2], (
-                        "Should use exponential backoff: 1s, 2s"
-                    )
+                    assert sleep_calls == [1, 2], "Should use exponential backoff: 1s, 2s"
 
     @pytest.mark.asyncio
     async def test_detection_timeout_retries_then_fails(self):
@@ -261,9 +240,7 @@ class TestPathDetection:
                 side_effect=mock_detect,
             ):
                 with patch("asyncio.sleep", new_callable=AsyncMock):
-                    result = await detect_with_retry(
-                        session, base_url, max_retries=3, timeout=5
-                    )
+                    result = await detect_with_retry(session, base_url, max_retries=3, timeout=5)
 
                     # Verify graceful failure
                     assert result is None, "Should return None after all retries fail"
@@ -305,9 +282,7 @@ class TestPathDetection:
         mock_controller.connectivity = MagicMock()
         mock_controller.connectivity.is_unifi_os = False
 
-        with patch(
-            "src.managers.connection_manager.detect_with_retry", side_effect=mock_detect
-        ):
+        with patch("src.managers.connection_manager.detect_with_retry", side_effect=mock_detect):
             with patch(
                 "src.managers.connection_manager.Controller",
                 return_value=mock_controller,
@@ -319,12 +294,8 @@ class TestPathDetection:
 
                     # Verify first initialization succeeded
                     assert result1 is True, "First initialization should succeed"
-                    assert first_call_count == 1, (
-                        "Detection should run on first initialization"
-                    )
-                    assert manager._unifi_os_override is True, (
-                        "Detection result should be cached"
-                    )
+                    assert first_call_count == 1, "Detection should run on first initialization"
+                    assert manager._unifi_os_override is True, "Detection result should be cached"
 
                     # Reset initialized flag to force re-initialization logic
                     manager._initialized = False
@@ -337,12 +308,8 @@ class TestPathDetection:
 
                     # Verify detection was cached (only called once)
                     assert result2 is True, "Second initialization should succeed"
-                    assert second_call_count == 1, (
-                        "Detection should NOT run on second initialization (cached)"
-                    )
-                    assert manager._unifi_os_override is True, (
-                        "Cached result should be preserved"
-                    )
+                    assert second_call_count == 1, "Detection should NOT run on second initialization (cached)"
+                    assert manager._unifi_os_override is True, "Cached result should be preserved"
 
         # Cleanup
         await manager.cleanup()

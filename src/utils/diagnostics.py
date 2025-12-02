@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import time
+from functools import wraps
 from typing import Any, Dict
 
 _logger = logging.getLogger("unifi-network-mcp.diagnostics")
@@ -84,10 +85,7 @@ def _redact_value(key: str, value: Any) -> Any:
 def _redact(obj: Any) -> Any:
     try:
         if isinstance(obj, dict):
-            return {
-                k: _redact(v) if k.lower() not in _REDACT_KEYS else "***REDACTED***"
-                for k, v in obj.items()
-            }
+            return {k: _redact(v) if k.lower() not in _REDACT_KEYS else "***REDACTED***" for k, v in obj.items()}
         if isinstance(obj, (list, tuple)):
             return [_redact(v) for v in obj]
         return obj
@@ -144,6 +142,7 @@ def log_tool_call(
 
 
 def wrap_tool(func, tool_name: str):
+    @wraps(func)
     async def _wrapper(*args, **kwargs):
         if not diagnostics_enabled():
             return await func(*args, **kwargs)
@@ -167,9 +166,7 @@ def wrap_tool(func, tool_name: str):
     return _wrapper
 
 
-def log_api_request(
-    method: str, path: str, payload: Any, response: Any, duration_ms: float, ok: bool
-) -> None:
+def log_api_request(method: str, path: str, payload: Any, response: Any, duration_ms: float, ok: bool) -> None:
     if not diagnostics_enabled():
         return
     cfg = _diag_cfg()
@@ -179,11 +176,7 @@ def log_api_request(
         "path": path,
         "ok": ok,
         "duration_ms": int(duration_ms),
-        "request": json.loads(_safe_json(payload, max_chars))
-        if payload is not None
-        else None,
-        "response": json.loads(_safe_json(response, max_chars))
-        if response is not None
-        else None,
+        "request": json.loads(_safe_json(payload, max_chars)) if payload is not None else None,
+        "response": json.loads(_safe_json(response, max_chars)) if response is not None else None,
     }
     _logger.info("API %s", _safe_json(entry, max_chars))

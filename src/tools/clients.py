@@ -5,10 +5,11 @@ This module provides MCP tools to manage network clients/devices on a Unifi Netw
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 # Import the global FastMCP server instance, config, and managers
-from src.runtime import server, config, client_manager
+from src.runtime import client_manager, config, server
+from src.utils.confirmation import should_auto_confirm, toggle_preview, update_preview
 from src.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
@@ -18,16 +19,10 @@ logger = logging.getLogger(__name__)
     name="unifi_list_clients",
     description="List clients/devices connected to the Unifi Network",
 )
-async def list_clients(
-    filter_type: str = "all", include_offline: bool = False, limit: int = 100
-) -> Dict[str, Any]:
+async def list_clients(filter_type: str = "all", include_offline: bool = False, limit: int = 100) -> Dict[str, Any]:
     """Implementation for listing clients."""
     try:
-        clients = (
-            await client_manager.get_all_clients()
-            if include_offline
-            else await client_manager.get_clients()
-        )
+        clients = await client_manager.get_all_clients() if include_offline else await client_manager.get_clients()
 
         def _client_to_dict(c):
             raw = c.raw if hasattr(c, "raw") else c  # c might already be a dict
@@ -49,16 +44,10 @@ async def list_clients(
                 "name": client.get("name") or client.get("hostname", "Unknown"),
                 "hostname": client.get("hostname", "Unknown"),
                 "ip": client.get("ip", "Unknown"),
-                "connection_type": "Wired"
-                if client.get("is_wired", False)
-                else "Wireless",
+                "connection_type": "Wired" if client.get("is_wired", False) else "Wireless",
                 "status": "Online"
                 if not include_offline
-                else (
-                    "Online"
-                    if client.get("is_wired", False) or (client.get("last_seen", 0) > 0)
-                    else "Offline"
-                ),
+                else ("Online" if client.get("is_wired", False) or (client.get("last_seen", 0) > 0) else "Offline"),
                 "last_seen": client.get("last_seen", 0),
                 "_id": client.get("_id"),
             }
@@ -106,9 +95,7 @@ async def get_client_details(mac_address: str) -> Dict[str, Any]:
             "error": f"Client not found with MAC address: {mac_address}",
         }
     except Exception as e:
-        logger.error(
-            f"Error getting client details for {mac_address}: {e}", exc_info=True
-        )
+        logger.error(f"Error getting client details for {mac_address}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 
@@ -131,9 +118,7 @@ async def list_blocked_clients() -> Dict[str, Any]:
                     "name": client.get("name") or client.get("hostname", "Unknown"),
                     "hostname": client.get("hostname", "Unknown"),
                     "ip": client.get("ip", "Unknown"),
-                    "connection_type": "Wired"
-                    if client.get("is_wired", False)
-                    else "Wireless",
+                    "connection_type": "Wired" if client.get("is_wired", False) else "Wireless",
                     "blocked_since": client.get("blocked_since", 0),
                     "_id": client.get("_id"),
                 }
@@ -162,10 +147,33 @@ async def block_client(mac_address: str, confirm: bool = False) -> Dict[str, Any
         logger.warning(f"Permission denied for blocking client ({mac_address}).")
         return {"success": False, "error": "Permission denied to block clients."}
 
-    if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
-
     try:
+        # Fetch client details first
+        client_obj = await client_manager.get_client_details(mac_address)
+        if not client_obj:
+            return {
+                "success": False,
+                "error": f"Client not found with MAC address: {mac_address}",
+            }
+
+        client = client_obj.raw if hasattr(client_obj, "raw") else client_obj
+        client_name = client.get("name") or client.get("hostname", "Unknown")
+        is_blocked = client.get("blocked", False)
+
+        # Return preview when confirm=false
+        if not confirm and not should_auto_confirm():
+            return toggle_preview(
+                resource_type="client",
+                resource_id=mac_address,
+                resource_name=client_name,
+                current_enabled=not is_blocked,  # enabled = not blocked
+                additional_info={
+                    "ip": client.get("ip"),
+                    "hostname": client.get("hostname"),
+                    "action": "block",
+                },
+            )
+
         success = await client_manager.block_client(mac_address)
         if success:
             return {
@@ -190,10 +198,33 @@ async def unblock_client(mac_address: str, confirm: bool = False) -> Dict[str, A
         logger.warning(f"Permission denied for unblocking client ({mac_address}).")
         return {"success": False, "error": "Permission denied to unblock clients."}
 
-    if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
-
     try:
+        # Fetch client details first
+        client_obj = await client_manager.get_client_details(mac_address)
+        if not client_obj:
+            return {
+                "success": False,
+                "error": f"Client not found with MAC address: {mac_address}",
+            }
+
+        client = client_obj.raw if hasattr(client_obj, "raw") else client_obj
+        client_name = client.get("name") or client.get("hostname", "Unknown")
+        is_blocked = client.get("blocked", False)
+
+        # Return preview when confirm=false
+        if not confirm and not should_auto_confirm():
+            return toggle_preview(
+                resource_type="client",
+                resource_id=mac_address,
+                resource_name=client_name,
+                current_enabled=not is_blocked,  # enabled = not blocked
+                additional_info={
+                    "ip": client.get("ip"),
+                    "hostname": client.get("hostname"),
+                    "action": "unblock",
+                },
+            )
+
         success = await client_manager.unblock_client(mac_address)
         if success:
             return {
@@ -210,18 +241,34 @@ async def unblock_client(mac_address: str, confirm: bool = False) -> Dict[str, A
     name="unifi_rename_client",
     description="Rename a client/device in the Unifi Network controller by MAC address",
 )
-async def rename_client(
-    mac_address: str, name: str, confirm: bool = False
-) -> Dict[str, Any]:
+async def rename_client(mac_address: str, name: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for renaming a client."""
     if not parse_permission(config.permissions, "client", "update"):
         logger.warning(f"Permission denied for renaming client ({mac_address}).")
         return {"success": False, "error": "Permission denied to rename clients."}
 
-    if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
-
     try:
+        # Fetch client details first
+        client_obj = await client_manager.get_client_details(mac_address)
+        if not client_obj:
+            return {
+                "success": False,
+                "error": f"Client not found with MAC address: {mac_address}",
+            }
+
+        client = client_obj.raw if hasattr(client_obj, "raw") else client_obj
+        current_name = client.get("name") or client.get("hostname", "Unknown")
+
+        # Return preview when confirm=false
+        if not confirm and not should_auto_confirm():
+            return update_preview(
+                resource_type="client",
+                resource_id=mac_address,
+                resource_name=current_name,
+                current_state={"name": current_name},
+                updates={"name": name},
+            )
+
         success = await client_manager.rename_client(mac_address, name)
         if success:
             return {
@@ -240,23 +287,47 @@ async def rename_client(
     permission_category="clients",
     permission_action="update",
 )
-async def force_reconnect_client(
-    mac_address: str, confirm: bool = False
-) -> Dict[str, Any]:
+async def force_reconnect_client(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for forcing a client to reconnect."""
     if not parse_permission(config.permissions, "client", "reconnect"):
-        logger.warning(
-            f"Permission denied for forcing reconnect of client ({mac_address})."
-        )
+        logger.warning(f"Permission denied for forcing reconnect of client ({mac_address}).")
         return {
             "success": False,
             "error": "Permission denied to force client reconnection.",
         }
 
-    if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
-
     try:
+        # Fetch client details first
+        client_obj = await client_manager.get_client_details(mac_address)
+        if not client_obj:
+            return {
+                "success": False,
+                "error": f"Client not found with MAC address: {mac_address}",
+            }
+
+        client = client_obj.raw if hasattr(client_obj, "raw") else client_obj
+        client_name = client.get("name") or client.get("hostname", "Unknown")
+
+        # Return preview when confirm=false
+        if not confirm and not should_auto_confirm():
+            return {
+                "success": False,
+                "requires_confirmation": True,
+                "action": "force_reconnect",
+                "resource_type": "client",
+                "resource_id": mac_address,
+                "resource_name": client_name,
+                "preview": {
+                    "current": {
+                        "ip": client.get("ip"),
+                        "hostname": client.get("hostname"),
+                        "connection_type": "Wired" if client.get("is_wired") else "Wireless",
+                    },
+                    "action": "Client will be disconnected and forced to reconnect",
+                },
+                "message": f"Will force reconnect for client '{client_name}'. Set confirm=true to execute.",
+            }
+
         success = await client_manager.force_reconnect_client(mac_address)
         if success:
             return {
@@ -268,9 +339,7 @@ async def force_reconnect_client(
             "error": f"Failed to force reconnect for client {mac_address}.",
         }
     except Exception as e:
-        logger.error(
-            f"Error forcing reconnect for client {mac_address}: {e}", exc_info=True
-        )
+        logger.error(f"Error forcing reconnect for client {mac_address}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 
@@ -293,13 +362,46 @@ async def authorize_guest(
         logger.warning(f"Permission denied for authorizing guest ({mac_address}).")
         return {"success": False, "error": "Permission denied to authorize guests."}
 
-    if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
-
     try:
-        success = await client_manager.authorize_guest(
-            mac_address, minutes, up_kbps, down_kbps, bytes_quota
-        )
+        # Fetch client details first
+        client_obj = await client_manager.get_client_details(mac_address)
+        if not client_obj:
+            return {
+                "success": False,
+                "error": f"Client not found with MAC address: {mac_address}",
+            }
+
+        client = client_obj.raw if hasattr(client_obj, "raw") else client_obj
+        client_name = client.get("name") or client.get("hostname", "Unknown")
+
+        # Return preview when confirm=false
+        if not confirm and not should_auto_confirm():
+            settings = {"minutes": minutes}
+            if up_kbps is not None:
+                settings["up_kbps"] = up_kbps
+            if down_kbps is not None:
+                settings["down_kbps"] = down_kbps
+            if bytes_quota is not None:
+                settings["bytes_quota"] = bytes_quota
+
+            return {
+                "success": False,
+                "requires_confirmation": True,
+                "action": "authorize_guest",
+                "resource_type": "client",
+                "resource_id": mac_address,
+                "resource_name": client_name,
+                "preview": {
+                    "current": {
+                        "ip": client.get("ip"),
+                        "hostname": client.get("hostname"),
+                    },
+                    "proposed": settings,
+                },
+                "message": f"Will authorize guest '{client_name}' for {minutes} minutes. Set confirm=true to execute.",
+            }
+
+        success = await client_manager.authorize_guest(mac_address, minutes, up_kbps, down_kbps, bytes_quota)
         if success:
             return {
                 "success": True,
@@ -323,10 +425,37 @@ async def unauthorize_guest(mac_address: str, confirm: bool = False) -> Dict[str
         logger.warning(f"Permission denied for unauthorizing guest ({mac_address}).")
         return {"success": False, "error": "Permission denied to unauthorize guests."}
 
-    if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
-
     try:
+        # Fetch client details first
+        client_obj = await client_manager.get_client_details(mac_address)
+        if not client_obj:
+            return {
+                "success": False,
+                "error": f"Client not found with MAC address: {mac_address}",
+            }
+
+        client = client_obj.raw if hasattr(client_obj, "raw") else client_obj
+        client_name = client.get("name") or client.get("hostname", "Unknown")
+
+        # Return preview when confirm=false
+        if not confirm and not should_auto_confirm():
+            return {
+                "success": False,
+                "requires_confirmation": True,
+                "action": "unauthorize_guest",
+                "resource_type": "client",
+                "resource_id": mac_address,
+                "resource_name": client_name,
+                "preview": {
+                    "current": {
+                        "ip": client.get("ip"),
+                        "hostname": client.get("hostname"),
+                    },
+                    "action": "Guest authorization will be revoked",
+                },
+                "message": f"Will revoke guest authorization for '{client_name}'. Set confirm=true to execute.",
+            }
+
         success = await client_manager.unauthorize_guest(mac_address)
         if success:
             return {
@@ -339,4 +468,111 @@ async def unauthorize_guest(mac_address: str, confirm: bool = False) -> Dict[str
         }
     except Exception as e:
         logger.error(f"Error unauthorizing guest {mac_address}: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+
+@server.tool(
+    name="unifi_set_client_ip_settings",
+    description="""Set fixed IP address and/or local DNS record for a client device.
+
+Allows configuring:
+- Fixed IP: Assign a static IP address to a client (DHCP reservation)
+- Local DNS: Create a local DNS hostname for the client (UniFi Network 7.2+)
+
+Either setting can be enabled/disabled independently.""",
+    permission_category="clients",
+    permission_action="update",
+)
+async def set_client_ip_settings(
+    mac_address: str,
+    use_fixedip: Optional[bool] = None,
+    fixed_ip: Optional[str] = None,
+    local_dns_record_enabled: Optional[bool] = None,
+    local_dns_record: Optional[str] = None,
+    confirm: bool = False,
+) -> Dict[str, Any]:
+    """Set fixed IP and/or local DNS record for a client."""
+    if not parse_permission(config.permissions, "client", "update"):
+        logger.warning(f"Permission denied for setting IP settings ({mac_address}).")
+        return {
+            "success": False,
+            "error": "Permission denied to update client settings.",
+        }
+
+    # Validate that at least one setting is provided
+    if all(v is None for v in [use_fixedip, fixed_ip, local_dns_record_enabled, local_dns_record]):
+        return {
+            "success": False,
+            "error": "At least one setting must be provided (use_fixedip, fixed_ip, local_dns_record_enabled, or local_dns_record).",
+        }
+
+    try:
+        # Fetch client details first
+        client_obj = await client_manager.get_client_details(mac_address)
+        if not client_obj:
+            return {
+                "success": False,
+                "error": f"Client not found with MAC address: {mac_address}",
+            }
+
+        client = client_obj.raw if hasattr(client_obj, "raw") else client_obj
+        client_name = client.get("name") or client.get("hostname", "Unknown")
+
+        # Return preview when confirm=false
+        if not confirm and not should_auto_confirm():
+            # Build current state from the client object
+            current_state = {
+                "use_fixedip": client.get("use_fixedip", False),
+                "fixed_ip": client.get("fixed_ip"),
+                "local_dns_record_enabled": client.get("local_dns_record_enabled", False),
+                "local_dns_record": client.get("local_dns_record"),
+            }
+
+            # Build updates dict with only provided values
+            updates = {}
+            if use_fixedip is not None:
+                updates["use_fixedip"] = use_fixedip
+            if fixed_ip is not None:
+                updates["fixed_ip"] = fixed_ip
+            if local_dns_record_enabled is not None:
+                updates["local_dns_record_enabled"] = local_dns_record_enabled
+            if local_dns_record is not None:
+                updates["local_dns_record"] = local_dns_record
+
+            return update_preview(
+                resource_type="client",
+                resource_id=mac_address,
+                resource_name=client_name,
+                current_state=current_state,
+                updates=updates,
+            )
+
+        success = await client_manager.set_client_ip_settings(
+            client_mac=mac_address,
+            use_fixedip=use_fixedip,
+            fixed_ip=fixed_ip,
+            local_dns_record_enabled=local_dns_record_enabled,
+            local_dns_record=local_dns_record,
+        )
+        if success:
+            return {
+                "success": True,
+                "message": f"IP settings updated for client {mac_address}.",
+                "settings": {
+                    k: v
+                    for k, v in {
+                        "use_fixedip": use_fixedip,
+                        "fixed_ip": fixed_ip,
+                        "local_dns_record_enabled": local_dns_record_enabled,
+                        "local_dns_record": local_dns_record,
+                    }.items()
+                    if v is not None
+                },
+            }
+        return {
+            "success": False,
+            "error": f"Failed to update IP settings for client {mac_address}.",
+        }
+    except Exception as e:
+        logger.error(f"Error setting IP settings for {mac_address}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}

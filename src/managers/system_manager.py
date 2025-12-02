@@ -1,10 +1,11 @@
-import logging
-import aiohttp
 import asyncio
-from typing import Dict, List, Optional, Any
+import logging
+from typing import Any, Dict, List, Optional
 
+import aiohttp
 from aiounifi.models.api import ApiRequest
 from aiounifi.models.site import Site  # Import Site model
+
 from .connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -63,9 +64,7 @@ class SystemManager:
             Backup data as bytes if successful, None otherwise
         """
         try:
-            api_request = ApiRequest(
-                method="post", path="/cmd/backup", json={"cmd": "backup"}
-            )
+            api_request = ApiRequest(method="post", path="/cmd/backup", data={"cmd": "backup"})
             response = await self._connection.request(api_request, return_raw=True)
             logger.info("Backup creation requested successfully.")
             return response if isinstance(response, bytes) else None
@@ -82,10 +81,7 @@ class SystemManager:
         Returns:
             bool: True if successful, False otherwise
         """
-        if (
-            not await self._connection.ensure_connected()
-            or not self._connection.controller
-        ):
+        if not await self._connection.ensure_connected() or not self._connection.controller:
             logger.error("Cannot restore backup: Controller not connected.")
             return False
 
@@ -98,14 +94,10 @@ class SystemManager:
                 content_type="application/octet-stream",
             )
 
-            restore_url = (
-                f"{self._connection.url_base}/api/s/{self._connection.site}/cmd/restore"
-            )
+            restore_url = f"{self._connection.url_base}/api/s/{self._connection.site}/cmd/restore"
             logger.info(f"Attempting to restore backup via POST to {restore_url}")
 
-            async with self._connection.controller.session.post(
-                restore_url, data=form
-            ) as response:
+            async with self._connection.controller.session.post(restore_url, data=form) as response:
                 if response.status == 200:
                     logger.info("Backup restoration initiated successfully.")
                     self._connection._invalidate_cache()
@@ -113,9 +105,7 @@ class SystemManager:
                     return True
                 else:
                     response_text = await response.text()
-                    logger.error(
-                        f"Error restoring backup: HTTP {response.status}, Response: {response_text}"
-                    )
+                    logger.error(f"Error restoring backup: HTTP {response.status}, Response: {response_text}")
                     return False
         except Exception as e:
             logger.error(f"Exception during backup restore: {e}")
@@ -136,19 +126,12 @@ class SystemManager:
 
     async def upgrade_controller(self) -> bool:
         """Upgrade the controller to the latest version (requires confirmation)."""
-        logger.warning(
-            "Initiating controller upgrade. This is a potentially disruptive operation."
-        )
+        logger.warning("Initiating controller upgrade. This is a potentially disruptive operation.")
         try:
-            api_request = ApiRequest(
-                method="post", path="/cmd/system", json={"cmd": "upgrade"}
-            )
+            api_request = ApiRequest(method="post", path="/cmd/system", data={"cmd": "upgrade"})
             response = await self._connection.request(api_request)
 
-            success = (
-                isinstance(response, dict)
-                and response.get("meta", {}).get("rc") == "ok"
-            )
+            success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
                 logger.info("Controller upgrade initiated successfully.")
                 self._connection._initialized = False
@@ -162,19 +145,12 @@ class SystemManager:
 
     async def reboot_controller(self) -> bool:
         """Reboot the controller (requires confirmation)."""
-        logger.warning(
-            "Initiating controller reboot. This is a potentially disruptive operation."
-        )
+        logger.warning("Initiating controller reboot. This is a potentially disruptive operation.")
         try:
-            api_request = ApiRequest(
-                method="post", path="/cmd/system", json={"cmd": "reboot"}
-            )
+            api_request = ApiRequest(method="post", path="/cmd/system", data={"cmd": "reboot"})
             response = await self._connection.request(api_request)
 
-            success = (
-                isinstance(response, dict)
-                and response.get("meta", {}).get("rc") == "ok"
-            )
+            success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
                 logger.info("Controller reboot initiated successfully.")
                 self._connection._initialized = False
@@ -186,9 +162,7 @@ class SystemManager:
             logger.error(f"Error rebooting controller: {e}")
             return False
 
-    async def get_settings(
-        self, section: str
-    ) -> List[Dict[str, Any]]:  # API returns list
+    async def get_settings(self, section: str) -> List[Dict[str, Any]]:  # API returns list
         """Get system settings for a specific section.
 
         Args:
@@ -212,9 +186,7 @@ class SystemManager:
             logger.error(f"Error getting {section} settings: {e}")
             return []
 
-    async def update_settings(
-        self, section: str, settings_data: Dict[str, Any]
-    ) -> bool:
+    async def update_settings(self, section: str, settings_data: Dict[str, Any]) -> bool:
         """Update system settings for a specific section.
 
         Args:
@@ -226,9 +198,7 @@ class SystemManager:
         """
         try:
             current_settings_list = await self.get_settings(section)
-            if not current_settings_list or not isinstance(
-                current_settings_list[0], dict
-            ):
+            if not current_settings_list or not isinstance(current_settings_list[0], dict):
                 logger.warning(
                     f"Could not get current settings for section '{section}' to update, proceeding without _id check."
                 )
@@ -248,17 +218,12 @@ class SystemManager:
 
             endpoint = f"/set/setting/{section}"
 
-            api_request = ApiRequest(method="put", path=endpoint, json=settings_data)
+            api_request = ApiRequest(method="put", path=endpoint, data=settings_data)
             response = await self._connection.request(api_request)
 
-            self._connection._invalidate_cache(
-                f"{CACHE_PREFIX_SETTINGS}_{section}_{self._connection.site}"
-            )
+            self._connection._invalidate_cache(f"{CACHE_PREFIX_SETTINGS}_{section}_{self._connection.site}")
 
-            success = (
-                isinstance(response, dict)
-                and response.get("meta", {}).get("rc") == "ok"
-            )
+            success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if not success and isinstance(response, list) and len(response) > 0:
                 success = True
 
@@ -339,9 +304,7 @@ class SystemManager:
             logger.error(f"Error getting sites: {e}")
             return []
 
-    async def get_site_details(
-        self, site_identifier: str
-    ) -> Optional[Site]:  # Changed return type
+    async def get_site_details(self, site_identifier: str) -> Optional[Site]:  # Changed return type
         """Get detailed information for a specific site by ID, name, or description.
 
         Args:
@@ -370,9 +333,7 @@ class SystemManager:
         """Get information about the currently configured site for the connection."""
         return await self.get_site_details(self._connection.site)
 
-    async def create_site(
-        self, name: str, description: Optional[str] = None
-    ) -> Optional[Site]:  # Changed return type
+    async def create_site(self, name: str, description: Optional[str] = None) -> Optional[Site]:  # Changed return type
         """Create a new site.
 
         Args:
@@ -388,9 +349,7 @@ class SystemManager:
 
             sites = await self.get_sites()
             if any(s.name == formatted_name for s in sites):
-                logger.error(
-                    f"Site with internal name '{formatted_name}' already exists"
-                )
+                logger.error(f"Site with internal name '{formatted_name}' already exists")
                 return None
             if any(s.description == site_desc for s in sites):
                 logger.warning(
@@ -399,26 +358,17 @@ class SystemManager:
 
             payload = {"cmd": "add-site", "name": formatted_name, "desc": site_desc}
 
-            api_request = ApiRequest(method="post", path="/cmd/sitemgr", json=payload)
+            api_request = ApiRequest(method="post", path="/cmd/sitemgr", data=payload)
             response = await self._connection.request(api_request)
 
             self._connection._invalidate_cache(CACHE_PREFIX_SITES)
 
-            if (
-                isinstance(response, dict)
-                and response.get("meta", {}).get("rc") == "ok"
-            ):
-                logger.info(
-                    f"Site '{site_desc}' (internal: '{formatted_name}') created successfully."
-                )
+            if isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok":
+                logger.info(f"Site '{site_desc}' (internal: '{formatted_name}') created successfully.")
                 await asyncio.sleep(1.5)
-                new_site_details: Optional[Site] = await self.get_site_details(
-                    formatted_name
-                )
+                new_site_details: Optional[Site] = await self.get_site_details(formatted_name)
                 if not new_site_details:
-                    logger.warning(
-                        "Could not fetch details of newly created site immediately."
-                    )
+                    logger.warning("Could not fetch details of newly created site immediately.")
                 return new_site_details
             else:
                 logger.error(f"Error creating site: {response}")
@@ -454,15 +404,12 @@ class SystemManager:
                 "desc": description,
             }
 
-            api_request = ApiRequest(method="post", path="/cmd/sitemgr", json=payload)
+            api_request = ApiRequest(method="post", path="/cmd/sitemgr", data=payload)
             response = await self._connection.request(api_request)
 
             self._connection._invalidate_cache(CACHE_PREFIX_SITES)
 
-            success = (
-                isinstance(response, dict)
-                and response.get("meta", {}).get("rc") == "ok"
-            )
+            success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
                 logger.info(f"Site {site_id} description updated successfully.")
             else:
@@ -501,15 +448,12 @@ class SystemManager:
                 "site": site_internal_id,  # API requires _id
             }
 
-            api_request = ApiRequest(method="post", path="/cmd/sitemgr", json=payload)
+            api_request = ApiRequest(method="post", path="/cmd/sitemgr", data=payload)
             response = await self._connection.request(api_request)
 
             self._connection._invalidate_cache(CACHE_PREFIX_SITES)
 
-            success = (
-                isinstance(response, dict)
-                and response.get("meta", {}).get("rc") == "ok"
-            )
+            success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
                 logger.info(f"Site {site_id} deleted successfully.")
                 # If deleting the current site, switch back to default?
@@ -542,9 +486,7 @@ class SystemManager:
 
             site_name = site.name
             if not site_name:
-                logger.error(
-                    f"Site identified by '{site_identifier}' has no internal name, cannot switch."
-                )
+                logger.error(f"Site identified by '{site_identifier}' has no internal name, cannot switch.")
                 return False
 
             await self._connection.set_site(site_name)
@@ -570,9 +512,7 @@ class SystemManager:
             logger.error(f"Error getting admin users: {e}")
             return []
 
-    async def get_admin_user_details(
-        self, user_identifier: str
-    ) -> Optional[Dict[str, Any]]:
+    async def get_admin_user_details(self, user_identifier: str) -> Optional[Dict[str, Any]]:
         """Get detailed information for a specific admin user by ID or name.
 
         Args:
@@ -583,11 +523,7 @@ class SystemManager:
         """
         admin_users = await self.get_admin_users()
         user = next(
-            (
-                u
-                for u in admin_users
-                if u.get("_id") == user_identifier or u.get("name") == user_identifier
-            ),
+            (u for u in admin_users if u.get("_id") == user_identifier or u.get("name") == user_identifier),
             None,
         )
         if not user:
@@ -635,30 +571,21 @@ class SystemManager:
                     f"Creating non-super admin '{name}' without site_access. They may have no site access initially."
                 )
 
-            api_request = ApiRequest(method="post", path="/cmd/sitemgr", json=payload)
+            api_request = ApiRequest(method="post", path="/cmd/sitemgr", data=payload)
             response = await self._connection.request(api_request)
 
             self._connection._invalidate_cache(CACHE_PREFIX_ADMINS)
 
-            if (
-                isinstance(response, dict)
-                and response.get("meta", {}).get("rc") == "ok"
-            ):
+            if isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok":
                 logger.info(f"Admin user '{name}' created successfully.")
                 self._connection._invalidate_cache(CACHE_PREFIX_ADMINS)
                 created_user_data = None
-                if (
-                    "data" in response
-                    and isinstance(response["data"], list)
-                    and len(response["data"]) > 0
-                ):
+                if "data" in response and isinstance(response["data"], list) and len(response["data"]) > 0:
                     created_user_data = response["data"][0]
                 if created_user_data:
                     return created_user_data  # Return the dict
 
-                logger.warning(
-                    "Admin user creation reported success, but could not extract details."
-                )
+                logger.warning("Admin user creation reported success, but could not extract details.")
                 return {"success": True}  # Return simple success dict
             else:
                 logger.error(f"Error creating admin user '{name}': {response}")
@@ -702,13 +629,8 @@ class SystemManager:
             if name is not None:
                 if name != user.get("name"):
                     admins = await self.get_admin_users()
-                    if any(
-                        u.get("name") == name and u.get("_id") != admin_internal_id
-                        for u in admins
-                    ):
-                        logger.error(
-                            f"Cannot rename admin: Username '{name}' already exists."
-                        )
+                    if any(u.get("name") == name and u.get("_id") != admin_internal_id for u in admins):
+                        logger.error(f"Cannot rename admin: Username '{name}' already exists.")
                         return False
                 payload["name"] = name
             if password is not None:
@@ -718,9 +640,7 @@ class SystemManager:
             if is_super is not None:
                 payload["is_super"] = is_super
             if site_access is not None:
-                current_is_super = (
-                    user.get("is_super", False) if is_super is None else is_super
-                )
+                current_is_super = user.get("is_super", False) if is_super is None else is_super
                 if not current_is_super:
                     payload["site_access"] = site_access
                 else:
@@ -730,15 +650,12 @@ class SystemManager:
                 logger.warning(f"No fields provided to update for admin user {user_id}")
                 return False
 
-            api_request = ApiRequest(method="post", path="/cmd/sitemgr", json=payload)
+            api_request = ApiRequest(method="post", path="/cmd/sitemgr", data=payload)
             response = await self._connection.request(api_request)
 
             self._connection._invalidate_cache(CACHE_PREFIX_ADMINS)
 
-            success = (
-                isinstance(response, dict)
-                and response.get("meta", {}).get("rc") == "ok"
-            )
+            success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
                 logger.info(f"Admin user {user_id} updated successfully.")
                 self._connection._invalidate_cache(CACHE_PREFIX_ADMINS)
@@ -769,18 +686,13 @@ class SystemManager:
                 return False
 
             if user.get("name") == self._connection.username:
-                logger.error(
-                    "Cannot delete the currently configured admin user for this connection."
-                )
+                logger.error("Cannot delete the currently configured admin user for this connection.")
                 return False
 
             api_request = ApiRequest(method="delete", path=f"/api/stat/admin/{user_id}")
             response = await self._connection.request(api_request)
 
-            success = (
-                isinstance(response, dict)
-                and response.get("meta", {}).get("rc") == "ok"
-            )
+            success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
                 logger.info(f"Admin user {user_id} deleted successfully.")
                 self._connection._invalidate_cache(CACHE_PREFIX_ADMINS)
@@ -815,17 +727,12 @@ class SystemManager:
                 "for_super": is_super,
             }
             if site_access:
-                logger.warning(
-                    "Site access payload structure for invite is assumed, verify API requirements."
-                )
+                logger.warning("Site access payload structure for invite is assumed, verify API requirements.")
 
-            api_request = ApiRequest(method="post", path="/cmd/sitemgr", json=payload)
+            api_request = ApiRequest(method="post", path="/cmd/sitemgr", data=payload)
             response = await self._connection.request(api_request)
 
-            success = (
-                isinstance(response, dict)
-                and response.get("meta", {}).get("rc") == "ok"
-            )
+            success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
                 logger.info(f"Admin invitation sent successfully to {email}.")
                 return True

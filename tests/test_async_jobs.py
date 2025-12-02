@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
 
-from src.jobs import JobStore, start_async_tool, get_job_status, JOBS
+from src.jobs import JOBS, JobStore, get_job_status, start_async_tool
 
 
 class TestJobStore:

@@ -1,6 +1,7 @@
 import logging
-from typing import Dict, Optional, Tuple, Any
-from jsonschema import validate, ValidationError
+from typing import Any, Dict, Optional, Tuple
+
+from jsonschema import ValidationError, validate
 
 logger = logging.getLogger("unifi-network-mcp")
 
@@ -12,9 +13,7 @@ class ResourceValidator:
         self.schema = schema
         self.resource_name = resource_name
 
-    def validate(
-        self, params: Dict[str, Any]
-    ) -> Tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
+    def validate(self, params: Dict[str, Any]) -> Tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
         """Validate parameters against schema.
 
         Args:
@@ -45,9 +44,7 @@ class ResourceValidator:
             )
 
 
-def create_response(
-    success: bool, data: Any = None, error: str = None
-) -> Dict[str, Any]:
+def create_response(success: bool, data: Any = None, error: str = None) -> Dict[str, Any]:
     """Create a standardized response format for all creation operations.
 
     Args:

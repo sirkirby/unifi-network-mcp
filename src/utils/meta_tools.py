@@ -169,9 +169,7 @@ Returns: JSON with tools array, count, and optional categorization""",
         },
         output_schema={
             "type": "object",
-            "properties": {
-                "jobId": {"type": "string", "description": "Unique job identifier"}
-            },
+            "properties": {"jobId": {"type": "string", "description": "Unique job identifier"}},
         },
     )
 
@@ -210,6 +208,4 @@ Returns: JSON with tools array, count, and optional categorization""",
         },
     )
 
-    logger.info(
-        "Registered meta-tools: unifi_tool_index, unifi_async_start, unifi_async_status"
-    )
+    logger.info("Registered meta-tools: unifi_tool_index, unifi_async_start, unifi_async_status")

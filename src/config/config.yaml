@@ -72,3 +72,19 @@ permissions:
   vpn_servers:
     create: false
     update: true
+
+  events:
+    create: false  # Events are read-only
+    update: true   # Allow archiving alarms
+
+  vouchers:
+    create: true   # Allow creating guest vouchers
+    update: true   # Allow revoking vouchers
+
+  usergroups:
+    create: true   # Allow creating bandwidth profiles
+    update: true   # Allow modifying bandwidth limits
+
+  routes:
+    create: false  # Static routes can disrupt connectivity
+    update: false  # Modifying routes requires careful planning

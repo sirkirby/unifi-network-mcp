@@ -12,8 +12,8 @@ Examples:
 
 import logging
 import os
-from typing import Dict, Any
 from collections.abc import Mapping
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,10 @@ CATEGORY_MAP = {
     "guest": "guests",
     "traffic_route": "traffic_routes",
     "port_forward": "port_forwards",
+    "event": "events",
+    "voucher": "vouchers",
+    "usergroup": "usergroups",
+    "route": "routes",
 }
 
 DEFAULT_PERMISSIONS_KEY = "default"
@@ -61,9 +65,7 @@ def parse_permission(permissions: Dict[str, Any], category: str, action: str) ->
     """
     # Never allow delete operations regardless of configuration
     if action == "delete":
-        logger.info(
-            f"Delete operation requested for category '{category}'. All delete operations are disabled."
-        )
+        logger.info(f"Delete operation requested for category '{category}'. All delete operations are disabled.")
         return False
 
     # 0. Check environment variable override first (highest priority)

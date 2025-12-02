@@ -1,5 +1,5 @@
-from typing import Dict, Any
 import copy
+from typing import Any, Dict
 
 # Port forwarding rule schema
 PORT_FORWARD_SCHEMA = {
@@ -38,9 +38,7 @@ PORT_FORWARD_UPDATE_SCHEMA = copy.deepcopy(PORT_FORWARD_SCHEMA)
 PORT_FORWARD_UPDATE_SCHEMA.pop("required", None)  # Remove the required field
 # Make all properties optional for update
 for prop in PORT_FORWARD_UPDATE_SCHEMA.get("properties", {}):
-    PORT_FORWARD_UPDATE_SCHEMA["properties"][prop].pop(
-        "default", None
-    )  # Remove defaults for update
+    PORT_FORWARD_UPDATE_SCHEMA["properties"][prop].pop("default", None)  # Remove defaults for update
 
 # Traffic route schema - Updated for V2 API structure
 TRAFFIC_ROUTE_SCHEMA = {

@@ -1,5 +1,5 @@
 {
-  "count": 64,
+  "count": 81,
   "generated_by": "scripts/generate_tool_manifest.py",
   "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
   "tools": [
@@ -19,6 +19,40 @@
           "required": [
             "mac_address"
           ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Archive (resolve/dismiss) a specific alarm by its ID",
+      "name": "unifi_archive_alarm",
+      "schema": {
+        "input": {
+          "properties": {
+            "alarm_id": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "alarm_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Archive (resolve/dismiss) all active alarms",
+      "name": "unifi_archive_all_alarms",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            }
+          },
           "type": "object"
         }
       }
@@ -81,6 +115,9 @@
       "schema": {
         "input": {
           "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
             "policy_data": {
               "type": "string"
             }
@@ -93,11 +130,14 @@
       }
     },
     {
-      "description": "Create a new network (LAN/VLAN) with schema validation.",
+      "description": "Create a new network (LAN/VLAN) with schema validation. Requires confirmation.",
       "name": "unifi_create_network",
       "schema": {
         "input": {
           "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
             "network_data": {
               "type": "string"
             }
@@ -127,17 +167,54 @@
       }
     },
     {
-      "description": "Create a new QoS rule on the Unifi Network controller.",
+      "description": "Create a new QoS rule on the Unifi Network controller. Requires confirmation.",
       "name": "unifi_create_qos_rule",
       "schema": {
         "input": {
           "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
             "qos_data": {
               "type": "string"
             }
           },
           "required": [
             "qos_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a new static route for advanced routing configuration.\n\nSpecify destination network in CIDR format (e.g., \"10.0.0.0/24\") and\nnext-hop IP address (e.g., \"192.168.1.1\").",
+      "name": "unifi_create_route",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "distance": {
+              "type": "integer"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "network": {
+              "type": "string"
+            },
+            "nexthop": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "network",
+            "nexthop"
           ],
           "type": "object"
         }
@@ -204,48 +281,75 @@
       }
     },
     {
-      "description": "Create a traffic route with a simplified high-level schema. Provides preview when confirm=false.",
-      "name": "unifi_create_simple_traffic_route",
+      "description": "Create a new user group (bandwidth profile) with optional speed limits.\n\nBandwidth limits are specified in Kbps. Use -1 for unlimited.\nUser groups can be assigned to clients to enforce bandwidth policies.",
+      "name": "unifi_create_usergroup",
       "schema": {
         "input": {
           "properties": {
             "confirm": {
               "type": "boolean"
             },
-            "route": {
+            "down_limit_kbps": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "up_limit_kbps": {
               "type": "string"
             }
           },
           "required": [
-            "route"
+            "name"
           ],
           "type": "object"
         }
       }
     },
     {
-      "description": "Create a new traffic route (Policy-Based Routing rule) using V2 API schema.",
-      "name": "unifi_create_traffic_route",
+      "description": "Create hotspot voucher(s) for guest network access.\n\nVouchers can have:\n- Time limits: How long the voucher is valid after activation\n- Usage quota: Single-use (1), multi-use (0), or n-times usable\n- Bandwidth limits: Upload/download speed caps in Kbps\n- Data caps: Total data transfer limit in MB",
+      "name": "unifi_create_voucher",
       "schema": {
         "input": {
           "properties": {
-            "route_data": {
+            "bytes_limit_mb": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
+            },
+            "count": {
+              "type": "integer"
+            },
+            "down_limit_kbps": {
+              "type": "string"
+            },
+            "expire_minutes": {
+              "type": "integer"
+            },
+            "note": {
+              "type": "string"
+            },
+            "quota": {
+              "type": "integer"
+            },
+            "up_limit_kbps": {
               "type": "string"
             }
           },
-          "required": [
-            "route_data"
-          ],
           "type": "object"
         }
       }
     },
     {
-      "description": "Create a new Wireless LAN (WLAN/SSID) with schema validation.",
+      "description": "Create a new Wireless LAN (WLAN/SSID) with schema validation. Requires confirmation.",
       "name": "unifi_create_wlan",
       "schema": {
         "input": {
           "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
             "wlan_data": {
               "type": "string"
             }
@@ -379,6 +483,16 @@
       }
     },
     {
+      "description": "Get a list of known event type prefixes for filtering events.\n\nUse these prefixes with unifi_list_events event_type parameter to filter specific event categories.",
+      "name": "unifi_get_event_types",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
       "description": "Get detailed configuration for a specific firewall policy by ID.",
       "name": "unifi_get_firewall_policy_details",
       "schema": {
@@ -471,6 +585,23 @@
       }
     },
     {
+      "description": "Get detailed information about a specific static route by its ID",
+      "name": "unifi_get_route_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "route_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "route_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
       "description": "Get current site settings (e.g., country code, timezone, connectivity monitoring).",
       "name": "unifi_get_site_settings",
       "schema": {
@@ -508,7 +639,7 @@
       }
     },
     {
-      "description": "Get detailed configuration for a specific traffic route by ID (V2 API based).",
+      "description": "Get detailed information for a specific traffic route by ID.",
       "name": "unifi_get_traffic_route_details",
       "schema": {
         "input": {
@@ -519,6 +650,40 @@
           },
           "required": [
             "route_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get detailed information about a specific user group by its ID",
+      "name": "unifi_get_usergroup_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "group_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "group_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get detailed information about a specific voucher by its ID",
+      "name": "unifi_get_voucher_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "voucher_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "voucher_id"
           ],
           "type": "object"
         }
@@ -576,6 +741,33 @@
       }
     },
     {
+      "description": "List all active routes from the device routing table.\n\nIncludes both user-defined and system routes currently in effect.\nThis shows the actual routing table state on the gateway device.\n\nNote: This endpoint may not be available on all controller versions.\nReturns empty list if unavailable.",
+      "name": "unifi_list_active_routes",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List active alarms/alerts from the UniFi controller.\n\nReturns security alerts, connectivity issues, and other critical notifications.\nBy default returns only active (non-archived) alarms.",
+      "name": "unifi_list_alarms",
+      "schema": {
+        "input": {
+          "properties": {
+            "include_archived": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
       "description": "List clients/devices that are currently blocked from the network",
       "name": "unifi_list_blocked_clients",
       "schema": {
@@ -619,6 +811,29 @@
             },
             "status": {
               "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List events from the UniFi controller with optional filters.\n\nReturns system events like client connections, device status changes, and network alerts.\nEvents are sorted by most recent first.",
+      "name": "unifi_list_events",
+      "schema": {
+        "input": {
+          "properties": {
+            "event_type": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "integer"
+            },
+            "start": {
+              "type": "integer"
+            },
+            "within_hours": {
+              "type": "integer"
             }
           },
           "type": "object"
@@ -690,8 +905,38 @@
       }
     },
     {
-      "description": "List traffic routing rules (V2 API based) configured on the Unifi Network controller for the current site.",
+      "description": "List all user-defined static routes for the current site.\n\nReturns route names, destination networks, next-hop addresses, and status.\nThese are manually configured routes, not dynamic or system routes.",
+      "name": "unifi_list_routes",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List all traffic routes (policy-based routing rules) for the current site.\n\nTraffic routes define how specific traffic is routed based on domains,\nIP addresses, regions, or target devices. Often used for VPN routing.",
       "name": "unifi_list_traffic_routes",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List all user groups (bandwidth profiles) for the current site.\n\nUser groups define bandwidth limits that can be applied to clients.\nEach group specifies upload/download speed caps in Kbps.",
+      "name": "unifi_list_usergroups",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List all hotspot vouchers for the current site.\n\nReturns voucher codes, expiration times, usage quotas, and bandwidth limits.\nVouchers are used for guest network access in captive portal setups.",
+      "name": "unifi_list_vouchers",
       "schema": {
         "input": {
           "properties": {},
@@ -798,6 +1043,58 @@
       }
     },
     {
+      "description": "Revoke/delete a hotspot voucher by its ID, preventing further use",
+      "name": "unifi_revoke_voucher",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "voucher_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "voucher_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Set fixed IP address and/or local DNS record for a client device.\n\nAllows configuring:\n- Fixed IP: Assign a static IP address to a client (DHCP reservation)\n- Local DNS: Create a local DNS hostname for the client (UniFi Network 7.2+)\n\nEither setting can be enabled/disabled independently.",
+      "name": "unifi_set_client_ip_settings",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "fixed_ip": {
+              "type": "string"
+            },
+            "local_dns_record": {
+              "type": "string"
+            },
+            "local_dns_record_enabled": {
+              "type": "string"
+            },
+            "mac_address": {
+              "type": "string"
+            },
+            "use_fixedip": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
       "description": "Enable or disable a specific firewall policy by ID.",
       "name": "unifi_toggle_firewall_policy",
       "schema": {
@@ -858,7 +1155,7 @@
       }
     },
     {
-      "description": "Enable or disable a specific traffic route by ID.",
+      "description": "Toggle a traffic route on/off by ID.",
       "name": "unifi_toggle_traffic_route",
       "schema": {
         "input": {
@@ -1014,7 +1311,42 @@
       }
     },
     {
-      "description": "Update specific fields of an existing traffic route using V2 API schema. Requires confirmation.",
+      "description": "Update an existing static route's properties.\n\nCan modify name, destination network, next-hop, distance, or enabled status.",
+      "name": "unifi_update_route",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "distance": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "network": {
+              "type": "string"
+            },
+            "nexthop": {
+              "type": "string"
+            },
+            "route_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "route_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Update a traffic route's settings.\n\nCan update:\n- enabled: Enable or disable the traffic route\n- kill_switch_enabled: Enable/disable the kill switch (blocks traffic if VPN is down)\n\nAt least one parameter must be provided.",
       "name": "unifi_update_traffic_route",
       "schema": {
         "input": {
@@ -1022,16 +1354,47 @@
             "confirm": {
               "type": "boolean"
             },
-            "route_id": {
+            "enabled": {
               "type": "string"
             },
-            "update_data": {
+            "kill_switch_enabled": {
+              "type": "string"
+            },
+            "route_id": {
               "type": "string"
             }
           },
           "required": [
-            "route_id",
-            "update_data"
+            "route_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Update an existing user group's name or bandwidth limits.\n\nUse -1 for unlimited bandwidth. Changes affect all clients assigned to this group.",
+      "name": "unifi_update_usergroup",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "down_limit_kbps": {
+              "type": "string"
+            },
+            "group_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "up_limit_kbps": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "group_id"
           ],
           "type": "object"
         }

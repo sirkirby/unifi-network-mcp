@@ -5,9 +5,9 @@ This module provides MCP tools to fetch statistics from a Unifi Network Controll
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
-from src.runtime import server, stats_manager, client_manager, system_manager
+from src.runtime import client_manager, server, stats_manager, system_manager
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,7 @@ logger = logging.getLogger(__name__)
 async def get_network_stats(duration: str = "hourly") -> Dict[str, Any]:
     """Implementation for getting network stats."""
     try:
-        duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(
-            duration, 1
-        )
+        duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(duration, 1)
         stats = await stats_manager.get_network_stats(duration_hours=duration_hours)
 
         def _first_non_none(*values):
@@ -44,12 +42,7 @@ async def get_network_stats(duration: str = "hourly") -> Dict[str, Any]:
                 for e in stats
             ),
             "avg_clients": int(
-                sum(
-                    _first_non_none(
-                        e.get("num_user"), e.get("num_active_user"), e.get("num_sta")
-                    )
-                    for e in stats
-                )
+                sum(_first_non_none(e.get("num_user"), e.get("num_active_user"), e.get("num_sta")) for e in stats)
                 / max(1, len(stats))
             )
             if stats
@@ -74,31 +67,22 @@ async def get_network_stats(duration: str = "hourly") -> Dict[str, Any]:
 async def get_client_stats(client_id: str, duration: str = "hourly") -> Dict[str, Any]:
     """Implementation for getting client stats."""
     try:
-        duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(
-            duration, 1
-        )
+        duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(duration, 1)
         client_details = await client_manager.get_client_details(client_id)
         if not client_details:
             return {"success": False, "error": f"Client '{client_id}' not found"}
 
         # Support aiounifi Client objects as well as dicts
-        client_raw = (
-            client_details.raw if hasattr(client_details, "raw") else client_details
-        )
+        client_raw = client_details.raw if hasattr(client_details, "raw") else client_details
         client_mac = client_raw.get("mac", client_id)
         client_name = client_raw.get("name") or client_raw.get("hostname") or client_mac
 
         # Stats endpoint expects MAC, not _id
-        stats = await stats_manager.get_client_stats(
-            client_mac, duration_hours=duration_hours
-        )
+        stats = await stats_manager.get_client_stats(client_mac, duration_hours=duration_hours)
         summary = {
             "total_rx_bytes": sum(e.get("rx_bytes", 0) for e in stats),
             "total_tx_bytes": sum(e.get("tx_bytes", 0) for e in stats),
-            "total_bytes": sum(
-                e.get("bytes", e.get("rx_bytes", 0) + e.get("tx_bytes", 0))
-                for e in stats
-            ),
+            "total_bytes": sum(e.get("bytes", e.get("rx_bytes", 0) + e.get("tx_bytes", 0)) for e in stats),
         }
         return {
             "success": True,
@@ -121,34 +105,23 @@ async def get_client_stats(client_id: str, duration: str = "hourly") -> Dict[str
 async def get_device_stats(device_id: str, duration: str = "hourly") -> Dict[str, Any]:
     """Implementation for getting device stats."""
     try:
-        duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(
-            duration, 1
-        )
+        duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(duration, 1)
         device_details = await system_manager.get_device_details(device_id)
         if not device_details:
             return {"success": False, "error": f"Device '{device_id}' not found"}
 
-        device_name = device_details.get("name") or device_details.get(
-            "model", "Unknown"
-        )
+        device_name = device_details.get("name") or device_details.get("model", "Unknown")
         actual_device_id = device_details.get("_id", device_id)
         device_type = device_details.get("type", "unknown")
 
-        stats = await stats_manager.get_device_stats(
-            actual_device_id, duration_hours=duration_hours
-        )
+        stats = await stats_manager.get_device_stats(actual_device_id, duration_hours=duration_hours)
         summary = {
             "total_rx_bytes": sum(e.get("rx_bytes", 0) for e in stats),
             "total_tx_bytes": sum(e.get("tx_bytes", 0) for e in stats),
-            "total_bytes": sum(
-                e.get("bytes", e.get("rx_bytes", 0) + e.get("tx_bytes", 0))
-                for e in stats
-            ),
+            "total_bytes": sum(e.get("bytes", e.get("rx_bytes", 0) + e.get("tx_bytes", 0)) for e in stats),
         }
         if device_type == "uap" and stats:
-            summary["avg_clients"] = int(
-                sum(e.get("num_sta", 0) for e in stats) / max(1, len(stats))
-            )
+            summary["avg_clients"] = int(sum(e.get("num_sta", 0) for e in stats) / max(1, len(stats)))
             summary["max_clients"] = max(e.get("num_sta", 0) for e in stats)
 
         return {
@@ -173,12 +146,8 @@ async def get_device_stats(device_id: str, duration: str = "hourly") -> Dict[str
 async def get_top_clients(duration: str = "daily", limit: int = 10) -> Dict[str, Any]:
     """Implementation for getting top clients by usage."""
     try:
-        duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(
-            duration, 1
-        )
-        top_client_stats = await stats_manager.get_top_clients(
-            duration_hours=duration_hours, limit=limit
-        )
+        duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(duration, 1)
+        top_client_stats = await stats_manager.get_top_clients(duration_hours=duration_hours, limit=limit)
 
         enhanced_clients = []
         for entry in top_client_stats:
@@ -216,12 +185,8 @@ async def get_dpi_stats() -> Dict[str, Any]:
         def serialize_dpi(item):
             return item.raw if hasattr(item, "raw") else item
 
-        serialized_apps = [
-            serialize_dpi(app) for app in dpi_stats_result.get("applications", [])
-        ]
-        serialized_cats = [
-            serialize_dpi(cat) for cat in dpi_stats_result.get("categories", [])
-        ]
+        serialized_apps = [serialize_dpi(app) for app in dpi_stats_result.get("applications", [])]
+        serialized_cats = [serialize_dpi(cat) for cat in dpi_stats_result.get("categories", [])]
 
         return {
             "success": True,
@@ -243,9 +208,7 @@ async def get_dpi_stats() -> Dict[str, Any]:
 async def get_alerts(limit: int = 10, include_archived: bool = False) -> Dict[str, Any]:
     """Implementation for getting alerts."""
     try:
-        alerts = await stats_manager.get_alerts(
-            limit=limit, include_archived=include_archived
-        )
+        alerts = await stats_manager.get_alerts(limit=limit, include_archived=include_archived)
         return {
             "success": True,
             "site": stats_manager._connection.site,
