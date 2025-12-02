@@ -828,6 +828,37 @@ See [docs/permissions.md](docs/permissions.md) for complete documentation includ
 * `unifi_force_reconnect_client`
 * `unifi_authorize_guest`
 * `unifi_unauthorize_guest`
+* `unifi_set_client_ip_settings`
+
+### Events & Alarms
+
+* `unifi_list_events`
+* `unifi_list_alarms`
+* `unifi_archive_alarm`
+* `unifi_archive_all_alarms`
+* `unifi_get_event_types`
+
+### Routing (Static Routes)
+
+* `unifi_list_routes`
+* `unifi_get_route_details`
+* `unifi_create_route`
+* `unifi_update_route`
+* `unifi_list_active_routes`
+
+### Hotspot (Vouchers)
+
+* `unifi_list_vouchers`
+* `unifi_get_voucher_details`
+* `unifi_create_voucher`
+* `unifi_revoke_voucher`
+
+### User Groups
+
+* `unifi_list_usergroups`
+* `unifi_get_usergroup_details`
+* `unifi_create_usergroup`
+* `unifi_update_usergroup`
 
 ### Statistics & Alerts
 
