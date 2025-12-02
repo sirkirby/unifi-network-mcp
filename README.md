@@ -46,6 +46,7 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
 
 * Full catalog of UniFi controller operations – firewall, traffic-routes, port-forwards, QoS, VPN, WLANs, stats, devices, clients **and more**.
 * All mutating tools require `confirm=true` so nothing can change your network by accident.
+* **Workflow automation friendly** – set `UNIFI_AUTO_CONFIRM=true` to skip confirmation prompts (ideal for n8n, Make, Zapier).
 * Works over **stdio** (FastMCP). Optional SSE HTTP endpoint can be enabled via config.
 * **Code execution mode** with tool index, async operations, and TypeScript examples.
 * One-liner launch via the console-script **`unifi-network-mcp`**.
@@ -504,6 +505,7 @@ The server merges settings from **environment variables**, an optional `.env` fi
 | `UNIFI_VERIFY_SSL` | Set to `false` if using self-signed certs |
 | `UNIFI_CONTROLLER_TYPE` | Controller API path type: `auto` (detect), `proxy` (UniFi OS), `direct` (standalone). Default `auto` |
 | `UNIFI_MCP_HTTP_ENABLED` | Set `true` to enable optional HTTP SSE server (default `false`) |
+| `UNIFI_AUTO_CONFIRM` | Set `true` to auto-confirm all mutating operations (skips preview step). Ideal for workflow automation (n8n, Make, Zapier). Default `false` |
 
 ### Controller Type Detection
 

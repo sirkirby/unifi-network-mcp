@@ -1,6 +1,6 @@
 [project]
 name = "unifi-network-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "Unifi Network MCP Server"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -58,3 +58,15 @@ dev-dependencies = [
 [project.scripts]
 # CLI entrypoint that launches the UniFi Network MCP server
 unifi-network-mcp = "src.main:main"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = [
+    "E501",  # Line too long - handled by line-length setting above
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]

@@ -5,11 +5,12 @@ This module provides MCP tools to manage devices in a Unifi Network Controller.
 """
 
 import logging
-from typing import Dict, List, Any
 from datetime import datetime, timedelta
+from typing import Any, Dict, List
 
 # Import the global FastMCP server instance, config, and managers
-from src.runtime import server, config, device_manager
+from src.runtime import config, device_manager, server
+from src.utils.confirmation import create_preview, preview_response, should_auto_confirm, update_preview
 from src.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
@@ -32,9 +33,7 @@ def get_wifi_bands(device: Dict[str, Any]) -> List[str]:
     name="unifi_list_devices",
     description="List devices adopted by the Unifi Network controller for the current site",
 )
-async def list_devices(
-    device_type: str = "all", status: str = "all", include_details: bool = False
-) -> Dict[str, Any]:
+async def list_devices(device_type: str = "all", status: str = "all", include_details: bool = False) -> Dict[str, Any]:
     """Implementation for listing devices."""
     try:
         devices = await device_manager.get_devices()
@@ -52,9 +51,7 @@ async def list_devices(
             }
             prefixes = prefix_map.get(device_type)
             if prefixes:
-                devices_raw = [
-                    d for d in devices_raw if d.get("type", "").startswith(prefixes)
-                ]
+                devices_raw = [d for d in devices_raw if d.get("type", "").startswith(prefixes)]
 
         # Filter by status
         if status != "all":
@@ -85,9 +82,7 @@ async def list_devices(
 
         for device in devices_raw:
             device_state = device.get("state", 0)
-            device_status_str = state_map.get(
-                device_state, f"unknown_state ({device_state})"
-            )
+            device_status_str = state_map.get(device_state, f"unknown_state ({device_state})")
 
             device_info = {
                 "mac": device.get("mac", ""),
@@ -96,13 +91,9 @@ async def list_devices(
                 "type": device.get("type", ""),
                 "ip": device.get("ip", ""),
                 "status": device_status_str,
-                "uptime": str(timedelta(seconds=device.get("uptime", 0)))
-                if device.get("uptime")
-                else "N/A",
+                "uptime": str(timedelta(seconds=device.get("uptime", 0))) if device.get("uptime") else "N/A",
                 "last_seen": (
-                    datetime.fromtimestamp(device.get("last_seen", 0)).isoformat()
-                    if device.get("last_seen")
-                    else "N/A"
+                    datetime.fromtimestamp(device.get("last_seen", 0)).isoformat() if device.get("last_seen") else "N/A"
                 ),
                 "firmware": device.get("version", ""),
                 "adopted": device.get("adopted", False),
@@ -134,8 +125,7 @@ async def list_devices(
                         {
                             "ports": device.get("port_table", []),
                             "total_ports": len(device.get("port_table", [])),
-                            "num_clients": device.get("user-num_sta", 0)
-                            + device.get("guest-num_sta", 0),
+                            "num_clients": device.get("user-num_sta", 0) + device.get("guest-num_sta", 0),
                             "poe_info": {
                                 "poe_current": device.get("poe_current"),
                                 "poe_power": device.get("poe_power"),
@@ -148,8 +138,7 @@ async def list_devices(
                         {
                             "wan1": device.get("wan1", {}),
                             "wan2": device.get("wan2", {}),
-                            "num_clients": device.get("user-num_sta", 0)
-                            + device.get("guest-num_sta", 0),
+                            "num_clients": device.get("user-num_sta", 0) + device.get("guest-num_sta", 0),
                             "network_table": device.get("network_table", []),
                             "system_stats": device.get("system-stats", {}),
                             "speedtest_status": device.get("speedtest-status", {}),
@@ -192,9 +181,7 @@ async def get_device_details(mac_address: str) -> Dict[str, Any]:
             "error": f"Device not found with MAC address: {mac_address}",
         }
     except Exception as e:
-        logger.error(
-            f"Error getting device details for {mac_address}: {e}", exc_info=True
-        )
+        logger.error(f"Error getting device details for {mac_address}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 
@@ -210,10 +197,47 @@ async def reboot_device(mac_address: str, confirm: bool = False) -> Dict[str, An
         logger.warning(f"Permission denied for rebooting device ({mac_address}).")
         return {"success": False, "error": "Permission denied to reboot device."}
 
-    if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
-
     try:
+        # Fetch device details to provide context in the preview
+        device = await device_manager.get_device_details(mac_address)
+        if not device:
+            return {
+                "success": False,
+                "error": f"Device not found with MAC address: {mac_address}",
+            }
+
+        # Extract device info for preview
+        device_raw = device.raw if hasattr(device, "raw") else device
+        device_name = device_raw.get("name", device_raw.get("model", "Unknown"))
+        device_state = device_raw.get("state", 0)
+        device_model = device_raw.get("model", "")
+
+        state_map = {
+            0: "offline",
+            1: "online",
+            2: "pending_adoption",
+            4: "managed_by_other/adopting",
+            5: "provisioning",
+            6: "upgrading",
+            11: "error/heartbeat_missed",
+        }
+        device_status = state_map.get(device_state, f"unknown_state ({device_state})")
+
+        if not confirm and not should_auto_confirm():
+            return preview_response(
+                action="reboot",
+                resource_type="device",
+                resource_id=mac_address,
+                resource_name=device_name,
+                current_state={
+                    "status": device_status,
+                    "model": device_model,
+                    "ip": device_raw.get("ip", ""),
+                },
+                proposed_changes={"action": "reboot - device will restart"},
+                warnings=["Device will be offline for 1-2 minutes during reboot"],
+            )
+
         logger.info(f"Attempting to reboot device: {mac_address}")
         success = await device_manager.reboot_device(mac_address)
 
@@ -238,18 +262,38 @@ async def reboot_device(mac_address: str, confirm: bool = False) -> Dict[str, An
     permission_category="devices",
     permission_action="update",
 )
-async def rename_device(
-    mac_address: str, name: str, confirm: bool = False
-) -> Dict[str, Any]:
+async def rename_device(mac_address: str, name: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for renaming a device."""
     if not parse_permission(config.permissions, "device", "update"):
         logger.warning(f"Permission denied for renaming device ({mac_address}).")
         return {"success": False, "error": "Permission denied to rename device."}
 
-    if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
-
     try:
+        # Fetch device details to provide context in the preview
+        device = await device_manager.get_device_details(mac_address)
+        if not device:
+            return {
+                "success": False,
+                "error": f"Device not found with MAC address: {mac_address}",
+            }
+
+        # Extract device info for preview
+        device_raw = device.raw if hasattr(device, "raw") else device
+        current_name = device_raw.get("name", device_raw.get("model", "Unknown"))
+
+        if not confirm and not should_auto_confirm():
+            return update_preview(
+                resource_type="device",
+                resource_id=mac_address,
+                resource_name=current_name,
+                current_state={
+                    "name": current_name,
+                    "model": device_raw.get("model", ""),
+                    "type": device_raw.get("type", ""),
+                },
+                updates={"name": name},
+            )
+
         success = await device_manager.rename_device(mac_address, name)
         if success:
             return {
@@ -274,10 +318,38 @@ async def adopt_device(mac_address: str, confirm: bool = False) -> Dict[str, Any
         logger.warning(f"Permission denied for adopting device ({mac_address}).")
         return {"success": False, "error": "Permission denied to adopt device."}
 
-    if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
-
     try:
+        # Fetch device details to provide context in the preview
+        device = await device_manager.get_device_details(mac_address)
+        if not device:
+            return {
+                "success": False,
+                "error": f"Device not found with MAC address: {mac_address}",
+            }
+
+        # Extract device info for preview
+        device_raw = device.raw if hasattr(device, "raw") else device
+        device_name = device_raw.get("name", device_raw.get("model", "Unknown"))
+        device_state = device_raw.get("state", 0)
+
+        if not confirm and not should_auto_confirm():
+            return create_preview(
+                resource_type="device_adoption",
+                resource_name=device_name,
+                resource_data={
+                    "mac": mac_address,
+                    "name": device_name,
+                    "model": device_raw.get("model", ""),
+                    "type": device_raw.get("type", ""),
+                    "ip": device_raw.get("ip", ""),
+                    "current_state": device_state,
+                },
+                warnings=[
+                    "Device will be adopted into this site",
+                    "Device may reboot during adoption process",
+                ],
+            )
+
         success = await device_manager.adopt_device(mac_address)
         if success:
             return {
@@ -302,19 +374,48 @@ async def upgrade_device(mac_address: str, confirm: bool = False) -> Dict[str, A
         logger.warning(f"Permission denied for upgrading device ({mac_address}).")
         return {"success": False, "error": "Permission denied to upgrade device."}
 
-    if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
-
     try:
-        upgrade_info = None
-        try:
-            device = await device_manager.get_device_details(mac_address)
-            if device:
-                upgrade_info = device.get("upgrade") or device.get("upgradable")
-                if isinstance(upgrade_info, bool):
-                    upgrade_info = "available" if upgrade_info else "none"
-        except Exception as e:
-            logger.warning(f"Could not fetch upgrade info for {mac_address}: {e}")
+        # Fetch device details to provide context in the preview
+        device = await device_manager.get_device_details(mac_address)
+        if not device:
+            return {
+                "success": False,
+                "error": f"Device not found with MAC address: {mac_address}",
+            }
+
+        # Extract device info for preview
+        device_raw = device.raw if hasattr(device, "raw") else device
+        device_name = device_raw.get("name", device_raw.get("model", "Unknown"))
+        current_version = device_raw.get("version", "unknown")
+
+        # Get upgrade information
+        upgrade_info = device_raw.get("upgrade") or device_raw.get("upgradable")
+        if isinstance(upgrade_info, bool):
+            upgrade_info = "available" if upgrade_info else "none"
+
+        upgrade_to_version = device_raw.get("upgrade_to_firmware", "latest available")
+
+        if not confirm and not should_auto_confirm():
+            return preview_response(
+                action="upgrade",
+                resource_type="device",
+                resource_id=mac_address,
+                resource_name=device_name,
+                current_state={
+                    "firmware_version": current_version,
+                    "model": device_raw.get("model", ""),
+                    "upgrade_available": upgrade_info,
+                },
+                proposed_changes={
+                    "action": "firmware upgrade",
+                    "target_version": upgrade_to_version,
+                },
+                warnings=[
+                    "Device will be offline during firmware upgrade",
+                    "Upgrade process may take several minutes",
+                    "Do not power off device during upgrade",
+                ],
+            )
 
         success = await device_manager.upgrade_device(mac_address)
         if success:

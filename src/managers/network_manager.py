@@ -1,8 +1,9 @@
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequest
 from aiounifi.models.wlan import Wlan
+
 from .connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -40,11 +41,7 @@ class NetworkManager:
             # V1 response is typically a list within a 'data' key, but aiounifi might unpack it
             # Check common patterns
             networks_data = []
-            if (
-                isinstance(response, dict)
-                and "data" in response
-                and isinstance(response["data"], list)
-            ):
+            if isinstance(response, dict) and "data" in response and isinstance(response["data"], list):
                 networks_data = response["data"]
             elif isinstance(response, list):  # aiounifi might return the list directly
                 networks_data = response
@@ -56,9 +53,7 @@ class NetworkManager:
                 return []
 
             # Basic check to ensure we got a list of dicts
-            if not isinstance(networks_data, list) or not all(
-                isinstance(item, dict) for item in networks_data
-            ):
+            if not isinstance(networks_data, list) or not all(isinstance(item, dict) for item in networks_data):
                 logger.error(
                     f"Unexpected data structure in network list: {type(networks_data)}. Expected list of dicts. Data: {networks_data}"
                 )
@@ -71,9 +66,7 @@ class NetworkManager:
             return networks
         except Exception as e:
             # Log original error for V1 endpoint failure
-            logger.error(
-                f"Error getting networks via V1 /rest/networkconf: {e}", exc_info=True
-            )
+            logger.error(f"Error getting networks via V1 /rest/networkconf: {e}", exc_info=True)
             return []
 
     async def get_network_details(self, network_id: str) -> Optional[Dict[str, Any]]:
@@ -84,9 +77,7 @@ class NetworkManager:
             logger.warning(f"Network {network_id} not found in cached/fetched list.")
         return network
 
-    async def create_network(
-        self, network_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    async def create_network(self, network_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new network.
 
         Args:
@@ -99,19 +90,13 @@ class NetworkManager:
             required_fields = ["name", "purpose"]  # vlan_enabled might default
             for field in required_fields:
                 if field not in network_data:
-                    logger.error(
-                        f"Missing required field '{field}' for network creation"
-                    )
+                    logger.error(f"Missing required field '{field}' for network creation")
                     return None
 
-            api_request = ApiRequest(
-                method="post", path="/rest/networkconf", json=network_data
-            )
+            api_request = ApiRequest(method="post", path="/rest/networkconf", data=network_data)
             response = await self._connection.request(api_request)
             logger.info(f"Create command sent for network '{network_data.get('name')}'")
-            self._connection._invalidate_cache(
-                f"{CACHE_PREFIX_NETWORKS}_{self._connection.site}"
-            )
+            self._connection._invalidate_cache(f"{CACHE_PREFIX_NETWORKS}_{self._connection.site}")
 
             if (
                 isinstance(response, dict)
@@ -120,24 +105,16 @@ class NetworkManager:
                 and len(response["data"]) > 0
             ):
                 return response["data"][0]
-            elif (
-                isinstance(response, list)
-                and len(response) > 0
-                and isinstance(response[0], dict)
-            ):
+            elif isinstance(response, list) and len(response) > 0 and isinstance(response[0], dict):
                 return response[0]
-            logger.warning(
-                f"Could not extract created network data from response: {response}"
-            )
+            logger.warning(f"Could not extract created network data from response: {response}")
             return response  # Return raw response
 
         except Exception as e:
             logger.error(f"Error creating network: {e}")
             return None
 
-    async def update_network(
-        self, network_id: str, update_data: Dict[str, Any]
-    ) -> bool:
+    async def update_network(self, network_id: str, update_data: Dict[str, Any]) -> bool:
         """Update a network configuration by merging updates with existing data.
 
         Args:
@@ -169,15 +146,11 @@ class NetworkManager:
             api_request = ApiRequest(
                 method="put",
                 path=f"/rest/networkconf/{network_id}",
-                json=merged_data,  # Send full object
+                data=merged_data,  # Send full object
             )
             await self._connection.request(api_request)
-            logger.info(
-                f"Update command sent for network {network_id} with merged data."
-            )
-            self._connection._invalidate_cache(
-                f"{CACHE_PREFIX_NETWORKS}_{self._connection.site}"
-            )
+            logger.info(f"Update command sent for network {network_id} with merged data.")
+            self._connection._invalidate_cache(f"{CACHE_PREFIX_NETWORKS}_{self._connection.site}")
             return True
         except Exception as e:
             logger.error(f"Error updating network {network_id}: {e}", exc_info=True)
@@ -193,14 +166,10 @@ class NetworkManager:
             bool: True if successful, False otherwise
         """
         try:
-            api_request = ApiRequest(
-                method="delete", path=f"/rest/networkconf/{network_id}"
-            )
+            api_request = ApiRequest(method="delete", path=f"/rest/networkconf/{network_id}")
             await self._connection.request(api_request)
             logger.info(f"Delete command sent for network {network_id}")
-            self._connection._invalidate_cache(
-                f"{CACHE_PREFIX_NETWORKS}_{self._connection.site}"
-            )
+            self._connection._invalidate_cache(f"{CACHE_PREFIX_NETWORKS}_{self._connection.site}")
             return True
         except Exception as e:
             logger.error(f"Error deleting network {network_id}: {e}")
@@ -252,14 +221,10 @@ class NetworkManager:
                 )
                 return None
 
-            api_request = ApiRequest(
-                method="post", path="/rest/wlanconf", json=wlan_data
-            )
+            api_request = ApiRequest(method="post", path="/rest/wlanconf", data=wlan_data)
             response = await self._connection.request(api_request)
             logger.info(f"Create command sent for WLAN '{wlan_data.get('name')}'")
-            self._connection._invalidate_cache(
-                f"{CACHE_PREFIX_WLANS}_{self._connection.site}"
-            )
+            self._connection._invalidate_cache(f"{CACHE_PREFIX_WLANS}_{self._connection.site}")
 
             created_wlan_data = None
             if (
@@ -269,20 +234,14 @@ class NetworkManager:
                 and len(response["data"]) > 0
             ):
                 created_wlan_data = response["data"][0]
-            elif (
-                isinstance(response, list)
-                and len(response) > 0
-                and isinstance(response[0], dict)
-            ):
+            elif isinstance(response, list) and len(response) > 0 and isinstance(response[0], dict):
                 created_wlan_data = response[0]
 
             if created_wlan_data and isinstance(created_wlan_data, dict):
                 # Return the dict directly
                 return created_wlan_data
 
-            logger.warning(
-                f"Could not extract created WLAN data from response: {response}"
-            )
+            logger.warning(f"Could not extract created WLAN data from response: {response}")
             # Return raw response or None if it wasn't useful
             return created_wlan_data if isinstance(created_wlan_data, dict) else None
 
@@ -308,9 +267,7 @@ class NetworkManager:
 
         try:
             # 1. Fetch existing WLAN data
-            existing_wlan = await self.get_wlan_details(
-                wlan_id
-            )  # Changed to use detail method
+            existing_wlan = await self.get_wlan_details(wlan_id)  # Changed to use detail method
             if not existing_wlan:
                 logger.error(f"WLAN {wlan_id} not found for update.")
                 return False
@@ -329,13 +286,11 @@ class NetworkManager:
             api_request = ApiRequest(
                 method="put",
                 path=f"/rest/wlanconf/{wlan_id}",
-                json=merged_data,  # Send full object
+                data=merged_data,  # Send full object
             )
             await self._connection.request(api_request)
             logger.info(f"Update command sent for WLAN {wlan_id} with merged data.")
-            self._connection._invalidate_cache(
-                f"{CACHE_PREFIX_WLANS}_{self._connection.site}"
-            )
+            self._connection._invalidate_cache(f"{CACHE_PREFIX_WLANS}_{self._connection.site}")
             return True
         except Exception as e:
             logger.error(f"Error updating WLAN {wlan_id}: {e}", exc_info=True)
@@ -354,9 +309,7 @@ class NetworkManager:
             api_request = ApiRequest(method="delete", path=f"/rest/wlanconf/{wlan_id}")
             await self._connection.request(api_request)
             logger.info(f"Delete command sent for WLAN {wlan_id}")
-            self._connection._invalidate_cache(
-                f"{CACHE_PREFIX_WLANS}_{self._connection.site}"
-            )
+            self._connection._invalidate_cache(f"{CACHE_PREFIX_WLANS}_{self._connection.site}")
             return True
         except Exception as e:
             logger.error(f"Error deleting WLAN {wlan_id}: {e}")
@@ -380,16 +333,10 @@ class NetworkManager:
             new_state = not wlan.enabled
             update_payload = {"enabled": new_state}
 
-            api_request = ApiRequest(
-                method="put", path=f"/rest/wlanconf/{wlan_id}", json=update_payload
-            )
+            api_request = ApiRequest(method="put", path=f"/rest/wlanconf/{wlan_id}", data=update_payload)
             await self._connection.request(api_request)
-            logger.info(
-                f"Toggle command sent for WLAN {wlan_id} (new state: {'enabled' if new_state else 'disabled'})"
-            )
-            self._connection._invalidate_cache(
-                f"{CACHE_PREFIX_WLANS}_{self._connection.site}"
-            )
+            logger.info(f"Toggle command sent for WLAN {wlan_id} (new state: {'enabled' if new_state else 'disabled'})")
+            self._connection._invalidate_cache(f"{CACHE_PREFIX_WLANS}_{self._connection.site}")
             return True
         except Exception as e:
             logger.error(f"Error toggling WLAN {wlan_id}: {e}")

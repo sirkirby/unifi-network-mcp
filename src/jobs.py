@@ -78,9 +78,7 @@ class JobStore:
                         self._jobs[job_id]["status"] = "error"
                         self._jobs[job_id]["error"] = str(e)
                         self._jobs[job_id]["completed"] = time.time()
-                logger.error(
-                    f"Background job {job_id} failed with error: {e}", exc_info=True
-                )
+                logger.error(f"Background job {job_id} failed with error: {e}", exc_info=True)
 
         # Launch the runner as a background task
         asyncio.create_task(_runner())

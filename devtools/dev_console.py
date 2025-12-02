@@ -25,9 +25,7 @@ def _print(title: str = "", obj: Any = None) -> None:
 async def _ensure_connected(connection_manager) -> bool:
     ok = await connection_manager.initialize()
     if not ok:
-        logger.error(
-            "Unable to establish UniFi connection. Check your config/credentials."
-        )
+        logger.error("Unable to establish UniFi connection. Check your config/credentials.")
         return False
 
     # Display detection result
@@ -153,12 +151,7 @@ def _parse_args_with_schema(params_schema: Optional[Dict[str, Any]]) -> Dict[str
     if line and params_schema:
         req = params_schema.get("required", []) or []
         props = params_schema.get("properties", {}) or {}
-        if (
-            isinstance(req, list)
-            and len(req) == 1
-            and isinstance(props, dict)
-            and req[0] in props
-        ):
+        if isinstance(req, list) and len(req) == 1 and isinstance(props, dict) and req[0] in props:
             only_key = req[0]
             coerced = _coerce_value(line, props.get(only_key))
             return {only_key: coerced}
@@ -184,25 +177,20 @@ def _parse_args_with_schema(params_schema: Optional[Dict[str, Any]]) -> Dict[str
 async def _invoke_tool(server, tool) -> None:
     name = tool.name
     desc = tool.description or ""
-    params = getattr(tool, "parameters", None)
+    # FastMCP uses inputSchema, not parameters
+    input_schema = getattr(tool, "inputSchema", None) or {}
+    schema_props = input_schema.get("properties", {}) if isinstance(input_schema, dict) else {}
     _print("Tool", {"name": name, "description": desc})
 
     args: Dict[str, Any] = {}
-    args = _parse_args_with_schema(params if isinstance(params, dict) else None)
+    args = _parse_args_with_schema(input_schema if isinstance(input_schema, dict) else None)
 
-    confirm_default = None
-    if "confirm" in (params.get("properties", {}) if isinstance(params, dict) else {}):
-        confirm_default = "false"
-
-    # Optionally prompt for confirm if applicable
-    if "confirm" in args:
-        pass
-    elif confirm_default is not None:
-        yn = _prompt("Set confirm? (true/false)", confirm_default)
-        if yn.lower() in {"1", "true", "yes", "on"}:
+    # Auto-confirm for dev console testing (with warning)
+    if "confirm" in schema_props:
+        if "confirm" not in args or args.get("confirm") is False:
+            print("\n⚠️  DEV CONSOLE: Auto-setting confirm=true for testing")
+            print("   (In production, LLMs must explicitly confirm operations)\n")
             args["confirm"] = True
-        elif yn.lower() in {"0", "false", "no", "off"}:
-            args["confirm"] = False
 
     _print("Invoking", {"tool": name, "args": args})
 
@@ -226,7 +214,7 @@ async def _invoke_tool(server, tool) -> None:
         _print("Result", result)
     except Exception as exc:
         # If we had no args and no schema, try to guide based on validation error
-        if not args and not (isinstance(params, dict) and params.get("properties")):
+        if not args and not schema_props:
             missing = _extract_missing_fields_from_exc(exc)
             if missing:
                 logger.info(f"Missing required fields: {missing}")
@@ -234,6 +222,11 @@ async def _invoke_tool(server, tool) -> None:
                 for key in missing:
                     val = _prompt(key)
                     fixed[key] = val
+                # Auto-confirm for re-invocation too
+                if "confirm" in schema_props:
+                    print("\n⚠️  DEV CONSOLE: Auto-setting confirm=true for testing")
+                    print("   (In production, LLMs must explicitly confirm operations)\n")
+                    fixed["confirm"] = True
                 _print("Re-invoking", {"tool": name, "args": fixed})
                 try:
                     result = await server.call_tool(name, fixed)
@@ -269,11 +262,15 @@ async def main_async() -> None:
 
     try:
         # Import runtime lazily to provide actionable error if MCP SDK missing
-        from src.runtime import server, connection_manager  # noqa: E402
-        from src.utils.tool_loader import auto_load_tools  # noqa: E402
-        from src.utils.meta_tools import register_meta_tools  # noqa: E402
+        # Import main to apply permissioned_tool wrapper to server.tool
+        # This handles permission_category/permission_action kwargs that
+        # FastMCP's native .tool() decorator doesn't understand
+        import src.main  # noqa: F401, E402
+        from src.jobs import get_job_status, start_async_tool  # noqa: E402
+        from src.runtime import connection_manager, server  # noqa: E402
         from src.tool_index import register_tool, tool_index_handler  # noqa: E402
-        from src.jobs import start_async_tool, get_job_status  # noqa: E402
+        from src.utils.meta_tools import register_meta_tools  # noqa: E402
+        from src.utils.tool_loader import auto_load_tools  # noqa: E402
     except ModuleNotFoundError as e:
         if str(e).startswith("No module named 'mcp'"):
             print("\nERROR: Python MCP SDK not found (module 'mcp').")
@@ -304,35 +301,25 @@ async def main_async() -> None:
         print("\n" + "=" * 70)
         print("Developer Console - All Tools View")
         print("=" * 70)
-        print(
-            "ℹ️  This console shows ALL tools, including those disabled by permissions."
-        )
+        print("ℹ️  This console shows ALL tools, including those disabled by permissions.")
         print("   Disabled tools are marked with [DISABLED] and cannot be executed.")
         print("   To enable them, see: docs/permissions.md")
         print("=" * 70 + "\n")
 
-        while True:
-            tools_with_status = await _list_all_tools_with_status(server)
-            if not tools_with_status:
-                print("No tools found in tool index.")
-                return
+        # Load tools once
+        tools_with_status = await _list_all_tools_with_status(server)
+        if not tools_with_status:
+            print("No tools found in tool index.")
+            return
 
-            # Separate enabled and disabled tools for display
-            enabled_tools = [
-                (tool, idx)
-                for idx, (tool, enabled) in enumerate(tools_with_status, start=1)
-                if enabled
-            ]
-            disabled_tools = [
-                (tool, idx)
-                for idx, (tool, enabled) in enumerate(tools_with_status, start=1)
-                if not enabled
-            ]
+        # Separate enabled and disabled tools for display
+        enabled_tools = [(tool, idx) for idx, (tool, enabled) in enumerate(tools_with_status, start=1) if enabled]
+        disabled_tools = [(tool, idx) for idx, (tool, enabled) in enumerate(tools_with_status, start=1) if not enabled]
 
+        def _show_tool_list():
+            """Display the full tool list."""
             print(f"\n{'=' * 70}")
-            print(
-                f"Available Tools ({len(enabled_tools)} enabled, {len(disabled_tools)} disabled)"
-            )
+            print(f"Available Tools ({len(enabled_tools)} enabled, {len(disabled_tools)} disabled)")
             print(f"{'=' * 70}")
 
             # Display all tools with status
@@ -345,15 +332,23 @@ async def main_async() -> None:
             print(f"\n  {0:3d}. Exit")
 
             if disabled_tools:
-                print(
-                    f"\n💡 Tip: {len(disabled_tools)} tools are disabled. Set environment variables to enable them:"
-                )
+                print(f"\n💡 Tip: {len(disabled_tools)} tools are disabled. Set environment variables to enable them:")
                 print("   Example: UNIFI_PERMISSIONS_NETWORKS_CREATE=true")
                 print("   See docs/permissions.md for details")
 
-            choice = _prompt("\nSelect tool by number", "0")
+        # Show full list on first load
+        _show_tool_list()
+
+        while True:
+            choice = _prompt("\nSelect tool [0=exit, l=list]", "0").strip().lower()
+
+            # Handle list command
+            if choice in ("l", "list"):
+                _show_tool_list()
+                continue
+
             if not choice.isdigit():
-                print("Enter a number.")
+                print("Enter a tool number, 'l' to list tools, or 0 to exit.")
                 continue
             num = int(choice)
             if num == 0:
@@ -364,20 +359,14 @@ async def main_async() -> None:
                 tool, is_enabled = tools_with_status[num - 1]
                 if not is_enabled:
                     print(f"\n⚠️  Tool '{tool.get('name')}' is DISABLED by permissions.")
-                    print(
-                        "   This tool cannot be executed until permissions are enabled."
-                    )
-                    print(
-                        "   See docs/permissions.md for how to enable specific permissions."
-                    )
+                    print("   This tool cannot be executed until permissions are enabled.")
+                    print("   See docs/permissions.md for how to enable specific permissions.")
                     continue
 
                 # Find the actual tool object from enabled tools
                 tool_name = tool.get("name")
                 enabled_tool_list = await _list_tools(server)
-                actual_tool = next(
-                    (t for t in enabled_tool_list if t.name == tool_name), None
-                )
+                actual_tool = next((t for t in enabled_tool_list if t.name == tool_name), None)
 
                 if actual_tool:
                     await _invoke_tool(server, actual_tool)

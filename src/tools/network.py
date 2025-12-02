@@ -5,11 +5,12 @@ This module provides MCP tools to interact with a Unifi Network Controller's net
 including managing LAN networks and WLANs.
 """
 
-import logging
 import json
-from typing import Dict, Any
+import logging
+from typing import Any, Dict
 
-from src.runtime import server, config, network_manager
+from src.runtime import config, network_manager, server
+from src.utils.confirmation import create_preview, should_auto_confirm, update_preview
 from src.utils.permissions import parse_permission
 from src.validator_registry import UniFiValidatorRegistry
 
@@ -163,9 +164,7 @@ async def get_network_details(network_id: str) -> Dict[str, Any]:
                 "error": f"Network with ID '{network_id}' not found.",
             }
     except Exception as e:
-        logger.error(
-            f"Error getting network details for {network_id}: {e}", exc_info=True
-        )
+        logger.error(f"Error getting network details for {network_id}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 
@@ -175,9 +174,7 @@ async def get_network_details(network_id: str) -> Dict[str, Any]:
     permission_category="networks",
     permission_action="update",
 )
-async def update_network(
-    network_id: str, update_data: Dict[str, Any], confirm: bool = False
-) -> Dict[str, Any]:
+async def update_network(network_id: str, update_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Updates specific fields of an existing network.
 
     Allows modifying properties like name, purpose, VLAN settings, DHCP settings, etc.
@@ -213,46 +210,43 @@ async def update_network(
         logger.warning(f"Permission denied for updating network ({network_id}).")
         return {"success": False, "error": "Permission denied to update network."}
 
-    if not confirm:
-        logger.warning(f"Confirmation missing for updating network {network_id}.")
-        return {
-            "success": False,
-            "error": "Confirmation required. Set 'confirm' to true.",
-        }
-
     if not network_id:
         return {"success": False, "error": "network_id is required"}
     if not update_data:
         return {"success": False, "error": "update_data cannot be empty"}
 
     # Validate the update data
-    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate(
-        "network_update", update_data
-    )
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("network_update", update_data)
     if not is_valid:
         logger.warning(f"Invalid network update data for ID {network_id}: {error_msg}")
         return {"success": False, "error": f"Invalid update data: {error_msg}"}
 
     if not validated_data:
-        logger.warning(
-            f"Network update data for ID {network_id} is empty after validation."
-        )
+        logger.warning(f"Network update data for ID {network_id} is empty after validation.")
         return {
             "success": False,
             "error": "Update data is effectively empty or invalid.",
         }
 
+    # Fetch current state for preview
+    current = await network_manager.get_network_details(network_id)
+    if not current:
+        return {"success": False, "error": "Network not found"}
+
+    if not confirm and not should_auto_confirm():
+        return update_preview(
+            resource_type="network",
+            resource_id=network_id,
+            resource_name=current.get("name"),
+            current_state=current,
+            updates=validated_data,
+        )
+
     # Basic cross-field validation (more complex logic might need Pydantic models)
-    if (
-        "vlan_enabled" in validated_data
-        and validated_data["vlan_enabled"]
-        and "vlan" not in validated_data
-    ):
+    if "vlan_enabled" in validated_data and validated_data["vlan_enabled"] and "vlan" not in validated_data:
         # Check if existing network already has VLAN ID if only enabling
         pass  # Let manager handle fetching existing state for merge
-    if "vlan" in validated_data and (
-        int(validated_data["vlan"]) < 1 or int(validated_data["vlan"]) > 4094
-    ):
+    if "vlan" in validated_data and (int(validated_data["vlan"]) < 1 or int(validated_data["vlan"]) > 4094):
         return {"success": False, "error": "'vlan' must be between 1 and 4094."}
     if "dhcp_enabled" in validated_data and validated_data["dhcp_enabled"]:
         if "dhcp_start" not in validated_data or "dhcp_stop" not in validated_data:
@@ -260,9 +254,7 @@ async def update_network(
             pass  # Let manager handle potential partial updates
 
     updated_fields_list = list(validated_data.keys())
-    logger.info(
-        f"Attempting to update network '{network_id}' with fields: {', '.join(updated_fields_list)}"
-    )
+    logger.info(f"Attempting to update network '{network_id}' with fields: {', '.join(updated_fields_list)}")
     try:
         # *** Assumption: Need network_manager.update_network(network_id, validated_data) ***
         # This method needs implementation in NetworkManager.
@@ -279,17 +271,13 @@ async def update_network(
                 "details": json.loads(json.dumps(updated_network, default=str)),
             }
         else:
-            logger.error(
-                f"Failed to update network ({network_id}). {error_message_detail}"
-            )
+            logger.error(f"Failed to update network ({network_id}). {error_message_detail}")
             network_after_update = await network_manager.get_network_details(network_id)
             return {
                 "success": False,
                 "network_id": network_id,
                 "error": f"Failed to update network ({network_id}). Check server logs. {error_message_detail}",
-                "details_after_attempt": json.loads(
-                    json.dumps(network_after_update, default=str)
-                ),
+                "details_after_attempt": json.loads(json.dumps(network_after_update, default=str)),
             }
 
     except Exception as e:
@@ -299,12 +287,16 @@ async def update_network(
 
 @server.tool(
     name="unifi_create_network",
-    description="Create a new network (LAN/VLAN) with schema validation.",
+    description="Create a new network (LAN/VLAN) with schema validation. Requires confirmation.",
     permission_category="networks",
     permission_action="create",
 )
-async def create_network(network_data: Dict[str, Any]) -> Dict[str, Any]:
+async def create_network(network_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Create a new network (LAN/VLAN) with comprehensive validation.
+
+    Args:
+        network_data (Dict[str, Any]): Network configuration data
+        confirm (bool): Must be set to `True` to execute. Defaults to `False`.
 
     Required parameters in network_data:
     - name (string): Network name
@@ -352,9 +344,7 @@ async def create_network(network_data: Dict[str, Any]) -> Dict[str, Any]:
     from src.validator_registry import UniFiValidatorRegistry
 
     # Validate the input
-    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate(
-        "network", network_data
-    )
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("network", network_data)
     if not is_valid:
         logger.warning(f"Invalid network data: {error_msg}")
         return {"success": False, "error": error_msg}
@@ -402,9 +392,7 @@ async def create_network(network_data: Dict[str, Any]) -> Dict[str, Any]:
     if (
         purpose != "vlan-only"
         and dhcp_enabled
-        and (
-            not validated_data.get("dhcp_start") or not validated_data.get("dhcp_stop")
-        )
+        and (not validated_data.get("dhcp_start") or not validated_data.get("dhcp_stop"))
     ):
         return {
             "success": False,
@@ -423,9 +411,15 @@ async def create_network(network_data: Dict[str, Any]) -> Dict[str, Any]:
     if vlan_id is not None and (int(vlan_id) < 1 or int(vlan_id) > 4094):
         return {"success": False, "error": "'vlan' must be between 1 and 4094."}
 
-    logger.info(
-        f"Attempting to create network '{validated_data['name']}' with purpose '{purpose}'"
-    )
+    if not confirm and not should_auto_confirm():
+        return create_preview(
+            resource_type="network",
+            resource_data=validated_data,
+            resource_name=validated_data.get("name"),
+            warnings=["Creating a network may temporarily disrupt connectivity"],
+        )
+
+    logger.info(f"Attempting to create network '{validated_data['name']}' with purpose '{purpose}'")
     try:
         # Use validated data directly
         network_data = validated_data
@@ -435,9 +429,7 @@ async def create_network(network_data: Dict[str, Any]) -> Dict[str, Any]:
         created_network = await network_manager.create_network(network_data)
         if created_network and created_network.get("_id"):
             new_network_id = created_network.get("_id")
-            logger.info(
-                f"Successfully created network '{validated_data['name']}' with ID {new_network_id}"
-            )
+            logger.info(f"Successfully created network '{validated_data['name']}' with ID {new_network_id}")
             return {
                 "success": True,
                 "site": network_manager._connection.site,
@@ -451,9 +443,7 @@ async def create_network(network_data: Dict[str, Any]) -> Dict[str, Any]:
                 if isinstance(created_network, dict)
                 else "Manager returned non-dict or failure"
             )
-            logger.error(
-                f"Failed to create network '{validated_data['name']}'. Reason: {error_msg}"
-            )
+            logger.error(f"Failed to create network '{validated_data['name']}'. Reason: {error_msg}")
             return {
                 "success": False,
                 "error": f"Failed to create network '{validated_data['name']}'. {error_msg}",
@@ -533,9 +523,7 @@ async def list_wlans() -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@server.tool(
-    name="unifi_get_wlan_details", description="Get details for a specific WLAN by ID."
-)
+@server.tool(name="unifi_get_wlan_details", description="Get details for a specific WLAN by ID.")
 async def get_wlan_details(wlan_id: str) -> Dict[str, Any]:
     """Gets the detailed configuration of a specific WLAN (SSID) by its ID.
 
@@ -597,9 +585,7 @@ async def get_wlan_details(wlan_id: str) -> Dict[str, Any]:
     permission_category="wlans",
     permission_action="update",
 )
-async def update_wlan(
-    wlan_id: str, update_data: Dict[str, Any], confirm: bool = False
-) -> Dict[str, Any]:
+async def update_wlan(wlan_id: str, update_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Updates specific fields of an existing WLAN (Wireless SSID).
 
     Allows modifying properties like SSID name, security settings, password,
@@ -635,22 +621,13 @@ async def update_wlan(
         logger.warning(f"Permission denied for updating WLAN ({wlan_id}).")
         return {"success": False, "error": "Permission denied to update WLAN."}
 
-    if not confirm:
-        logger.warning(f"Confirmation missing for updating WLAN {wlan_id}.")
-        return {
-            "success": False,
-            "error": "Confirmation required. Set 'confirm' to true.",
-        }
-
     if not wlan_id:
         return {"success": False, "error": "wlan_id is required"}
     if not update_data:
         return {"success": False, "error": "update_data cannot be empty"}
 
     # Validate the update data
-    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate(
-        "wlan_update", update_data
-    )
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("wlan_update", update_data)
     if not is_valid:
         logger.warning(f"Invalid WLAN update data for ID {wlan_id}: {error_msg}")
         return {"success": False, "error": f"Invalid update data: {error_msg}"}
@@ -662,19 +639,27 @@ async def update_wlan(
             "error": "Update data is effectively empty or invalid.",
         }
 
+    # Fetch current state for preview
+    current = await network_manager.get_wlan_details(wlan_id)
+    if not current:
+        return {"success": False, "error": "WLAN not found"}
+
+    if not confirm and not should_auto_confirm():
+        return update_preview(
+            resource_type="wlan",
+            resource_id=wlan_id,
+            resource_name=current.get("name"),
+            current_state=current,
+            updates=validated_data,
+        )
+
     # Basic cross-field validation for password
-    if (
-        "security" in validated_data
-        and validated_data["security"] != "open"
-        and "x_passphrase" not in validated_data
-    ):
+    if "security" in validated_data and validated_data["security"] != "open" and "x_passphrase" not in validated_data:
         # Check existing state? Or require passphrase if changing security?
         pass  # Let manager handle merge/API requirements
 
     updated_fields_list = list(validated_data.keys())
-    logger.info(
-        f"Attempting to update WLAN '{wlan_id}' with fields: {', '.join(updated_fields_list)}"
-    )
+    logger.info(f"Attempting to update WLAN '{wlan_id}' with fields: {', '.join(updated_fields_list)}")
     try:
         # *** Assumption: Need network_manager.update_wlan(wlan_id, validated_data) ***
         # This method needs implementation in NetworkManager.
@@ -697,9 +682,7 @@ async def update_wlan(
                 "success": False,
                 "wlan_id": wlan_id,
                 "error": f"Failed to update WLAN ({wlan_id}). Check server logs. {error_message_detail}",
-                "details_after_attempt": json.loads(
-                    json.dumps(wlan_after_update, default=str)
-                ),
+                "details_after_attempt": json.loads(json.dumps(wlan_after_update, default=str)),
             }
 
     except Exception as e:
@@ -709,12 +692,16 @@ async def update_wlan(
 
 @server.tool(
     name="unifi_create_wlan",
-    description=("Create a new Wireless LAN (WLAN/SSID) with schema validation."),
+    description=("Create a new Wireless LAN (WLAN/SSID) with schema validation. Requires confirmation."),
     permission_category="wlans",
     permission_action="create",
 )
-async def create_wlan(wlan_data: Dict[str, Any]) -> Dict[str, Any]:
+async def create_wlan(wlan_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Create a new WLAN (SSID) with comprehensive validation.
+
+    Args:
+        wlan_data (Dict[str, Any]): WLAN configuration data
+        confirm (bool): Must be set to `True` to execute. Defaults to `False`.
 
     Required parameters in wlan_data:
     - name (string): Name of the wireless network (SSID)
@@ -753,9 +740,7 @@ async def create_wlan(wlan_data: Dict[str, Any]) -> Dict[str, Any]:
     from src.validator_registry import UniFiValidatorRegistry
 
     # Validate the input
-    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate(
-        "wlan", wlan_data
-    )
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("wlan", wlan_data)
     if not is_valid:
         logger.warning(f"Invalid WLAN data: {error_msg}")
         return {"success": False, "error": error_msg}
@@ -769,17 +754,21 @@ async def create_wlan(wlan_data: Dict[str, Any]) -> Dict[str, Any]:
         return {"success": False, "error": error}
 
     # Check passphrase requirement
-    if validated_data.get("security") != "open" and not validated_data.get(
-        "x_passphrase"
-    ):
+    if validated_data.get("security") != "open" and not validated_data.get("x_passphrase"):
         return {
             "success": False,
             "error": "'x_passphrase' is required when security is not 'open'",
         }
 
-    logger.info(
-        f"Attempting to create WLAN '{validated_data['name']}' with security '{validated_data['security']}'"
-    )
+    if not confirm and not should_auto_confirm():
+        return create_preview(
+            resource_type="wlan",
+            resource_data=validated_data,
+            resource_name=validated_data.get("name"),
+            warnings=["Creating a WLAN may temporarily affect wireless connectivity"],
+        )
+
+    logger.info(f"Attempting to create WLAN '{validated_data['name']}' with security '{validated_data['security']}'")
     try:
         # Pass validated data directly to manager
         wlan_payload = validated_data
@@ -789,9 +778,7 @@ async def create_wlan(wlan_data: Dict[str, Any]) -> Dict[str, Any]:
 
         if created_wlan and created_wlan.get("_id"):
             new_wlan_id = created_wlan.get("_id")
-            logger.info(
-                f"Successfully created WLAN '{validated_data['name']}' with ID {new_wlan_id}"
-            )
+            logger.info(f"Successfully created WLAN '{validated_data['name']}' with ID {new_wlan_id}")
             return {
                 "success": True,
                 "site": network_manager._connection.site,
@@ -805,9 +792,7 @@ async def create_wlan(wlan_data: Dict[str, Any]) -> Dict[str, Any]:
                 if isinstance(created_wlan, dict)
                 else "Manager returned non-dict or failure"
             )
-            logger.error(
-                f"Failed to create WLAN '{validated_data['name']}'. Reason: {error_msg}"
-            )
+            logger.error(f"Failed to create WLAN '{validated_data['name']}'. Reason: {error_msg}")
             return {
                 "success": False,
                 "error": f"Failed to create WLAN '{validated_data['name']}'. {error_msg}",

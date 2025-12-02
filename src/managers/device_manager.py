@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from aiounifi.models.api import ApiRequest
 from aiounifi.models.device import Device
+
 from .connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -23,10 +24,7 @@ class DeviceManager:
 
     async def get_devices(self) -> List[Device]:
         """Get list of devices for the current site."""
-        if (
-            not await self._connection.ensure_connected()
-            or not self._connection.controller
-        ):
+        if not await self._connection.ensure_connected() or not self._connection.controller:
             return []
 
         cache_key = f"{CACHE_PREFIX_DEVICES}_{self._connection.site}"
@@ -46,13 +44,9 @@ class DeviceManager:
     async def get_device_details(self, device_mac: str) -> Optional[Device]:
         """Get detailed information for a specific device by MAC address."""
         devices = await self.get_devices()
-        device: Optional[Device] = next(
-            (d for d in devices if d.mac == device_mac), None
-        )
+        device: Optional[Device] = next((d for d in devices if d.mac == device_mac), None)
         if not device:
-            logger.debug(
-                f"Device details for MAC {device_mac} not found in devices list."
-            )
+            logger.debug(f"Device details for MAC {device_mac} not found in devices list.")
         return device
 
     async def reboot_device(self, device_mac: str) -> bool:
@@ -61,7 +55,7 @@ class DeviceManager:
             api_request = ApiRequest(
                 method="post",
                 path="/cmd/devmgr",
-                json={"mac": device_mac, "cmd": "restart"},
+                data={"mac": device_mac, "cmd": "restart"},
             )
             await self._connection.request(api_request)
             logger.info(f"Reboot command sent for device {device_mac}")
@@ -76,15 +70,11 @@ class DeviceManager:
         try:
             device = await self.get_device_details(device_mac)
             if not device or "_id" not in device.raw:
-                logger.error(
-                    f"Cannot rename device {device_mac}: Not found or missing ID."
-                )
+                logger.error(f"Cannot rename device {device_mac}: Not found or missing ID.")
                 return False
             device_id = device.raw["_id"]
 
-            api_request = ApiRequest(
-                method="put", path=f"/rest/device/{device_id}", json={"name": name}
-            )
+            api_request = ApiRequest(method="put", path=f"/rest/device/{device_id}", data={"name": name})
             await self._connection.request(api_request)
             logger.info(f"Rename command sent for device {device_mac} to '{name}'")
             self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
@@ -99,7 +89,7 @@ class DeviceManager:
             api_request = ApiRequest(
                 method="post",
                 path="/cmd/devmgr",
-                json={"mac": device_mac, "cmd": "adopt"},
+                data={"mac": device_mac, "cmd": "adopt"},
             )
             await self._connection.request(api_request)
             logger.info(f"Adopt command sent for device {device_mac}")
@@ -115,7 +105,7 @@ class DeviceManager:
             api_request = ApiRequest(
                 method="post",
                 path="/cmd/devmgr",
-                json={"mac": device_mac, "cmd": "upgrade"},
+                data={"mac": device_mac, "cmd": "upgrade"},
             )
             await self._connection.request(api_request)
             logger.info(f"Upgrade command sent for device {device_mac}")

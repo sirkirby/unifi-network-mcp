@@ -9,29 +9,28 @@ Responsibilities:
 
 import asyncio
 import logging
-import traceback
-import sys  # Removed uvicorn import
 import os
+import sys  # Removed uvicorn import
+import traceback
 
 from src.bootstrap import (
-    logger,
     UNIFI_TOOL_REGISTRATION_MODE,
+    logger,
 )  # ensures logging/env setup early
+from src.jobs import get_job_status, start_async_tool
 
 # Shared singletons
 from src.runtime import (
-    server,
     config,
     connection_manager,
+    server,
 )
-
-from src.utils.tool_loader import auto_load_tools
-from src.utils.lazy_tool_loader import setup_lazy_loading
-from src.utils.diagnostics import diagnostics_enabled, wrap_tool
-from src.utils.permissions import parse_permission  # noqa: E402
-from src.utils.meta_tools import register_meta_tools
 from src.tool_index import register_tool, tool_index_handler
-from src.jobs import start_async_tool, get_job_status
+from src.utils.diagnostics import diagnostics_enabled, wrap_tool
+from src.utils.lazy_tool_loader import setup_lazy_loading
+from src.utils.meta_tools import register_meta_tools
+from src.utils.permissions import parse_permission  # noqa: E402
+from src.utils.tool_loader import auto_load_tools
 
 _original_tool_decorator = server.tool  # keep reference to wrap later
 
@@ -39,11 +38,7 @@ _original_tool_decorator = server.tool  # keep reference to wrap later
 def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
     """Decorator that only registers the tool if permission allows."""
 
-    tool_name = (
-        d_kwargs.get("name")
-        if d_kwargs.get("name")
-        else (d_args[0] if d_args else None)
-    )
+    tool_name = d_kwargs.get("name") if d_kwargs.get("name") else (d_args[0] if d_args else None)
 
     category = d_kwargs.pop("permission_category", None)
     action = d_kwargs.pop("permission_action", None)
@@ -141,9 +136,7 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
         if allowed:
             # Permission granted - register with MCP server
             wrapped = (
-                wrap_tool(func, tool_name or getattr(func, "__name__", "<tool>"))
-                if diagnostics_enabled()
-                else func
+                wrap_tool(func, tool_name or getattr(func, "__name__", "<tool>")) if diagnostics_enabled() else func
             )
             return _original_tool_decorator(*d_args, **d_kwargs)(wrapped)
 
@@ -168,9 +161,7 @@ try:
 
     logger.info(f"MCP Python SDK version: {getattr(mcp, '__version__', 'unknown')}")
     logger.info(f"Server methods: {dir(server)}")
-    logger.info(
-        f"Server tool methods: {[m for m in dir(server) if 'tool' in m.lower()]}"
-    )
+    logger.info(f"Server tool methods: {[m for m in dir(server) if 'tool' in m.lower()]}")
 except Exception as e:
     logger.error(f"Error inspecting server: {e}")
 
@@ -194,9 +185,7 @@ async def main_async():
     try:
         from src.bootstrap import logger as bootstrap_logger_async
 
-        bootstrap_logger_async.critical(
-            "ASYNCHRONOUS main_async() FUNCTION ENTERED - TEST MESSAGE"
-        )
+        bootstrap_logger_async.critical("ASYNCHRONOUS main_async() FUNCTION ENTERED - TEST MESSAGE")
     except Exception as e:
         print(f"Logging in main_async() failed: {e}", file=sys.stderr)  # Fallback
     # ---- END VERY EARLY ASYNC LOG TEST ----
@@ -220,9 +209,7 @@ async def main_async():
                     context["exception"].__traceback__,
                 )
             )
-            logger.error(
-                f"Original traceback for global asyncio exception:\n{orig_traceback}"
-            )
+            logger.error(f"Original traceback for global asyncio exception:\n{orig_traceback}")
 
     loop.set_exception_handler(handle_asyncio_exception)
     logger.info("Global asyncio exception handler set.")
@@ -232,17 +219,13 @@ async def main_async():
     log_level = config.server.get("log_level", "INFO").upper()
     # Ensure logging is configured (might be redundant if already set by bootstrap)
     # but this ensures the level is applied if changed post-bootstrap.
-    logging.basicConfig(
-        level=getattr(logging, log_level, logging.INFO), force=True
-    )  # Use default format
+    logging.basicConfig(level=getattr(logging, log_level, logging.INFO), force=True)  # Use default format
     logger.info(f"Log level set to {log_level} in main_async.")
 
     # Initialize the global Unifi connection
     logger.info("Initializing global Unifi connection from main_async...")
     if not await connection_manager.initialize():
-        logger.error(
-            "Failed to connect to Unifi Controller from main_async. Tool functionality may be impaired."
-        )
+        logger.error("Failed to connect to Unifi Controller from main_async. Tool functionality may be impaired.")
     else:
         logger.info("Global Unifi connection initialized successfully from main_async.")
 
@@ -276,9 +259,7 @@ async def main_async():
         # They'll be registered on first use
         from src.utils.lazy_tool_loader import TOOL_MODULE_MAP
 
-        logger.info(
-            f"   Lazy loader ready - {len(TOOL_MODULE_MAP)} tools available on-demand"
-        )
+        logger.info(f"   Lazy loader ready - {len(TOOL_MODULE_MAP)} tools available on-demand")
     else:  # eager (default)
         logger.info("📚 Tool registration mode: eager")
         logger.info("   All 64+ UniFi tools registered immediately")
@@ -324,9 +305,7 @@ async def main_async():
                 server.settings.host = host
                 server.settings.port = port
                 await server.run_sse_async()
-                logger.info(
-                    "HTTP SSE started via run_sse_async() using server.settings host/port."
-                )
+                logger.info("HTTP SSE started via run_sse_async() using server.settings host/port.")
             except Exception as http_e:
                 logger.error(f"HTTP SSE server failed to start: {http_e}")
                 logger.error(traceback.format_exc())
@@ -353,17 +332,13 @@ def main():
         print(f"Logging in main() failed: {e}", file=sys.stderr)  # Fallback
     # ---- END VERY EARLY LOG TEST ----
 
-    logger.debug(
-        "Starting main()"
-    )  # This uses the logger from bootstrap via global scope
+    logger.debug("Starting main()")  # This uses the logger from bootstrap via global scope
     try:
         asyncio.run(main_async())
     except KeyboardInterrupt:
         logger.info("Server stopped by user (KeyboardInterrupt).")
     except Exception as e:
-        logger.exception(
-            "Unhandled exception during server run (from asyncio.run): %s", e
-        )
+        logger.exception("Unhandled exception during server run (from asyncio.run): %s", e)
     finally:
         logger.info("Server process exiting.")
 

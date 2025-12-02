@@ -12,13 +12,13 @@ Importing it early guarantees deterministic side‑effects (env + logging) and
 exposes a `load_config()` helper that the rest of the codebase can share.
 """
 
-from dataclasses import dataclass
+import importlib.resources
 import logging
 import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-import importlib.resources
 
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
@@ -118,32 +118,20 @@ def load_config(path_override: str | Path | None = None) -> OmegaConf:
         relative_path = Path("config/config.yaml")
         if relative_path.exists() and relative_path.is_file():
             resolved_path = relative_path
-            logger.info(
-                "Using configuration file from relative path: %s", relative_path
-            )
+            logger.info("Using configuration file from relative path: %s", relative_path)
         else:
             # 3. Use bundled default config
             try:
                 # Use importlib.resources to safely access package data
-                config_file_ref = importlib.resources.files("src.config").joinpath(
-                    "config.yaml"
-                )
+                config_file_ref = importlib.resources.files("src.config").joinpath("config.yaml")
                 if config_file_ref.is_file():
-                    resolved_path = Path(
-                        str(config_file_ref)
-                    )  # Convert Traversable to Path
-                    logger.info(
-                        "Using bundled default configuration: %s", resolved_path
-                    )
+                    resolved_path = Path(str(config_file_ref))  # Convert Traversable to Path
+                    logger.info("Using bundled default configuration: %s", resolved_path)
                 else:
-                    logger.error(
-                        "Bundled default configuration file could not be accessed (not a file)."
-                    )
+                    logger.error("Bundled default configuration file could not be accessed (not a file).")
                     raise SystemExit(3)  # Exit if bundled config isn't a file
             except (ModuleNotFoundError, FileNotFoundError, Exception) as e:
-                logger.error(
-                    "Could not find or access bundled default configuration: %s", e
-                )
+                logger.error("Could not find or access bundled default configuration: %s", e)
                 raise SystemExit(3)  # Exit if bundled config cannot be loaded
 
     if resolved_path is None:

@@ -14,9 +14,9 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -108,14 +108,10 @@ def get_tool_index() -> Dict[str, Any]:
                 try:
                     with open(manifest_path) as f:
                         manifest = json.load(f)
-                    logger.debug(
-                        f"Loaded tool index from manifest: {manifest['count']} tools"
-                    )
+                    logger.debug(f"Loaded tool index from manifest: {manifest['count']} tools")
                     return manifest
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to load tool manifest: {e}, falling back to runtime"
-                    )
+                    logger.warning(f"Failed to load tool manifest: {e}, falling back to runtime")
             else:
                 logger.warning(
                     f"Tool manifest not found at {manifest_path}. "

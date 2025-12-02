@@ -5,7 +5,7 @@ This module provides MCP tools to interact with a Unifi Network Controller's sys
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
 from src.runtime import server, system_manager
 
@@ -73,6 +73,4 @@ async def get_site_settings() -> Dict[str, Any]:
 
 
 # Print confirmation that all tools have been registered
-logger.info(
-    "System tools registered: unifi_get_system_info, unifi_get_network_health, unifi_get_site_settings"
-)
+logger.info("System tools registered: unifi_get_system_info, unifi_get_network_health, unifi_get_site_settings")
