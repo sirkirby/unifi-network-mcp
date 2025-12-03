@@ -82,17 +82,21 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
                     param_type = "string"  # default
                     if param.annotation != inspect.Parameter.empty:
                         ann = param.annotation
-                        # Basic type mapping
-                        if ann in (int, "int"):
+                        # Handle generic types like Dict[str, Any], List[str]
+                        from typing import get_origin
+
+                        origin = get_origin(ann)
+                        # Basic type mapping (check origin first for generics)
+                        if origin is dict or ann in (dict, "dict"):
+                            param_type = "object"
+                        elif origin is list or ann in (list, "list"):
+                            param_type = "array"
+                        elif ann in (int, "int"):
                             param_type = "integer"
                         elif ann in (bool, "bool"):
                             param_type = "boolean"
                         elif ann in (float, "float"):
                             param_type = "number"
-                        elif ann in (list, "list"):
-                            param_type = "array"
-                        elif ann in (dict, "dict"):
-                            param_type = "object"
 
                     properties[param_name] = {"type": param_type}
 
