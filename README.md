@@ -29,7 +29,7 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
   * [Overview](#overview)
   * [Context Optimization](#context-optimization)
   * [Tool Index](#tool-index)
-  * [Async Operations](#async-operations)
+  * [Tool Execution](#tool-execution)
 * [Runtime Configuration](#runtime-configuration)
 * [Diagnostics (Advanced Logging)](#diagnostics-advanced-logging)
 * [Developer Console (Local Tool Tester)](#developer-console-local-tool-tester)
@@ -252,20 +252,33 @@ The server exposes a special `unifi_tool_index` tool that returns a complete lis
 - Dynamic client configuration
 - IDE autocomplete support
 
-### Async Operations
+### Tool Execution
 
-For long-running operations (device upgrades, bulk configuration changes), the server provides async job execution:
+The server provides two execution modes for discovered tools:
 
-**Start a background job:**
+**Single Tool Execution (synchronous):**
 ```json
 {
-  "name": "unifi_async_start",
+  "name": "unifi_execute",
   "arguments": {
-    "tool": "unifi_upgrade_device",
-    "arguments": {
-      "mac_address": "aa:bb:cc:dd:ee:ff",
-      "confirm": true
-    }
+    "tool": "unifi_list_clients",
+    "arguments": {}
+  }
+}
+```
+
+**Batch Execution (parallel, async):**
+
+For bulk operations or long-running tasks, use batch mode:
+
+```json
+{
+  "name": "unifi_batch",
+  "arguments": {
+    "operations": [
+      {"tool": "unifi_get_client_details", "arguments": {"mac": "aa:bb:cc:dd:ee:ff"}},
+      {"tool": "unifi_get_client_details", "arguments": {"mac": "11:22:33:44:55:66"}}
+    ]
   }
 }
 ```
@@ -273,52 +286,39 @@ For long-running operations (device upgrades, bulk configuration changes), the s
 **Response:**
 ```json
 {
-  "jobId": "af33b233cbdc860c"
+  "jobs": [
+    {"index": 0, "tool": "unifi_get_client_details", "jobId": "af33b233cbdc860c"},
+    {"index": 1, "tool": "unifi_get_client_details", "jobId": "bf44c344dcde971d"}
+  ],
+  "message": "Started 2 operation(s). Use unifi_batch_status to check progress."
 }
 ```
 
-**Check job status:**
+**Check batch status:**
 ```json
 {
-  "name": "unifi_async_status",
+  "name": "unifi_batch_status",
   "arguments": {
-    "jobId": "af33b233cbdc860c"
+    "jobIds": ["af33b233cbdc860c", "bf44c344dcde971d"]
   }
 }
 ```
 
-**Response (running):**
+**Response:**
 ```json
 {
-  "status": "running",
-  "started": 1234567890.123
-}
-```
-
-**Response (completed):**
-```json
-{
-  "status": "done",
-  "result": {...},
-  "started": 1234567890.123,
-  "finished": 1234567891.456
-}
-```
-
-**Response (error):**
-```json
-{
-  "status": "error",
-  "error": "Device not found",
-  "started": 1234567890.123,
-  "finished": 1234567891.456
+  "jobs": [
+    {"jobId": "af33b233cbdc860c", "status": "done", "result": {...}},
+    {"jobId": "bf44c344dcde971d", "status": "done", "result": {...}}
+  ]
 }
 ```
 
 **Notes:**
+- Use `unifi_execute` for single operations (returns result directly)
+- Use `unifi_batch` + `unifi_batch_status` for parallel/bulk operations
 - Jobs are stored in-memory only (no persistence)
 - Job IDs are unique per server session
-- Failed jobs capture exception details in the `error` field
 
 ### Using with Claude Desktop
 
@@ -345,22 +345,32 @@ Practical examples showing programmatic usage:
 ```python
 from mcp import ClientSession, stdio_client
 
-# Query tool index
-result = await session.call_tool("unifi_tool_index", {})
+# Discover tools
+tools = await session.call_tool("unifi_tool_index", {})
 
-# Use async jobs for long operations
-job = await session.call_tool("unifi_async_start", {
-    "tool": "unifi_upgrade_device",
-    "arguments": {"mac_address": "...", "confirm": True}
+# Execute a single tool (returns result directly)
+result = await session.call_tool("unifi_execute", {
+    "tool": "unifi_list_clients",
+    "arguments": {}
 })
 
-# Check job status
-status = await session.call_tool("unifi_async_status", {"jobId": job["jobId"]})
+# Batch execution for parallel operations
+batch = await session.call_tool("unifi_batch", {
+    "operations": [
+        {"tool": "unifi_get_client_details", "arguments": {"mac": "..."}},
+        {"tool": "unifi_get_device_details", "arguments": {"mac": "..."}}
+    ]
+})
+
+# Check batch status
+status = await session.call_tool("unifi_batch_status", {
+    "jobIds": [j["jobId"] for j in batch["jobs"]]
+})
 ```
 
 **Three complete examples:**
 - `query_tool_index.py` - Discover available tools
-- `use_async_jobs.py` - Background job management
+- `use_async_jobs.py` - Batch operations and status checking
 - `programmatic_client.py` - Build custom Python clients
 
 See [`examples/python/README.md`](examples/python/README.md) for complete examples.
@@ -377,15 +387,18 @@ The server advertises its capabilities via an MCP identity file at [`.well-known
   "capabilities": {
     "tools": true,
     "tool_index": true,
-    "async_operations": true
+    "batch_operations": true
   },
   "features": {
     "tool_index": {
       "tool": "unifi_tool_index"
     },
-    "async_operations": {
-      "start_tool": "unifi_async_start",
-      "status_tool": "unifi_async_status"
+    "execution": {
+      "tool": "unifi_execute"
+    },
+    "batch_operations": {
+      "start_tool": "unifi_batch",
+      "status_tool": "unifi_batch_status"
     }
   }
 }
@@ -506,6 +519,43 @@ The server merges settings from **environment variables**, an optional `.env` fi
 | `UNIFI_CONTROLLER_TYPE` | Controller API path type: `auto` (detect), `proxy` (UniFi OS), `direct` (standalone). Default `auto` |
 | `UNIFI_MCP_HTTP_ENABLED` | Set `true` to enable optional HTTP SSE server (default `false`) |
 | `UNIFI_AUTO_CONFIRM` | Set `true` to auto-confirm all mutating operations (skips preview step). Ideal for workflow automation (n8n, Make, Zapier). Default `false` |
+| `UNIFI_TOOL_REGISTRATION_MODE` | Tool loading mode: `lazy` (default), `eager`, or `meta_only`. See [Context Optimization](#context-optimization) |
+| `UNIFI_ENABLED_CATEGORIES` | Comma-separated list of tool categories to load (eager mode). See table below |
+| `UNIFI_ENABLED_TOOLS` | Comma-separated list of specific tool names to register (eager mode) |
+
+### Tool Categories (for UNIFI_ENABLED_CATEGORIES)
+
+When using eager mode with category filtering, these are the valid category names:
+
+| Category | Description | Example Tools |
+|----------|-------------|---------------|
+| `clients` | Client listing, blocking, guest auth | `unifi_list_clients`, `unifi_block_client` |
+| `config` | Configuration management | - |
+| `devices` | Device listing, reboot, locate, upgrade | `unifi_list_devices`, `unifi_reboot_device` |
+| `events` | Events and alarms | `unifi_list_events`, `unifi_list_alarms` |
+| `firewall` | Firewall rules and groups | `unifi_list_firewall_rules`, `unifi_create_firewall_rule` |
+| `hotspot` | Vouchers for guest network | `unifi_list_vouchers`, `unifi_create_voucher` |
+| `network` | Network/VLAN management | `unifi_list_networks`, `unifi_create_network` |
+| `port_forwards` | Port forwarding rules | `unifi_list_port_forwards` |
+| `qos` | QoS/traffic shaping rules | `unifi_list_qos_rules`, `unifi_create_qos_rule` |
+| `routing` | Static routes (V1 API) | `unifi_list_routes`, `unifi_create_route` |
+| `stats` | Statistics and metrics | `unifi_get_client_stats`, `unifi_get_device_stats` |
+| `system` | System info, health, settings | `unifi_get_system_info`, `unifi_get_network_health` |
+| `traffic_routes` | Policy-based routing (V2 API) | `unifi_list_traffic_routes` |
+| `usergroups` | Bandwidth profiles/user groups | `unifi_list_usergroups`, `unifi_create_usergroup` |
+| `vpn` | VPN servers and clients | `unifi_list_vpn_servers`, `unifi_list_vpn_clients` |
+
+**Example usage:**
+```bash
+# Load only client and system tools
+export UNIFI_TOOL_REGISTRATION_MODE=eager
+export UNIFI_ENABLED_CATEGORIES=clients,system
+
+# Or load specific tools only
+export UNIFI_ENABLED_TOOLS=unifi_list_clients,unifi_list_devices,unifi_get_system_info
+```
+
+**Note:** Tools may also be filtered by the `permissions` section in config.yaml (e.g., `clients.update: false` blocks mutating client tools).
 
 ### Controller Type Detection
 
@@ -1035,9 +1085,9 @@ uv run python devtools/dev_console.py
 
 # You'll see a menu of all tools including:
 # - unifi_tool_index (list all tools with schemas)
-# - unifi_async_start (start background jobs)
-# - unifi_async_status (check job status)
-# - All 60+ UniFi tools (clients, devices, networks, etc.)
+# - unifi_execute (run any discovered tool)
+# - unifi_batch / unifi_batch_status (parallel operations)
+# - All 80+ UniFi tools (clients, devices, networks, etc.)
 ```
 
 **4. Test with Python examples:**

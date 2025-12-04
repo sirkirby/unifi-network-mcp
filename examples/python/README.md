@@ -45,15 +45,15 @@ python examples/python/use_async_jobs.py
 ```
 
 **What it shows:**
-- Starting async jobs with `unifi_async_start`
-- Polling job status with `unifi_async_status`
+- Single tool execution with `unifi_execute`
+- Parallel batch operations with `unifi_batch`
+- Polling batch status with `unifi_batch_status`
 - Handling completion and errors
-- Implementing wait-for-completion logic
 
 **Use cases:**
-- Device firmware upgrades
-- Bulk client operations
-- Large data exports
+- Bulk operations across multiple devices
+- Parallel data collection
+- Long-running tasks (upgrades, exports)
 - Network-wide configuration changes
 
 ---

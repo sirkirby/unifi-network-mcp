@@ -284,7 +284,7 @@ async def main_async() -> None:
     try:
         auto_load_tools()
 
-        # Register meta-tools (tool index and async jobs) for dev console
+        # Register meta-tools (tool_index, execute, batch, batch_status) for dev console
         register_meta_tools(
             server=server,
             tool_decorator=server.tool,
@@ -303,7 +303,7 @@ async def main_async() -> None:
         print("=" * 70)
         print("ℹ️  This console shows ALL tools, including those disabled by permissions.")
         print("   Disabled tools are marked with [DISABLED] and cannot be executed.")
-        print("   To enable them, see: docs/permissions.md")
+        print("   To enable them, edit permissions in src/config/config.yaml")
         print("=" * 70 + "\n")
 
         # Load tools once
@@ -332,9 +332,9 @@ async def main_async() -> None:
             print(f"\n  {0:3d}. Exit")
 
             if disabled_tools:
-                print(f"\n💡 Tip: {len(disabled_tools)} tools are disabled. Set environment variables to enable them:")
-                print("   Example: UNIFI_PERMISSIONS_NETWORKS_CREATE=true")
-                print("   See docs/permissions.md for details")
+                print(f"\n💡 Tip: {len(disabled_tools)} tools are disabled by permissions.")
+                print("   Edit permissions in src/config/config.yaml to enable them.")
+                print("   Example: Set 'clients.update: true' to enable client mutation tools.")
 
         # Show full list on first load
         _show_tool_list()
@@ -360,7 +360,7 @@ async def main_async() -> None:
                 if not is_enabled:
                     print(f"\n⚠️  Tool '{tool.get('name')}' is DISABLED by permissions.")
                     print("   This tool cannot be executed until permissions are enabled.")
-                    print("   See docs/permissions.md for how to enable specific permissions.")
+                    print("   Edit src/config/config.yaml to enable specific permissions.")
                     continue
 
                 # Find the actual tool object from enabled tools

@@ -192,17 +192,25 @@ notepad %APPDATA%\Claude\claude_desktop_config.json
 await server.call_tool("unifi_tool_index", {})
 ```
 
-### 2. Async Jobs
+### 2. Tool Execution
 ```python
-# Start background job
-job = await server.call_tool("unifi_async_start", {
-    "tool": "unifi_upgrade_device",
-    "arguments": {"mac_address": "aa:bb:cc:dd:ee:ff", "confirm": True}
+# Single execution (returns result directly)
+result = await server.call_tool("unifi_execute", {
+    "tool": "unifi_list_clients",
+    "arguments": {}
 })
 
-# Check status
-status = await server.call_tool("unifi_async_status", {
-    "jobId": job["jobId"]
+# Batch execution (parallel, returns job IDs)
+batch = await server.call_tool("unifi_batch", {
+    "operations": [
+        {"tool": "unifi_get_client_details", "arguments": {"mac": "aa:bb:cc:dd:ee:ff"}},
+        {"tool": "unifi_get_device_details", "arguments": {"mac": "11:22:33:44:55:66"}}
+    ]
+})
+
+# Check batch status
+status = await server.call_tool("unifi_batch_status", {
+    "jobIds": [job["jobId"] for job in batch["jobs"]]
 })
 ```
 

@@ -39,11 +39,12 @@ You: "Upgrade the firmware on all my access points"
 ```
 
 Claude's workflow:
-1. Lists devices with `unifi_list_devices`
-2. Filters for access points
-3. Starts async jobs for each with `unifi_async_start`
-4. Polls status with `unifi_async_status`
-5. Reports progress and results
+1. Discovers tools with `unifi_tool_index`
+2. Lists devices with `unifi_execute` → `unifi_list_devices`
+3. Filters for access points
+4. Starts batch upgrade with `unifi_batch`
+5. Polls status with `unifi_batch_status`
+6. Reports progress and results
 
 ---
 
@@ -145,7 +146,7 @@ Claude can filter, sort, and limit the data in code before showing you results.
 "Start async jobs to reboot all access points and monitor progress"
 ```
 
-Claude will use `unifi_async_start` and poll for completion.
+Claude will use `unifi_batch` and poll with `unifi_batch_status`.
 
 ### 3. Leverage Data Aggregation
 
@@ -192,46 +193,63 @@ Claude uses the tool index to generate a capabilities summary.
 
 ---
 
-## Async Jobs Usage
+## Tool Execution
 
-### Starting Jobs
+### Single Operations
 
 ```
-You: "Start upgrading device AA:BB:CC:DD:EE:FF"
+You: "List my network clients"
 ```
 
 Claude:
 ```python
-job_id = unifi_async_start(
-    tool="unifi_upgrade_device",
-    arguments={"mac_address": "AA:BB:CC:DD:EE:FF", "confirm": True}
+result = unifi_execute(
+    tool="unifi_list_clients",
+    arguments={}
 )
-# Returns: job_id for tracking
-```
-
-### Monitoring Progress
-
-```
-You: "Check the status of job abc123"
-```
-
-Claude:
-```python
-status = unifi_async_status(jobId="abc123")
-# Shows: running, done, or error with details
+# Returns: result directly
 ```
 
 ### Batch Operations
+
+```
+You: "Get details for multiple devices at once"
+```
+
+Claude:
+```python
+batch = unifi_batch(
+    operations=[
+        {"tool": "unifi_get_device_details", "arguments": {"mac": "AA:BB:CC:DD:EE:FF"}},
+        {"tool": "unifi_get_device_details", "arguments": {"mac": "11:22:33:44:55:66"}}
+    ]
+)
+# Returns: job IDs for each operation
+```
+
+### Monitoring Batch Progress
+
+```
+You: "Check the status of my batch jobs"
+```
+
+Claude:
+```python
+status = unifi_batch_status(jobIds=["abc123", "def456"])
+# Shows: status of each job (running, done, error)
+```
+
+### Parallel Upgrades
 
 ```
 You: "Upgrade all access points, show me progress every 30 seconds"
 ```
 
 Claude:
-1. Gets device list
-2. Starts async job for each device
-3. Stores job IDs
-4. Polls status periodically
+1. Discovers tools with `unifi_tool_index`
+2. Gets device list via `unifi_execute`
+3. Starts batch upgrade with `unifi_batch`
+4. Polls status with `unifi_batch_status`
 5. Reports completion/failures
 
 ---

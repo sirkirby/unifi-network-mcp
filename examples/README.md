@@ -85,27 +85,35 @@ result = await session.call_tool("unifi_tool_index", {})
 - IDE autocomplete
 - Documentation generation
 
-### 2. Async Jobs API
+### 2. Tool Execution
 
-Run long-running operations in the background:
+Execute discovered tools synchronously or in parallel batches:
 
 ```python
-# Start a job
-job = await session.call_tool("unifi_async_start", {
-    "tool": "unifi_upgrade_device",
-    "arguments": {"mac_address": "...", "confirm": True}
+# Single execution (returns result directly)
+result = await session.call_tool("unifi_execute", {
+    "tool": "unifi_list_clients",
+    "arguments": {"limit": 10}
 })
 
-# Check status
-status = await session.call_tool("unifi_async_status", {
-    "jobId": job["jobId"]
+# Batch execution (parallel, returns job IDs)
+batch = await session.call_tool("unifi_batch", {
+    "operations": [
+        {"tool": "unifi_get_client_details", "arguments": {"mac": "..."}},
+        {"tool": "unifi_get_device_details", "arguments": {"mac": "..."}}
+    ]
+})
+
+# Check batch status
+status = await session.call_tool("unifi_batch_status", {
+    "jobIds": [job["jobId"] for job in batch["jobs"]]
 })
 ```
 
 **Use cases:**
-- Device firmware upgrades
-- Bulk client operations
-- Large data exports
+- Bulk operations across multiple devices
+- Parallel data collection
+- Long-running tasks (upgrades, exports)
 - Network-wide changes
 
 ### 3. Code-Based Processing

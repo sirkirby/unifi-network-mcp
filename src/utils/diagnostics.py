@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 import os
@@ -142,6 +143,12 @@ def log_tool_call(
 
 
 def wrap_tool(func, tool_name: str):
+    """Wrap a tool function with diagnostics logging.
+
+    IMPORTANT: Preserves the original function's signature so that FastMCP
+    can correctly generate the JSON schema for tool parameters.
+    """
+
     @wraps(func)
     async def _wrapper(*args, **kwargs):
         if not diagnostics_enabled():
@@ -163,6 +170,8 @@ def wrap_tool(func, tool_name: str):
                 # Never let diagnostics break the tool
                 pass
 
+    # Preserve the original function's signature for FastMCP schema generation
+    _wrapper.__signature__ = inspect.signature(func)
     return _wrapper
 
 

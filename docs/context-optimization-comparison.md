@@ -19,8 +19,8 @@
 │                                                              │
 │ Returns 67 tools:                                            │
 │ ├─ unifi_tool_index                                          │
-│ ├─ unifi_async_start                                         │
-│ ├─ unifi_async_status                                        │
+│ ├─ unifi_execute                                             │
+│ ├─ unifi_batch / unifi_batch_status                          │
 │ ├─ unifi_list_clients                                        │
 │ ├─ unifi_get_client_details                                  │
 │ ├─ unifi_list_devices                                        │
@@ -81,10 +81,11 @@
 ┌─────────────────────────────────────────────────────────────┐
 │ MCP Server: list_tools()                                    │
 │                                                              │
-│ Returns 3 meta-tools ONLY:                                   │
+│ Returns 4 meta-tools ONLY:                                   │
 │ ├─ 🔍 unifi_tool_index                                       │
-│ ├─ ⚡ unifi_async_start                                      │
-│ └─ 📊 unifi_async_status                                     │
+│ ├─ ⚡ unifi_execute                                          │
+│ ├─ 📦 unifi_batch                                            │
+│ └─ 📊 unifi_batch_status                                     │
 │                                                              │
 │ 📊 Context: ~200 tokens (96% less!)                          │
 └─────────────────────────────────────────────────────────────┘

@@ -46,10 +46,14 @@
       "tool": "unifi_tool_index",
       "description": "Returns machine-readable list of all available tools with schemas"
     },
-    "async_operations": {
-      "start_tool": "unifi_async_start",
-      "status_tool": "unifi_async_status",
-      "description": "Background job execution for long-running operations"
+    "execution": {
+      "tool": "unifi_execute",
+      "description": "Execute any discovered tool synchronously"
+    },
+    "batch_operations": {
+      "start_tool": "unifi_batch",
+      "status_tool": "unifi_batch_status",
+      "description": "Parallel batch execution for bulk operations"
     }
   }
 }
