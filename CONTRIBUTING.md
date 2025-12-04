@@ -98,7 +98,7 @@ make test
 
 ### Run Specific Tests
 ```bash
-# Async jobs
+# Batch/async operations
 make test-async
 
 # With coverage
@@ -119,7 +119,37 @@ make console
 # 3. Restart Claude Desktop
 ```
 
-## Release Process
+## Contributor Workflow
+
+Contributors should **fork** the repository and submit changes via Pull Request:
+
+```bash
+# 1. Fork the repo on GitHub
+
+# 2. Clone your fork
+git clone https://github.com/YOUR_USERNAME/unifi-network-mcp.git
+cd unifi-network-mcp
+
+# 3. Create a feature branch
+git checkout -b feature/my-new-feature
+
+# 4. Make your changes, then commit
+git add .
+git commit -m "feat: add my new feature"
+
+# 5. Push to your fork
+git push origin feature/my-new-feature
+
+# 6. Open a Pull Request on GitHub
+```
+
+**Do not push directly to `main`** - all changes go through PR review.
+
+---
+
+## Release Process (Maintainers Only)
+
+This section is for project maintainers who have push access to the main repository.
 
 ### Pre-Release Checklist
 
@@ -138,16 +168,23 @@ This will:
 
 ### Create Release
 
-```bash
-# Update version in pyproject.toml
-# Commit changes
-git add .
-git commit -m "Release v0.X.Y"
+**Important:** The version in `pyproject.toml` must match the release tag.
 
-# Tag release
+```bash
+# 1. Update version in pyproject.toml
+#    Edit: version = "0.X.Y"
+
+# 2. Update version in .well-known/mcp-server.json
+#    Edit: "version": "0.X.Y"
+
+# 3. Commit changes
+git add pyproject.toml .well-known/mcp-server.json
+git commit -m "chore: bump version to 0.X.Y"
+
+# 4. Tag release (must match pyproject.toml version)
 git tag v0.X.Y
 
-# Push
+# 5. Push
 git push origin main --tags
 ```
 
@@ -166,8 +203,8 @@ unifi-network-mcp/
 │   ├── tools_manifest.json  # Pre-generated tool list (commit this!)
 │   ├── tools/               # Tool implementations
 │   ├── utils/
-│   │   ├── lazy_tool_loader.py  # Lazy loading logic
-│   │   └── meta_tools.py        # Meta-tool registration
+│   │   ├── lazy_tool_loader.py  # Lazy loading logic + TOOL_MODULE_MAP
+│   │   └── meta_tools.py        # Meta-tools: tool_index, execute, batch, batch_status
 │   └── config/
 │       └── config.yaml      # Server configuration
 │
@@ -190,6 +227,9 @@ unifi-network-mcp/
 2. Add tool names to `TOOL_MODULE_MAP` in `lazy_tool_loader.py`
 3. Run `make manifest`
 4. Test with `make run-lazy`
+5. Update documentation:
+   - Add category to `src/config/config.yaml` (enabled_categories comment)
+   - Add category to README.md (Tool Categories table)
 
 ### Updating Dependencies
 

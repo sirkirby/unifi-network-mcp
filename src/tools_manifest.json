@@ -119,7 +119,7 @@
               "type": "boolean"
             },
             "policy_data": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -139,7 +139,7 @@
               "type": "boolean"
             },
             "network_data": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -156,7 +156,7 @@
         "input": {
           "properties": {
             "port_forward_data": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -176,7 +176,7 @@
               "type": "boolean"
             },
             "qos_data": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -230,7 +230,7 @@
               "type": "boolean"
             },
             "policy": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -250,7 +250,7 @@
               "type": "boolean"
             },
             "rule": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -270,7 +270,7 @@
               "type": "boolean"
             },
             "rule": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -351,7 +351,7 @@
               "type": "boolean"
             },
             "wlan_data": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -1227,7 +1227,7 @@
               "type": "string"
             },
             "update_data": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -1251,7 +1251,7 @@
               "type": "string"
             },
             "update_data": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -1275,7 +1275,7 @@
               "type": "string"
             },
             "update_data": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -1299,7 +1299,7 @@
               "type": "string"
             },
             "update_data": {
-              "type": "string"
+              "type": "object"
             }
           },
           "required": [
@@ -1452,7 +1452,7 @@
               "type": "boolean"
             },
             "update_data": {
-              "type": "string"
+              "type": "object"
             },
             "wlan_id": {
               "type": "string"

@@ -19,6 +19,9 @@ services:
       - UNIFI_MCP_LOG_LEVEL=${UNIFI_MCP_LOG_LEVEL:-INFO}
       - UNIFI_CONTROLLER_TYPE=${UNIFI_CONTROLLER_TYPE:-auto}
       - UNIFI_AUTO_CONFIRM=${UNIFI_AUTO_CONFIRM:-false}
+      - UNIFI_TOOL_REGISTRATION_MODE=${UNIFI_TOOL_REGISTRATION_MODE:-lazy}
+      #- UNIFI_ENABLED_CATEGORIES=${UNIFI_ENABLED_CATEGORIES:-clients,system,devices}
+      #- UNIFI_ENABLED_TOOLS=${UNIFI_ENABLED_TOOLS:-unifi_list_clients,unifi_list_devices}
     volumes:
       - ./src/config:/app/src/config
     restart: unless-stopped

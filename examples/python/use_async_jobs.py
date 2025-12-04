@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Example: Using async jobs for long-running operations.
+"""Example: Using batch operations for parallel/async execution.
 
-This demonstrates how to start background jobs and check their status,
-useful for operations like device upgrades or bulk configuration changes.
+This demonstrates how to use unifi_batch for parallel operations and
+unifi_batch_status to check their progress.
 
 Usage:
     python examples/python/use_async_jobs.py
@@ -11,39 +11,60 @@ Usage:
 import asyncio
 import json
 import time
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
-async def start_async_job(
+async def execute_tool(
     session: ClientSession,
     tool_name: str,
     arguments: Dict[str, Any]
-) -> str:
-    """Start an async job and return the job ID."""
+) -> Dict[str, Any]:
+    """Execute a single tool synchronously using unifi_execute."""
     result = await session.call_tool(
-        "unifi_async_start",
+        "unifi_execute",
         arguments={
             "tool": tool_name,
             "arguments": arguments
         }
     )
 
-    # Extract job ID from result
+    # Extract result from response
     content = result.content[0].text if hasattr(result, 'content') else result
     if isinstance(content, str):
         content = json.loads(content)
 
-    return content["jobId"]
+    return content
 
 
-async def check_job_status(session: ClientSession, job_id: str) -> Dict[str, Any]:
-    """Check the status of an async job."""
+async def start_batch(
+    session: ClientSession,
+    operations: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Start multiple operations in parallel using unifi_batch."""
     result = await session.call_tool(
-        "unifi_async_status",
-        arguments={"jobId": job_id}
+        "unifi_batch",
+        arguments={"operations": operations}
+    )
+
+    # Extract response
+    content = result.content[0].text if hasattr(result, 'content') else result
+    if isinstance(content, str):
+        content = json.loads(content)
+
+    return content
+
+
+async def check_batch_status(
+    session: ClientSession,
+    job_ids: List[str]
+) -> Dict[str, Any]:
+    """Check the status of multiple batch jobs."""
+    result = await session.call_tool(
+        "unifi_batch_status",
+        arguments={"jobIds": job_ids}
     )
 
     # Extract status from result
@@ -54,30 +75,36 @@ async def check_job_status(session: ClientSession, job_id: str) -> Dict[str, Any
     return content
 
 
-async def wait_for_job(
+async def wait_for_batch(
     session: ClientSession,
-    job_id: str,
+    job_ids: List[str],
     timeout: int = 60,
     poll_interval: float = 1.0
 ) -> Dict[str, Any]:
-    """Wait for a job to complete, polling periodically."""
+    """Wait for all batch jobs to complete, polling periodically."""
     start_time = time.time()
 
     while time.time() - start_time < timeout:
-        status = await check_job_status(session, job_id)
+        status = await check_batch_status(session, job_ids)
 
-        if status["status"] in ["done", "error"]:
+        # Check if all jobs are complete
+        all_done = all(
+            job.get("status") in ["done", "error"]
+            for job in status.get("jobs", [])
+        )
+
+        if all_done:
             return status
 
         await asyncio.sleep(poll_interval)
 
-    raise TimeoutError(f"Job {job_id} did not complete within {timeout}s")
+    raise TimeoutError(f"Batch jobs did not complete within {timeout}s")
 
 
 async def main():
-    """Main function demonstrating async job usage."""
+    """Main function demonstrating batch execution."""
     print("=" * 70)
-    print("UniFi Network MCP - Async Jobs Example")
+    print("UniFi Network MCP - Batch Operations Example")
     print("=" * 70)
     print()
 
@@ -91,92 +118,107 @@ async def main():
         async with ClientSession(read, write) as session:
             await session.initialize()
 
-            # Example 1: Start a simple read-only job
-            print("Example 1: Async job with read-only operation")
+            # Example 1: Single synchronous execution
+            print("Example 1: Single tool execution with unifi_execute")
             print("-" * 70)
 
             try:
-                # Start a job to list clients (simulating a slow operation)
-                print("Starting async job: unifi_list_clients...")
-                job_id = await start_async_job(
+                print("Calling unifi_execute with unifi_list_clients...")
+                result = await execute_tool(
                     session,
                     "unifi_list_clients",
-                    {"limit": 10}
+                    {"limit": 5}
                 )
-                print(f"✓ Job started: {job_id}")
-                print()
-
-                # Poll for status
-                print("Polling job status...")
-                for i in range(5):
-                    await asyncio.sleep(0.5)
-                    status = await check_job_status(session, job_id)
-                    print(f"  [{i+1}] Status: {status['status']}")
-
-                    if status["status"] == "done":
-                        print()
-                        print("✓ Job completed successfully!")
-                        print(f"  Result preview: {str(status.get('result', {}))[:100]}...")
-                        break
-                    elif status["status"] == "error":
-                        print()
-                        print(f"✗ Job failed: {status.get('error')}")
-                        break
-
+                print("Result received!")
+                print(f"  Preview: {str(result)[:100]}...")
             except Exception as e:
-                print(f"✗ Error: {e}")
+                print(f"Error: {e}")
 
             print()
             print()
 
-            # Example 2: Check status of unknown job
-            print("Example 2: Checking unknown job ID")
+            # Example 2: Batch parallel execution
+            print("Example 2: Parallel execution with unifi_batch")
             print("-" * 70)
 
             try:
-                fake_job_id = "nonexistent_job_id"
-                print(f"Checking status of: {fake_job_id}...")
-                status = await check_job_status(session, fake_job_id)
-                print(f"Status: {status['status']}")
+                # Start multiple operations in parallel
+                operations = [
+                    {"tool": "unifi_list_clients", "arguments": {"limit": 3}},
+                    {"tool": "unifi_list_devices", "arguments": {}},
+                    {"tool": "unifi_get_system_info", "arguments": {}},
+                ]
+
+                print(f"Starting batch with {len(operations)} operations...")
+                batch_result = await start_batch(session, operations)
+
+                if batch_result.get("errors"):
+                    print(f"Some operations failed to start: {batch_result['errors']}")
+
+                job_ids = [job["jobId"] for job in batch_result.get("jobs", [])]
+                print(f"Started {len(job_ids)} jobs: {job_ids}")
+                print()
+
+                # Poll for completion
+                print("Polling batch status...")
+                for i in range(10):
+                    await asyncio.sleep(0.5)
+                    status = await check_batch_status(session, job_ids)
+
+                    completed = sum(
+                        1 for job in status.get("jobs", [])
+                        if job.get("status") in ["done", "error"]
+                    )
+                    print(f"  [{i+1}] Completed: {completed}/{len(job_ids)}")
+
+                    if completed == len(job_ids):
+                        print()
+                        print("All jobs completed!")
+                        for job in status.get("jobs", []):
+                            status_str = job.get("status")
+                            if status_str == "done":
+                                print(f"  {job['jobId']}: {str(job.get('result', {}))[:60]}...")
+                            else:
+                                print(f"  {job['jobId']}: ERROR - {job.get('error')}")
+                        break
 
             except Exception as e:
-                print(f"Expected behavior - job not found: {status}")
+                print(f"Error: {e}")
 
             print()
             print()
 
-            # Example 3: Demonstrate the full workflow
-            print("Example 3: Complete async workflow")
+            # Example 3: Workflow explanation
+            print("Example 3: Complete batch workflow")
             print("-" * 70)
             print("""
-This example shows how you would use async jobs for real long-running
-operations like:
+This example shows how you would use batch operations for:
 
-  • Device firmware upgrades (unifi_upgrade_device)
-  • Bulk client operations (block/unblock multiple clients)
-  • Large data exports (historical statistics)
-  • Network-wide configuration changes
+  - Bulk client operations (get details for multiple clients)
+  - Parallel device queries (check status of many devices)
+  - Bulk configuration changes (update multiple settings)
 
 Workflow:
-  1. Start job with unifi_async_start
-  2. Save the job ID
-  3. Poll with unifi_async_status until done
-  4. Process the result or handle errors
+  1. Call unifi_tool_index to discover available tools
+  2. Use unifi_execute for single operations (returns result directly)
+  3. Use unifi_batch for parallel operations (returns job IDs)
+  4. Poll with unifi_batch_status until all jobs complete
+  5. Process results or handle errors
 
 Benefits:
-  • Non-blocking - continue other work while job runs
-  • Progress tracking - check status anytime
-  • Error handling - jobs capture exceptions
-  • Timeout control - set your own timeout limits
+  - Parallel execution - run multiple operations simultaneously
+  - Non-blocking - check status anytime
+  - Error isolation - individual job failures don't affect others
+  - Efficient - reduces round-trips for bulk operations
             """)
 
             print("=" * 70)
-            print("✓ Examples complete!")
+            print("Examples complete!")
             print()
             print("Next steps:")
-            print("  • Try with a real long-running operation")
-            print("  • Implement progress bars using job status")
-            print("  • Build a job queue for batch operations")
+            print("  - Use unifi_execute for most single operations")
+            print("  - Use unifi_batch for bulk/parallel operations")
+            print("  - Build pipelines combining tool discovery and execution")
             print("=" * 70)
 
 
@@ -186,7 +228,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\nInterrupted by user")
     except Exception as e:
-        print(f"\n✗ Fatal error: {e}")
+        print(f"\n Fatal error: {e}")
         import traceback
         traceback.print_exc()
         exit(1)

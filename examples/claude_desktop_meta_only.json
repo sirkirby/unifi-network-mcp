@@ -23,18 +23,18 @@
   },
   "_comment": "This configuration uses meta_only mode for maximum efficiency",
   "_benefits": [
-    "Only 3 meta-tools registered initially (vs. 67 in eager mode)",
+    "Only 4 meta-tools registered initially (vs. 67 in eager mode)",
     "Saves ~4,800 tokens in context (96% reduction!)",
     "Claude will use unifi_tool_index to discover tools on-demand",
     "Faster initial responses due to smaller context",
     "Same functionality, better performance"
   ],
   "_how_it_works": [
-    "Claude starts with only: unifi_tool_index, unifi_async_start, unifi_async_status",
-    "When user asks about UniFi, Claude calls unifi_tool_index",
-    "Tool index returns all 64+ tools with schemas",
-    "Claude then calls the specific tool needed",
-    "Result: Only relevant tools consume context"
+    "Claude starts with only: unifi_tool_index, unifi_execute, unifi_batch, unifi_batch_status",
+    "When user asks about UniFi, Claude calls unifi_tool_index to discover tools",
+    "Tool index returns all 80+ tools with schemas",
+    "Claude then uses unifi_execute to run the specific tool needed",
+    "For parallel ops: unifi_batch + unifi_batch_status"
   ],
   "_example_prompts": [
     "What can you do with my UniFi network?",

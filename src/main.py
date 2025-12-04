@@ -28,7 +28,7 @@ from src.runtime import (
 from src.tool_index import register_tool, tool_index_handler
 from src.utils.diagnostics import diagnostics_enabled, wrap_tool
 from src.utils.lazy_tool_loader import setup_lazy_loading
-from src.utils.meta_tools import register_meta_tools
+from src.utils.meta_tools import register_load_tools, register_meta_tools
 from src.utils.permissions import parse_permission  # noqa: E402
 from src.utils.tool_loader import auto_load_tools
 
@@ -77,17 +77,21 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
                     param_type = "string"  # default
                     if param.annotation != inspect.Parameter.empty:
                         ann = param.annotation
-                        # Basic type mapping
-                        if ann in (int, "int"):
+                        # Handle generic types like Dict[str, Any], List[str]
+                        from typing import get_origin
+
+                        origin = get_origin(ann)
+                        # Basic type mapping (check origin first for generics)
+                        if origin is dict or ann in (dict, "dict"):
+                            param_type = "object"
+                        elif origin is list or ann in (list, "list"):
+                            param_type = "array"
+                        elif ann in (int, "int"):
                             param_type = "integer"
                         elif ann in (bool, "bool"):
                             param_type = "boolean"
                         elif ann in (float, "float"):
                             param_type = "number"
-                        elif ann in (list, "list"):
-                            param_type = "array"
-                        elif ann in (dict, "dict"):
-                            param_type = "object"
 
                     properties[param_name] = {"type": param_type}
 
@@ -242,28 +246,58 @@ async def main_async():
     # Load full tool set based on registration mode
     if UNIFI_TOOL_REGISTRATION_MODE == "meta_only":
         logger.info("🔍 Tool registration mode: meta_only")
-        logger.info("   Only meta-tools registered (unifi_tool_index, unifi_async_*)")
-        logger.info("   Use unifi_tool_index to discover all 64+ available UniFi tools")
-        logger.info("   💡 This saves ~4,800 tokens vs. eager mode!")
-        logger.info("   To load all tools: set UNIFI_TOOL_REGISTRATION_MODE=eager")
+        logger.info("   Meta-tools: unifi_tool_index, unifi_execute, unifi_batch, unifi_batch_status")
+        logger.info("   Use unifi_execute to run any tool discovered via unifi_tool_index")
+        logger.info("   To load all tools directly: set UNIFI_TOOL_REGISTRATION_MODE=eager")
     elif UNIFI_TOOL_REGISTRATION_MODE == "lazy":
-        logger.info("⚡ Tool registration mode: lazy (NEW in v0.2.0!)")
-        logger.info("   Meta-tools registered now")
-        logger.info("   Other tools loaded on-demand when first called")
-        logger.info("   💡 Saves tokens AND provides seamless access to all tools!")
+        logger.info("⚡ Tool registration mode: lazy")
+        logger.info("   Meta-tools: unifi_tool_index, unifi_execute, unifi_batch, unifi_batch_status, unifi_load_tools")
+        logger.info("   Use unifi_execute to run any tool - works with all clients")
 
         # Setup lazy loading interceptor
-        setup_lazy_loading(server, _original_tool_decorator)
+        lazy_loader = setup_lazy_loading(server, _original_tool_decorator)
 
-        # All tools remain in the registry (for tool_index), but not registered with MCP yet
-        # They'll be registered on first use
+        # Register unifi_load_tools meta-tool (requires lazy_loader)
+        register_load_tools(
+            server=server,
+            tool_decorator=_original_tool_decorator,
+            lazy_loader=lazy_loader,
+            register_tool=register_tool,
+        )
+
         from src.utils.lazy_tool_loader import TOOL_MODULE_MAP
 
         logger.info(f"   Lazy loader ready - {len(TOOL_MODULE_MAP)} tools available on-demand")
     else:  # eager (default)
         logger.info("📚 Tool registration mode: eager")
-        logger.info("   All 64+ UniFi tools registered immediately")
-        auto_load_tools()
+
+        # Check for tool filtering config
+        enabled_categories = config.server.get("enabled_categories")
+        enabled_tools = config.server.get("enabled_tools")
+
+        # Parse from comma-separated string if from env var
+        if isinstance(enabled_categories, str) and enabled_categories not in ("null", ""):
+            enabled_categories = [c.strip() for c in enabled_categories.split(",")]
+        elif enabled_categories in (None, "null", ""):
+            enabled_categories = None
+
+        if isinstance(enabled_tools, str) and enabled_tools not in ("null", ""):
+            enabled_tools = [t.strip() for t in enabled_tools.split(",")]
+        elif enabled_tools in (None, "null", ""):
+            enabled_tools = None
+
+        if enabled_categories:
+            logger.info(f"   Filtering by categories: {enabled_categories}")
+        elif enabled_tools:
+            logger.info(f"   Filtering to {len(enabled_tools)} specific tools")
+        else:
+            logger.info("   All tools registered (no filtering)")
+
+        auto_load_tools(
+            enabled_categories=enabled_categories,
+            enabled_tools=enabled_tools,
+            server=server,
+        )
 
     # List all registered tools for debugging
     try:
