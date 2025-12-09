@@ -13,11 +13,68 @@ from aiounifi.models.configuration import Configuration
 logger = logging.getLogger("unifi-network-mcp")
 
 
+async def detect_unifi_os_pre_login(
+    session: aiohttp.ClientSession,
+    base_url: str,
+    timeout: int = 5,
+) -> Optional[bool]:
+    """
+    Detect UniFi OS BEFORE authentication using unauthenticated probes.
+
+    This detection determines which auth endpoint to use:
+    - UniFi OS: /api/auth/login
+    - Standalone: /api/login
+
+    Strategy:
+    1. GET base URL - UniFi OS returns 200 with HTML, standalone redirects or errors
+    2. Check for UniFi OS specific headers/behavior
+
+    Args:
+        session: Active aiohttp.ClientSession
+        base_url: Base URL of controller (e.g., 'https://192.168.1.1:443')
+        timeout: Detection timeout in seconds (default: 5)
+
+    Returns:
+        True: UniFi OS detected (use /api/auth/login)
+        False: Standalone controller (use /api/login)
+        None: Detection inconclusive
+    """
+    client_timeout = aiohttp.ClientTimeout(total=timeout)
+
+    try:
+        # Probe 1: GET base URL without following redirects
+        # UniFi OS typically returns 200 OK with the web UI
+        # Standalone controllers often redirect to /manage or return different status
+        async with session.get(base_url, timeout=client_timeout, ssl=False, allow_redirects=False) as response:
+            logger.debug(f"Pre-login probe {base_url}: status={response.status}")
+
+            if response.status == 200:
+                # UniFi OS returns 200 at base URL
+                logger.debug("Pre-login detection: UniFi OS (200 at base URL)")
+                return True
+            elif response.status in (301, 302, 303, 307, 308):
+                # Redirect typically indicates standalone controller
+                location = response.headers.get("Location", "")
+                logger.debug(f"Pre-login detection: redirect to {location}")
+                # Could be standalone redirecting to /manage
+                return False
+
+    except asyncio.TimeoutError:
+        logger.debug("Pre-login detection: timeout")
+    except aiohttp.ClientError as e:
+        logger.debug(f"Pre-login detection failed: {e}")
+    except Exception as e:
+        logger.debug(f"Pre-login detection unexpected error: {e}")
+
+    return None
+
+
 async def detect_with_retry(
     session: aiohttp.ClientSession,
     base_url: str,
     max_retries: int = 3,
     timeout: int = 5,
+    pre_login: bool = False,
 ) -> Optional[bool]:
     """
     Detect UniFi OS with exponential backoff retry.
@@ -27,6 +84,8 @@ async def detect_with_retry(
         base_url: Base URL of controller
         max_retries: Maximum retry attempts (default: 3)
         timeout: Detection timeout per attempt in seconds (default: 5)
+        pre_login: If True, use unauthenticated detection for auth endpoint selection.
+                   If False, use authenticated detection for API path verification.
 
     Returns:
         True: UniFi OS detected
@@ -39,9 +98,11 @@ async def detect_with_retry(
         - Logs retry attempts at debug level
         - Returns None if all attempts fail
     """
+    detect_func = detect_unifi_os_pre_login if pre_login else detect_unifi_os_proactively
+
     for attempt in range(max_retries):
         try:
-            result = await detect_unifi_os_proactively(session, base_url, timeout)
+            result = await detect_func(session, base_url, timeout)
             if result is not None:
                 return result
         except Exception as e:
@@ -53,22 +114,6 @@ async def detect_with_retry(
                 logger.warning(f"Detection failed after {max_retries} attempts: {e}")
 
     return None
-
-
-def _generate_detection_failure_message(base_url: str, port: int) -> str:
-    """Generate user-friendly troubleshooting message for detection failures."""
-    return f"""
-UniFi controller path detection failed.
-
-Troubleshooting Steps:
-1. Verify network connectivity to {base_url}
-2. Check controller is accessible on port {port}
-3. Manually set controller type using environment variable:
-   - For UniFi OS (Cloud Gateway, UDM-Pro): export UNIFI_CONTROLLER_TYPE=proxy
-   - For standalone controllers: export UNIFI_CONTROLLER_TYPE=direct
-
-For more help, see: https://github.com/sirkirby/unifi-network-mcp/issues/19
-"""
 
 
 async def _probe_endpoint(
@@ -233,7 +278,11 @@ class ConnectionManager:
                     )
                     session_created = True
 
-                    # Manual override configuration (FR-004: runs before login, no auth needed)
+                    # Controller type detection/override configuration
+                    # Two-phase detection:
+                    # 1. Pre-login: Determines auth endpoint (/api/auth/login vs /api/login)
+                    # 2. Post-login: Verifies API path prefix (/proxy/network/api vs /api)
+                    # See: https://github.com/sirkirby/unifi-network-mcp/issues/33
                     from src.bootstrap import UNIFI_CONTROLLER_TYPE
 
                     if UNIFI_CONTROLLER_TYPE == "proxy":
@@ -242,6 +291,30 @@ class ConnectionManager:
                     elif UNIFI_CONTROLLER_TYPE == "direct":
                         self._unifi_os_override = False
                         logger.info("Controller type forced to standard (direct) via config")
+                    elif UNIFI_CONTROLLER_TYPE == "auto":
+                        # Phase 1: Pre-login detection (unauthenticated)
+                        # Determines which auth endpoint to use
+                        if self._unifi_os_override is None:
+                            detected = await detect_with_retry(
+                                self._aiohttp_session,
+                                self.url_base,
+                                max_retries=3,
+                                timeout=5,
+                                pre_login=True,  # Use unauthenticated detection
+                            )
+                            if detected is not None:
+                                self._unifi_os_override = detected
+                                mode = "UniFi OS (proxy)" if detected else "standard (direct)"
+                                logger.info(f"Pre-login auto-detected controller type: {mode}")
+                            else:
+                                # Pre-login detection inconclusive - aiounifi will try its own detection
+                                # Show helpful message for troubleshooting
+                                logger.warning(
+                                    "Pre-login detection inconclusive, deferring to aiounifi. "
+                                    "If login fails, try setting UNIFI_CONTROLLER_TYPE=proxy for UniFi OS devices."
+                                )
+                        else:
+                            logger.debug(f"Using cached detection result: {self._unifi_os_override}")
 
                     config = Configuration(
                         session=self._aiohttp_session,
@@ -254,30 +327,34 @@ class ConnectionManager:
 
                     self.controller = Controller(config=config)
 
+                    # Apply pre-login detection result BEFORE login to ensure correct auth endpoint
+                    # aiounifi uses /api/auth/login for UniFi OS, /api/login for standalone
+                    if self._unifi_os_override is not None:
+                        self.controller.connectivity.is_unifi_os = self._unifi_os_override
+                        logger.debug(f"Pre-login is_unifi_os set to: {self._unifi_os_override}")
+
                     await self.controller.login()
 
-                    # Auto-detection (FR-002: runs after login for authenticated probes)
-                    if UNIFI_CONTROLLER_TYPE == "auto":
-                        # Check if already detected (session cache - FR-011)
-                        if self._unifi_os_override is None:
-                            # Proactive detection with retry (FR-001, FR-005, FR-008)
-                            detected = await detect_with_retry(
-                                self._aiohttp_session,
-                                self.url_base,
-                                max_retries=3,
-                                timeout=5,
+                    # Phase 2: Post-login verification (authenticated)
+                    # Verify API path prefix works correctly after successful login
+                    if UNIFI_CONTROLLER_TYPE == "auto" and self._unifi_os_override is not None:
+                        post_login_detected = await detect_with_retry(
+                            self._aiohttp_session,
+                            self.url_base,
+                            max_retries=2,
+                            timeout=5,
+                            pre_login=False,  # Use authenticated detection
+                        )
+                        if post_login_detected is not None and post_login_detected != self._unifi_os_override:
+                            # Post-login detection differs - update override
+                            logger.warning(
+                                f"Post-login detection differs from pre-login: "
+                                f"pre={self._unifi_os_override}, post={post_login_detected}. "
+                                f"Using post-login result."
                             )
-                            if detected is not None:
-                                self._unifi_os_override = detected
-                                mode = "UniFi OS (proxy)" if detected else "standard (direct)"
-                                logger.info(f"Auto-detected controller type: {mode}")
-                            else:
-                                # Show clear error message (FR-009)
-                                error_msg = _generate_detection_failure_message(self.url_base, self.port)
-                                logger.warning(error_msg)
-                                logger.warning("Falling back to aiounifi's check_unifi_os()")
-                        else:
-                            logger.debug(f"Using cached detection result: {self._unifi_os_override}")
+                            self._unifi_os_override = post_login_detected
+                        elif post_login_detected is not None:
+                            logger.debug("Post-login detection confirmed pre-login result")
 
                     self._initialized = True
                     logger.info(f"Successfully connected to Unifi controller at {self.host} for site '{self.site}'")

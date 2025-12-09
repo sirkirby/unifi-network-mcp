@@ -9,8 +9,12 @@ help:
 	@echo "  make dev          - Install dev dependencies"
 	@echo ""
 	@echo "Development:"
-	@echo "  make run          - Run MCP server locally"
-	@echo "  make manifest     - Regenerate tool manifest (after adding tools)"
+	@echo "  make run           - Run MCP server locally"
+	@echo "  make console       - Start interactive dev console (auto-detect)"
+	@echo "  make console-debug - Start dev console with debug logging"
+	@echo "  make console-proxy - Force UniFi OS mode + debug logging"
+	@echo "  make console-direct- Force standalone mode + debug logging"
+	@echo "  make manifest      - Regenerate tool manifest (after adding tools)"
 	@echo "  make test         - Run tests"
 	@echo "  make lint         - Run linters"
 	@echo "  make format       - Format code"
@@ -127,6 +131,18 @@ clean:
 console:
 	@echo "🔧 Starting development console..."
 	UNIFI_TOOL_REGISTRATION_MODE=eager uv run python devtools/dev_console.py
+
+console-debug:
+	@echo "🔧 Starting development console (debug logging)..."
+	UNIFI_MCP_LOG_LEVEL=DEBUG UNIFI_TOOL_REGISTRATION_MODE=eager uv run python devtools/dev_console.py
+
+console-proxy:
+	@echo "🔧 Starting development console (UniFi OS / proxy mode + debug)..."
+	UNIFI_CONTROLLER_TYPE=proxy UNIFI_MCP_LOG_LEVEL=DEBUG UNIFI_TOOL_REGISTRATION_MODE=eager uv run python devtools/dev_console.py
+
+console-direct:
+	@echo "🔧 Starting development console (standalone / direct mode + debug)..."
+	UNIFI_CONTROLLER_TYPE=direct UNIFI_MCP_LOG_LEVEL=DEBUG UNIFI_TOOL_REGISTRATION_MODE=eager uv run python devtools/dev_console.py
 
 # Quick checks before commit
 pre-commit: format lint test

@@ -257,8 +257,11 @@ class TestPathDetection:
         - Call initialize() twice
 
         Expected:
-        - Detection function called only ONCE (first initialization)
+        - First initialization runs detection (pre-login + post-login = 2 calls)
         - Second initialization skips detection (uses cached result)
+
+        Note: Two-phase detection (pre-login + post-login verification) is expected
+        behavior per issue #33 fix.
         """
         detection_call_count = 0
 
@@ -294,7 +297,8 @@ class TestPathDetection:
 
                     # Verify first initialization succeeded
                     assert result1 is True, "First initialization should succeed"
-                    assert first_call_count == 1, "Detection should run on first initialization"
+                    # Two-phase detection: pre-login (1) + post-login verification (1) = 2 calls
+                    assert first_call_count == 2, "Detection should run twice on first init (pre-login + post-login)"
                     assert manager._unifi_os_override is True, "Detection result should be cached"
 
                     # Reset initialized flag to force re-initialization logic
@@ -302,13 +306,15 @@ class TestPathDetection:
                     if manager._aiohttp_session and not manager._aiohttp_session.closed:
                         await manager._aiohttp_session.close()
 
-                    # Second initialization - should use cached result
+                    # Second initialization - should use cached result for pre-login
+                    # but still run post-login verification
                     result2 = await manager.initialize()
                     second_call_count = detection_call_count
 
-                    # Verify detection was cached (only called once)
+                    # Verify pre-login detection was cached (skipped), but post-login still runs
                     assert result2 is True, "Second initialization should succeed"
-                    assert second_call_count == 1, "Detection should NOT run on second initialization (cached)"
+                    # Only post-login verification runs (pre-login uses cache) = 1 additional call
+                    assert second_call_count == 3, "Only post-login detection should run on second init"
                     assert manager._unifi_os_override is True, "Cached result should be preserved"
 
         # Cleanup
