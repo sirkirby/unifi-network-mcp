@@ -7,12 +7,63 @@ when first called by an LLM. This dramatically reduces initial context usage.
 import importlib
 import logging
 from functools import wraps
+from pathlib import Path
 from typing import Any, Callable, Dict, Set
 
 logger = logging.getLogger("unifi-network-mcp")
 
-# Tool module mapping: tool_name -> module_path
-TOOL_MODULE_MAP: Dict[str, str] = {
+
+def _build_tool_module_map() -> Dict[str, str]:
+    """Build tool-to-module mapping by scanning tool files.
+
+    This dynamically discovers all tools and their modules, eliminating the need
+    for a manually-maintained static mapping that can get out of sync.
+    """
+    tool_map: Dict[str, str] = {}
+
+    # Find the tools directory
+    # Try relative to this file first, then fall back to cwd
+    this_dir = Path(__file__).parent
+    tools_dir = this_dir.parent / "tools"
+
+    if not tools_dir.exists():
+        tools_dir = Path("src/tools")
+
+    if not tools_dir.exists():
+        logger.warning("Tools directory not found, falling back to static map")
+        return _STATIC_TOOL_MODULE_MAP
+
+    # Scan each .py file in tools directory
+    for tool_file in tools_dir.glob("*.py"):
+        if tool_file.name.startswith("_"):
+            continue
+
+        module_name = f"src.tools.{tool_file.stem}"
+
+        try:
+            # Read file and look for @server.tool or @permissioned_tool decorators
+            content = tool_file.read_text()
+
+            # Find tool names using simple pattern matching
+            # Looking for: name="unifi_xxx" or name='unifi_xxx'
+            import re
+
+            pattern = r'name\s*=\s*["\']([unifi_][a-z_]+)["\']'
+            matches = re.findall(pattern, content)
+
+            for tool_name in matches:
+                if tool_name.startswith("unifi_"):
+                    tool_map[tool_name] = module_name
+
+        except Exception as e:
+            logger.debug(f"Error scanning {tool_file}: {e}")
+
+    logger.debug(f"Built dynamic tool map with {len(tool_map)} tools")
+    return tool_map
+
+
+# Static fallback map (used if dynamic discovery fails)
+_STATIC_TOOL_MODULE_MAP: Dict[str, str] = {
     # Client tools
     "unifi_list_clients": "src.tools.clients",
     "unifi_get_client_details": "src.tools.clients",
@@ -61,15 +112,21 @@ TOOL_MODULE_MAP: Dict[str, str] = {
     "unifi_update_vpn_client_state": "src.tools.vpn",
     # QoS tools
     "unifi_list_qos_rules": "src.tools.qos",
+    "unifi_get_qos_rule_details": "src.tools.qos",
     "unifi_create_qos_rule": "src.tools.qos",
+    "unifi_create_simple_qos_rule": "src.tools.qos",
     "unifi_update_qos_rule": "src.tools.qos",
     "unifi_delete_qos_rule": "src.tools.qos",
+    "unifi_toggle_qos_rule_enabled": "src.tools.qos",
     # Statistics tools
     "unifi_get_client_stats": "src.tools.stats",
     "unifi_get_device_stats": "src.tools.stats",
     "unifi_get_network_stats": "src.tools.stats",
     "unifi_get_wireless_stats": "src.tools.stats",
     "unifi_get_system_stats": "src.tools.stats",
+    "unifi_get_top_clients": "src.tools.stats",
+    "unifi_get_dpi_stats": "src.tools.stats",
+    "unifi_get_alerts": "src.tools.stats",
     # System tools
     "unifi_get_system_info": "src.tools.system",
     "unifi_get_network_health": "src.tools.system",
@@ -101,7 +158,34 @@ TOOL_MODULE_MAP: Dict[str, str] = {
     "unifi_get_traffic_route_details": "src.tools.traffic_routes",
     "unifi_update_traffic_route": "src.tools.traffic_routes",
     "unifi_toggle_traffic_route": "src.tools.traffic_routes",
+    # Port Forward tools
+    "unifi_list_port_forwards": "src.tools.port_forwards",
+    "unifi_get_port_forward": "src.tools.port_forwards",
+    "unifi_create_port_forward": "src.tools.port_forwards",
+    "unifi_create_simple_port_forward": "src.tools.port_forwards",
+    "unifi_update_port_forward": "src.tools.port_forwards",
+    "unifi_toggle_port_forward": "src.tools.port_forwards",
+    # Firewall Policy tools (zone-based)
+    "unifi_list_firewall_policies": "src.tools.firewall",
+    "unifi_list_firewall_zones": "src.tools.firewall",
+    "unifi_list_ip_groups": "src.tools.firewall",
+    "unifi_get_firewall_policy_details": "src.tools.firewall",
+    "unifi_create_firewall_policy": "src.tools.firewall",
+    "unifi_create_simple_firewall_policy": "src.tools.firewall",
+    "unifi_update_firewall_policy": "src.tools.firewall",
+    "unifi_toggle_firewall_policy": "src.tools.firewall",
+    # WLAN tools
+    "unifi_list_wlans": "src.tools.network",
+    "unifi_get_wlan_details": "src.tools.network",
+    "unifi_create_wlan": "src.tools.network",
+    "unifi_update_wlan": "src.tools.network",
+    # Device tools (additional)
+    "unifi_rename_device": "src.tools.devices",
 }
+
+# Build the tool map dynamically at module load time
+# Falls back to static map if dynamic discovery fails
+TOOL_MODULE_MAP: Dict[str, str] = _build_tool_module_map()
 
 
 class LazyToolLoader:
