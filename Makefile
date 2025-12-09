@@ -10,6 +10,9 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  make run          - Run MCP server locally"
+	@echo "  make console      - Start interactive dev console (auto-detect)"
+	@echo "  make console-proxy- Start dev console (force UniFi OS mode)"
+	@echo "  make console-direct- Start dev console (force standalone mode)"
 	@echo "  make manifest     - Regenerate tool manifest (after adding tools)"
 	@echo "  make test         - Run tests"
 	@echo "  make lint         - Run linters"
@@ -127,6 +130,14 @@ clean:
 console:
 	@echo "🔧 Starting development console..."
 	UNIFI_TOOL_REGISTRATION_MODE=eager uv run python devtools/dev_console.py
+
+console-proxy:
+	@echo "🔧 Starting development console (UniFi OS / proxy mode)..."
+	UNIFI_CONTROLLER_TYPE=proxy UNIFI_TOOL_REGISTRATION_MODE=eager uv run python devtools/dev_console.py
+
+console-direct:
+	@echo "🔧 Starting development console (standalone / direct mode)..."
+	UNIFI_CONTROLLER_TYPE=direct UNIFI_TOOL_REGISTRATION_MODE=eager uv run python devtools/dev_console.py
 
 # Quick checks before commit
 pre-commit: format lint test

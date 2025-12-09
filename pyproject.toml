@@ -1,6 +1,6 @@
 [project]
 name = "unifi-network-mcp"
-version = "0.3.1"
+version = "0.3.2"
 description = "Unifi Network MCP Server"
 readme = "README.md"
 requires-python = ">=3.13"
