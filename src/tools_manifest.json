@@ -1,5 +1,5 @@
 {
-  "count": 81,
+  "count": 83,
   "generated_by": "scripts/generate_tool_manifest.py",
   "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
   "tools": [
@@ -356,6 +356,46 @@
           },
           "required": [
             "wlan_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Delete a network (LAN/VLAN) from the UniFi controller. WARNING: This is a destructive operation that cannot be undone. All clients on this network will be disconnected. Requires confirmation.",
+      "name": "unifi_delete_network",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "network_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "network_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Delete a wireless network (WLAN/SSID) from the UniFi controller. WARNING: This is a destructive operation that cannot be undone. All wireless clients on this SSID will be disconnected. Requires confirmation.",
+      "name": "unifi_delete_wlan",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "wlan_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "wlan_id"
           ],
           "type": "object"
         }

@@ -86,11 +86,11 @@ _STATIC_TOOL_MODULE_MAP: Dict[str, str] = {
     "unifi_power_cycle_port": "src.tools.devices",
     "unifi_set_port_profile": "src.tools.devices",
     # Network tools
-    "unifi_list_networks": "src.tools.networks",
-    "unifi_get_network_details": "src.tools.networks",
-    "unifi_create_network": "src.tools.networks",
-    "unifi_update_network": "src.tools.networks",
-    "unifi_delete_network": "src.tools.networks",
+    "unifi_list_networks": "src.tools.network",
+    "unifi_get_network_details": "src.tools.network",
+    "unifi_create_network": "src.tools.network",
+    "unifi_update_network": "src.tools.network",
+    "unifi_delete_network": "src.tools.network",
     # Firewall tools
     "unifi_list_firewall_rules": "src.tools.firewall",
     "unifi_get_firewall_rule": "src.tools.firewall",
@@ -179,6 +179,7 @@ _STATIC_TOOL_MODULE_MAP: Dict[str, str] = {
     "unifi_get_wlan_details": "src.tools.network",
     "unifi_create_wlan": "src.tools.network",
     "unifi_update_wlan": "src.tools.network",
+    "unifi_delete_wlan": "src.tools.network",
     # Device tools (additional)
     "unifi_rename_device": "src.tools.devices",
 }

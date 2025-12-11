@@ -10,7 +10,7 @@ import logging
 from typing import Any, Dict
 
 from src.runtime import config, network_manager, server
-from src.utils.confirmation import create_preview, should_auto_confirm, update_preview
+from src.utils.confirmation import create_preview, delete_preview, should_auto_confirm, update_preview
 from src.utils.permissions import parse_permission
 from src.validator_registry import UniFiValidatorRegistry
 
@@ -803,4 +803,246 @@ async def create_wlan(wlan_data: Dict[str, Any], confirm: bool = False) -> Dict[
             f"Error creating WLAN '{validated_data.get('name', 'unknown')}': {e}",
             exc_info=True,
         )
+        return {"success": False, "error": str(e)}
+
+
+@server.tool(
+    name="unifi_delete_network",
+    description=(
+        "Delete a network (LAN/VLAN) from the UniFi controller. "
+        "WARNING: This is a destructive operation that cannot be undone. "
+        "All clients on this network will be disconnected. Requires confirmation."
+    ),
+    permission_category="networks",
+    permission_action="delete",
+)
+async def delete_network(network_id: str, confirm: bool = False) -> Dict[str, Any]:
+    """Delete a network from the UniFi controller.
+
+    This is a DESTRUCTIVE operation that permanently removes the network configuration.
+    All clients connected to this network will be disconnected.
+
+    Security:
+        - Requires UNIFI_PERMISSIONS_NETWORKS_DELETE=true environment variable
+        - Requires explicit confirm=true parameter
+        - Cannot delete the default/management network
+        - Provides preview of what will be deleted before confirmation
+
+    Args:
+        network_id (str): The unique identifier (_id) of the network to delete.
+        confirm (bool): Must be set to `True` to execute deletion. Defaults to `False`.
+            When False, returns a preview of what will be deleted.
+
+    Returns:
+        Dict: Result of the operation.
+        - If confirm=False: Preview of the network that will be deleted
+        - If confirm=True and successful: {"success": True, "message": "...", "deleted_network": {...}}
+        - If error: {"success": False, "error": "..."}
+
+    Example:
+        # First, preview what will be deleted
+        delete_network("67cd225123e57842221fa7f9")
+        # Returns preview with warnings
+
+        # Then confirm deletion
+        delete_network("67cd225123e57842221fa7f9", confirm=True)
+        # Returns success or error
+
+    Raises:
+        Permission denied if UNIFI_PERMISSIONS_NETWORKS_DELETE is not set to true.
+    """
+    if not parse_permission(config.permissions, "network", "delete"):
+        logger.warning(f"Permission denied for deleting network ({network_id}).")
+        return {
+            "success": False,
+            "error": "Permission denied to delete network. Set UNIFI_PERMISSIONS_NETWORKS_DELETE=true to enable.",
+        }
+
+    if not network_id:
+        return {"success": False, "error": "network_id is required"}
+
+    try:
+        # Fetch the network to show what will be deleted
+        network = await network_manager.get_network_details(network_id)
+        if not network:
+            return {"success": False, "error": f"Network with ID '{network_id}' not found."}
+
+        network_name = network.get("name", "Unknown")
+
+        # Security check: prevent deletion of management/default network
+        # The default network typically has purpose="corporate" and no VLAN
+        if network.get("purpose") == "corporate" and not network.get("vlan_enabled", False):
+            # Additional check - if it's the only corporate network without VLAN, warn
+            if network.get("is_nat", True) and network_name.lower() in ["default", "lan", "management"]:
+                return {
+                    "success": False,
+                    "error": f"Cannot delete network '{network_name}' - appears to be the management network. "
+                    "Deleting this would lock you out of the controller.",
+                }
+
+        # If not confirmed, show preview
+        if not confirm and not should_auto_confirm():
+            additional_warnings = []
+
+            # Add context-specific warnings
+            if network.get("dhcpd_enabled"):
+                additional_warnings.append("DHCP server on this network will be disabled")
+            if network.get("vlan"):
+                additional_warnings.append(f"VLAN {network.get('vlan')} will be removed")
+
+            return delete_preview(
+                resource_type="network",
+                resource_id=network_id,
+                resource_name=network_name,
+                current_state={
+                    "name": network_name,
+                    "purpose": network.get("purpose"),
+                    "ip_subnet": network.get("ip_subnet"),
+                    "vlan": network.get("vlan"),
+                    "vlan_enabled": network.get("vlan_enabled"),
+                    "dhcpd_enabled": network.get("dhcpd_enabled"),
+                    "enabled": network.get("enabled"),
+                },
+                warnings=additional_warnings,
+            )
+
+        # Execute deletion
+        logger.warning(f"Deleting network '{network_name}' (ID: {network_id}) - confirmed by user")
+        success = await network_manager.delete_network(network_id)
+
+        if success:
+            logger.info(f"Successfully deleted network '{network_name}' (ID: {network_id})")
+            return {
+                "success": True,
+                "message": f"Network '{network_name}' has been permanently deleted.",
+                "deleted_network": {
+                    "id": network_id,
+                    "name": network_name,
+                    "ip_subnet": network.get("ip_subnet"),
+                    "vlan": network.get("vlan"),
+                },
+            }
+        else:
+            logger.error(f"Failed to delete network '{network_name}' (ID: {network_id})")
+            return {
+                "success": False,
+                "error": f"Failed to delete network '{network_name}'. Check server logs for details.",
+            }
+
+    except Exception as e:
+        logger.error(f"Error deleting network {network_id}: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+
+@server.tool(
+    name="unifi_delete_wlan",
+    description=(
+        "Delete a wireless network (WLAN/SSID) from the UniFi controller. "
+        "WARNING: This is a destructive operation that cannot be undone. "
+        "All wireless clients on this SSID will be disconnected. Requires confirmation."
+    ),
+    permission_category="wlans",
+    permission_action="delete",
+)
+async def delete_wlan(wlan_id: str, confirm: bool = False) -> Dict[str, Any]:
+    """Delete a wireless network (WLAN/SSID) from the UniFi controller.
+
+    This is a DESTRUCTIVE operation that permanently removes the WLAN configuration.
+    All wireless clients connected to this SSID will be immediately disconnected.
+
+    Security:
+        - Requires UNIFI_PERMISSIONS_WLANS_DELETE=true environment variable
+        - Requires explicit confirm=true parameter
+        - Provides preview of what will be deleted before confirmation
+
+    Args:
+        wlan_id (str): The unique identifier (_id) of the WLAN to delete.
+        confirm (bool): Must be set to `True` to execute deletion. Defaults to `False`.
+            When False, returns a preview of what will be deleted.
+
+    Returns:
+        Dict: Result of the operation.
+        - If confirm=False: Preview of the WLAN that will be deleted
+        - If confirm=True and successful: {"success": True, "message": "...", "deleted_wlan": {...}}
+        - If error: {"success": False, "error": "..."}
+
+    Example:
+        # First, preview what will be deleted
+        delete_wlan("688297853102f36d19214ea0")
+        # Returns preview with warnings
+
+        # Then confirm deletion
+        delete_wlan("688297853102f36d19214ea0", confirm=True)
+        # Returns success or error
+
+    Raises:
+        Permission denied if UNIFI_PERMISSIONS_WLANS_DELETE is not set to true.
+    """
+    if not parse_permission(config.permissions, "wlan", "delete"):
+        logger.warning(f"Permission denied for deleting WLAN ({wlan_id}).")
+        return {
+            "success": False,
+            "error": "Permission denied to delete WLAN. Set UNIFI_PERMISSIONS_WLANS_DELETE=true to enable.",
+        }
+
+    if not wlan_id:
+        return {"success": False, "error": "wlan_id is required"}
+
+    try:
+        # Fetch the WLAN to show what will be deleted
+        wlan = await network_manager.get_wlan_details(wlan_id)
+        if not wlan:
+            return {"success": False, "error": f"WLAN with ID '{wlan_id}' not found."}
+
+        wlan_name = wlan.get("name", "Unknown")
+
+        # If not confirmed, show preview
+        if not confirm and not should_auto_confirm():
+            additional_warnings = [
+                "All wireless clients connected to this SSID will be disconnected immediately",
+            ]
+
+            # Add context-specific warnings
+            if wlan.get("is_guest"):
+                additional_warnings.append("This is a guest network - guest access will be removed")
+
+            return delete_preview(
+                resource_type="wlan",
+                resource_id=wlan_id,
+                resource_name=wlan_name,
+                current_state={
+                    "name": wlan_name,
+                    "enabled": wlan.get("enabled"),
+                    "security": wlan.get("security"),
+                    "is_guest": wlan.get("is_guest"),
+                    "networkconf_id": wlan.get("networkconf_id"),
+                    "hide_ssid": wlan.get("hide_ssid"),
+                },
+                warnings=additional_warnings,
+            )
+
+        # Execute deletion
+        logger.warning(f"Deleting WLAN '{wlan_name}' (ID: {wlan_id}) - confirmed by user")
+        success = await network_manager.delete_wlan(wlan_id)
+
+        if success:
+            logger.info(f"Successfully deleted WLAN '{wlan_name}' (ID: {wlan_id})")
+            return {
+                "success": True,
+                "message": f"WLAN '{wlan_name}' has been permanently deleted.",
+                "deleted_wlan": {
+                    "id": wlan_id,
+                    "name": wlan_name,
+                    "security": wlan.get("security"),
+                },
+            }
+        else:
+            logger.error(f"Failed to delete WLAN '{wlan_name}' (ID: {wlan_id})")
+            return {
+                "success": False,
+                "error": f"Failed to delete WLAN '{wlan_name}'. Check server logs for details.",
+            }
+
+    except Exception as e:
+        logger.error(f"Error deleting WLAN {wlan_id}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
