@@ -2,6 +2,10 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
+# Version passed from CI/CD (used by hatch-vcs when git is unavailable)
+ARG VERSION=0.0.0.dev0
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION}
+
 RUN pip install --upgrade pip \
  && pip install uv
 
