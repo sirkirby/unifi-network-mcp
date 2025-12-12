@@ -170,7 +170,7 @@ async def get_network_details(network_id: str) -> Dict[str, Any]:
 
 @server.tool(
     name="unifi_update_network",
-    description="Update specific fields of an existing network (LAN/VLAN). Requires confirmation.",
+    description="Update specific fields of an existing network (LAN/VLAN). Requires confirmation. Note: Network isolation is only supported on 'corporate' networks, not 'guest' networks.",
     permission_category="networks",
     permission_action="update",
 )
@@ -193,8 +193,14 @@ async def update_network(network_id: str, update_data: Dict[str, Any], confirm: 
             - dhcp_start (string): New DHCP start IP.
             - dhcp_stop (string): New DHCP stop IP.
             - enabled (boolean): Enable/disable the entire network.
+            - network_isolation_enabled (boolean): Enable network isolation (IMPORTANT: Only works on networks with purpose="corporate").
             # Add other relevant fields from NetworkSchema here if needed
         confirm (bool): Must be set to `True` to execute. Defaults to `False`.
+
+    Important Constraints:
+        - Network isolation (network_isolation_enabled) is ONLY supported on networks with purpose="corporate".
+        - Attempting to enable isolation on "guest" or other network types will fail with an API error.
+        - To isolate a guest network: (1) Change its purpose from "guest" to "corporate", then (2) enable network_isolation_enabled.
 
     Returns:
         Dict: Success status, ID, updated fields, details, or error message.
@@ -317,6 +323,11 @@ async def create_network(network_data: Dict[str, Any], confirm: bool = False) ->
     - vlan (integer): VLAN ID (required if vlan_enabled is true)
     - dhcp_enabled (boolean): Whether DHCP is enabled (default: true)
     - enabled (boolean): Whether the network is enabled (default: true)
+    - network_isolation_enabled (boolean): Enable network isolation (IMPORTANT: Only works on networks with purpose="corporate")
+
+    Important Constraints:
+    - Network isolation (network_isolation_enabled) is ONLY supported on networks with purpose="corporate".
+    - It cannot be enabled on "guest" networks.
 
     Example:
     {
