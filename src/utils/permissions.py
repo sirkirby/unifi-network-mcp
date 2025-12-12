@@ -60,14 +60,16 @@ def parse_permission(permissions: Dict[str, Any], category: str, action: str) ->
 
     Environment Variable Examples:
         UNIFI_PERMISSIONS_NETWORKS_CREATE=true
+        UNIFI_PERMISSIONS_NETWORKS_DELETE=true
+        UNIFI_PERMISSIONS_WLANS_DELETE=true
         UNIFI_PERMISSIONS_DEVICES_UPDATE=true
         UNIFI_PERMISSIONS_CLIENTS_UPDATE=false
-    """
-    # Never allow delete operations regardless of configuration
-    if action == "delete":
-        logger.info(f"Delete operation requested for category '{category}'. All delete operations are disabled.")
-        return False
 
+    Security Note:
+        Delete operations are disabled by default and require explicit opt-in via
+        environment variable (e.g., UNIFI_PERMISSIONS_NETWORKS_DELETE=true).
+        This prevents accidental destructive operations.
+    """
     # 0. Check environment variable override first (highest priority)
     config_category_key = CATEGORY_MAP.get(category, category)
     env_var = f"UNIFI_PERMISSIONS_{config_category_key.upper()}_{action.upper()}"
