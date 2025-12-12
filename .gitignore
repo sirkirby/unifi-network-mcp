@@ -3,6 +3,7 @@
 
 # Python
 __pycache__/
+src/_version.py
 *.py[cod]
 *$py.class
 *.so

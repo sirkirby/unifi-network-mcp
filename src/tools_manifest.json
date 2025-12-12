@@ -1239,7 +1239,7 @@
       }
     },
     {
-      "description": "Update specific fields of an existing network (LAN/VLAN). Requires confirmation.",
+      "description": "Update specific fields of an existing network (LAN/VLAN). Requires confirmation. Note: Network isolation is only supported on 'corporate' networks, not 'guest' networks.",
       "name": "unifi_update_network",
       "schema": {
         "input": {
