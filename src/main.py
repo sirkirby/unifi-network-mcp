@@ -335,9 +335,13 @@ async def main_async():
         async def run_http():
             try:
                 logger.info(f"Starting FastMCP HTTP SSE server on {host}:{port} ...")
-                # MCP SDK >= 1.10 (pinned to 1.13.1): configure host/port via settings
                 server.settings.host = host
                 server.settings.port = port
+
+                # Disable uvicorn access logging to prevent stdout conflicts
+                # when running alongside stdio transport
+                logging.getLogger("uvicorn.access").disabled = True
+
                 await server.run_sse_async()
                 logger.info("HTTP SSE started via run_sse_async() using server.settings host/port.")
             except Exception as http_e:
