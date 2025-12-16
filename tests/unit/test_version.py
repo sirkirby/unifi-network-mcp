@@ -22,7 +22,6 @@ class TestVersion:
         assert pkg_version is not None
         assert len(pkg_version) > 0
 
-    @pytest.mark.skip(reason="Fails in CI when repo lacks proper release tags")
     def test_version_format_is_valid(self):
         """Verify the version follows PEP 440 format."""
         from importlib.metadata import version
@@ -38,7 +37,6 @@ class TestVersion:
             f"Expected format like: 0.4.0, 0.4.0.dev3, 0.4.0.dev3+gabc1234"
         )
 
-    @pytest.mark.skip(reason="Fails in CI when repo lacks proper release tags")
     def test_version_matches_git_tag(self):
         """Verify the version is derived from git tags."""
         from importlib.metadata import version
