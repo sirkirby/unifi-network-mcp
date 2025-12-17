@@ -5,6 +5,7 @@ help:
 	@echo "UniFi Network MCP - Development Commands"
 	@echo ""
 	@echo "Setup & Installation:"
+	@echo "  make venv         - Create virtual environment (requires uv)"
 	@echo "  make install      - Install dependencies with uv"
 	@echo "  make dev          - Install dev dependencies"
 	@echo ""
@@ -36,6 +37,17 @@ help:
 	@echo "  make run-meta     - Run with meta-only mode"
 
 # Setup
+venv:
+	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is not installed. Visit https://docs.astral.sh/uv/getting-started/installation/"; exit 1; }
+	@if [ ! -d ".venv" ]; then \
+		echo "Creating virtual environment..."; \
+		uv sync --extra dev; \
+	else \
+		echo "Virtual environment already exists."; \
+	fi
+	@echo "\nTo activate the virtual environment, run:"
+	@echo "  source .venv/bin/activate"
+
 install:
 	@echo "📦 Installing dependencies..."
 	uv sync

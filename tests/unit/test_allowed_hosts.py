@@ -53,9 +53,9 @@ class TestAllowedHostsParsing:
                 settings = kwargs.get("transport_security")
 
                 assert settings is not None, "transport_security should be passed to FastMCP"
-                assert (
-                    settings.allowed_hosts == expected_hosts
-                ), f"Expected {expected_hosts}, got {settings.allowed_hosts}"
+                assert settings.allowed_hosts == expected_hosts, (
+                    f"Expected {expected_hosts}, got {settings.allowed_hosts}"
+                )
 
             finally:
                 # Clean up modules for next test
