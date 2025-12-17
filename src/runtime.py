@@ -14,10 +14,12 @@ Lazy factories (`get_*`) are provided so unit tests can substitute fakes by
 monkey‑patching before the first call.
 """
 
+import os
 from functools import lru_cache
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from src.bootstrap import load_config, logger
 from src.managers.client_manager import ClientManager
@@ -50,7 +52,21 @@ def get_config():
 @lru_cache
 def get_server() -> FastMCP:
     """Create the FastMCP server instance exactly once."""
-    return FastMCP(name="unifi-network-mcp", debug=True)
+    # Parse allowed hosts from environment variable for reverse proxy support
+    # Default to localhost only for backwards compatibility
+    allowed_hosts_str = os.getenv("UNIFI_MCP_ALLOWED_HOSTS", "localhost,127.0.0.1")
+    allowed_hosts = [h.strip() for h in allowed_hosts_str.split(",") if h.strip()]
+
+    # Configure transport security settings
+    transport_security = TransportSecuritySettings(allowed_hosts=allowed_hosts)
+
+    logger.debug(f"Configuring FastMCP with allowed_hosts: {allowed_hosts}")
+
+    return FastMCP(
+        name="unifi-network-mcp",
+        debug=True,
+        transport_security=transport_security,
+    )
 
 
 # ---------------------------------------------------------------------------

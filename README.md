@@ -522,6 +522,7 @@ The server merges settings from **environment variables**, an optional `.env` fi
 | `UNIFI_TOOL_REGISTRATION_MODE` | Tool loading mode: `lazy` (default), `eager`, or `meta_only`. See [Context Optimization](#context-optimization) |
 | `UNIFI_ENABLED_CATEGORIES` | Comma-separated list of tool categories to load (eager mode). See table below |
 | `UNIFI_ENABLED_TOOLS` | Comma-separated list of specific tool names to register (eager mode) |
+| `UNIFI_MCP_ALLOWED_HOSTS` | Comma-separated list of allowed hostnames for reverse proxy support. Required when running behind Nginx/Cloudflare/etc. Default `localhost,127.0.0.1` |
 
 ### Tool Categories (for UNIFI_ENABLED_CATEGORIES)
 
@@ -793,6 +794,7 @@ See [docs/permissions.md](docs/permissions.md) for complete documentation includ
 * **Review permissions carefully** before enabling high-risk operations. Use environment variables for runtime control.
 * Create, update, and delete tools should be used with caution and only enabled when necessary.
 * Do not host outside of your network unless using a secure reverse proxy like Cloudflare Tunnel or Ngrok. Even then, an additional layer of authentication is recommended.
+* **Reverse Proxy Configuration:** When running behind a reverse proxy, set `UNIFI_MCP_ALLOWED_HOSTS` to include your external domain (e.g., `localhost,127.0.0.1,unifi-mcp.example.com`) to bypass FastMCP's DNS rebinding protection.
 
 ---
 
