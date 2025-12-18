@@ -36,8 +36,13 @@ class TestAllowedHostsParsing:
             **env_vars,
         }
 
+        # Remove UNIFI_MCP_ALLOWED_HOSTS if set in shell environment
+        # (load_dotenv is mocked, so .env won't reload it during import)
+        os.environ.pop("UNIFI_MCP_ALLOWED_HOSTS", None)
+
         with (
             patch.dict(os.environ, test_env),
+            patch("dotenv.load_dotenv"),  # Prevent .env from being reloaded during import
             patch("mcp.server.fastmcp.FastMCP") as mock_fastmcp,
         ):
             try:

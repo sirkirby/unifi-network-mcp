@@ -10,8 +10,10 @@ Responsibilities:
 import asyncio
 import logging
 import os
-import sys  # Removed uvicorn import
+import sys
 import traceback
+
+import uvicorn.config
 
 from src.bootstrap import (
     UNIFI_TOOL_REGISTRATION_MODE,
@@ -26,6 +28,7 @@ from src.runtime import (
     server,
 )
 from src.tool_index import register_tool, tool_index_handler
+from src.utils.config_helpers import parse_config_bool
 from src.utils.diagnostics import diagnostics_enabled, wrap_tool
 from src.utils.lazy_tool_loader import setup_lazy_loading
 from src.utils.meta_tools import register_load_tools, register_meta_tools
@@ -310,17 +313,16 @@ async def main_async():
     host = config.server.get("host", "0.0.0.0")
     port = int(config.server.get("port", 3000))
     http_cfg = config.server.get("http", {})
-    http_enabled_raw = http_cfg.get("enabled", False)
-    if isinstance(http_enabled_raw, str):
-        http_enabled = http_enabled_raw.strip().lower() in {"1", "true", "yes", "on"}
-    else:
-        http_enabled = bool(http_enabled_raw)
+    http_enabled = parse_config_bool(http_cfg.get("enabled", False))
 
-    # Only the main container process (PID 1) should bind the HTTP SSE port.
+    # Only the main container process (PID 1) should bind the HTTP SSE port,
+    # unless http.force=true is set in config (for local development/testing).
+    force_http = parse_config_bool(http_cfg.get("force", False))
     is_main_container_process = os.getpid() == 1
-    if http_enabled and not is_main_container_process:
+    if http_enabled and not is_main_container_process and not force_http:
         logger.info(
-            "HTTP SSE enabled in config but skipped in exec session (PID %s != 1)",
+            "HTTP SSE enabled in config but skipped in exec session (PID %s != 1). "
+            "Set UNIFI_MCP_HTTP_FORCE=true to override.",
             os.getpid(),
         )
         http_enabled = False
@@ -338,9 +340,9 @@ async def main_async():
                 server.settings.host = host
                 server.settings.port = port
 
-                # Disable uvicorn access logging to prevent stdout conflicts
-                # when running alongside stdio transport
-                logging.getLogger("uvicorn.access").disabled = True
+                # Redirect uvicorn access logs to stderr to prevent stdout conflicts
+                # when running alongside stdio transport (stdout is used for JSON-RPC)
+                uvicorn.config.LOGGING_CONFIG["handlers"]["access"]["stream"] = "ext://sys.stderr"
 
                 await server.run_sse_async()
                 logger.info("HTTP SSE started via run_sse_async() using server.settings host/port.")

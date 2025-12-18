@@ -51,6 +51,7 @@ server:
 
   http:
     enabled: ${oc.env:UNIFI_MCP_HTTP_ENABLED,false}
+    force: ${oc.env:UNIFI_MCP_HTTP_FORCE,false}
   diagnostics:
     enabled: ${oc.env:UNIFI_MCP_DIAGNOSTICS,false}
     log_tool_args: ${oc.env:UNIFI_MCP_DIAG_LOG_TOOL_ARGS,true}
