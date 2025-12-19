@@ -101,6 +101,9 @@ format:
 	@echo "✨ Formatting code..."
 	uv run ruff format src/ tests/
 
+format-fix:
+	uv run ruff check src/ tests/ --fix
+
 format-check:
 	@echo "🔍 Checking code formatting..."
 	uv run ruff format --check src/ tests/
