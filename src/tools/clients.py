@@ -485,10 +485,10 @@ Either setting can be enabled/disabled independently.""",
 )
 async def set_client_ip_settings(
     mac_address: str,
-    use_fixedip: Optional[bool] = None,
-    fixed_ip: Optional[str] = None,
-    local_dns_record_enabled: Optional[bool] = None,
-    local_dns_record: Optional[str] = None,
+    use_fixedip: bool | None = None,
+    fixed_ip: str | None = None,
+    local_dns_record_enabled: bool | None = None,
+    local_dns_record: str | None = None,
     confirm: bool = False,
 ) -> Dict[str, Any]:
     """Set fixed IP and/or local DNS record for a client."""

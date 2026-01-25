@@ -18,8 +18,12 @@ def _build_tool_module_map() -> Dict[str, str]:
 
     This dynamically discovers all tools and their modules, eliminating the need
     for a manually-maintained static mapping that can get out of sync.
+
+    Always starts with the static map as a baseline, then merges in dynamically
+    discovered tools to ensure no tools are missed due to regex limitations.
     """
-    tool_map: Dict[str, str] = {}
+    # Start with static map as baseline to ensure all known tools are available
+    tool_map: Dict[str, str] = dict(_STATIC_TOOL_MODULE_MAP)
 
     # Find the tools directory
     # Try relative to this file first, then fall back to cwd
@@ -30,8 +34,8 @@ def _build_tool_module_map() -> Dict[str, str]:
         tools_dir = Path("src/tools")
 
     if not tools_dir.exists():
-        logger.warning("Tools directory not found, falling back to static map")
-        return _STATIC_TOOL_MODULE_MAP
+        logger.warning("Tools directory not found, using static map only")
+        return tool_map
 
     # Scan each .py file in tools directory
     for tool_file in tools_dir.glob("*.py"):
@@ -48,7 +52,8 @@ def _build_tool_module_map() -> Dict[str, str]:
             # Looking for: name="unifi_xxx" or name='unifi_xxx'
             import re
 
-            pattern = r'name\s*=\s*["\']([unifi_][a-z_]+)["\']'
+            # Note: pattern uses literal 'unifi_' prefix, not a character class
+            pattern = r'name\s*=\s*["\'](unifi_[a-z_]+)["\']'
             matches = re.findall(pattern, content)
 
             for tool_name in matches:
@@ -58,7 +63,7 @@ def _build_tool_module_map() -> Dict[str, str]:
         except Exception as e:
             logger.debug(f"Error scanning {tool_file}: {e}")
 
-    logger.debug(f"Built dynamic tool map with {len(tool_map)} tools")
+    logger.debug(f"Built tool map with {len(tool_map)} tools (static baseline + dynamic discovery)")
     return tool_map
 
 

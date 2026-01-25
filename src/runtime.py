@@ -12,6 +12,10 @@ Downstream code (tool modules, tests, etc.) should import these via::
 
 Lazy factories (`get_*`) are provided so unit tests can substitute fakes by
 monkey‑patching before the first call.
+
+IMPORTANT: The server's `tool` decorator is wrapped here (not in main.py) to
+ensure that tool modules can be imported directly (for testing, etc.) without
+errors from unrecognized decorator kwargs like `permission_category`.
 """
 
 import os
@@ -49,6 +53,25 @@ def get_config():
     return load_config()
 
 
+def _create_permissioned_tool_wrapper(original_tool_decorator):
+    """Wrap the FastMCP tool decorator to handle permission kwargs.
+
+    This wrapper strips `permission_category` and `permission_action` kwargs
+    before passing to the original FastMCP decorator. This allows tool modules
+    to be imported directly (for testing, etc.) without errors.
+
+    The actual permission checking is done in main.py's permissioned_tool,
+    which replaces this wrapper at startup. This wrapper just ensures imports
+    don't fail when tools have permission kwargs.
+    """
+    def wrapper(*args, **kwargs):
+        # Strip permission-related kwargs that FastMCP doesn't understand
+        kwargs.pop("permission_category", None)
+        kwargs.pop("permission_action", None)
+        return original_tool_decorator(*args, **kwargs)
+    return wrapper
+
+
 @lru_cache
 def get_server() -> FastMCP:
     """Create the FastMCP server instance exactly once."""
@@ -62,11 +85,19 @@ def get_server() -> FastMCP:
 
     logger.debug(f"Configuring FastMCP with allowed_hosts: {allowed_hosts}")
 
-    return FastMCP(
+    server = FastMCP(
         name="unifi-network-mcp",
         debug=True,
         transport_security=transport_security,
     )
+
+    # Wrap the tool decorator to handle permission kwargs gracefully.
+    # This ensures tool modules can be imported directly without errors.
+    # main.py will replace this with the full permissioned_tool implementation.
+    server._original_tool = server.tool
+    server.tool = _create_permissioned_tool_wrapper(server.tool)
+
+    return server
 
 
 # ---------------------------------------------------------------------------

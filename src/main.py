@@ -35,7 +35,8 @@ from src.utils.meta_tools import register_load_tools, register_meta_tools
 from src.utils.permissions import parse_permission  # noqa: E402
 from src.utils.tool_loader import auto_load_tools
 
-_original_tool_decorator = server.tool  # keep reference to wrap later
+# Use the original FastMCP tool decorator (saved in runtime.py before wrapping)
+_original_tool_decorator = getattr(server, "_original_tool", server.tool)
 
 
 def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
