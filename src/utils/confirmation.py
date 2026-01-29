@@ -216,3 +216,63 @@ def create_preview(
         response["warnings"] = warnings
 
     return response
+
+
+def delete_preview(
+    resource_type: str,
+    resource_id: str,
+    resource_name: Optional[str],
+    current_state: Dict[str, Any],
+    warnings: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Convenience helper for delete operations.
+
+    Delete operations are destructive and irreversible. This preview gives
+    the LLM/user full context about what will be permanently removed.
+
+    Args:
+        resource_type: Type of resource being deleted (e.g., "network", "wlan")
+        resource_id: Unique identifier of the resource
+        resource_name: Human-readable name of the resource
+        current_state: Current state/configuration that will be deleted
+        warnings: List of warning messages about the deletion
+
+    Returns:
+        Preview response for delete operation
+
+    Example:
+        >>> delete_preview(
+        ...     resource_type="network",
+        ...     resource_id="abc123",
+        ...     resource_name="Guest Network",
+        ...     current_state={"name": "Guest Network", "vlan": 70, "ip_subnet": "10.0.70.0/24"},
+        ...     warnings=["This will disconnect all clients on this network"]
+        ... )
+    """
+    name_str = f"'{resource_name}'" if resource_name else resource_id
+
+    # Default warnings for destructive operations
+    default_warnings = [
+        f"This will PERMANENTLY DELETE {resource_type} {name_str}",
+        "This action cannot be undone",
+    ]
+
+    all_warnings = default_warnings + (warnings or [])
+
+    response: Dict[str, Any] = {
+        "success": False,
+        "requires_confirmation": True,
+        "action": "delete",
+        "resource_type": resource_type,
+        "resource_id": resource_id,
+        "preview": {
+            "will_delete": current_state,
+        },
+        "warnings": all_warnings,
+        "message": f"⚠️ DESTRUCTIVE: Will permanently delete {resource_type} {name_str}. Set confirm=true to execute.",
+    }
+
+    if resource_name:
+        response["resource_name"] = resource_name
+
+    return response

@@ -362,6 +362,46 @@
       }
     },
     {
+      "description": "Delete a network (LAN/VLAN) from the UniFi controller. WARNING: This is a destructive operation that cannot be undone. All clients on this network will be disconnected. Requires confirmation.",
+      "name": "unifi_delete_network",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "network_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "network_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Delete a wireless network (WLAN/SSID) from the UniFi controller. WARNING: This is a destructive operation that cannot be undone. All wireless clients on this SSID will be disconnected. Requires confirmation.",
+      "name": "unifi_delete_wlan",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "wlan_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "wlan_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
       "description": "Force a client to reconnect to the network (kick) by MAC address",
       "name": "unifi_force_reconnect_client",
       "schema": {
