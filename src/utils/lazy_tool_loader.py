@@ -48,7 +48,8 @@ def _build_tool_module_map() -> Dict[str, str]:
             # Looking for: name="unifi_xxx" or name='unifi_xxx'
             import re
 
-            pattern = r'name\s*=\s*["\']([unifi_][a-z_]+)["\']'
+            # Note: pattern uses literal 'unifi_' prefix, not a character class
+            pattern = r'name\s*=\s*["\'](unifi_[a-z_]+)["\']'
             matches = re.findall(pattern, content)
 
             for tool_name in matches:
