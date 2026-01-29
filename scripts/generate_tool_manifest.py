@@ -10,12 +10,14 @@ Usage:
 
 Output:
     src/tools_manifest.json - Static tool metadata with FULL schemas for all tools
+                              Includes module_map for fallback lazy loading
 """
 from __future__ import annotations
 
 import json
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -30,6 +32,48 @@ os.environ["UNIFI_TOOL_REGISTRATION_MODE"] = "eager"
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
+
+
+def build_module_map() -> dict[str, str]:
+    """Build tool-to-module mapping by scanning tool files.
+
+    This uses the same logic as lazy_tool_loader's dynamic discovery,
+    ensuring the manifest includes accurate module paths for fallback loading.
+
+    Returns:
+        Dictionary mapping tool names to their module paths
+    """
+    tool_map: dict[str, str] = {}
+    tools_dir = project_root / "src" / "tools"
+
+    if not tools_dir.exists():
+        logger.warning(f"Tools directory not found at {tools_dir}")
+        return tool_map
+
+    # Scan each .py file in tools directory
+    for tool_file in tools_dir.glob("*.py"):
+        if tool_file.name.startswith("_"):
+            continue
+
+        module_name = f"src.tools.{tool_file.stem}"
+
+        try:
+            content = tool_file.read_text()
+
+            # Find tool names using pattern matching
+            # Looking for: name="unifi_xxx" or name='unifi_xxx'
+            pattern = r'name\s*=\s*["\'](unifi_[a-z_]+)["\']'
+            matches = re.findall(pattern, content)
+
+            for tool_name in matches:
+                if tool_name.startswith("unifi_"):
+                    tool_map[tool_name] = module_name
+
+        except Exception as e:
+            logger.warning(f"Error scanning {tool_file}: {e}")
+
+    logger.info(f"   Built module map with {len(tool_map)} tool->module mappings")
+    return tool_map
 
 
 def generate_manifest() -> dict[str, Any]:
@@ -111,8 +155,12 @@ def generate_manifest() -> dict[str, Any]:
 
         tools.append(tool_data)
 
+    # Build module map for fallback lazy loading
+    module_map = build_module_map()
+
     manifest = {
         "tools": tools,
+        "module_map": module_map,
         "count": len(tools),
         "generated_by": "scripts/generate_tool_manifest.py",
         "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
