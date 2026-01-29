@@ -35,6 +35,7 @@ CATEGORY_MAP = {
     "voucher": "vouchers",
     "usergroup": "usergroups",
     "route": "routes",
+    "snmp": "snmp",
 }
 
 DEFAULT_PERMISSIONS_KEY = "default"

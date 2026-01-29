@@ -1,5 +1,5 @@
 {
-  "count": 81,
+  "count": 83,
   "generated_by": "scripts/generate_tool_manifest.py",
   "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
   "tools": [
@@ -604,6 +604,16 @@
     {
       "description": "Get current site settings (e.g., country code, timezone, connectivity monitoring).",
       "name": "unifi_get_site_settings",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get current SNMP settings for the site (enabled state, community string).",
+      "name": "unifi_get_snmp_settings",
       "schema": {
         "input": {
           "properties": {},
@@ -1340,6 +1350,29 @@
           },
           "required": [
             "route_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Update SNMP settings for the site (enable/disable, set community string). Requires confirm=true to apply changes.",
+      "name": "unifi_update_snmp_settings",
+      "schema": {
+        "input": {
+          "properties": {
+            "community": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "enabled"
           ],
           "type": "object"
         }

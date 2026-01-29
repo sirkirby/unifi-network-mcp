@@ -119,3 +119,7 @@ permissions:
   routes:
     create: false  # Static routes can disrupt connectivity
     update: false  # Modifying routes requires careful planning
+
+  snmp:
+    create: false  # Not applicable
+    update: true   # Allow enabling/disabling SNMP and changing community
