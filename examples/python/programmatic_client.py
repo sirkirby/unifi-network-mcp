@@ -105,7 +105,7 @@ async def main():
         print("-" * 70)
         try:
             stats = await client.get_network_stats()
-            print(f"✓ Retrieved network stats")
+            print("✓ Retrieved network stats")
             print(f"  Preview: {str(stats)[:200]}...")
         except Exception as e:
             print(f"✗ Error: {e}")

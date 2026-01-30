@@ -49,7 +49,6 @@ def generate_manifest() -> dict[str, Any]:
     # CRITICAL: Import main.py to trigger the server.tool monkey-patch
     # This ensures @server.tool decorators call register_tool()
     logger.info("   Setting up permissioned tool decorator...")
-    import src.main  # This monkey-patches server.tool with permissioned_tool
 
     # Force eager loading of all tools to populate TOOL_REGISTRY
     # We need to import the tool loader to trigger all tool registrations

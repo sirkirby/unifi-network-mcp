@@ -132,6 +132,8 @@ _STATIC_TOOL_MODULE_MAP: Dict[str, str] = {
     "unifi_get_system_info": "src.tools.system",
     "unifi_get_network_health": "src.tools.system",
     "unifi_get_site_settings": "src.tools.system",
+    "unifi_get_snmp_settings": "src.tools.system",
+    "unifi_update_snmp_settings": "src.tools.system",
     # Event tools
     "unifi_list_events": "src.tools.events",
     "unifi_list_alarms": "src.tools.events",
