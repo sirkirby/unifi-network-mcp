@@ -518,6 +518,8 @@ The server merges settings from **environment variables**, an optional `.env` fi
 | `UNIFI_VERIFY_SSL` | Set to `false` if using self-signed certs |
 | `UNIFI_CONTROLLER_TYPE` | Controller API path type: `auto` (detect), `proxy` (UniFi OS), `direct` (standalone). Default `auto` |
 | `UNIFI_MCP_HTTP_ENABLED` | Set `true` to enable optional HTTP SSE server (default `false`) |
+| `UNIFI_MCP_HOST` | HTTP SSE bind address (default `0.0.0.0`) |
+| `UNIFI_MCP_PORT` | HTTP SSE bind port (default `3000`) |
 | `UNIFI_AUTO_CONFIRM` | Set `true` to auto-confirm all mutating operations (skips preview step). Ideal for workflow automation (n8n, Make, Zapier). Default `false` |
 | `UNIFI_TOOL_REGISTRATION_MODE` | Tool loading mode: `lazy` (default), `eager`, or `meta_only`. See [Context Optimization](#context-optimization) |
 | `UNIFI_ENABLED_CATEGORIES` | Comma-separated list of tool categories to load (eager mode). See table below |
