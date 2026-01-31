@@ -59,11 +59,26 @@ class TestVersion:
         # Strip leading 'v' from git tag
         git_version = git_describe.lstrip("v")
 
+        # Check if working tree is dirty (uncommitted changes)
+        dirty_check = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent.parent.parent,
+        )
+        is_dirty = bool(dirty_check.stdout.strip())
+
         # The package version should be based on the git tag
         # For exact tag matches: v0.4.0 -> 0.4.0
         # For commits after tag: v0.4.0-3-gabc1234 -> 0.4.1.dev3+gabc1234
-        if "-" not in git_describe:
-            # Exact tag match - versions should be equal
+        # For dirty working tree: adds .dYYYYMMDD suffix and becomes dev version
+        if is_dirty:
+            # Dirty working tree - hatch-vcs generates dev version with date suffix
+            assert ".d" in pkg_version or "dev" in pkg_version, (
+                f"Package version '{pkg_version}' should be a dev version for dirty working tree"
+            )
+        elif "-" not in git_describe:
+            # Exact tag match with clean tree - versions should be equal
             assert pkg_version == git_version, f"Package version '{pkg_version}' does not match git tag '{git_version}'"
         else:
             # Commits after tag - version should contain dev

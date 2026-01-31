@@ -8,8 +8,8 @@ unifi:
   controller_type: ${oc.env:UNIFI_CONTROLLER_TYPE,auto}
 
 server:
-  host: 0.0.0.0
-  port: 3000
+  host: ${oc.env:UNIFI_MCP_HOST,0.0.0.0}
+  port: ${oc.env:UNIFI_MCP_PORT,3000}
   log_level: INFO
 
   # Tool registration mode
