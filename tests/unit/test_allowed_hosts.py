@@ -103,3 +103,99 @@ class TestAllowedHostsParsing:
     def test_empty_value_results_in_empty_list(self):
         """Test that empty string results in empty allowed hosts list."""
         self._test_get_server_with_env({"UNIFI_MCP_ALLOWED_HOSTS": ""}, [])
+
+
+class TestDnsRebindingProtection:
+    """Test UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION environment variable."""
+
+    def _test_get_server_dns_rebinding(self, env_vars: dict, expected_enabled: bool):
+        """Helper to test get_server with DNS rebinding protection settings.
+
+        This carefully imports and tests get_server in isolation by:
+        1. Mocking all dependencies that would fail without real config
+        2. Setting up the specified environment variables
+        3. Verifying enable_dns_rebinding_protection in TransportSecuritySettings
+        """
+        # Remove runtime from sys.modules to force reimport with new env
+        modules_to_remove = [key for key in sys.modules if key.startswith("src.")]
+        for mod in modules_to_remove:
+            del sys.modules[mod]
+
+        # Set up environment with required config vars + test vars
+        test_env = {
+            "UNIFI_HOST": "192.168.1.1",
+            "UNIFI_USERNAME": "admin",
+            "UNIFI_PASSWORD": "password",
+            **env_vars,
+        }
+
+        # Remove env vars if set in shell environment
+        os.environ.pop("UNIFI_MCP_ALLOWED_HOSTS", None)
+        os.environ.pop("UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION", None)
+
+        with (
+            patch.dict(os.environ, test_env),
+            patch("dotenv.load_dotenv"),
+            patch("mcp.server.fastmcp.FastMCP") as mock_fastmcp,
+        ):
+            try:
+                from src.runtime import get_server  # noqa: F401
+
+                assert mock_fastmcp.call_args_list, "FastMCP should have been called"
+
+                _, kwargs = mock_fastmcp.call_args_list[-1]
+                settings = kwargs.get("transport_security")
+
+                assert settings is not None, "transport_security should be passed to FastMCP"
+                assert settings.enable_dns_rebinding_protection == expected_enabled, (
+                    f"Expected enable_dns_rebinding_protection={expected_enabled}, "
+                    f"got {settings.enable_dns_rebinding_protection}"
+                )
+
+            finally:
+                modules_to_remove = [key for key in sys.modules if key.startswith("src.")]
+                for mod in modules_to_remove:
+                    del sys.modules[mod]
+
+    def test_dns_rebinding_protection_enabled_by_default(self):
+        """Test that DNS rebinding protection is enabled by default."""
+        self._test_get_server_dns_rebinding({}, expected_enabled=True)
+
+    def test_dns_rebinding_protection_disabled_with_false(self):
+        """Test that setting to 'false' disables DNS rebinding protection."""
+        self._test_get_server_dns_rebinding(
+            {"UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION": "false"},
+            expected_enabled=False,
+        )
+
+    def test_dns_rebinding_protection_disabled_case_insensitive(self):
+        """Test that 'FALSE' and 'False' also disable protection."""
+        self._test_get_server_dns_rebinding(
+            {"UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION": "FALSE"},
+            expected_enabled=False,
+        )
+        self._test_get_server_dns_rebinding(
+            {"UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION": "False"},
+            expected_enabled=False,
+        )
+
+    def test_dns_rebinding_protection_enabled_with_true(self):
+        """Test that explicitly setting to 'true' keeps it enabled."""
+        self._test_get_server_dns_rebinding(
+            {"UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION": "true"},
+            expected_enabled=True,
+        )
+
+    def test_dns_rebinding_protection_enabled_with_invalid_value(self):
+        """Test that invalid values default to enabled (safe default)."""
+        self._test_get_server_dns_rebinding(
+            {"UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION": "invalid"},
+            expected_enabled=False,  # "invalid".lower() != "true"
+        )
+
+    def test_dns_rebinding_protection_enabled_with_empty_string(self):
+        """Test that empty string defaults to disabled (empty != 'true')."""
+        self._test_get_server_dns_rebinding(
+            {"UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION": ""},
+            expected_enabled=False,  # "".lower() != "true"
+        )
