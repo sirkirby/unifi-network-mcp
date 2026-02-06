@@ -181,23 +181,18 @@ Environment variables follow the pattern: `UNIFI_PERMISSIONS_<CATEGORY>_<ACTION>
 
 ## Impact on Tool Discovery and Availability
 
-**Important:** Permissions are enforced at **runtime**, not build time!
+**Important:** Permissions directly control which tools your MCP client (e.g., Claude Desktop) can see and use.
 
-The tool manifest (`tools_manifest.json`) **always includes all 64 tools** regardless of permission settings. This ensures:
-
-1. ✅ **Users control permissions** via their own config.yaml
-2. ✅ **LLMs can discover all tools** via `unifi_tool_index`
-3. ✅ **Disabled tools appear in index but are not callable**
-4. ✅ **Permissions enforced when tools are called**
+The tool manifest (`tools_manifest.json`) always includes all tools regardless of permission settings. However, permissions determine what is actually registered with the MCP server at startup:
 
 ### How It Works
 
 When the server starts:
 
-1. **All tools registered in TOOL_REGISTRY** (for discovery)
-2. **Permission check determines MCP registration**:
-   - ✅ Allowed: Tool is callable via MCP
-   - ❌ Denied: Tool appears in index but returns permission error
+1. **All tools added to the TOOL_REGISTRY** (internal index for `unifi_tool_index` discovery)
+2. **Permission check determines MCP registration** (what your client sees):
+   - ✅ Allowed: Tool is registered with the MCP server and callable
+   - ❌ Denied: Tool is **not registered** — it will not appear in your client's tool list and cannot be called directly
 
 Example server startup output:
 
@@ -207,12 +202,17 @@ Example server startup output:
 ...
 ```
 
-### User Experience
+### What This Means for Each Registration Mode
 
-**If a tool is disabled:**
-- ✅ Appears in `unifi_tool_index` results
-- ❌ Cannot be called via MCP (not registered with server)
-- 💡 LLM will see it exists but cannot invoke it
+| Mode | Disabled tool visible? | Disabled tool callable? |
+|------|----------------------|------------------------|
+| **eager** | Not in client tool list | No |
+| **lazy** | Discoverable via `unifi_tool_index` | No — returns permission error via `unifi_execute` |
+| **meta_only** | Discoverable via `unifi_tool_index` | No — returns permission error via `unifi_execute` |
+
+**Key takeaway:** If you are using **eager mode** and a tool is missing from your client, the most likely cause is that its permission is disabled. Enable the relevant permission and restart the server.
+
+In **lazy** and **meta_only** modes, all tools always appear in `unifi_tool_index` results (since the index reads from the static manifest), but disabled tools will return a permission error when called through `unifi_execute`.
 
 **Why this design:**
 - Users configure their own permissions
@@ -309,27 +309,36 @@ Note: `delete` operations typically use the `update` permission since they modif
 
 ## Troubleshooting
 
-### Tool Not Appearing in tool_index
+### Tool Missing from Client Tool List (Eager Mode)
 
-**Symptom:** A tool is missing from `unifi_tool_index` results
+**Symptom:** A tool you expect to see is not listed by your MCP client (e.g., Claude Desktop)
 
-**Cause:** Permission is set to `false` in config.yaml
+**Cause:** The tool's permission is disabled, so it was not registered with the MCP server at startup.
 
 **Solution:**
-1. Check `src/config/config.yaml` for the permission setting
-2. Enable the permission if appropriate
-3. Regenerate manifest: `make manifest`
-4. Restart the MCP server
+1. Enable the relevant permission via environment variable (e.g., `UNIFI_PERMISSIONS_NETWORKS_CREATE=true`)
+2. Restart the MCP server
+3. The tool will now appear in your client's tool list
+
+### Tool Returns "Permission Denied" via unifi_execute (Lazy/Meta-Only Mode)
+
+**Symptom:** Tool appears in `unifi_tool_index` but returns a permission error when called through `unifi_execute`
+
+**Cause:** The tool's permission is disabled. In lazy/meta-only mode, `unifi_tool_index` reads from the static manifest (which includes all tools), but the tool's internal permission check blocks execution.
+
+**Solution:**
+1. Enable the relevant permission via environment variable
+2. Restart the MCP server
 
 ### Permission Denied at Runtime
 
-**Symptom:** "Permission denied" error when calling a tool
+**Symptom:** "Permission denied" error when calling a tool that IS registered
 
-**Cause:** Some tools have additional runtime permission checks
+**Cause:** Some tools have additional runtime permission checks beyond the decorator-level check
 
 **Solution:** Check both:
-- Decorator permissions (config.yaml)
-- Runtime permission checks (within tool function)
+- Decorator permissions (category/action level in config.yaml or env vars)
+- Runtime permission checks (within the tool function, e.g., `client.block` vs `client.update`)
 
 ## Future Enhancements
 
