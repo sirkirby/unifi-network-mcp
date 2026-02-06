@@ -218,6 +218,33 @@ class ClientManager:
             logger.error(f"Error unauthorizing guest {client_mac}: {e}")
             return False
 
+    async def get_client_by_ip(self, ip_address: str) -> Optional[Client]:
+        """Get client information by IP address.
+
+        Searches online clients first, then falls back to all clients
+        (including offline/historical) to avoid stale IP matches.
+
+        Args:
+            ip_address: The IP address to search for.
+
+        Returns:
+            Client object if found, None otherwise.
+        """
+        import re
+
+        if not re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ip_address):
+            return None
+
+        # Search online clients first to avoid stale IP assignments
+        online_clients = await self.get_clients()
+        match: Optional[Client] = next((c for c in online_clients if c.ip == ip_address), None)
+        if match:
+            return match
+
+        # Fallback to all clients (including offline/historical)
+        all_clients = await self.get_all_clients()
+        return next((c for c in all_clients if c.ip == ip_address), None)
+
     async def set_client_ip_settings(
         self,
         client_mac: str,
