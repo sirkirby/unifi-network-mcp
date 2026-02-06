@@ -80,10 +80,22 @@ def get_server() -> FastMCP:
     allowed_hosts_str = os.getenv("UNIFI_MCP_ALLOWED_HOSTS", "localhost,127.0.0.1")
     allowed_hosts = [h.strip() for h in allowed_hosts_str.split(",") if h.strip()]
 
-    # Configure transport security settings
-    transport_security = TransportSecuritySettings(allowed_hosts=allowed_hosts)
+    # Allow disabling DNS rebinding protection entirely (default: enabled)
+    # Set to "false" for Kubernetes/proxy deployments where allowed_hosts is insufficient
+    enable_dns_rebinding = (
+        os.getenv("UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION", "true").lower() == "true"
+    )
 
-    logger.debug(f"Configuring FastMCP with allowed_hosts: {allowed_hosts}")
+    # Configure transport security settings
+    transport_security = TransportSecuritySettings(
+        allowed_hosts=allowed_hosts,
+        enable_dns_rebinding_protection=enable_dns_rebinding,
+    )
+
+    logger.debug(
+        f"Configuring FastMCP with allowed_hosts: {allowed_hosts}, "
+        f"dns_rebinding_protection: {enable_dns_rebinding}"
+    )
 
     server = FastMCP(
         name="unifi-network-mcp",
