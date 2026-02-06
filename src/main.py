@@ -253,6 +253,13 @@ async def main_async():
         logger.info("   Meta-tools: unifi_tool_index, unifi_execute, unifi_batch, unifi_batch_status")
         logger.info("   Use unifi_execute to run any tool discovered via unifi_tool_index")
         logger.info("   To load all tools directly: set UNIFI_TOOL_REGISTRATION_MODE=eager")
+
+        # Setup lazy loading interceptor so unifi_execute/unifi_batch can load tools on demand
+        setup_lazy_loading(server, _original_tool_decorator)
+
+        from src.utils.lazy_tool_loader import TOOL_MODULE_MAP
+
+        logger.info(f"   On-demand loader ready - {len(TOOL_MODULE_MAP)} tools available via unifi_execute")
     elif UNIFI_TOOL_REGISTRATION_MODE == "lazy":
         logger.info("⚡ Tool registration mode: lazy")
         logger.info("   Meta-tools: unifi_tool_index, unifi_execute, unifi_batch, unifi_batch_status, unifi_load_tools")
