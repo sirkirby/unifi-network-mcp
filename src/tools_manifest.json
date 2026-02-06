@@ -1,5 +1,5 @@
 {
-  "count": 83,
+  "count": 84,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "src.tools.devices",
@@ -62,6 +62,7 @@
     "unifi_list_vpn_clients": "src.tools.vpn",
     "unifi_list_vpn_servers": "src.tools.vpn",
     "unifi_list_wlans": "src.tools.network",
+    "unifi_lookup_by_ip": "src.tools.clients",
     "unifi_reboot_device": "src.tools.devices",
     "unifi_rename_client": "src.tools.clients",
     "unifi_rename_device": "src.tools.devices",
@@ -1065,6 +1066,23 @@
       "schema": {
         "input": {
           "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Quick IP-to-hostname lookup. Returns only essential fields (hostname, name, MAC) to minimize token usage.",
+      "name": "unifi_lookup_by_ip",
+      "schema": {
+        "input": {
+          "properties": {
+            "ip_address": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ip_address"
+          ],
           "type": "object"
         }
       }

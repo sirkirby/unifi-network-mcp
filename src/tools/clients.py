@@ -16,6 +16,37 @@ logger = logging.getLogger(__name__)
 
 
 @server.tool(
+    name="unifi_lookup_by_ip",
+    description="Quick IP-to-hostname lookup. Returns only essential fields (hostname, name, MAC) to minimize token usage.",
+)
+async def lookup_by_ip(ip_address: str) -> Dict[str, Any]:
+    """Lookup client by IP address - returns only essential fields to minimize token usage.
+
+    Args:
+        ip_address: IPv4 address to search for (e.g. '192.168.1.100').
+    """
+    try:
+        client_obj = await client_manager.get_client_by_ip(ip_address)
+        if client_obj:
+            client_raw = client_obj.raw if hasattr(client_obj, "raw") else client_obj
+            return {
+                "success": True,
+                "site": client_manager._connection.site,
+                "ip": ip_address,
+                "hostname": client_raw.get("hostname", ""),
+                "name": client_raw.get("name", ""),
+                "mac": client_raw.get("mac", ""),
+            }
+        return {
+            "success": False,
+            "error": f"No client found with IP: {ip_address}",
+        }
+    except Exception as e:
+        logger.error(f"Error looking up client by IP {ip_address}: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+
+@server.tool(
     name="unifi_list_clients",
     description="List clients/devices connected to the Unifi Network",
 )
