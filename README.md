@@ -747,6 +747,8 @@ These tools will give any LLM or agent configured to use them full access to you
 
 The server includes a comprehensive permission system with **safe defaults**:
 
+> **Permissions control tool visibility.** Tools with disabled permissions are **not registered** with the MCP server and will not appear in your client's tool list. If you're missing expected tools, check that the relevant permissions are enabled. All tools remain discoverable via `unifi_tool_index` regardless of permission settings — but disabled tools cannot be called. See [docs/permissions.md](docs/permissions.md) for full details.
+
 **Disabled by Default (High-Risk):**
 - Network creation/modification (`unifi_create_network`, `unifi_update_network`)
 - Wireless configuration (`unifi_create_wlan`, `unifi_update_wlan`)
