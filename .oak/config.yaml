@@ -1,0 +1,114 @@
+version: 1.0.12
+agents: [claude, cursor, codex]
+rfc:
+  directory: oak/rfc
+  template: engineering
+  auto_number: true
+  number_format: sequential
+  validate_on_create: true
+constitution:
+  directory: oak
+languages:
+  installed: [python, javascript, typescript]
+skills:
+  installed: [project-governance, codebase-intelligence]
+  auto_install: true
+codebase_intelligence:
+  agents:
+    enabled: true
+    max_turns: 50
+    timeout_seconds: 600
+    scheduler_interval_seconds: 60
+    executor_cache_size: 100
+    background_processing_interval_seconds: 60
+  session_quality:
+    min_activities: 3
+    stale_timeout_seconds: 3600
+  backup:
+    on_upgrade: true
+  index_on_startup: true
+  watch_files: true
+  exclude_patterns:
+  - .git
+  - .git/**
+  - .oak
+  - .oak/**
+  - .claude/commands
+  - .claude/settings.local.json
+  - .claude/skills
+  - .codex/config.toml
+  - .codex/prompts
+  - .codex/skills
+  - .cursor/commands
+  - .cursor/mcp.json
+  - .cursor/settings.json
+  - .cursor/skills
+  - .gemini/commands
+  - .gemini/settings.json
+  - .gemini/skills
+  - .github/agents
+  - .github/skills
+  - .mcp.json
+  - .opencode/commands
+  - .opencode/skills
+  - .vscode/mcp.json
+  - .vscode/settings.json
+  - .windsurf/commands
+  - .windsurf/settings.json
+  - .windsurf/skills
+  - opencode.json
+  - .claude/settings.json
+  - .cursor/hooks.json
+  - .cursor/hooks
+  - .cursor/hooks/**
+  - node_modules
+  - node_modules/**
+  - '**/node_modules'
+  - '**/node_modules/**'
+  - __pycache__
+  - __pycache__/**
+  - .mypy_cache
+  - .mypy_cache/**
+  - .pytest_cache
+  - .pytest_cache/**
+  - .ruff_cache
+  - .ruff_cache/**
+  - htmlcov
+  - htmlcov/**
+  - .venv
+  - .venv/**
+  - venv
+  - venv/**
+  - .env
+  - .env.*
+  - '*.env'
+  - '*.pem'
+  - '*.key'
+  - '*.crt'
+  - '*.p12'
+  - '*.pfx'
+  - '*.jks'
+  - '*.keystore'
+  - '*.pyc'
+  - '*.pyo'
+  - '*.min.js'
+  - '*.min.css'
+  - '*.map'
+  - '*.lock'
+  - package-lock.json
+  - yarn.lock
+  - pnpm-lock.yaml
+  - dist/**
+  - build/**
+  - .next/**
+  - coverage/**
+  - '*.egg-info/**'
+  - translations/**
+  - locales/**
+  - locale/**
+  - i18n/**
+  - l10n/**
+  - '*.po'
+  - '*.pot'
+  - '*.mo'
+  cli_command: oak

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "oak-ci": {
+      "type": "stdio",
+      "command": "oak",
+      "args": [
+        "ci",
+        "mcp"
+      ],
+      "env": {}
+    }
+  }
+}

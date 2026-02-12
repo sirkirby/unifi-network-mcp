@@ -1,0 +1,53 @@
+migrations:
+- cleanup-builtin-agent-tasks
+- cleanup-skill-generate-scripts
+- hooks-local-only
+managed_assets:
+  directories:
+  - .claude/commands
+  - .codex/prompts
+  - .cursor/commands
+  - oak
+  - oak/agents
+  created_files:
+  - path: .claude/commands/oak.backend-python-expert.md
+    hash: 833f4c4c1606bbdc0d9b9ce9e059212bce46a1c6af9edc8758c274e533a2b304
+    created_at: '2026-02-10T16:04:53.456288'
+  - path: .cursor/commands/oak.backend-python-expert.md
+    hash: 833f4c4c1606bbdc0d9b9ce9e059212bce46a1c6af9edc8758c274e533a2b304
+    created_at: '2026-02-10T16:04:53.459407'
+  - path: .codex/prompts/oak.backend-python-expert.md
+    hash: 833f4c4c1606bbdc0d9b9ce9e059212bce46a1c6af9edc8758c274e533a2b304
+    created_at: '2026-02-10T16:04:53.462910'
+  - path: oak/agents/architecture-docs.yaml
+    hash: 880b76f7932810b185bb2ebaaf13d87574ce2880eb83f09195ee5a4f433e6ab5
+    created_at: '2026-02-10T16:04:53.496556'
+  - path: oak/agents/feature-docs.yaml
+    hash: e973d587f45712c1d7322620aef06805143c2ea33d5576c59873a6f3dc8df202
+    created_at: '2026-02-10T16:04:53.497797'
+  - path: oak/agents/root-docs.yaml
+    hash: cc27a29d7901d86f07d7e9a06d2f783f097ee430ee5bdc540e94a0c5687b6e26
+    created_at: '2026-02-10T16:04:53.499319'
+  - path: oak/agents/changelog.yaml
+    hash: 38323969b710132ed2248292054dac7494aa0ec19030343ac586fc4c4d69fa20
+    created_at: '2026-02-10T16:04:53.500975'
+  - path: oak/agents/prompt-analysis.yaml
+    hash: c3ec126fc040899a1c91acec6000cbbbf559e363c3a3ac0c130ee2195d583a7a
+    created_at: '2026-02-10T16:04:53.502620'
+  - path: oak/agents/usage-report.yaml
+    hash: 8cf7f19a74606598a05262097da3f13ef30be47f1063310db3f97eba7d6520dd
+    created_at: '2026-02-10T16:04:53.504494'
+  - path: oak/agents/productivity-report.yaml
+    hash: 0a8f015a7b653ef07cdbecdfe4874dd2c345bbed45a05b5c3815c3204a5b93d4
+    created_at: '2026-02-10T16:04:53.506789'
+  - path: oak/agents/codebase-activity-report.yaml
+    hash: 756ea3dc7acdbbb434d2a9bb3745d22cba4887f757d4be929b6d143db5b70c92
+    created_at: '2026-02-10T16:04:53.509125'
+  - path: oak/daemon.port
+    hash: 909b3f11dbaea7d41382bf6c1dfcb640b0594b268183d41d44dbbe442b975b0f
+    created_at: '2026-02-10T16:04:53.546079'
+  modified_files: []
+initialized_features:
+- codebase-intelligence
+- rules-management
+- strategic-planning

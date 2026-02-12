@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "oak-ci": {
+      "command": "oak",
+      "args": [
+        "ci",
+        "mcp"
+      ]
+    }
+  }
+}
