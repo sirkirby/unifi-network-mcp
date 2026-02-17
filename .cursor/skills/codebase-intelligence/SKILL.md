@@ -130,7 +130,7 @@ sqlite3 -readonly -header -column .oak/ci/activities.db "YOUR QUERY HERE"
 | `agent_runs` | CI agent executions | `agent_name`, `task`, `status`, `result`, `cost_usd`, `turns_used` |
 | `session_link_events` | Session linking analytics | `session_id`, `event_type`, `old_parent_id`, `new_parent_id` |
 | `session_relationships` | Semantic session relationships | `session_a_id`, `session_b_id`, `relationship_type`, `similarity_score` |
-| `agent_schedules` | Cron scheduling state | `task_name`, `cron_expression`, `enabled`, `last_run_at`, `next_run_at` |
+| `agent_schedules` | Cron scheduling state | `task_name`, `cron_expression`, `enabled`, `additional_prompt`, `last_run_at`, `next_run_at` |
 | `resolution_events` | Cross-machine resolution propagation | `observation_id`, `action`, `source_machine_id`, `applied`, `content_hash` |
 <!-- END GENERATED CORE TABLES -->
 
