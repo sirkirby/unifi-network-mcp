@@ -147,3 +147,108 @@ class TestHttpForceFlag:
             http_enabled = False
 
         assert http_enabled is True, "HTTP should be enabled when PID == 1"
+
+
+class TestHttpTransportSelection:
+    """Tests for UNIFI_MCP_HTTP_TRANSPORT configuration option."""
+
+    VALID_HTTP_TRANSPORTS = {"streamable-http", "sse"}
+
+    def _resolve_transport(self, raw_value):
+        """Replicate the transport resolution logic from main.py."""
+        http_transport = raw_value if raw_value is not None else "streamable-http"
+        if isinstance(http_transport, str):
+            http_transport = http_transport.lower()
+        if http_transport not in self.VALID_HTTP_TRANSPORTS:
+            http_transport = "streamable-http"
+        return http_transport
+
+    def test_default_transport_is_streamable_http(self):
+        """Default transport should be streamable-http when not specified."""
+        assert self._resolve_transport(None) == "streamable-http"
+
+    def test_explicit_streamable_http(self):
+        """Explicit streamable-http value should be accepted."""
+        assert self._resolve_transport("streamable-http") == "streamable-http"
+
+    def test_explicit_sse(self):
+        """Explicit sse value should be accepted."""
+        assert self._resolve_transport("sse") == "sse"
+
+    def test_case_insensitive_streamable_http(self):
+        """Transport value should be case-insensitive."""
+        assert self._resolve_transport("Streamable-HTTP") == "streamable-http"
+
+    def test_case_insensitive_sse(self):
+        """SSE transport should be case-insensitive."""
+        assert self._resolve_transport("SSE") == "sse"
+
+    def test_invalid_value_falls_back_to_default(self):
+        """Invalid transport values should fall back to streamable-http."""
+        assert self._resolve_transport("bogus") == "streamable-http"
+
+    def test_empty_string_falls_back_to_default(self):
+        """Empty string should fall back to streamable-http."""
+        assert self._resolve_transport("") == "streamable-http"
+
+    def test_websocket_not_valid(self):
+        """Websocket is not a valid transport option."""
+        assert self._resolve_transport("websocket") == "streamable-http"
+
+
+class TestTransportLogLabels:
+    """Tests for transport-aware log label generation."""
+
+    def _get_label(self, transport):
+        """Replicate the label logic from main.py."""
+        return "Streamable HTTP" if transport == "streamable-http" else "HTTP SSE"
+
+    def test_streamable_http_label(self):
+        """Streamable HTTP transport should produce correct label."""
+        assert self._get_label("streamable-http") == "Streamable HTTP"
+
+    def test_sse_label(self):
+        """SSE transport should produce correct label."""
+        assert self._get_label("sse") == "HTTP SSE"
+
+
+class TestTransportConfigYaml:
+    """Tests for transport config in config.yaml via OmegaConf."""
+
+    def test_config_yaml_has_transport_key(self, tmp_path):
+        """Verify config.yaml transport key resolves with OmegaConf."""
+        from omegaconf import OmegaConf
+
+        yaml_content = """
+server:
+  http:
+    enabled: false
+    force: false
+    transport: ${oc.env:UNIFI_MCP_HTTP_TRANSPORT,streamable-http}
+"""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(yaml_content)
+
+        cfg = OmegaConf.load(config_file)
+        OmegaConf.resolve(cfg)
+        assert cfg.server.http.transport == "streamable-http"
+
+    def test_config_yaml_transport_env_override(self, tmp_path, monkeypatch):
+        """Verify transport can be overridden via environment variable."""
+        from omegaconf import OmegaConf
+
+        monkeypatch.setenv("UNIFI_MCP_HTTP_TRANSPORT", "sse")
+
+        yaml_content = """
+server:
+  http:
+    enabled: false
+    force: false
+    transport: ${oc.env:UNIFI_MCP_HTTP_TRANSPORT,streamable-http}
+"""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(yaml_content)
+
+        cfg = OmegaConf.load(config_file)
+        OmegaConf.resolve(cfg)
+        assert cfg.server.http.transport == "sse"

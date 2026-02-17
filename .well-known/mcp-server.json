@@ -4,6 +4,7 @@
   "description": "UniFi Network management via Model Context Protocol",
   "transports": [
     "stdio",
+    "streamable-http",
     "http+sse"
   ],
   "endpoints": {
@@ -11,9 +12,13 @@
       "command": "unifi-network-mcp",
       "args": ["--stdio"]
     },
+    "streamable-http": {
+      "url": "http://localhost:3000/mcp",
+      "note": "Default HTTP transport (requires UNIFI_MCP_HTTP_ENABLED=true)"
+    },
     "sse": {
-      "url": "http://localhost:3000",
-      "note": "Optional HTTP SSE endpoint (disabled by default)"
+      "url": "http://localhost:3000/sse",
+      "note": "Legacy SSE transport (set UNIFI_MCP_HTTP_TRANSPORT=sse)"
     }
   },
   "capabilities": {
