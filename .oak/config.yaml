@@ -1,4 +1,4 @@
-version: 1.0.12
+version: 1.1.5
 agents: [claude, cursor, codex]
 rfc:
   directory: oak/rfc
@@ -21,6 +21,7 @@ codebase_intelligence:
     scheduler_interval_seconds: 60
     executor_cache_size: 100
     background_processing_interval_seconds: 60
+    background_processing_workers: 4
   session_quality:
     min_activities: 3
     stale_timeout_seconds: 3600
@@ -112,3 +113,8 @@ codebase_intelligence:
   - '*.pot'
   - '*.mo'
   cli_command: oak
+  auto_resolve:
+    enabled: true
+    similarity_threshold: 0.85
+    similarity_threshold_no_context: 0.92
+    search_limit: 5

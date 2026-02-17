@@ -2,7 +2,7 @@
 
 Complete DDL for the Oak CI SQLite database at `.oak/ci/activities.db`.
 
-Current schema version: **1**
+Current schema version: **3**
 
 ## memory_observations
 
@@ -24,12 +24,17 @@ CREATE TABLE IF NOT EXISTS memory_observations (
     embedded BOOLEAN DEFAULT FALSE,  -- Has this been added to ChromaDB?
     content_hash TEXT,  -- Hash for cross-machine deduplication
     source_machine_id TEXT,  -- Machine that originated this record
+    status TEXT DEFAULT 'active',              -- active | resolved | superseded
+    resolved_by_session_id TEXT,               -- Session that resolved this
+    resolved_at TEXT,                          -- ISO timestamp of resolution
+    superseded_by TEXT,                        -- Observation ID that supersedes this
+    session_origin_type TEXT,                  -- planning | investigation | implementation | mixed
     FOREIGN KEY (session_id) REFERENCES sessions(id),
     FOREIGN KEY (prompt_batch_id) REFERENCES prompt_batches(id)
 );
 ```
 
-**Key indexes:** `idx_memory_observations_embedded`, `idx_memory_observations_session`, `idx_memory_observations_hash`, `idx_memory_observations_type`, `idx_memory_observations_context`, `idx_memory_observations_created`, `idx_memory_observations_type_created`, `idx_memory_observations_source_machine`
+**Key indexes:** `idx_memory_observations_embedded`, `idx_memory_observations_session`, `idx_memory_observations_hash`, `idx_memory_observations_type`, `idx_memory_observations_context`, `idx_memory_observations_created`, `idx_memory_observations_type_created`, `idx_memory_observations_source_machine`, `idx_memory_observations_status`, `idx_memory_observations_resolved_by`, `idx_memory_observations_origin_type`
 
 ## sessions
 
@@ -243,6 +248,28 @@ CREATE TABLE IF NOT EXISTS agent_schedules (
 ```
 
 **Key indexes:** `idx_agent_schedules_enabled_next`, `idx_agent_schedules_source_machine`
+
+## resolution_events
+
+Cross-machine resolution propagation. Each resolution action (resolve, supersede, reactivate) is recorded as a first-class, machine-owned entity that flows through the backup pipeline.
+
+```sql
+CREATE TABLE IF NOT EXISTS resolution_events (
+    id TEXT PRIMARY KEY,
+    observation_id TEXT NOT NULL,        -- Target observation (soft FK, no constraint)
+    action TEXT NOT NULL,                -- 'resolved' | 'superseded' | 'reactivated'
+    resolved_by_session_id TEXT,
+    superseded_by TEXT,                  -- New observation ID (for 'superseded')
+    reason TEXT,
+    created_at TEXT NOT NULL,
+    created_at_epoch INTEGER NOT NULL,
+    source_machine_id TEXT NOT NULL,
+    content_hash TEXT,
+    applied BOOLEAN DEFAULT TRUE         -- Locally-created = TRUE, imported = FALSE
+);
+```
+
+**Key indexes:** `idx_resolution_events_observation`, `idx_resolution_events_source_machine`, `idx_resolution_events_applied`, `idx_resolution_events_epoch`, `idx_resolution_events_content_hash`
 
 ## Full-Text Search Tables (FTS5)
 
