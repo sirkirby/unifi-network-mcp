@@ -47,7 +47,7 @@ A self-hosted [Model Context Protocol](https://github.com/modelcontextprotocol) 
 * Full catalog of UniFi controller operations – firewall, traffic-routes, port-forwards, QoS, VPN, WLANs, stats, devices, clients **and more**.
 * All mutating tools require `confirm=true` so nothing can change your network by accident.
 * **Workflow automation friendly** – set `UNIFI_AUTO_CONFIRM=true` to skip confirmation prompts (ideal for n8n, Make, Zapier).
-* Works over **stdio** (FastMCP). Optional SSE HTTP endpoint can be enabled via config.
+* Works over **stdio** (FastMCP). Optional HTTP endpoint (Streamable HTTP or legacy SSE) can be enabled via config.
 * **Code execution mode** with tool index, async operations, and TypeScript examples.
 * One-liner launch via the console-script **`unifi-network-mcp`**.
 * Idiomatic Python ≥ 3.13, packaged with **pyproject.toml** and ready for PyPI.
@@ -383,7 +383,7 @@ The server advertises its capabilities via an MCP identity file at [`.well-known
 {
   "name": "unifi-network-mcp",
   "version": "0.2.0",
-  "transports": ["stdio", "http+sse"],
+  "transports": ["stdio", "streamable-http", "http+sse"],
   "capabilities": {
     "tools": true,
     "tool_index": true,
@@ -485,17 +485,29 @@ After editing the config **restart Claude Desktop**, then test with:
 @unifi-network-mcp list tools
 ```
 
-### Optional HTTP SSE endpoint (off by default)
+### Optional HTTP endpoint (off by default)
 
-For environments where HTTP is acceptable (e.g., local development), you can enable the HTTP SSE server and expose it explicitly:
+For environments where HTTP is acceptable (e.g., local development), you can enable the HTTP server. The default transport is **Streamable HTTP** (the current MCP spec default since 2025-03-26), with legacy **SSE** available as a fallback.
 
 ```bash
+# Streamable HTTP (default)
 docker run -i --rm \
   -p 3000:3000 \
   -e UNIFI_MCP_HTTP_ENABLED=true \
   ...
   ghcr.io/sirkirby/unifi-network-mcp:latest
+
+# Legacy SSE transport
+docker run -i --rm \
+  -p 3000:3000 \
+  -e UNIFI_MCP_HTTP_ENABLED=true \
+  -e UNIFI_MCP_HTTP_TRANSPORT=sse \
+  ...
+  ghcr.io/sirkirby/unifi-network-mcp:latest
 ```
+
+- **Streamable HTTP** uses a single `/mcp` endpoint (POST for JSON-RPC, GET for SSE stream, DELETE for session termination)
+- **SSE** (legacy) uses `/sse` + `/messages/` endpoints
 
 Security note: Leave this disabled in production or sensitive environments. The stdio transport remains the default and recommended mode.
 
@@ -517,9 +529,10 @@ The server merges settings from **environment variables**, an optional `.env` fi
 | `UNIFI_SITE` | Site name (default `default`) |
 | `UNIFI_VERIFY_SSL` | Set to `false` if using self-signed certs |
 | `UNIFI_CONTROLLER_TYPE` | Controller API path type: `auto` (detect), `proxy` (UniFi OS), `direct` (standalone). Default `auto` |
-| `UNIFI_MCP_HTTP_ENABLED` | Set `true` to enable optional HTTP SSE server (default `false`) |
-| `UNIFI_MCP_HOST` | HTTP SSE bind address (default `0.0.0.0`) |
-| `UNIFI_MCP_PORT` | HTTP SSE bind port (default `3000`) |
+| `UNIFI_MCP_HTTP_ENABLED` | Set `true` to enable optional HTTP server (default `false`) |
+| `UNIFI_MCP_HTTP_TRANSPORT` | HTTP transport: `streamable-http` (default, current MCP spec) or `sse` (legacy). Only applies when HTTP is enabled |
+| `UNIFI_MCP_HOST` | HTTP bind address (default `0.0.0.0`) |
+| `UNIFI_MCP_PORT` | HTTP bind port (default `3000`) |
 | `UNIFI_AUTO_CONFIRM` | Set `true` to auto-confirm all mutating operations (skips preview step). Ideal for workflow automation (n8n, Make, Zapier). Default `false` |
 | `UNIFI_TOOL_REGISTRATION_MODE` | Tool loading mode: `lazy` (default), `eager`, or `meta_only`. See [Context Optimization](#context-optimization) |
 | `UNIFI_ENABLED_CATEGORIES` | Comma-separated list of tool categories to load (eager mode). See table below |

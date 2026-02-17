@@ -317,20 +317,35 @@ async def main_async():
     except Exception as e:
         logger.error(f"Error listing tools in main_async: {e}")
 
-    # Run stdio always; optionally run HTTP SSE based on config flag
+    # Run stdio always; optionally run HTTP based on config flag
     host = config.server.get("host", "0.0.0.0")
     port = int(config.server.get("port", 3000))
     http_cfg = config.server.get("http", {})
     http_enabled = parse_config_bool(http_cfg.get("enabled", False))
 
-    # Only the main container process (PID 1) should bind the HTTP SSE port,
+    # Validate HTTP transport selection
+    http_transport = http_cfg.get("transport", "streamable-http")
+    if isinstance(http_transport, str):
+        http_transport = http_transport.lower()
+    VALID_HTTP_TRANSPORTS = {"streamable-http", "sse"}
+    if http_transport not in VALID_HTTP_TRANSPORTS:
+        logger.warning(
+            "Invalid UNIFI_MCP_HTTP_TRANSPORT: '%s'. Defaulting to 'streamable-http'.",
+            http_transport,
+        )
+        http_transport = "streamable-http"
+
+    transport_label = "Streamable HTTP" if http_transport == "streamable-http" else "HTTP SSE"
+
+    # Only the main container process (PID 1) should bind the HTTP port,
     # unless http.force=true is set in config (for local development/testing).
     force_http = parse_config_bool(http_cfg.get("force", False))
     is_main_container_process = os.getpid() == 1
     if http_enabled and not is_main_container_process and not force_http:
         logger.info(
-            "HTTP SSE enabled in config but skipped in exec session (PID %s != 1). "
+            "%s enabled in config but skipped in exec session (PID %s != 1). "
             "Set UNIFI_MCP_HTTP_FORCE=true to override.",
+            transport_label,
             os.getpid(),
         )
         http_enabled = False
@@ -344,7 +359,7 @@ async def main_async():
 
         async def run_http():
             try:
-                logger.info(f"Starting FastMCP HTTP SSE server on {host}:{port} ...")
+                logger.info(f"Starting FastMCP {transport_label} server on {host}:{port} ...")
                 server.settings.host = host
                 server.settings.port = port
 
@@ -352,10 +367,13 @@ async def main_async():
                 # when running alongside stdio transport (stdout is used for JSON-RPC)
                 uvicorn.config.LOGGING_CONFIG["handlers"]["access"]["stream"] = "ext://sys.stderr"
 
-                await server.run_sse_async()
-                logger.info("HTTP SSE started via run_sse_async() using server.settings host/port.")
+                if http_transport == "streamable-http":
+                    await server.run_streamable_http_async()
+                else:
+                    await server.run_sse_async()
+                logger.info(f"{transport_label} server exited.")
             except Exception as http_e:
-                logger.error(f"HTTP SSE server failed to start: {http_e}")
+                logger.error(f"FastMCP {transport_label} server failed to start: {http_e}")
                 logger.error(traceback.format_exc())
 
         tasks.append(run_http())

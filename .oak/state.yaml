@@ -2,6 +2,7 @@ migrations:
 - cleanup-builtin-agent-tasks
 - cleanup-skill-generate-scripts
 - hooks-local-only
+- rename-copilot-to-vscode-copilot
 managed_assets:
   directories:
   - .claude/commands
@@ -46,6 +47,9 @@ managed_assets:
   - path: oak/daemon.port
     hash: 909b3f11dbaea7d41382bf6c1dfcb640b0594b268183d41d44dbbe442b975b0f
     created_at: '2026-02-10T16:04:53.546079'
+  - path: AGENTS.md
+    hash: 1f8ea151b6d3d403f54bc0eed9b7c93ea9e06cc25efc953c8201a34b9b8cadfb
+    created_at: '2026-02-17T10:22:20.537148'
   modified_files: []
 initialized_features:
 - codebase-intelligence
