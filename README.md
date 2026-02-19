@@ -157,7 +157,7 @@ The server now supports **lazy tool registration** to dramatically reduce LLM co
 - **Active by default** - no configuration needed
 
 **Eager Mode (eager):**
-- Registers all 67 tools immediately
+- Registers all 86 tools immediately
 - ~5,000 tokens consumed for tool schemas
 - All tools visible in context from start
 - **Best for:** Dev console, automation scripts
@@ -548,7 +548,7 @@ When using eager mode with category filtering, these are the valid category name
 |----------|-------------|---------------|
 | `clients` | Client listing, blocking, guest auth | `unifi_list_clients`, `unifi_block_client` |
 | `config` | Configuration management | - |
-| `devices` | Device listing, reboot, locate, upgrade | `unifi_list_devices`, `unifi_reboot_device` |
+| `devices` | Device listing, radio config, reboot, locate, upgrade | `unifi_list_devices`, `unifi_get_device_radio` |
 | `events` | Events and alarms | `unifi_list_events`, `unifi_list_alarms` |
 | `firewall` | Firewall rules and groups | `unifi_list_firewall_rules`, `unifi_create_firewall_rule` |
 | `hotspot` | Vouchers for guest network | `unifi_list_vouchers`, `unifi_create_voucher` |
@@ -676,7 +676,7 @@ What it does:
 * Executes the tool via the MCP server and prints the JSON result.
 * Prevents execution of disabled tools with helpful permission guidance.
 
-**New in v0.2.0:** The dev console now displays all 64 tools regardless of permission settings:
+**New in v0.2.0:** The dev console now displays all tools regardless of permission settings:
 * Enabled tools are marked with ✓
 * Disabled tools are marked with ✗ [DISABLED]
 * Attempting to run a disabled tool shows permission instructions
@@ -765,7 +765,7 @@ The server includes a comprehensive permission system with **safe defaults**:
 **Disabled by Default (High-Risk):**
 - Network creation/modification (`unifi_create_network`, `unifi_update_network`)
 - Wireless configuration (`unifi_create_wlan`, `unifi_update_wlan`)
-- Device operations (`unifi_adopt_device`, `unifi_upgrade_device`, `unifi_reboot_device`)
+- Device operations (`unifi_adopt_device`, `unifi_upgrade_device`, `unifi_reboot_device`, `unifi_update_device_radio`)
 - Client operations (`unifi_block_client`, `unifi_authorize_guest`)
 
 **Enabled by Default (Lower Risk):**
@@ -884,6 +884,8 @@ See [docs/permissions.md](docs/permissions.md) for complete documentation includ
 
 * `unifi_list_devices`
 * `unifi_get_device_details`
+* `unifi_get_device_radio` – per-radio config & live stats for access points
+* `unifi_update_device_radio` – update radio settings (TX power, channel, width, min RSSI)
 * `unifi_reboot_device`
 * `unifi_rename_device`
 * `unifi_adopt_device`
@@ -1109,7 +1111,7 @@ uv run python devtools/dev_console.py
 # - unifi_tool_index (list all tools with schemas)
 # - unifi_execute (run any discovered tool)
 # - unifi_batch / unifi_batch_status (parallel operations)
-# - All 80+ UniFi tools (clients, devices, networks, etc.)
+# - All 86 UniFi tools (clients, devices, networks, etc.)
 ```
 
 **4. Test with Python examples:**

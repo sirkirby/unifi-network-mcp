@@ -428,3 +428,151 @@ async def upgrade_device(mac_address: str, confirm: bool = False) -> Dict[str, A
     except Exception as e:
         logger.error(f"Error upgrading device {mac_address}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
+
+
+RADIO_BAND_LABELS = {"ng": "2.4GHz", "na": "5GHz", "6e": "6GHz", "wifi6e": "6GHz"}
+
+VALID_RADIOS = {"na", "ng", "6e", "wifi6e"}
+VALID_TX_POWER_MODES = {"auto", "high", "medium", "low", "custom"}
+VALID_HT_VALUES = {"20", "40", "80", "160", "320"}
+
+
+@server.tool(
+    name="unifi_get_device_radio",
+    description=(
+        "Get radio configuration and live statistics for an access point. "
+        "Returns per-band config (channel, tx_power, channel width, min_rssi) "
+        "and live stats (actual tx_power, channel utilization, client count, retries)."
+    ),
+)
+async def get_device_radio(mac_address: str) -> Dict[str, Any]:
+    """Implementation for getting focused radio config and stats for an AP."""
+    try:
+        result = await device_manager.get_device_radio(mac_address)
+        if result is None:
+            return {
+                "success": False,
+                "error": f"Device {mac_address} not found or is not an access point.",
+            }
+        return {
+            "success": True,
+            "site": device_manager._connection.site,
+            **result,
+        }
+    except Exception as e:
+        logger.error(f"Error getting radio info for {mac_address}: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+
+@server.tool(
+    name="unifi_update_device_radio",
+    description=(
+        "Update radio settings for a specific band on an access point. "
+        "Supports tx_power_mode, tx_power (custom dBm), channel, ht (channel width), "
+        "min_rssi_enabled, and min_rssi. Use unifi_get_device_radio first to see current settings."
+    ),
+    permission_category="devices",
+    permission_action="update",
+)
+async def update_device_radio(
+    mac_address: str,
+    radio: str,
+    tx_power_mode: str | None = None,
+    tx_power: int | None = None,
+    channel: int | None = None,
+    ht: str | None = None,
+    min_rssi_enabled: bool | None = None,
+    min_rssi: int | None = None,
+    confirm: bool = False,
+) -> Dict[str, Any]:
+    """Implementation for updating AP radio settings."""
+    if not parse_permission(config.permissions, "device", "update"):
+        logger.warning(f"Permission denied for updating radio on device ({mac_address}).")
+        return {"success": False, "error": "Permission denied to update device radio settings."}
+
+    if radio not in VALID_RADIOS:
+        return {
+            "success": False,
+            "error": f"Invalid radio '{radio}'. Must be one of: {', '.join(sorted(VALID_RADIOS))}",
+        }
+
+    if tx_power_mode is not None and tx_power_mode not in VALID_TX_POWER_MODES:
+        return {
+            "success": False,
+            "error": f"Invalid tx_power_mode '{tx_power_mode}'. Must be one of: {', '.join(sorted(VALID_TX_POWER_MODES))}",
+        }
+
+    if tx_power is not None and tx_power_mode != "custom":
+        return {"success": False, "error": "tx_power can only be set when tx_power_mode is 'custom'."}
+
+    if ht is not None and ht not in VALID_HT_VALUES:
+        return {"success": False, "error": f"Invalid ht '{ht}'. Must be one of: {', '.join(sorted(VALID_HT_VALUES))}"}
+
+    if min_rssi is not None and min_rssi_enabled is not True:
+        return {"success": False, "error": "min_rssi can only be set when min_rssi_enabled is true."}
+
+    updates: Dict[str, Any] = {}
+    if tx_power_mode is not None:
+        updates["tx_power_mode"] = tx_power_mode
+    if tx_power is not None:
+        updates["tx_power"] = tx_power
+    if channel is not None:
+        updates["channel"] = channel
+    if ht is not None:
+        updates["ht"] = ht
+    if min_rssi_enabled is not None:
+        updates["min_rssi_enabled"] = min_rssi_enabled
+    if min_rssi is not None:
+        updates["min_rssi"] = min_rssi
+
+    if not updates:
+        return {"success": False, "error": "No radio settings provided to update."}
+
+    try:
+        radio_data = await device_manager.get_device_radio(mac_address)
+        if radio_data is None:
+            return {
+                "success": False,
+                "error": f"Device {mac_address} not found or is not an access point.",
+            }
+
+        target_radio = next((r for r in radio_data["radios"] if r["radio"] == radio or r["name"] == radio), None)
+        if not target_radio:
+            available = [
+                f"{r['radio']} ({RADIO_BAND_LABELS.get(r['radio'], r['radio'])})" for r in radio_data["radios"]
+            ]
+            return {
+                "success": False,
+                "error": f"Radio '{radio}' not found on device. Available: {', '.join(available)}",
+            }
+
+        band_label = RADIO_BAND_LABELS.get(radio, radio)
+        device_name = radio_data.get("name", mac_address)
+
+        current_state = {k: target_radio.get(k) for k in updates}
+
+        if not confirm and not should_auto_confirm():
+            preview = update_preview(
+                resource_type="device_radio",
+                resource_id=f"{mac_address}/{radio}",
+                resource_name=f"{device_name} ({band_label})",
+                current_state=current_state,
+                updates=updates,
+            )
+            preview["warnings"] = [
+                "AP radio will restart briefly after changes are applied.",
+                "Connected clients may experience a brief disconnection.",
+            ]
+            return preview
+
+        success = await device_manager.update_device_radio(mac_address, radio, updates)
+        if success:
+            return {
+                "success": True,
+                "message": f"Radio '{radio}' ({band_label}) updated on {device_name} ({mac_address}).",
+                "updated_fields": list(updates.keys()),
+            }
+        return {"success": False, "error": f"Failed to update radio '{radio}' on device {mac_address}."}
+    except Exception as e:
+        logger.error(f"Error updating radio on {mac_address}: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}

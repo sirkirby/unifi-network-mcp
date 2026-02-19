@@ -64,11 +64,13 @@ def _create_permissioned_tool_wrapper(original_tool_decorator):
     which replaces this wrapper at startup. This wrapper just ensures imports
     don't fail when tools have permission kwargs.
     """
+
     def wrapper(*args, **kwargs):
         # Strip permission-related kwargs that FastMCP doesn't understand
         kwargs.pop("permission_category", None)
         kwargs.pop("permission_action", None)
         return original_tool_decorator(*args, **kwargs)
+
     return wrapper
 
 
@@ -82,9 +84,7 @@ def get_server() -> FastMCP:
 
     # Allow disabling DNS rebinding protection entirely (default: enabled)
     # Set to "false" for Kubernetes/proxy deployments where allowed_hosts is insufficient
-    enable_dns_rebinding = (
-        os.getenv("UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION", "true").lower() == "true"
-    )
+    enable_dns_rebinding = os.getenv("UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION", "true").lower() == "true"
 
     # Configure transport security settings
     transport_security = TransportSecuritySettings(
@@ -93,8 +93,7 @@ def get_server() -> FastMCP:
     )
 
     logger.debug(
-        f"Configuring FastMCP with allowed_hosts: {allowed_hosts}, "
-        f"dns_rebinding_protection: {enable_dns_rebinding}"
+        f"Configuring FastMCP with allowed_hosts: {allowed_hosts}, dns_rebinding_protection: {enable_dns_rebinding}"
     )
 
     server = FastMCP(

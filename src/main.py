@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 import traceback
+from typing import Union
 
 import uvicorn.config
 
@@ -81,8 +82,15 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
                     param_type = "string"  # default
                     if param.annotation != inspect.Parameter.empty:
                         ann = param.annotation
-                        # Handle generic types like Dict[str, Any], List[str]
-                        from typing import get_origin
+                        import types
+                        from typing import get_args, get_origin
+
+                        # Unwrap Optional / X | None unions to their core type
+                        if isinstance(ann, types.UnionType) or get_origin(ann) is Union:
+                            args = get_args(ann)
+                            non_none = [a for a in args if a is not type(None)]
+                            if non_none:
+                                ann = non_none[0]
 
                         origin = get_origin(ann)
                         # Basic type mapping (check origin first for generics)
