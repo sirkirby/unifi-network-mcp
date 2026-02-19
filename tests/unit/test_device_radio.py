@@ -4,9 +4,14 @@ Tests the get_device_radio and update_device_radio manager methods,
 and the unifi_get_device_radio / unifi_update_device_radio tool functions.
 """
 
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+os.environ.setdefault("UNIFI_HOST", "127.0.0.1")
+os.environ.setdefault("UNIFI_USERNAME", "test")
+os.environ.setdefault("UNIFI_PASSWORD", "test")
 
 SAMPLE_RADIO_TABLE = [
     {
@@ -336,6 +341,17 @@ class TestUpdateDeviceRadioTool:
 
         assert result["success"] is False
         assert "Invalid ht" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_accepts_internal_radio_name(self):
+        """Internal names like wifi0/wifi1 pass validation (reaching 'no updates' check)."""
+        from src.tools.devices import update_device_radio
+
+        with patch("src.tools.devices.parse_permission", return_value=True):
+            result = await update_device_radio(mac_address="aa:bb:cc:dd:ee:ff", radio="wifi0")
+
+        assert result["success"] is False
+        assert "No radio settings" in result["error"]
 
     @pytest.mark.asyncio
     async def test_rejects_no_updates(self):

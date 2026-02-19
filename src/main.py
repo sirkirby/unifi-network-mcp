@@ -88,7 +88,7 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
                         # Unwrap Optional / X | None unions to their core type
                         if isinstance(ann, types.UnionType) or get_origin(ann) is Union:
                             args = get_args(ann)
-                            non_none = [a for a in args if a is not type(None)]
+                            non_none = [a for a in args if a is not types.NoneType]
                             if non_none:
                                 ann = non_none[0]
 

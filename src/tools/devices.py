@@ -490,10 +490,13 @@ async def update_device_radio(
         logger.warning(f"Permission denied for updating radio on device ({mac_address}).")
         return {"success": False, "error": "Permission denied to update device radio settings."}
 
-    if radio not in VALID_RADIOS:
+    if radio not in VALID_RADIOS and not radio.startswith("wifi"):
         return {
             "success": False,
-            "error": f"Invalid radio '{radio}'. Must be one of: {', '.join(sorted(VALID_RADIOS))}",
+            "error": (
+                f"Invalid radio '{radio}'. Must be a band code ({', '.join(sorted(VALID_RADIOS))}) "
+                "or an internal radio name (e.g. 'wifi0', 'wifi1')."
+            ),
         }
 
     if tx_power_mode is not None and tx_power_mode not in VALID_TX_POWER_MODES:
@@ -546,7 +549,7 @@ async def update_device_radio(
                 "error": f"Radio '{radio}' not found on device. Available: {', '.join(available)}",
             }
 
-        band_label = RADIO_BAND_LABELS.get(radio, radio)
+        band_label = RADIO_BAND_LABELS.get(target_radio["radio"], target_radio.get("name", radio))
         device_name = radio_data.get("name", mac_address)
 
         current_state = {k: target_radio.get(k) for k in updates}
