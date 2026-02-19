@@ -26,7 +26,7 @@ server:
   #   Valid values:
   #     - clients        # Client listing, blocking, guest auth
   #     - config         # Configuration management
-  #     - devices        # Device listing, reboot, locate, upgrade
+  #     - devices        # Device listing, radio config, reboot, locate, upgrade
   #     - events         # Events and alarms
   #     - firewall       # Firewall rules and groups
   #     - hotspot        # Vouchers for guest network
@@ -95,7 +95,7 @@ permissions:
 
   devices:
     create: false  # Adoption / provisioning – normally handled by controller, not tools
-    update: false  # Firmware upgrade, rename, etc.
+    update: false  # Firmware upgrade, rename, radio config, etc.
 
   clients:
     create: false  # Not applicable, but kept for symmetry

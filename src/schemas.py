@@ -875,6 +875,46 @@ PORT_FORWARD_SIMPLE_SCHEMA = {
 }
 
 
+# Device Radio Update schema
+DEVICE_RADIO_UPDATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "tx_power_mode": {
+            "type": "string",
+            "enum": ["auto", "high", "medium", "low", "custom"],
+            "description": "Transmit power mode",
+        },
+        "tx_power": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30,
+            "description": "Custom TX power in dBm (only used when tx_power_mode is 'custom')",
+        },
+        "channel": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Channel number (0 for auto)",
+        },
+        "ht": {
+            "type": "string",
+            "enum": ["20", "40", "80", "160", "320"],
+            "description": "Channel width (HT20/HT40/HT80/HT160/EHT320)",
+        },
+        "min_rssi_enabled": {
+            "type": "boolean",
+            "description": "Enable minimum RSSI client filtering",
+        },
+        "min_rssi": {
+            "type": "integer",
+            "minimum": -95,
+            "maximum": -20,
+            "description": "Minimum RSSI threshold in dBm (e.g. -70). Clients below this are disconnected.",
+        },
+    },
+    "additionalProperties": False,
+}
+
+
 class UniFiResourceRegistry:
     """Registry for UniFi Network resource schemas and validators."""
 
@@ -897,6 +937,7 @@ class UniFiResourceRegistry:
         "firewall_policy_simple": FIREWALL_POLICY_SIMPLE_SCHEMA,
         "qos_rule_simple": QOS_RULE_SIMPLE_SCHEMA,
         "port_forward_simple": PORT_FORWARD_SIMPLE_SCHEMA,
+        "device_radio_update": DEVICE_RADIO_UPDATE_SCHEMA,
     }
 
     @classmethod

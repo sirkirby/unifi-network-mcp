@@ -1,5 +1,5 @@
 {
-  "count": 84,
+  "count": 86,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "src.tools.devices",
@@ -23,6 +23,7 @@
     "unifi_get_client_details": "src.tools.clients",
     "unifi_get_client_stats": "src.tools.stats",
     "unifi_get_device_details": "src.tools.devices",
+    "unifi_get_device_radio": "src.tools.devices",
     "unifi_get_device_stats": "src.tools.stats",
     "unifi_get_dpi_stats": "src.tools.stats",
     "unifi_get_event_types": "src.tools.events",
@@ -74,6 +75,7 @@
     "unifi_toggle_traffic_route": "src.tools.traffic_routes",
     "unifi_unauthorize_guest": "src.tools.clients",
     "unifi_unblock_client": "src.tools.clients",
+    "unifi_update_device_radio": "src.tools.devices",
     "unifi_update_firewall_policy": "src.tools.firewall",
     "unifi_update_network": "src.tools.network",
     "unifi_update_port_forward": "src.tools.port_forwards",
@@ -150,13 +152,13 @@
         "input": {
           "properties": {
             "bytes_quota": {
-              "type": "string"
+              "type": "integer"
             },
             "confirm": {
               "type": "boolean"
             },
             "down_kbps": {
-              "type": "string"
+              "type": "integer"
             },
             "mac_address": {
               "type": "string"
@@ -165,7 +167,7 @@
               "type": "integer"
             },
             "up_kbps": {
-              "type": "string"
+              "type": "integer"
             }
           },
           "required": [
@@ -376,13 +378,13 @@
               "type": "boolean"
             },
             "down_limit_kbps": {
-              "type": "string"
+              "type": "integer"
             },
             "name": {
               "type": "string"
             },
             "up_limit_kbps": {
-              "type": "string"
+              "type": "integer"
             }
           },
           "required": [
@@ -399,7 +401,7 @@
         "input": {
           "properties": {
             "bytes_limit_mb": {
-              "type": "string"
+              "type": "integer"
             },
             "confirm": {
               "type": "boolean"
@@ -408,7 +410,7 @@
               "type": "integer"
             },
             "down_limit_kbps": {
-              "type": "string"
+              "type": "integer"
             },
             "expire_minutes": {
               "type": "integer"
@@ -420,7 +422,7 @@
               "type": "integer"
             },
             "up_limit_kbps": {
-              "type": "string"
+              "type": "integer"
             }
           },
           "type": "object"
@@ -524,6 +526,23 @@
     {
       "description": "Get detailed information about a specific device by MAC address",
       "name": "unifi_get_device_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "mac_address": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get radio configuration and live statistics for an access point. Returns per-band config (channel, tx_power, channel width, min_rssi) and live stats (actual tx_power, channel utilization, client count, retries).",
+      "name": "unifi_get_device_radio",
       "schema": {
         "input": {
           "properties": {
@@ -1191,13 +1210,13 @@
               "type": "string"
             },
             "local_dns_record_enabled": {
-              "type": "string"
+              "type": "boolean"
             },
             "mac_address": {
               "type": "string"
             },
             "use_fixedip": {
-              "type": "string"
+              "type": "boolean"
             }
           },
           "required": [
@@ -1328,6 +1347,48 @@
       }
     },
     {
+      "description": "Update radio settings for a specific band on an access point. Supports tx_power_mode, tx_power (custom dBm), channel, ht (channel width), min_rssi_enabled, and min_rssi. Use unifi_get_device_radio first to see current settings.",
+      "name": "unifi_update_device_radio",
+      "schema": {
+        "input": {
+          "properties": {
+            "channel": {
+              "type": "integer"
+            },
+            "confirm": {
+              "type": "boolean"
+            },
+            "ht": {
+              "type": "string"
+            },
+            "mac_address": {
+              "type": "string"
+            },
+            "min_rssi": {
+              "type": "integer"
+            },
+            "min_rssi_enabled": {
+              "type": "boolean"
+            },
+            "radio": {
+              "type": "string"
+            },
+            "tx_power": {
+              "type": "integer"
+            },
+            "tx_power_mode": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address",
+            "radio"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
       "description": "Update specific fields of an existing firewall policy by ID.",
       "name": "unifi_update_firewall_policy",
       "schema": {
@@ -1433,10 +1494,10 @@
               "type": "boolean"
             },
             "distance": {
-              "type": "string"
+              "type": "integer"
             },
             "enabled": {
-              "type": "string"
+              "type": "boolean"
             },
             "name": {
               "type": "string"
@@ -1491,10 +1552,10 @@
               "type": "boolean"
             },
             "enabled": {
-              "type": "string"
+              "type": "boolean"
             },
             "kill_switch_enabled": {
-              "type": "string"
+              "type": "boolean"
             },
             "route_id": {
               "type": "string"
@@ -1517,7 +1578,7 @@
               "type": "boolean"
             },
             "down_limit_kbps": {
-              "type": "string"
+              "type": "integer"
             },
             "group_id": {
               "type": "string"
@@ -1526,7 +1587,7 @@
               "type": "string"
             },
             "up_limit_kbps": {
-              "type": "string"
+              "type": "integer"
             }
           },
           "required": [

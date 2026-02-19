@@ -1,6 +1,5 @@
 """Tests for HTTP transport configuration and uvicorn logging fix."""
 
-
 import pytest
 
 from src.utils.config_helpers import parse_config_bool

@@ -1,5 +1,6 @@
+import copy
 import logging
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequest
 from aiounifi.models.device import Device
@@ -113,4 +114,98 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error(f"Error upgrading device {device_mac}: {e}")
+            return False
+
+    async def get_device_radio(self, device_mac: str) -> Optional[Dict[str, Any]]:
+        """Get focused radio configuration and live stats for an AP.
+
+        Returns None if device is not found or is not an access point.
+        """
+        device = await self.get_device_details(device_mac)
+        if not device:
+            return None
+        device_type = device.raw.get("type", "")
+        if not device_type.startswith("uap"):
+            return None
+
+        stats_by_name: Dict[str, Dict[str, Any]] = {s["name"]: s for s in device.raw.get("radio_table_stats", [])}
+        radios: List[Dict[str, Any]] = []
+        for radio in device.raw.get("radio_table", []):
+            entry: Dict[str, Any] = {
+                "name": radio.get("name"),
+                "radio": radio.get("radio"),
+                "channel": radio.get("channel"),
+                "ht": radio.get("ht"),
+                "tx_power_mode": radio.get("tx_power_mode"),
+                "tx_power": radio.get("tx_power"),
+                "min_rssi_enabled": radio.get("min_rssi_enabled"),
+                "min_rssi": radio.get("min_rssi"),
+                "max_txpower": radio.get("max_txpower"),
+                "min_txpower": radio.get("min_txpower"),
+                "has_dfs": radio.get("has_dfs"),
+                "nss": radio.get("nss"),
+                "is_11ax": radio.get("is_11ax", False),
+                "is_11be": radio.get("is_11be", False),
+            }
+            if stats := stats_by_name.get(radio.get("name", "")):
+                entry["current_tx_power"] = stats.get("tx_power")
+                entry["current_channel"] = stats.get("channel")
+                entry["cu_total"] = stats.get("cu_total")
+                entry["cu_self_tx"] = stats.get("cu_self_tx")
+                entry["cu_self_rx"] = stats.get("cu_self_rx")
+                entry["satisfaction"] = stats.get("satisfaction")
+                entry["num_sta"] = stats.get("num_sta")
+                entry["tx_retries"] = stats.get("tx_retries")
+                entry["tx_packets"] = stats.get("tx_packets")
+            radios.append(entry)
+
+        return {
+            "mac": device_mac,
+            "name": device.raw.get("name", device.raw.get("model", "Unknown")),
+            "model": device.raw.get("model", ""),
+            "radios": radios,
+        }
+
+    async def update_device_radio(self, device_mac: str, radio_id: str, updates: Dict[str, Any]) -> bool:
+        """Update radio settings for a specific band on an AP.
+
+        Args:
+            device_mac: MAC address of the AP.
+            radio_id: Radio identifier -- either the band code ("na", "ng", "6e")
+                      or the internal name ("wifi0", "wifi1").
+            updates: Dict of radio_table fields to update (e.g. tx_power_mode, channel).
+
+        Returns:
+            True on success, False on failure.
+        """
+        try:
+            device = await self.get_device_details(device_mac)
+            if not device or "_id" not in device.raw:
+                logger.error(f"Cannot update radio for {device_mac}: device not found or missing ID.")
+                return False
+            device_id = device.raw["_id"]
+
+            radio_table = copy.deepcopy(device.raw.get("radio_table", []))
+            matched = False
+            for entry in radio_table:
+                if entry.get("radio") == radio_id or entry.get("name") == radio_id:
+                    entry.update(updates)
+                    matched = True
+                    break
+
+            if not matched:
+                logger.error(f"Radio '{radio_id}' not found on device {device_mac}.")
+                return False
+
+            api_request = ApiRequest(
+                method="put",
+                path=f"/rest/device/{device_id}",
+                data={"radio_table": radio_table},
+            )
+            await self._connection.request(api_request)
+            logger.info(f"Radio '{radio_id}' updated on device {device_mac}: {list(updates.keys())}")
+            self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
+            return True
+        except Exception as e:
+            logger.error(f"Error updating radio '{radio_id}' on device {device_mac}: {e}")
             return False

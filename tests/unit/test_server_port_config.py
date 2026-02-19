@@ -60,9 +60,7 @@ unifi:
 
     def test_both_host_and_port_from_env(self, config_yaml_path):
         """Verify both UNIFI_MCP_HOST and UNIFI_MCP_PORT can be set together."""
-        with mock.patch.dict(
-            os.environ, {"UNIFI_MCP_HOST": "192.168.1.100", "UNIFI_MCP_PORT": "9000"}
-        ):
+        with mock.patch.dict(os.environ, {"UNIFI_MCP_HOST": "192.168.1.100", "UNIFI_MCP_PORT": "9000"}):
             cfg = OmegaConf.load(str(config_yaml_path))
             assert cfg.server.host == "192.168.1.100"
             assert str(cfg.server.port) == "9000"
@@ -90,6 +88,4 @@ class TestServerConfigFromActualFile:
         assert "${oc.env:UNIFI_MCP_HOST,0.0.0.0}" in content, (
             "config.yaml should use OmegaConf env interpolation for host"
         )
-        assert "${oc.env:UNIFI_MCP_PORT,3000}" in content, (
-            "config.yaml should use OmegaConf env interpolation for port"
-        )
+        assert "${oc.env:UNIFI_MCP_PORT,3000}" in content, "config.yaml should use OmegaConf env interpolation for port"
