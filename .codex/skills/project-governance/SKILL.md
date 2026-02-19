@@ -68,6 +68,7 @@ oak rules detect-existing      # Discover all configured agent instruction files
 - **Creating CLAUDE.md, AGENTS.md, or .cursorrules** for a new project
 - **Proposing a new feature** that needs team review (RFC)
 - **Making architectural decisions** that should be documented (ADR)
+- **Learning context engineering theory** behind effective rule writing -- see `/context-engineering` for the altitude concept, canonical examples, and structured context patterns
 - **Reviewing an RFC** for completeness and technical soundness
 
 ## Constitution Structure

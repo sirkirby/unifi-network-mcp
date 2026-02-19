@@ -53,5 +53,6 @@ managed_assets:
   modified_files: []
 initialized_features:
 - codebase-intelligence
+- context-engineering
 - rules-management
 - strategic-planning
