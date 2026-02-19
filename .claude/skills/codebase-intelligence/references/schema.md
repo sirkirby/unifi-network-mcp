@@ -2,7 +2,7 @@
 
 Complete DDL for the Oak CI SQLite database at `.oak/ci/activities.db`.
 
-Current schema version: **4**
+Current schema version: **6**
 
 ## memory_observations
 
@@ -53,11 +53,14 @@ CREATE TABLE IF NOT EXISTS sessions (
     processed BOOLEAN DEFAULT FALSE,  -- Has background processor handled this?
     summary TEXT,  -- LLM-generated session summary
     title TEXT,  -- LLM-generated short session title (10-20 words)
+    title_manually_edited BOOLEAN DEFAULT FALSE,  -- Protect manual edits from LLM overwrite
     created_at_epoch INTEGER NOT NULL,
     parent_session_id TEXT,  -- Session this was derived from
     parent_session_reason TEXT,  -- Why linked: 'clear', 'compact', 'inferred'
     source_machine_id TEXT,  -- Machine that originated this record
-    transcript_path TEXT  -- Path to session transcript file for recovery
+    transcript_path TEXT,  -- Path to session transcript file for recovery
+    summary_updated_at INTEGER,  -- Epoch when summary was last generated/updated
+    summary_embedded INTEGER DEFAULT 0  -- Has summary been indexed in ChromaDB?
 );
 ```
 
