@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(oak:*)",
+      "Bash(oak *)"
+    ]
+  }
+}

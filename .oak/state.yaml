@@ -2,6 +2,7 @@ migrations:
 - cleanup-builtin-agent-tasks
 - cleanup-skill-generate-scripts
 - hooks-local-only
+- migrate-skills-to-shared-agents-dir
 - rename-copilot-to-vscode-copilot
 managed_assets:
   directories:

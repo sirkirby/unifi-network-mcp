@@ -1,4 +1,4 @@
-version: 1.1.9
+version: 1.2.7
 agents: [claude, cursor, codex]
 rfc:
   directory: oak/rfc

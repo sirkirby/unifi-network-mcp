@@ -2,7 +2,7 @@
 
 Complete DDL for the Oak CI SQLite database at `.oak/ci/activities.db`.
 
-Current schema version: **6**
+Current schema version: **8**
 
 ## memory_observations
 
@@ -29,12 +29,13 @@ CREATE TABLE IF NOT EXISTS memory_observations (
     resolved_at TEXT,                          -- ISO timestamp of resolution
     superseded_by TEXT,                        -- Observation ID that supersedes this
     session_origin_type TEXT,                  -- planning | investigation | implementation | mixed
+    origin_type TEXT DEFAULT 'auto_extracted', -- auto_extracted | agent_created
     FOREIGN KEY (session_id) REFERENCES sessions(id),
     FOREIGN KEY (prompt_batch_id) REFERENCES prompt_batches(id)
 );
 ```
 
-**Key indexes:** `idx_memory_observations_embedded`, `idx_memory_observations_session`, `idx_memory_observations_hash`, `idx_memory_observations_type`, `idx_memory_observations_context`, `idx_memory_observations_created`, `idx_memory_observations_type_created`, `idx_memory_observations_source_machine`, `idx_memory_observations_status`, `idx_memory_observations_resolved_by`, `idx_memory_observations_origin_type`
+**Key indexes:** `idx_memory_observations_embedded`, `idx_memory_observations_session`, `idx_memory_observations_hash`, `idx_memory_observations_origin_type`, `idx_memory_observations_type`, `idx_memory_observations_context`, `idx_memory_observations_created`, `idx_memory_observations_type_created`, `idx_memory_observations_source_machine`, `idx_memory_observations_status`, `idx_memory_observations_resolved_by`, `idx_memory_observations_origin_type`
 
 ## sessions
 
@@ -274,6 +275,33 @@ CREATE TABLE IF NOT EXISTS resolution_events (
 ```
 
 **Key indexes:** `idx_resolution_events_observation`, `idx_resolution_events_source_machine`, `idx_resolution_events_applied`, `idx_resolution_events_epoch`, `idx_resolution_events_content_hash`
+
+## governance_audit_events
+
+```sql
+CREATE TABLE IF NOT EXISTS governance_audit_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    agent TEXT NOT NULL,
+    tool_name TEXT NOT NULL,
+    tool_use_id TEXT,
+    tool_category TEXT,
+    rule_id TEXT,
+    rule_description TEXT,
+    action TEXT NOT NULL,
+    reason TEXT,
+    matched_pattern TEXT,
+    tool_input_summary TEXT,
+    enforcement_mode TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    created_at_epoch INTEGER NOT NULL,
+    evaluation_ms INTEGER,
+    source_machine_id TEXT,
+    FOREIGN KEY (session_id) REFERENCES sessions(id)
+);
+```
+
+**Key indexes:** `idx_gov_audit_session`, `idx_gov_audit_action`, `idx_gov_audit_created`, `idx_gov_audit_tool`, `idx_gov_audit_rule`
 
 ## Full-Text Search Tables (FTS5)
 

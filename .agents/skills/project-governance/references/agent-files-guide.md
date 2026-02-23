@@ -44,7 +44,24 @@ Read and follow **`.constitution.md`** (or `oak/constitution.md`).
 [List 3-5 most common anchor files]
 ```
 
+## Discovering Agent Files
+
+Do NOT hardcode agent file names. Use OAK's built-in commands:
+
+```bash
+# Discover all agent instruction files dynamically
+oak rules detect-existing
+oak rules detect-existing --json  # machine-readable output
+```
+
+Agent files are configured dynamically in `.oak/config.yaml` and each agent's manifest defines its own `installation.instruction_file` path.
+
 ## File Naming Conventions
+
+> **Note:** This table is for background context only. Always use
+> `oak rules detect-existing` to get the actual file paths for your
+> project — agents may be configured with different paths than the
+> defaults shown here.
 
 Different agents use different instruction file names:
 
@@ -58,18 +75,6 @@ Different agents use different instruction file names:
 | Codex | `.codex/AGENTS.md` |
 
 The content should be similar across all, with the constitution as the shared source of truth.
-
-## Discovering Agent Files
-
-Do NOT hardcode agent file names. Use OAK's built-in commands:
-
-```bash
-# Discover all agent instruction files dynamically
-oak rules detect-existing
-oak rules detect-existing --json  # machine-readable output
-```
-
-Agent files are configured dynamically in `.oak/config.yaml` and each agent's manifest defines its own `installation.instruction_file` path.
 
 ## Syncing After Constitution Changes
 
