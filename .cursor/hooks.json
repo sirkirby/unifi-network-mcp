@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook sessionStart --agent cursor || true"
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook beforeSubmitPrompt --agent cursor || true"
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook afterFileEdit --agent cursor || true"
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook afterAgentResponse --agent cursor || true"
+      }
+    ],
+    "afterAgentThought": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook afterAgentThought --agent cursor || true"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook postToolUse --agent cursor || true"
+      }
+    ],
+    "preCompact": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook preCompact --agent cursor || true"
+      }
+    ],
+    "stop": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook stop --agent cursor || true"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook sessionEnd --agent cursor || true"
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook postToolUseFailure --agent cursor || true"
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook subagentStart --agent cursor || true"
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": "command -v oak >/dev/null 2>&1 && oak ci hook subagentStop --agent cursor || true"
+      }
+    ]
+  }
+}

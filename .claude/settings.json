@@ -4,5 +4,127 @@
       "Bash(oak:*)",
       "Bash(oak *)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v oak >/dev/null 2>&1 && oak ci hook SessionStart --agent claude || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v oak >/dev/null 2>&1 && oak ci hook UserPromptSubmit --agent claude || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v oak >/dev/null 2>&1 && oak ci hook PreToolUse --agent claude || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v oak >/dev/null 2>&1 && oak ci hook PostToolUse --agent claude || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v oak >/dev/null 2>&1 && oak ci hook PreCompact --agent claude || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v oak >/dev/null 2>&1 && oak ci hook Stop --agent claude || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v oak >/dev/null 2>&1 && oak ci hook SessionEnd --agent claude || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v oak >/dev/null 2>&1 && oak ci hook PostToolUseFailure --agent claude || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v oak >/dev/null 2>&1 && oak ci hook SubagentStart --agent claude || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v oak >/dev/null 2>&1 && oak ci hook SubagentStop --agent claude || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
   }
 }
