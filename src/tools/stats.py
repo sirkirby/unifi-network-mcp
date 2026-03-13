@@ -100,7 +100,12 @@ async def get_client_stats(client_id: str, duration: str = "hourly") -> Dict[str
 
 @server.tool(
     name="unifi_get_device_stats",
-    description="Get statistics for a specific device (access point, switch, etc.)",
+    description=(
+        "Returns historical traffic time-series (rx/tx bytes, client counts) for one "
+        "device by MAC or _id. Duration: hourly/daily/weekly/monthly. "
+        "For APs, includes avg/max client counts. "
+        "For current device status instead of stats, use unifi_get_device_details."
+    ),
 )
 async def get_device_stats(device_id: str, duration: str = "hourly") -> Dict[str, Any]:
     """Implementation for getting device stats."""

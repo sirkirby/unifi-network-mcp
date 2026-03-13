@@ -19,7 +19,12 @@ logger.info(f"System tools module loaded, server instance: {server}")
 
 @server.tool(
     name="unifi_get_system_info",
-    description="Get general system information from the Unifi Network controller (version, uptime, etc).",
+    description=(
+        "Returns controller version, uptime, hostname, memory/CPU usage, and update availability. "
+        "Use for basic 'is the controller healthy?' checks. "
+        "For network subsystem status (WAN/LAN/WLAN), use unifi_get_network_health instead. "
+        "For a combined overview, use unifi_network_diagnosis."
+    ),
 )
 async def get_system_info() -> Dict[str, Any]:
     """Implementation for getting system info."""
@@ -38,7 +43,13 @@ async def get_system_info() -> Dict[str, Any]:
 
 @server.tool(
     name="unifi_get_network_health",
-    description="Get the current network health summary (WAN status, device counts).",
+    description=(
+        "Returns per-subsystem health status for WAN, LAN, WLAN, and VPN — each with "
+        "status, number of gateways/switches/APs, and active user counts. "
+        "Use to check WAN connectivity, see how many devices are online per subsystem, "
+        "or detect degraded network segments. "
+        "For controller-level info (version, uptime), use unifi_get_system_info."
+    ),
 )
 async def get_network_health() -> Dict[str, Any]:
     """Implementation for getting network health."""

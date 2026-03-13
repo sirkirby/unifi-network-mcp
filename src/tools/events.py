@@ -30,10 +30,13 @@ def _get_event_manager():
 
 @server.tool(
     name="unifi_list_events",
-    description="""List events from the UniFi controller with optional filters.
-
-Returns system events like client connections, device status changes, and network alerts.
-Events are sorted by most recent first.""",
+    description=(
+        "Returns timestamped event log entries (client connects/disconnects, device "
+        "state changes, firmware updates, config changes) sorted newest-first. "
+        "Filter by within_hours (default 24), event_type prefix (use unifi_get_event_types "
+        "for valid prefixes), and paginate with start/limit. "
+        "For critical alerts specifically, use unifi_list_alarms instead."
+    ),
 )
 async def list_events(
     within_hours: int = 24,
@@ -70,10 +73,12 @@ async def list_events(
 
 @server.tool(
     name="unifi_list_alarms",
-    description="""List active alarms/alerts from the UniFi controller.
-
-Returns security alerts, connectivity issues, and other critical notifications.
-By default returns only active (non-archived) alarms.""",
+    description=(
+        "Returns active alarms (security alerts, connectivity issues, firmware warnings). "
+        "Each alarm includes type, message, timestamp, and related device/client MAC. "
+        "By default shows only unresolved alarms; set include_archived=true for history. "
+        "For general event logs (non-critical), use unifi_list_events."
+    ),
 )
 async def list_alarms(
     include_archived: bool = False,
