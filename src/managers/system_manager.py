@@ -37,7 +37,12 @@ class SystemManager:
         try:
             api_request = ApiRequest(method="get", path="/stat/sysinfo")
             response = await self._connection.request(api_request)
-            info = response if isinstance(response, dict) else {}
+            if isinstance(response, list) and len(response) > 0:
+                info = response[0] if isinstance(response[0], dict) else {}
+            elif isinstance(response, dict):
+                info = response
+            else:
+                info = {}
             self._connection._update_cache(cache_key, info, timeout=15)
             return info
         except Exception as e:
@@ -49,7 +54,11 @@ class SystemManager:
         try:
             api_request = ApiRequest(method="get", path="/stat/status")
             response = await self._connection.request(api_request)
-            return response if isinstance(response, dict) else {}
+            if isinstance(response, list) and len(response) > 0:
+                return response[0] if isinstance(response[0], dict) else {}
+            elif isinstance(response, dict):
+                return response
+            return {}
         except Exception as e:
             logger.error(f"Error getting controller status: {e}")
             return {}
@@ -119,7 +128,11 @@ class SystemManager:
                 path=f"/api/s/{self._connection.site}/stat/fwupdate/latest-version",
             )
             response = await self._connection.request(api_request)
-            return response if isinstance(response, dict) else {}
+            if isinstance(response, list) and len(response) > 0:
+                return response[0] if isinstance(response[0], dict) else {}
+            elif isinstance(response, dict):
+                return response
+            return {}
         except Exception as e:
             logger.error(f"Error checking firmware updates: {e}")
             return {}
