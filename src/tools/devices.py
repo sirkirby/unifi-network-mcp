@@ -31,7 +31,13 @@ def get_wifi_bands(device: Dict[str, Any]) -> List[str]:
 
 @server.tool(
     name="unifi_list_devices",
-    description="List devices adopted by the Unifi Network controller for the current site",
+    description=(
+        "Returns adopted device inventory with MAC, name, model, IP, firmware version, "
+        "uptime, and status (online/offline/upgrading/etc). Filter by device_type "
+        "(ap/switch/gateway/pdu) and status (online/offline/pending/upgrading). "
+        "Set include_details=true for radio tables, port tables, and client counts. "
+        "For a single device's full raw object, use unifi_get_device_details."
+    ),
 )
 async def list_devices(device_type: str = "all", status: str = "all", include_details: bool = False) -> Dict[str, Any]:
     """Implementation for listing devices."""
@@ -164,7 +170,12 @@ async def list_devices(device_type: str = "all", status: str = "all", include_de
 
 @server.tool(
     name="unifi_get_device_details",
-    description="Get detailed information about a specific device by MAC address",
+    description=(
+        "Returns the full raw device object for one device by MAC address — includes "
+        "radio tables, port tables, system stats, WAN info, firmware details, and all "
+        "controller-reported fields. Use when you need deep inspection of a specific "
+        "device. For a filtered overview of all devices, use unifi_list_devices."
+    ),
 )
 async def get_device_details(mac_address: str) -> Dict[str, Any]:
     """Implementation for getting device details."""
