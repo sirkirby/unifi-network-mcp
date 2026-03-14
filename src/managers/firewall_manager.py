@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 from typing import Any, Dict, List, Optional
@@ -224,10 +225,8 @@ class FirewallManager:
                 logger.error(f"Could not get raw data for traffic route {route_id}. Update aborted.")
                 return False
 
-            current_data = route_to_update_obj.raw.copy()
-
-            # Merge updates into current data
-            updated_data = current_data
+            # Deep copy to avoid mutating the cached TrafficRoute.raw
+            updated_data = copy.deepcopy(route_to_update_obj.raw)
             for key, value in updates.items():
                 updated_data[key] = value
 
