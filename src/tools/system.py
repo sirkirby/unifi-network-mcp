@@ -52,7 +52,10 @@ async def get_system_info() -> Dict[str, Any]:
     ),
 )
 async def get_network_health() -> Dict[str, Any]:
-    """Implementation for getting network health."""
+    """Implementation for getting network health.
+
+    Returns a dict with ``health_summary`` containing a list of per-subsystem dicts.
+    """
     logger.info("unifi_get_network_health tool called")
     try:
         health = await system_manager.get_network_health()
