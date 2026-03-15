@@ -36,6 +36,7 @@ CATEGORY_MAP = {
     "usergroup": "usergroups",
     "route": "routes",
     "snmp": "snmp",
+    "acl": "acl_rules",
 }
 
 DEFAULT_PERMISSIONS_KEY = "default"

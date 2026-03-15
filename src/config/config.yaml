@@ -28,6 +28,7 @@ server:
   #     - config         # Configuration management
   #     - devices        # Device listing, radio config, reboot, locate, upgrade
   #     - events         # Events and alarms
+  #     - acl            # MAC ACL rules (Policy Engine, Layer 2 access control)
   #     - firewall       # Firewall rules and groups
   #     - hotspot        # Vouchers for guest network
   #     - network        # Network/VLAN management
@@ -62,6 +63,10 @@ server:
 permissions:
 
   default:
+    create: true
+    update: true
+
+  acl_rules:
     create: true
     update: true
 
