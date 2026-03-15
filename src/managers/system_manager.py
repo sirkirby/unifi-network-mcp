@@ -237,17 +237,21 @@ class SystemManager:
             logger.error(f"Error updating {section} settings: {e}")
             return False
 
-    async def get_network_health(self) -> Dict[str, Any]:
+    async def get_network_health(self) -> List[Dict[str, Any]]:
         """Return a summary of the controller network health.
 
         The official UniFi Network controller exposes a convenient endpoint that aggregates
         overall health information (WAN connectivity, number of devices, users, etc.) at
-        `/stat/health`.  This helper wraps that call and caches the result for a short period
-        because the data is fairly volatile but still expensive to compute for the controller.
+        `/stat/health`.  Unlike other ``/stat/*`` endpoints that wrap a single dict in a list,
+        this endpoint returns a **multi-element list** — one dict per subsystem (wan, lan,
+        wlan, vpn, etc.).
+
+        This helper wraps that call and caches the result for a short period because the data
+        is fairly volatile but still expensive to compute for the controller.
         """
 
         cache_key = f"health_{self._connection.site}"
-        cached_data = self._connection.get_cached(cache_key, timeout=10)
+        cached_data: Optional[List[Dict[str, Any]]] = self._connection.get_cached(cache_key, timeout=10)
         if cached_data is not None:
             return cached_data
 
@@ -258,13 +262,18 @@ class SystemManager:
             )
             response = await self._connection.request(api_request)
 
-            health = response if isinstance(response, (list, dict)) else {}
+            if isinstance(response, list):
+                health = response
+            elif isinstance(response, dict):
+                health = [response]
+            else:
+                health = []
 
             self._connection._update_cache(cache_key, health, timeout=10)
             return health
         except Exception as e:
             logger.error(f"Error getting network health: {e}")
-            return {}
+            return []
 
     async def get_site_settings(self) -> Dict[str, Any]:
         """Retrieve general settings for the current site.
