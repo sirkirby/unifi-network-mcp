@@ -12,6 +12,7 @@ from unifi_mcp_shared.lazy_tools import (
     build_tool_module_map,
     setup_lazy_loading,
 )
+from unifi_mcp_shared.meta_tools import register_load_tools, register_meta_tools
 from unifi_mcp_shared.permissions import PermissionChecker
 
 __all__ = [
@@ -20,6 +21,8 @@ __all__ = [
     "build_tool_module_map",
     "create_preview",
     "preview_response",
+    "register_load_tools",
+    "register_meta_tools",
     "setup_lazy_loading",
     "should_auto_confirm",
     "toggle_preview",

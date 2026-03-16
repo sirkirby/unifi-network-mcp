@@ -281,11 +281,14 @@ async def main_async():
         lazy_loader = setup_lazy_loading(server, _original_tool_decorator)
 
         # Register unifi_load_tools meta-tool (requires lazy_loader)
+        from unifi_network_mcp.utils.lazy_tool_loader import TOOL_MODULE_MAP as _lazy_map
+
         register_load_tools(
             server=server,
             tool_decorator=_original_tool_decorator,
             lazy_loader=lazy_loader,
             register_tool=register_tool,
+            tool_module_map=_lazy_map,
         )
 
         from unifi_network_mcp.utils.lazy_tool_loader import TOOL_MODULE_MAP
