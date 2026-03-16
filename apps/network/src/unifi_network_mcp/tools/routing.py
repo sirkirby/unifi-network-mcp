@@ -8,9 +8,9 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
-from src.runtime import config, server
-from src.utils.confirmation import create_preview, should_auto_confirm, update_preview
-from src.utils.permissions import parse_permission
+from unifi_network_mcp.runtime import config, server
+from unifi_network_mcp.utils.confirmation import create_preview, should_auto_confirm, update_preview
+from unifi_network_mcp.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,8 @@ def _get_routing_manager():
     """Lazy-load the routing manager to avoid circular imports."""
     global _routing_manager
     if _routing_manager is None:
-        from src.managers.routing_manager import RoutingManager
-        from src.runtime import get_connection_manager
+        from unifi_network_mcp.managers.routing_manager import RoutingManager
+        from unifi_network_mcp.runtime import get_connection_manager
 
         _routing_manager = RoutingManager(get_connection_manager())
     return _routing_manager

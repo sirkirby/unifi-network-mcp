@@ -8,9 +8,9 @@ import logging
 from typing import Any, Dict, Optional
 
 # Import the global FastMCP server instance, config, and managers
-from src.runtime import client_manager, config, server
-from src.utils.confirmation import should_auto_confirm, toggle_preview, update_preview
-from src.utils.permissions import parse_permission
+from unifi_network_mcp.runtime import client_manager, config, server
+from unifi_network_mcp.utils.confirmation import should_auto_confirm, toggle_preview, update_preview
+from unifi_network_mcp.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
 

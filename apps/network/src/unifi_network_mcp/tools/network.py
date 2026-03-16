@@ -9,10 +9,10 @@ import json
 import logging
 from typing import Any, Dict
 
-from src.runtime import config, network_manager, server
-from src.utils.confirmation import create_preview, should_auto_confirm, update_preview
-from src.utils.permissions import parse_permission
-from src.validator_registry import UniFiValidatorRegistry
+from unifi_network_mcp.runtime import config, network_manager, server
+from unifi_network_mcp.utils.confirmation import create_preview, should_auto_confirm, update_preview
+from unifi_network_mcp.utils.permissions import parse_permission
+from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -358,7 +358,7 @@ async def create_network(network_data: Dict[str, Any], confirm: bool = False) ->
         return {"success": False, "error": "Permission denied to create network."}
 
     # Moved imports
-    from src.validator_registry import UniFiValidatorRegistry
+    from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
     # Validate the input
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("network", network_data)
@@ -754,7 +754,7 @@ async def create_wlan(wlan_data: Dict[str, Any], confirm: bool = False) -> Dict[
         return {"success": False, "error": "Permission denied to create WLAN."}
 
     # Moved imports
-    from src.validator_registry import UniFiValidatorRegistry
+    from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
     # Validate the input
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("wlan", wlan_data)

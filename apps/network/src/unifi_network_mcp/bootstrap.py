@@ -123,7 +123,7 @@ def load_config(path_override: str | Path | None = None) -> OmegaConf:
             # 3. Use bundled default config
             try:
                 # Use importlib.resources to safely access package data
-                config_file_ref = importlib.resources.files("src.config").joinpath("config.yaml")
+                config_file_ref = importlib.resources.files("unifi_network_mcp.config").joinpath("config.yaml")
                 if config_file_ref.is_file():
                     resolved_path = Path(str(config_file_ref))  # Convert Traversable to Path
                     logger.info("Using bundled default configuration: %s", resolved_path)

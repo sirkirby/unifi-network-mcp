@@ -16,25 +16,25 @@ from typing import Union
 
 import uvicorn.config
 
-from src.bootstrap import (
+from unifi_network_mcp.bootstrap import (
     UNIFI_TOOL_REGISTRATION_MODE,
     logger,
 )  # ensures logging/env setup early
-from src.jobs import get_job_status, start_async_tool
+from unifi_network_mcp.jobs import get_job_status, start_async_tool
 
 # Shared singletons
-from src.runtime import (
+from unifi_network_mcp.runtime import (
     config,
     connection_manager,
     server,
 )
-from src.tool_index import register_tool, tool_index_handler
-from src.utils.config_helpers import parse_config_bool
-from src.utils.diagnostics import diagnostics_enabled, wrap_tool
-from src.utils.lazy_tool_loader import setup_lazy_loading
-from src.utils.meta_tools import register_load_tools, register_meta_tools
-from src.utils.permissions import parse_permission  # noqa: E402
-from src.utils.tool_loader import auto_load_tools
+from unifi_network_mcp.tool_index import register_tool, tool_index_handler
+from unifi_network_mcp.utils.config_helpers import parse_config_bool
+from unifi_network_mcp.utils.diagnostics import diagnostics_enabled, wrap_tool
+from unifi_network_mcp.utils.lazy_tool_loader import setup_lazy_loading
+from unifi_network_mcp.utils.meta_tools import register_load_tools, register_meta_tools
+from unifi_network_mcp.utils.permissions import parse_permission  # noqa: E402
+from unifi_network_mcp.utils.tool_loader import auto_load_tools
 
 # Use the original FastMCP tool decorator (saved in runtime.py before wrapping)
 _original_tool_decorator = getattr(server, "_original_tool", server.tool)
@@ -185,10 +185,10 @@ except Exception as e:
 logger.info("Loaded configuration globally.")
 
 # --- Global Connection and Managers ---
-# ConnectionManager is instantiated globally by src.runtime import
+# ConnectionManager is instantiated globally by unifi_network_mcp.runtime import
 logger.info("Using global ConnectionManager instance.")
 
-# Other Managers are instantiated globally by src.runtime import
+# Other Managers are instantiated globally by unifi_network_mcp.runtime import
 logger.info("Using global Manager instances.")
 
 # Dynamic tool loader helper already imported above
@@ -199,7 +199,7 @@ async def main_async():
 
     # ---- VERY EARLY ASYNC LOG TEST ----
     try:
-        from src.bootstrap import logger as bootstrap_logger_async
+        from unifi_network_mcp.bootstrap import logger as bootstrap_logger_async
 
         bootstrap_logger_async.critical("ASYNCHRONOUS main_async() FUNCTION ENTERED - TEST MESSAGE")
     except Exception as e:
@@ -231,7 +231,7 @@ async def main_async():
     logger.info("Global asyncio exception handler set.")
     # --- End asyncio global exception handler ---
 
-    # Config is now loaded globally (from src.runtime -> src.bootstrap)
+    # Config is now loaded globally (from unifi_network_mcp.runtime -> unifi_network_mcp.bootstrap)
     log_level = config.server.get("log_level", "INFO").upper()
     # Ensure logging is configured (might be redundant if already set by bootstrap)
     # but this ensures the level is applied if changed post-bootstrap.
@@ -265,7 +265,7 @@ async def main_async():
         # Setup lazy loading interceptor so unifi_execute/unifi_batch can load tools on demand
         setup_lazy_loading(server, _original_tool_decorator)
 
-        from src.utils.lazy_tool_loader import TOOL_MODULE_MAP
+        from unifi_network_mcp.utils.lazy_tool_loader import TOOL_MODULE_MAP
 
         logger.info(f"   On-demand loader ready - {len(TOOL_MODULE_MAP)} tools available via unifi_execute")
     elif UNIFI_TOOL_REGISTRATION_MODE == "lazy":
@@ -284,7 +284,7 @@ async def main_async():
             register_tool=register_tool,
         )
 
-        from src.utils.lazy_tool_loader import TOOL_MODULE_MAP
+        from unifi_network_mcp.utils.lazy_tool_loader import TOOL_MODULE_MAP
 
         logger.info(f"   Lazy loader ready - {len(TOOL_MODULE_MAP)} tools available on-demand")
     else:  # eager (default)
@@ -399,7 +399,7 @@ def main():
     """Synchronous entry point."""
     # ---- VERY EARLY LOG TEST ----
     try:
-        from src.bootstrap import logger as bootstrap_logger
+        from unifi_network_mcp.bootstrap import logger as bootstrap_logger
 
         bootstrap_logger.critical("SYNCHRONOUS main() FUNCTION ENTERED - TEST MESSAGE")
     except Exception as e:
@@ -417,10 +417,10 @@ def main():
         logger.info("Server process exiting.")
 
 
-# Ensure other modules can `import src.main` even when this file is executed as __main__
+# Ensure other modules can `import unifi_network_mcp.main` even when this file is executed as __main__
 # --- This block might not be strictly necessary depending on imports, but harmless ---
-if "src.main" not in sys.modules:
-    sys.modules["src.main"] = sys.modules[__name__]
+if "unifi_network_mcp.main" not in sys.modules:
+    sys.modules["unifi_network_mcp.main"] = sys.modules[__name__]
 # --- End potentially unnecessary block ---
 
 if __name__ == "__main__":

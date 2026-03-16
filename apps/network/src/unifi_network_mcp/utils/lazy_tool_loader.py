@@ -29,7 +29,7 @@ def _load_module_map_from_manifest() -> Dict[str, str]:
 
     if not manifest_path.exists():
         # Try relative to cwd
-        manifest_path = Path("src/tools_manifest.json")
+        manifest_path = Path("apps/network/src/unifi_network_mcp/tools_manifest.json")
 
     if not manifest_path.exists():
         logger.warning("Tools manifest not found for fallback loading")
@@ -63,7 +63,7 @@ def _build_tool_module_map() -> Dict[str, str]:
     tools_dir = this_dir.parent / "tools"
 
     if not tools_dir.exists():
-        tools_dir = Path("src/tools")
+        tools_dir = Path("apps/network/src/unifi_network_mcp/tools")
 
     if not tools_dir.exists():
         logger.warning("Tools directory not found, falling back to manifest")
@@ -74,7 +74,7 @@ def _build_tool_module_map() -> Dict[str, str]:
         if tool_file.name.startswith("_"):
             continue
 
-        module_name = f"src.tools.{tool_file.stem}"
+        module_name = f"unifi_network_mcp.tools.{tool_file.stem}"
 
         try:
             # Read file and look for @server.tool or @permissioned_tool decorators

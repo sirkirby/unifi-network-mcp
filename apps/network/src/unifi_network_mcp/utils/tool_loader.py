@@ -8,7 +8,7 @@ logger = logging.getLogger("unifi-network-mcp")
 
 
 def auto_load_tools(
-    base_package: str = "src.tools",
+    base_package: str = "unifi_network_mcp.tools",
     enabled_categories: Optional[List[str]] = None,
     enabled_tools: Optional[List[str]] = None,
     server=None,
@@ -45,7 +45,7 @@ def auto_load_tools(
     loaded_modules = []
     for mod_info in pkgutil.walk_packages(tools_pkg.__path__, tools_pkg.__name__ + "."):
         mod_name = mod_info.name
-        # Get the module's simple name (e.g., "clients" from "src.tools.clients")
+        # Get the module's simple name (e.g., "clients" from "unifi_network_mcp.tools.clients")
         simple_name = mod_name.rsplit(".", 1)[-1]
 
         # Skip private modules (starting with _)

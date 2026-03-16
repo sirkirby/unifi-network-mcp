@@ -17,7 +17,7 @@ class TestToolMapSync:
     @pytest.fixture
     def manifest_tools(self) -> set[str]:
         """Load tool names from the manifest."""
-        manifest_path = Path("src/tools_manifest.json")
+        manifest_path = Path("apps/network/src/unifi_network_mcp/tools_manifest.json")
         with open(manifest_path) as f:
             manifest = json.load(f)
         return {t["name"] for t in manifest["tools"]}
@@ -25,7 +25,7 @@ class TestToolMapSync:
     @pytest.fixture
     def tool_module_map(self) -> dict[str, str]:
         """Load the TOOL_MODULE_MAP."""
-        from src.utils.lazy_tool_loader import TOOL_MODULE_MAP
+        from unifi_network_mcp.utils.lazy_tool_loader import TOOL_MODULE_MAP
 
         return TOOL_MODULE_MAP
 
@@ -89,7 +89,7 @@ class TestToolMapSync:
 
     def test_dynamic_discovery_works(self):
         """Verify the dynamic tool discovery function works correctly."""
-        from src.utils.lazy_tool_loader import _build_tool_module_map
+        from unifi_network_mcp.utils.lazy_tool_loader import _build_tool_module_map
 
         tool_map = _build_tool_module_map()
 
@@ -111,8 +111,8 @@ class TestToolMapSync:
         """Verify all module paths in the map are valid Python module paths."""
         for tool_name, module_path in tool_module_map.items():
             # Module path should start with src.tools.
-            assert module_path.startswith("src.tools."), (
-                f"Tool '{tool_name}' has invalid module path: {module_path}\nExpected path starting with 'src.tools.'"
+            assert module_path.startswith("unifi_network_mcp.tools."), (
+                f"Tool '{tool_name}' has invalid module path: {module_path}\nExpected path starting with 'unifi_network_mcp.tools.'"
             )
 
             # Module path should be a valid Python identifier pattern

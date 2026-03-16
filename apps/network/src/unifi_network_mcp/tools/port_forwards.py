@@ -6,10 +6,10 @@ import json
 import logging
 from typing import Any, Dict
 
-from src.runtime import config, firewall_manager, server
-from src.utils.confirmation import should_auto_confirm, toggle_preview, update_preview
-from src.utils.permissions import parse_permission
-from src.validator_registry import UniFiValidatorRegistry  # Added for validation
+from unifi_network_mcp.runtime import config, firewall_manager, server
+from unifi_network_mcp.utils.confirmation import should_auto_confirm, toggle_preview, update_preview
+from unifi_network_mcp.utils.permissions import parse_permission
+from unifi_network_mcp.validator_registry import UniFiValidatorRegistry  # Added for validation
 
 logger = logging.getLogger(__name__)  # Changed logger name for consistency
 
@@ -302,7 +302,7 @@ async def create_port_forward(port_forward_data: Dict[str, Any]) -> Dict[str, An
         logger.warning("Permission denied for creating port forward.")
         return {"success": False, "error": "Permission denied to create port forward."}
 
-    from src.validator_registry import UniFiValidatorRegistry
+    from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
     # Validate the input
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("port_forward", port_forward_data)

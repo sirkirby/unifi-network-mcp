@@ -8,7 +8,7 @@ import logging
 from typing import TYPE_CHECKING, Callable, List
 
 if TYPE_CHECKING:
-    from src.utils.lazy_tool_loader import LazyToolLoader
+    from unifi_network_mcp.utils.lazy_tool_loader import LazyToolLoader
 
 logger = logging.getLogger("unifi-network-mcp")
 
@@ -274,7 +274,7 @@ def register_load_tools(
     """
     from mcp.server.fastmcp import Context
 
-    from src.utils.lazy_tool_loader import TOOL_MODULE_MAP
+    from unifi_network_mcp.utils.lazy_tool_loader import TOOL_MODULE_MAP
 
     @tool_decorator(
         name="unifi_load_tools",

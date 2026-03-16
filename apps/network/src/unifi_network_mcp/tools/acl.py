@@ -10,9 +10,9 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
-from src.runtime import acl_manager, config, server
-from src.utils.confirmation import create_preview, should_auto_confirm
-from src.utils.permissions import parse_permission
+from unifi_network_mcp.runtime import acl_manager, config, server
+from unifi_network_mcp.utils.confirmation import create_preview, should_auto_confirm
+from unifi_network_mcp.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
 

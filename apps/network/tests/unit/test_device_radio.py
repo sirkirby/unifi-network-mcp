@@ -136,7 +136,7 @@ class TestDeviceManagerGetRadio:
 
     @pytest.fixture
     def device_manager(self, mock_connection):
-        from src.managers.device_manager import DeviceManager
+        from unifi_network_mcp.managers.device_manager import DeviceManager
 
         return DeviceManager(mock_connection)
 
@@ -204,7 +204,7 @@ class TestDeviceManagerUpdateRadio:
 
     @pytest.fixture
     def device_manager(self, mock_connection):
-        from src.managers.device_manager import DeviceManager
+        from unifi_network_mcp.managers.device_manager import DeviceManager
 
         return DeviceManager(mock_connection)
 
@@ -292,9 +292,9 @@ class TestUpdateDeviceRadioTool:
 
     @pytest.mark.asyncio
     async def test_rejects_invalid_radio(self):
-        from src.tools.devices import update_device_radio
+        from unifi_network_mcp.tools.devices import update_device_radio
 
-        with patch("src.tools.devices.parse_permission", return_value=True):
+        with patch("unifi_network_mcp.tools.devices.parse_permission", return_value=True):
             result = await update_device_radio(mac_address="aa:bb:cc:dd:ee:ff", radio="invalid")
 
         assert result["success"] is False
@@ -302,9 +302,9 @@ class TestUpdateDeviceRadioTool:
 
     @pytest.mark.asyncio
     async def test_rejects_tx_power_without_custom_mode(self):
-        from src.tools.devices import update_device_radio
+        from unifi_network_mcp.tools.devices import update_device_radio
 
-        with patch("src.tools.devices.parse_permission", return_value=True):
+        with patch("unifi_network_mcp.tools.devices.parse_permission", return_value=True):
             result = await update_device_radio(
                 mac_address="aa:bb:cc:dd:ee:ff", radio="na", tx_power=20, tx_power_mode="high"
             )
@@ -314,9 +314,9 @@ class TestUpdateDeviceRadioTool:
 
     @pytest.mark.asyncio
     async def test_rejects_min_rssi_without_enabled(self):
-        from src.tools.devices import update_device_radio
+        from unifi_network_mcp.tools.devices import update_device_radio
 
-        with patch("src.tools.devices.parse_permission", return_value=True):
+        with patch("unifi_network_mcp.tools.devices.parse_permission", return_value=True):
             result = await update_device_radio(mac_address="aa:bb:cc:dd:ee:ff", radio="na", min_rssi=-70)
 
         assert result["success"] is False
@@ -324,9 +324,9 @@ class TestUpdateDeviceRadioTool:
 
     @pytest.mark.asyncio
     async def test_rejects_invalid_tx_power_mode(self):
-        from src.tools.devices import update_device_radio
+        from unifi_network_mcp.tools.devices import update_device_radio
 
-        with patch("src.tools.devices.parse_permission", return_value=True):
+        with patch("unifi_network_mcp.tools.devices.parse_permission", return_value=True):
             result = await update_device_radio(mac_address="aa:bb:cc:dd:ee:ff", radio="na", tx_power_mode="turbo")
 
         assert result["success"] is False
@@ -334,9 +334,9 @@ class TestUpdateDeviceRadioTool:
 
     @pytest.mark.asyncio
     async def test_rejects_invalid_ht(self):
-        from src.tools.devices import update_device_radio
+        from unifi_network_mcp.tools.devices import update_device_radio
 
-        with patch("src.tools.devices.parse_permission", return_value=True):
+        with patch("unifi_network_mcp.tools.devices.parse_permission", return_value=True):
             result = await update_device_radio(mac_address="aa:bb:cc:dd:ee:ff", radio="na", ht="640")
 
         assert result["success"] is False
@@ -345,9 +345,9 @@ class TestUpdateDeviceRadioTool:
     @pytest.mark.asyncio
     async def test_accepts_internal_radio_name(self):
         """Internal names like wifi0/wifi1 pass validation (reaching 'no updates' check)."""
-        from src.tools.devices import update_device_radio
+        from unifi_network_mcp.tools.devices import update_device_radio
 
-        with patch("src.tools.devices.parse_permission", return_value=True):
+        with patch("unifi_network_mcp.tools.devices.parse_permission", return_value=True):
             result = await update_device_radio(mac_address="aa:bb:cc:dd:ee:ff", radio="wifi0")
 
         assert result["success"] is False
@@ -355,9 +355,9 @@ class TestUpdateDeviceRadioTool:
 
     @pytest.mark.asyncio
     async def test_rejects_no_updates(self):
-        from src.tools.devices import update_device_radio
+        from unifi_network_mcp.tools.devices import update_device_radio
 
-        with patch("src.tools.devices.parse_permission", return_value=True):
+        with patch("unifi_network_mcp.tools.devices.parse_permission", return_value=True):
             result = await update_device_radio(mac_address="aa:bb:cc:dd:ee:ff", radio="na")
 
         assert result["success"] is False
@@ -365,9 +365,9 @@ class TestUpdateDeviceRadioTool:
 
     @pytest.mark.asyncio
     async def test_permission_denied(self):
-        from src.tools.devices import update_device_radio
+        from unifi_network_mcp.tools.devices import update_device_radio
 
-        with patch("src.tools.devices.parse_permission", return_value=False):
+        with patch("unifi_network_mcp.tools.devices.parse_permission", return_value=False):
             result = await update_device_radio(mac_address="aa:bb:cc:dd:ee:ff", radio="na", tx_power_mode="high")
 
         assert result["success"] is False
@@ -375,12 +375,12 @@ class TestUpdateDeviceRadioTool:
 
     @pytest.mark.asyncio
     async def test_preview_mode(self):
-        from src.tools.devices import update_device_radio
+        from unifi_network_mcp.tools.devices import update_device_radio
 
         with (
-            patch("src.tools.devices.parse_permission", return_value=True),
-            patch("src.tools.devices.should_auto_confirm", return_value=False),
-            patch("src.tools.devices.device_manager") as mock_dm,
+            patch("unifi_network_mcp.tools.devices.parse_permission", return_value=True),
+            patch("unifi_network_mcp.tools.devices.should_auto_confirm", return_value=False),
+            patch("unifi_network_mcp.tools.devices.device_manager") as mock_dm,
         ):
             mock_dm.get_device_radio = AsyncMock(
                 return_value={
@@ -406,11 +406,11 @@ class TestUpdateDeviceRadioTool:
 
     @pytest.mark.asyncio
     async def test_confirm_executes_update(self):
-        from src.tools.devices import update_device_radio
+        from unifi_network_mcp.tools.devices import update_device_radio
 
         with (
-            patch("src.tools.devices.parse_permission", return_value=True),
-            patch("src.tools.devices.device_manager") as mock_dm,
+            patch("unifi_network_mcp.tools.devices.parse_permission", return_value=True),
+            patch("unifi_network_mcp.tools.devices.device_manager") as mock_dm,
         ):
             mock_dm.get_device_radio = AsyncMock(
                 return_value={
@@ -439,9 +439,9 @@ class TestGetDeviceRadioTool:
 
     @pytest.mark.asyncio
     async def test_returns_radio_data(self):
-        from src.tools.devices import get_device_radio
+        from unifi_network_mcp.tools.devices import get_device_radio
 
-        with patch("src.tools.devices.device_manager") as mock_dm:
+        with patch("unifi_network_mcp.tools.devices.device_manager") as mock_dm:
             mock_dm.get_device_radio = AsyncMock(
                 return_value={
                     "mac": "28:70:4e:c1:b4:c8",
@@ -461,9 +461,9 @@ class TestGetDeviceRadioTool:
 
     @pytest.mark.asyncio
     async def test_returns_error_for_non_ap(self):
-        from src.tools.devices import get_device_radio
+        from unifi_network_mcp.tools.devices import get_device_radio
 
-        with patch("src.tools.devices.device_manager") as mock_dm:
+        with patch("unifi_network_mcp.tools.devices.device_manager") as mock_dm:
             mock_dm.get_device_radio = AsyncMock(return_value=None)
             mock_dm._connection = MagicMock()
             mock_dm._connection.site = "default"

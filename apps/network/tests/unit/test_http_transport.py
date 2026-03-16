@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.utils.config_helpers import parse_config_bool
+from unifi_network_mcp.utils.config_helpers import parse_config_bool
 
 
 class TestUvicornLoggingConfig:

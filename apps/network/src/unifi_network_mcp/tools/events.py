@@ -7,9 +7,9 @@ This module provides MCP tools to view events and manage alarms on a UniFi Netwo
 import logging
 from typing import Any, Dict, Optional
 
-from src.runtime import config, server
-from src.utils.confirmation import should_auto_confirm
-from src.utils.permissions import parse_permission
+from unifi_network_mcp.runtime import config, server
+from unifi_network_mcp.utils.confirmation import should_auto_confirm
+from unifi_network_mcp.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,8 @@ def _get_event_manager():
     """Lazy-load the event manager to avoid circular imports."""
     global _event_manager
     if _event_manager is None:
-        from src.managers.event_manager import EventManager
-        from src.runtime import get_connection_manager
+        from unifi_network_mcp.managers.event_manager import EventManager
+        from unifi_network_mcp.runtime import get_connection_manager
 
         _event_manager = EventManager(get_connection_manager())
     return _event_manager

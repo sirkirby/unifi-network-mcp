@@ -40,7 +40,7 @@ def _server_diag_cfg_from_env() -> Dict[str, Any]:
 def _server_diag_cfg_from_config() -> Dict[str, Any]:
     try:
         # Import lazily to avoid circular imports at module load time
-        from src.runtime import config
+        from unifi_network_mcp.runtime import config
 
         server_cfg = getattr(config, "server", {}) or {}
         diag_cfg = server_cfg.get("diagnostics", {}) or {}

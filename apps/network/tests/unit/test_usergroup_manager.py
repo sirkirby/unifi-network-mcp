@@ -25,7 +25,7 @@ class TestUsergroupManager:
     @pytest.fixture
     def usergroup_manager(self, mock_connection):
         """Create a UsergroupManager with mocked connection."""
-        from src.managers.usergroup_manager import UsergroupManager
+        from unifi_network_mcp.managers.usergroup_manager import UsergroupManager
 
         return UsergroupManager(mock_connection)
 

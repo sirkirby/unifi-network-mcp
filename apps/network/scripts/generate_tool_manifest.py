@@ -9,8 +9,8 @@ Usage:
     python scripts/generate_tool_manifest.py
 
 Output:
-    src/tools_manifest.json - Static tool metadata with FULL schemas for all tools
-                              Includes module_map for fallback lazy loading
+    src/unifi_network_mcp/tools_manifest.json - Static tool metadata with FULL schemas for all tools
+                                                 Includes module_map for fallback lazy loading
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from typing import Any
 
 # Add src to path so we can import modules
 project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / "src"))
 
 # Force eager mode for manifest generation
 os.environ["UNIFI_TOOL_REGISTRATION_MODE"] = "eager"
@@ -44,7 +44,7 @@ def build_module_map() -> dict[str, str]:
         Dictionary mapping tool names to their module paths
     """
     tool_map: dict[str, str] = {}
-    tools_dir = project_root / "src" / "tools"
+    tools_dir = project_root / "src" / "unifi_network_mcp" / "tools"
 
     if not tools_dir.exists():
         logger.warning(f"Tools directory not found at {tools_dir}")
@@ -55,7 +55,7 @@ def build_module_map() -> dict[str, str]:
         if tool_file.name.startswith("_"):
             continue
 
-        module_name = f"src.tools.{tool_file.stem}"
+        module_name = f"unifi_network_mcp.tools.{tool_file.stem}"
 
         try:
             content = tool_file.read_text()
@@ -88,12 +88,12 @@ def generate_manifest() -> dict[str, Any]:
     logger.info("🔨 Generating tool manifest with full schemas...")
 
     # Import the tool registry first
-    from src.tool_index import TOOL_REGISTRY
+    from unifi_network_mcp.tool_index import TOOL_REGISTRY
 
     # CRITICAL: Import main.py to trigger the server.tool monkey-patch
     # This ensures @server.tool decorators call register_tool()
     logger.info("   Setting up permissioned tool decorator...")
-    import src.main  # noqa: F401 - This monkey-patches server.tool with permissioned_tool
+    import unifi_network_mcp.main  # noqa: F401 - This monkey-patches server.tool with permissioned_tool
 
     # Force eager loading of all tools to populate TOOL_REGISTRY
     # We need to import the tool loader to trigger all tool registrations
@@ -101,7 +101,7 @@ def generate_manifest() -> dict[str, Any]:
 
     try:
         # Import the auto loader which will trigger all tool registrations
-        from src.utils.tool_loader import auto_load_tools
+        from unifi_network_mcp.utils.tool_loader import auto_load_tools
 
         # Load all tools - this will trigger all @server.tool decorators
         # which in turn call register_tool() to populate TOOL_REGISTRY
@@ -116,7 +116,7 @@ def generate_manifest() -> dict[str, Any]:
 
         # Fallback to minimal manifest if tool loading fails
         logger.warning("   Falling back to minimal manifest from TOOL_MODULE_MAP")
-        from src.utils.lazy_tool_loader import TOOL_MODULE_MAP
+        from unifi_network_mcp.utils.lazy_tool_loader import TOOL_MODULE_MAP
 
         tools = []
         for tool_name in sorted(TOOL_MODULE_MAP.keys()):
@@ -184,7 +184,7 @@ def main():
         manifest = generate_manifest()
 
         # Write to src/tools_manifest.json
-        output_path = project_root / "src" / "tools_manifest.json"
+        output_path = project_root / "src" / "unifi_network_mcp" / "tools_manifest.json"
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(output_path, "w") as f:

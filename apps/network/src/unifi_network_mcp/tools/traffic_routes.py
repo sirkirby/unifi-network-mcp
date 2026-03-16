@@ -8,9 +8,9 @@ on a UniFi Network Controller using the V2 API.
 import logging
 from typing import Any, Dict
 
-from src.runtime import config, server
-from src.utils.confirmation import should_auto_confirm, toggle_preview, update_preview
-from src.utils.permissions import parse_permission
+from unifi_network_mcp.runtime import config, server
+from unifi_network_mcp.utils.confirmation import should_auto_confirm, toggle_preview, update_preview
+from unifi_network_mcp.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,8 @@ def _get_traffic_route_manager():
     """Lazy-load the traffic route manager to avoid circular imports."""
     global _traffic_route_manager
     if _traffic_route_manager is None:
-        from src.managers.traffic_route_manager import TrafficRouteManager
-        from src.runtime import get_connection_manager
+        from unifi_network_mcp.managers.traffic_route_manager import TrafficRouteManager
+        from unifi_network_mcp.runtime import get_connection_manager
 
         _traffic_route_manager = TrafficRouteManager(get_connection_manager())
     return _traffic_route_manager

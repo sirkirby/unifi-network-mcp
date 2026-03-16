@@ -3,7 +3,7 @@
 import os
 from unittest.mock import patch
 
-from src.utils.permissions import parse_permission
+from unifi_network_mcp.utils.permissions import parse_permission
 
 
 class TestDeletePermissions:

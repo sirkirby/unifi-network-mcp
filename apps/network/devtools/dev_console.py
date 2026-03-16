@@ -6,7 +6,7 @@ import os
 import sys
 from typing import Any, Dict, List, Optional
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 # Defer heavy imports until runtime is needed to provide clearer errors
 logger = None  # type: ignore
@@ -57,7 +57,7 @@ async def _list_tools(server) -> List[Any]:
 def _get_all_tools_from_index() -> List[Dict[str, Any]]:
     """Get all tools from the tool index, regardless of permission status."""
     try:
-        from src.tool_index import get_tool_index
+        from unifi_network_mcp.tool_index import get_tool_index
 
         index = get_tool_index()
         return index.get("tools", [])
@@ -241,7 +241,7 @@ async def _invoke_tool(server, tool) -> None:
 async def main_async() -> None:
     global logger
     try:
-        from src.bootstrap import logger as _logger  # noqa: E402
+        from unifi_network_mcp.bootstrap import logger as _logger  # noqa: E402
 
         logger = _logger
     except Exception:
@@ -265,12 +265,12 @@ async def main_async() -> None:
         # Import main to apply permissioned_tool wrapper to server.tool
         # This handles permission_category/permission_action kwargs that
         # FastMCP's native .tool() decorator doesn't understand
-        import src.main  # noqa: F401, E402
-        from src.jobs import get_job_status, start_async_tool  # noqa: E402
-        from src.runtime import connection_manager, server  # noqa: E402
-        from src.tool_index import register_tool, tool_index_handler  # noqa: E402
-        from src.utils.meta_tools import register_meta_tools  # noqa: E402
-        from src.utils.tool_loader import auto_load_tools  # noqa: E402
+        import unifi_network_mcp.main  # noqa: F401, E402
+        from unifi_network_mcp.jobs import get_job_status, start_async_tool  # noqa: E402
+        from unifi_network_mcp.runtime import connection_manager, server  # noqa: E402
+        from unifi_network_mcp.tool_index import register_tool, tool_index_handler  # noqa: E402
+        from unifi_network_mcp.utils.meta_tools import register_meta_tools  # noqa: E402
+        from unifi_network_mcp.utils.tool_loader import auto_load_tools  # noqa: E402
     except ModuleNotFoundError as e:
         if str(e).startswith("No module named 'mcp'"):
             print("\nERROR: Python MCP SDK not found (module 'mcp').")

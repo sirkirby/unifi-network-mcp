@@ -6,10 +6,10 @@ import json
 import logging
 from typing import Any, Dict
 
-from src.runtime import config, qos_manager, server
-from src.utils.confirmation import create_preview, should_auto_confirm, toggle_preview, update_preview
-from src.utils.permissions import parse_permission
-from src.validator_registry import UniFiValidatorRegistry  # Added
+from unifi_network_mcp.runtime import config, qos_manager, server
+from unifi_network_mcp.utils.confirmation import create_preview, should_auto_confirm, toggle_preview, update_preview
+from unifi_network_mcp.utils.permissions import parse_permission
+from unifi_network_mcp.validator_registry import UniFiValidatorRegistry  # Added
 
 logger = logging.getLogger(__name__)
 

@@ -24,7 +24,7 @@ class TestAllowedHostsParsing:
         3. Verifying TransportSecuritySettings passed to FastMCP
         """
         # Remove runtime from sys.modules to force reimport with new env
-        modules_to_remove = [key for key in sys.modules if key.startswith("src.")]
+        modules_to_remove = [key for key in sys.modules if key.startswith("unifi_network_mcp.")]
         for mod in modules_to_remove:
             del sys.modules[mod]
 
@@ -47,7 +47,7 @@ class TestAllowedHostsParsing:
         ):
             try:
                 # Import triggers module-level get_server() call
-                from src.runtime import get_server  # noqa: F401
+                from unifi_network_mcp.runtime import get_server  # noqa: F401
 
                 # Verify FastMCP was called with correct transport_security
                 # Use call_args_list[-1] since module import may call it multiple times
@@ -64,7 +64,7 @@ class TestAllowedHostsParsing:
 
             finally:
                 # Clean up modules for next test
-                modules_to_remove = [key for key in sys.modules if key.startswith("src.")]
+                modules_to_remove = [key for key in sys.modules if key.startswith("unifi_network_mcp.")]
                 for mod in modules_to_remove:
                     del sys.modules[mod]
 
@@ -117,7 +117,7 @@ class TestDnsRebindingProtection:
         3. Verifying enable_dns_rebinding_protection in TransportSecuritySettings
         """
         # Remove runtime from sys.modules to force reimport with new env
-        modules_to_remove = [key for key in sys.modules if key.startswith("src.")]
+        modules_to_remove = [key for key in sys.modules if key.startswith("unifi_network_mcp.")]
         for mod in modules_to_remove:
             del sys.modules[mod]
 
@@ -139,7 +139,7 @@ class TestDnsRebindingProtection:
             patch("mcp.server.fastmcp.FastMCP") as mock_fastmcp,
         ):
             try:
-                from src.runtime import get_server  # noqa: F401
+                from unifi_network_mcp.runtime import get_server  # noqa: F401
 
                 assert mock_fastmcp.call_args_list, "FastMCP should have been called"
 
@@ -153,7 +153,7 @@ class TestDnsRebindingProtection:
                 )
 
             finally:
-                modules_to_remove = [key for key in sys.modules if key.startswith("src.")]
+                modules_to_remove = [key for key in sys.modules if key.startswith("unifi_network_mcp.")]
                 for mod in modules_to_remove:
                     del sys.modules[mod]
 

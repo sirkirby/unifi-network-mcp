@@ -99,7 +99,7 @@ def get_tool_index() -> Dict[str, Any]:
     """
     # In lazy mode, read from static manifest
     try:
-        from src.bootstrap import UNIFI_TOOL_REGISTRATION_MODE
+        from unifi_network_mcp.bootstrap import UNIFI_TOOL_REGISTRATION_MODE
 
         if UNIFI_TOOL_REGISTRATION_MODE == "lazy":
             # Try to load static manifest first

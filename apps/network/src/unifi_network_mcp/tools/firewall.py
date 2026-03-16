@@ -6,10 +6,10 @@ import json
 import logging
 from typing import Any, Dict
 
-from src.runtime import config, firewall_manager, network_manager, server
-from src.utils.confirmation import create_preview, should_auto_confirm, toggle_preview, update_preview
-from src.utils.permissions import parse_permission  # CORRECTED import name
-from src.validator_registry import UniFiValidatorRegistry  # Added
+from unifi_network_mcp.runtime import config, firewall_manager, network_manager, server
+from unifi_network_mcp.utils.confirmation import create_preview, should_auto_confirm, toggle_preview, update_preview
+from unifi_network_mcp.utils.permissions import parse_permission  # CORRECTED import name
+from unifi_network_mcp.validator_registry import UniFiValidatorRegistry  # Added
 
 logger = logging.getLogger(__name__)
 
@@ -352,7 +352,7 @@ async def create_firewall_policy(policy_data: Dict[str, Any], confirm: bool = Fa
 
     # --- Use Validator Registry for Comprehensive Validation ---
     # This replaces the basic required field checks below
-    from src.validator_registry import UniFiValidatorRegistry
+    from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("firewall_policy_create", policy_data)
 

@@ -25,7 +25,7 @@ class TestEventManager:
     @pytest.fixture
     def event_manager(self, mock_connection):
         """Create an EventManager with mocked connection."""
-        from src.managers.event_manager import EventManager
+        from unifi_network_mcp.managers.event_manager import EventManager
 
         return EventManager(mock_connection)
 

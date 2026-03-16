@@ -283,7 +283,7 @@ class ConnectionManager:
                     # 1. Pre-login: Determines auth endpoint (/api/auth/login vs /api/login)
                     # 2. Post-login: Verifies API path prefix (/proxy/network/api vs /api)
                     # See: https://github.com/sirkirby/unifi-network-mcp/issues/33
-                    from src.bootstrap import UNIFI_CONTROLLER_TYPE
+                    from unifi_network_mcp.bootstrap import UNIFI_CONTROLLER_TYPE
 
                     if UNIFI_CONTROLLER_TYPE == "proxy":
                         self._unifi_os_override = True
@@ -446,7 +446,7 @@ class ConnectionManager:
             response = await request_method(api_request)
             duration_ms = (_time.perf_counter() - start_ts) * 1000.0
             try:
-                from src.utils.diagnostics import (
+                from unifi_network_mcp.utils.diagnostics import (
                     diagnostics_enabled,
                     log_api_request,
                 )  # lazy import to avoid cycles
@@ -476,7 +476,7 @@ class ConnectionManager:
                     retry_response = await request_method(api_request)
                     duration_ms = (_time.perf_counter() - start_ts) * 1000.0
                     try:
-                        from src.utils.diagnostics import (
+                        from unifi_network_mcp.utils.diagnostics import (
                             diagnostics_enabled,
                             log_api_request,
                         )
@@ -504,7 +504,7 @@ class ConnectionManager:
         except (RequestError, ResponseError, aiohttp.ClientError) as e:
             logger.error(f"API request error: {api_request.method.upper()} {api_request.path} - {e}")
             try:
-                from src.utils.diagnostics import diagnostics_enabled, log_api_request
+                from unifi_network_mcp.utils.diagnostics import diagnostics_enabled, log_api_request
 
                 if diagnostics_enabled():
                     payload = getattr(api_request, "json", None) or getattr(api_request, "data", None)
@@ -525,7 +525,7 @@ class ConnectionManager:
                 exc_info=True,
             )
             try:
-                from src.utils.diagnostics import diagnostics_enabled, log_api_request
+                from unifi_network_mcp.utils.diagnostics import diagnostics_enabled, log_api_request
 
                 if diagnostics_enabled():
                     payload = getattr(api_request, "json", None) or getattr(api_request, "data", None)

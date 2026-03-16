@@ -8,7 +8,7 @@ FastMCP server instance, loaded configuration, and all manager helpers.
 
 Downstream code (tool modules, tests, etc.) should import these via::
 
-    from src.runtime import server, config, device_manager
+    from unifi_network_mcp.runtime import server, config, device_manager
 
 Lazy factories (`get_*`) are provided so unit tests can substitute fakes by
 monkey‑patching before the first call.
@@ -25,23 +25,23 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
-from src.bootstrap import load_config, logger
-from src.managers.acl_manager import AclManager
-from src.managers.client_manager import ClientManager
-from src.managers.connection_manager import ConnectionManager
-from src.managers.device_manager import DeviceManager
-from src.managers.event_manager import EventManager
-from src.managers.firewall_manager import FirewallManager
-from src.managers.hotspot_manager import HotspotManager
-from src.managers.network_manager import NetworkManager
-from src.managers.qos_manager import QosManager
-from src.managers.routing_manager import RoutingManager
-from src.managers.stats_manager import StatsManager
-from src.managers.system_manager import SystemManager
-from src.managers.traffic_route_manager import TrafficRouteManager
-from src.managers.usergroup_manager import UsergroupManager
-from src.managers.vpn_manager import VpnManager
-from src.tool_index import TOOL_REGISTRY
+from unifi_network_mcp.bootstrap import load_config, logger
+from unifi_network_mcp.managers.acl_manager import AclManager
+from unifi_network_mcp.managers.client_manager import ClientManager
+from unifi_network_mcp.managers.connection_manager import ConnectionManager
+from unifi_network_mcp.managers.device_manager import DeviceManager
+from unifi_network_mcp.managers.event_manager import EventManager
+from unifi_network_mcp.managers.firewall_manager import FirewallManager
+from unifi_network_mcp.managers.hotspot_manager import HotspotManager
+from unifi_network_mcp.managers.network_manager import NetworkManager
+from unifi_network_mcp.managers.qos_manager import QosManager
+from unifi_network_mcp.managers.routing_manager import RoutingManager
+from unifi_network_mcp.managers.stats_manager import StatsManager
+from unifi_network_mcp.managers.system_manager import SystemManager
+from unifi_network_mcp.managers.traffic_route_manager import TrafficRouteManager
+from unifi_network_mcp.managers.usergroup_manager import UsergroupManager
+from unifi_network_mcp.managers.vpn_manager import VpnManager
+from unifi_network_mcp.tool_index import TOOL_REGISTRY
 
 # ---------------------------------------------------------------------------
 # Core singletons

@@ -33,7 +33,7 @@ class TestGetClientByIP:
     @pytest.fixture
     def client_manager(self, mock_connection):
         """Create a ClientManager with mocked connection."""
-        from src.managers.client_manager import ClientManager
+        from unifi_network_mcp.managers.client_manager import ClientManager
 
         return ClientManager(mock_connection)
 

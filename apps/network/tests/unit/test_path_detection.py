@@ -11,7 +11,7 @@ import aiohttp
 import pytest
 from aioresponses import CallbackResult, aioresponses
 
-from src.managers.connection_manager import (
+from unifi_network_mcp.managers.connection_manager import (
     ConnectionManager,
     detect_unifi_os_proactively,
     detect_with_retry,
@@ -347,9 +347,9 @@ class TestPathDetection:
                 repeat=True,
             )
 
-            with patch("src.managers.connection_manager.Controller") as MockController:
+            with patch("unifi_network_mcp.managers.connection_manager.Controller") as MockController:
                 MockController.return_value = mock_controller
-                with patch("src.bootstrap.UNIFI_CONTROLLER_TYPE", "auto"):
+                with patch("unifi_network_mcp.bootstrap.UNIFI_CONTROLLER_TYPE", "auto"):
                     # First initialization
                     result1 = await manager.initialize()
                     first_pre_login = pre_login_probe_count

@@ -7,9 +7,9 @@ This module provides MCP tools to manage user groups (bandwidth profiles) on a U
 import logging
 from typing import Any, Dict, Optional
 
-from src.runtime import config, server
-from src.utils.confirmation import create_preview, should_auto_confirm, update_preview
-from src.utils.permissions import parse_permission
+from unifi_network_mcp.runtime import config, server
+from unifi_network_mcp.utils.confirmation import create_preview, should_auto_confirm, update_preview
+from unifi_network_mcp.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,8 @@ def _get_usergroup_manager():
     """Lazy-load the usergroup manager to avoid circular imports."""
     global _usergroup_manager
     if _usergroup_manager is None:
-        from src.managers.usergroup_manager import UsergroupManager
-        from src.runtime import get_connection_manager
+        from unifi_network_mcp.managers.usergroup_manager import UsergroupManager
+        from unifi_network_mcp.runtime import get_connection_manager
 
         _usergroup_manager = UsergroupManager(get_connection_manager())
     return _usergroup_manager

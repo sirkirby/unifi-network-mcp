@@ -8,8 +8,8 @@ including managing VPN clients and servers.
 import logging
 from typing import Any, Dict
 
-from src.runtime import config, server, vpn_manager
-from src.utils.permissions import parse_permission
+from unifi_network_mcp.runtime import config, server, vpn_manager
+from unifi_network_mcp.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
 

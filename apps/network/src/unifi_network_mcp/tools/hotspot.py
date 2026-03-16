@@ -7,8 +7,8 @@ This module provides MCP tools to manage hotspot vouchers on a UniFi Network Con
 import logging
 from typing import Any, Dict, Optional
 
-from src.runtime import server
-from src.utils.confirmation import create_preview, preview_response, should_auto_confirm
+from unifi_network_mcp.runtime import server
+from unifi_network_mcp.utils.confirmation import create_preview, preview_response, should_auto_confirm
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +20,8 @@ def _get_hotspot_manager():
     """Lazy-load the hotspot manager to avoid circular imports."""
     global _hotspot_manager
     if _hotspot_manager is None:
-        from src.managers.hotspot_manager import HotspotManager
-        from src.runtime import get_connection_manager
+        from unifi_network_mcp.managers.hotspot_manager import HotspotManager
+        from unifi_network_mcp.runtime import get_connection_manager
 
         _hotspot_manager = HotspotManager(get_connection_manager())
     return _hotspot_manager

@@ -9,7 +9,7 @@ from typing import Any, Dict
 
 from mcp.server import Server
 
-from src.managers.system_manager import SystemManager
+from unifi_network_mcp.managers.system_manager import SystemManager
 
 logger = logging.getLogger(__name__)
 
