@@ -32,7 +32,7 @@ unifi-network-mcp is **not**:
 **"Secure by default"** means:
 - High-risk operations (network/device/client modification) are disabled unless explicitly enabled via environment variables or config
 - All mutations require a two-step preview-then-confirm flow
-- Delete operations are unconditionally denied at the permission layer
+- Delete operations are denied by default and require explicit opt-in via environment variable or config
 - Read-only actions are allowed by default
 
 **"Context-optimized"** means:
@@ -176,7 +176,7 @@ All tools MUST return a `Dict[str, Any]` with this structure:
 
 - Permissions are checked at **tool registration time** (fail-fast), not at call time
 - Priority order: Environment variable > config YAML > default section > hardcoded fallback
-- `delete` actions are **unconditionally denied** regardless of configuration
+- `delete` actions are **denied by default** and require explicit opt-in via `UNIFI_PERMISSIONS_<CATEGORY>_DELETE=true` or config
 - `read` actions are **allowed by default** when not explicitly configured
 - High-risk categories (networks, devices, clients, WLANs) default to `false` for create/update
 - Tools denied by permissions are still registered in the tool index (for discovery) but NOT callable via MCP
