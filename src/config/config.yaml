@@ -65,67 +65,84 @@ permissions:
   default:
     create: true
     update: true
+    delete: false
 
   acl_rules:
     create: true
     update: true
+    delete: false
 
   firewall_policies:
     create: true
     update: true
-    
+    delete: false
+
   traffic_routes:
     create: true
     update: true
-    
+    delete: false
+
   port_forwards:
     create: true
     update: true
-    
+    delete: false
+
   qos_rules:
     create: true
     update: true
-    
+    delete: false
+
   vpn_clients:
     create: true
     update: true
+    delete: false
 
   networks:
     create: false  # Provisioning a new network can disrupt traffic
     update: false  # Changing subnets, VLANs, DHCP ranges requires care
+    delete: false
 
   wlans:
     create: false
     update: false
+    delete: false
 
   devices:
     create: false  # Adoption / provisioning – normally handled by controller, not tools
     update: false  # Firmware upgrade, rename, radio config, etc.
+    delete: false
 
   clients:
     create: false  # Not applicable, but kept for symmetry
     update: false  # Block/unblock, rename, reconnect
+    delete: false
 
   vpn_servers:
     create: false
     update: true
+    delete: false
 
   events:
     create: false  # Events are read-only
     update: true   # Allow archiving alarms
+    delete: false
 
   vouchers:
     create: true   # Allow creating guest vouchers
     update: true   # Allow revoking vouchers
+    delete: false
 
   usergroups:
     create: true   # Allow creating bandwidth profiles
     update: true   # Allow modifying bandwidth limits
+    delete: false
 
   routes:
     create: false  # Static routes can disrupt connectivity
     update: false  # Modifying routes requires careful planning
+    delete: false
 
   snmp:
     create: false  # Not applicable
     update: true   # Allow enabling/disabling SNMP and changing community
+    delete: false
