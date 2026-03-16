@@ -142,8 +142,15 @@ class ClientManager:
                 return False
             client_id = client.raw["_id"]
 
-            api_request = ApiRequest(method="put", path=f"/upd/user/{client_id}", data={"name": name})
-            await self._connection.request(api_request)
+            # Use REST endpoint (consistent with set_client_ip_settings).
+            # Fall back to legacy /upd/user/ for older standalone controllers.
+            try:
+                api_request = ApiRequest(method="put", path=f"/rest/user/{client_id}", data={"name": name})
+                await self._connection.request(api_request)
+            except Exception:
+                logger.debug(f"REST endpoint failed for rename, falling back to legacy /upd/user/ for {client_mac}")
+                api_request = ApiRequest(method="put", path=f"/upd/user/{client_id}", data={"name": name})
+                await self._connection.request(api_request)
             logger.info(f"Rename command sent for client {client_mac} to '{name}'")
             self._connection._invalidate_cache(f"{CACHE_PREFIX_CLIENTS}")
             return True
