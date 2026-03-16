@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 
 # Import the global FastMCP server instance, config, and managers
 from unifi_network_mcp.runtime import client_manager, config, server
-from unifi_network_mcp.utils.confirmation import should_auto_confirm, toggle_preview, update_preview
+from unifi_mcp_shared.confirmation import should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
@@ -353,7 +353,7 @@ async def force_reconnect_client(mac_address: str, confirm: bool = False) -> Dic
         # Return preview when confirm=false
         if not confirm and not should_auto_confirm():
             return {
-                "success": False,
+                "success": True,
                 "requires_confirmation": True,
                 "action": "force_reconnect",
                 "resource_type": "client",
@@ -427,7 +427,7 @@ async def authorize_guest(
                 settings["bytes_quota"] = bytes_quota
 
             return {
-                "success": False,
+                "success": True,
                 "requires_confirmation": True,
                 "action": "authorize_guest",
                 "resource_type": "client",
@@ -482,7 +482,7 @@ async def unauthorize_guest(mac_address: str, confirm: bool = False) -> Dict[str
         # Return preview when confirm=false
         if not confirm and not should_auto_confirm():
             return {
-                "success": False,
+                "success": True,
                 "requires_confirmation": True,
                 "action": "unauthorize_guest",
                 "resource_type": "client",

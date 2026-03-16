@@ -8,7 +8,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from unifi_network_mcp.runtime import config, server, system_manager
-from unifi_network_mcp.utils.confirmation import should_auto_confirm, update_preview
+from unifi_mcp_shared.confirmation import should_auto_confirm, update_preview
 from unifi_network_mcp.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)

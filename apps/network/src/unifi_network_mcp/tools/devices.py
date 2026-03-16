@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 
 # Import the global FastMCP server instance, config, and managers
 from unifi_network_mcp.runtime import config, device_manager, server
-from unifi_network_mcp.utils.confirmation import create_preview, preview_response, should_auto_confirm, update_preview
+from unifi_mcp_shared.confirmation import create_preview, preview_response, should_auto_confirm, update_preview
 from unifi_network_mcp.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)

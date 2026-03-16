@@ -399,7 +399,7 @@ class TestUpdateDeviceRadioTool:
                 mac_address="28:70:4e:c1:b4:c8", radio="na", tx_power_mode="high", confirm=False
             )
 
-        assert result["success"] is False
+        assert result["success"] is True
         assert result["requires_confirmation"] is True
         assert "warnings" in result
         assert any("restart" in w.lower() for w in result["warnings"])

@@ -11,7 +11,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from unifi_network_mcp.runtime import acl_manager, config, server
-from unifi_network_mcp.utils.confirmation import create_preview, should_auto_confirm
+from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm
 from unifi_network_mcp.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)

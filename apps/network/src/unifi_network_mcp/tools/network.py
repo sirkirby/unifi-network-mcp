@@ -10,7 +10,7 @@ import logging
 from typing import Any, Dict
 
 from unifi_network_mcp.runtime import config, network_manager, server
-from unifi_network_mcp.utils.confirmation import create_preview, should_auto_confirm, update_preview
+from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, update_preview
 from unifi_network_mcp.utils.permissions import parse_permission
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
