@@ -147,8 +147,11 @@ class ClientManager:
             try:
                 api_request = ApiRequest(method="put", path=f"/rest/user/{client_id}", data={"name": name})
                 await self._connection.request(api_request)
-            except Exception:
-                logger.debug(f"REST endpoint failed for rename, falling back to legacy /upd/user/ for {client_mac}")
+            except Exception as e:
+                logger.debug(
+                    f"REST endpoint failed for rename, falling back to legacy /upd/user/ for {client_mac}: {e}",
+                    exc_info=True,
+                )
                 api_request = ApiRequest(method="put", path=f"/upd/user/{client_id}", data={"name": name})
                 await self._connection.request(api_request)
             logger.info(f"Rename command sent for client {client_mac} to '{name}'")
