@@ -71,7 +71,7 @@ async def list_vouchers() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error listing vouchers: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list vouchers: {e}"}
 
 
 @server.tool(
@@ -97,7 +97,7 @@ async def get_voucher_details(voucher_id: str) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting voucher details for {voucher_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get voucher details for {voucher_id}: {e}"}
 
 
 @server.tool(
@@ -174,7 +174,7 @@ async def create_voucher(
         return {"success": False, "error": "Failed to create vouchers."}
     except Exception as e:
         logger.error(f"Error creating vouchers: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to create vouchers: {e}"}
 
 
 @server.tool(
@@ -226,4 +226,4 @@ async def revoke_voucher(voucher_id: str, confirm: bool = False) -> Dict[str, An
         return {"success": False, "error": f"Failed to revoke voucher {voucher_id}."}
     except Exception as e:
         logger.error(f"Error revoking voucher {voucher_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to revoke voucher {voucher_id}: {e}"}

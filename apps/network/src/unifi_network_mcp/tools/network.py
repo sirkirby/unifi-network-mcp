@@ -107,7 +107,7 @@ async def list_networks() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error listing networks in tool: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list networks: {e}"}
 
 
 @server.tool(
@@ -174,7 +174,7 @@ async def get_network_details(network_id: str) -> Dict[str, Any]:
             }
     except Exception as e:
         logger.error(f"Error getting network details for {network_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get network details for {network_id}: {e}"}
 
 
 @server.tool(
@@ -298,7 +298,7 @@ async def update_network(network_id: str, update_data: Dict[str, Any], confirm: 
 
     except Exception as e:
         logger.error(f"Error updating network {network_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to update network {network_id}: {e}"}
 
 
 @server.tool(
@@ -543,7 +543,7 @@ async def list_wlans() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error listing WLANs: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list WLANs: {e}"}
 
 
 @server.tool(
@@ -603,7 +603,7 @@ async def get_wlan_details(wlan_id: str) -> Dict[str, Any]:
             return {"success": False, "error": f"WLAN with ID '{wlan_id}' not found."}
     except Exception as e:
         logger.error(f"Error getting WLAN details for {wlan_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get WLAN details for {wlan_id}: {e}"}
 
 
 @server.tool(
@@ -715,7 +715,7 @@ async def update_wlan(wlan_id: str, update_data: Dict[str, Any], confirm: bool =
 
     except Exception as e:
         logger.error(f"Error updating WLAN {wlan_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to update WLAN {wlan_id}: {e}"}
 
 
 @server.tool(

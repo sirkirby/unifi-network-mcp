@@ -85,7 +85,7 @@ async def list_routes() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error listing routes: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list routes: {e}"}
 
 
 @server.tool(
@@ -113,7 +113,7 @@ async def list_active_routes() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error listing active routes: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list active routes: {e}"}
 
 
 @server.tool(
@@ -139,7 +139,7 @@ async def get_route_details(route_id: str) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting route details for {route_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get route details for {route_id}: {e}"}
 
 
 @server.tool(
@@ -216,7 +216,7 @@ async def create_route(
         return {"success": False, "error": "Failed to create route."}
     except Exception as e:
         logger.error(f"Error creating route: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to create route: {e}"}
 
 
 @server.tool(
@@ -335,4 +335,4 @@ async def update_route(
         return {"success": False, "error": f"Failed to update route {route_id}."}
     except Exception as e:
         logger.error(f"Error updating route {route_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to update route {route_id}: {e}"}

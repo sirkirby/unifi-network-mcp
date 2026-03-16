@@ -40,7 +40,7 @@ async def get_system_info() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting system info: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get system info: {e}"}
 
 
 @server.tool(
@@ -69,7 +69,7 @@ async def get_network_health() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting network health: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get network health: {e}"}
 
 
 @server.tool(
@@ -89,7 +89,7 @@ async def get_site_settings() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting site settings: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get site settings: {e}"}
 
 
 @server.tool(
@@ -113,7 +113,7 @@ async def get_snmp_settings() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting SNMP settings: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get SNMP settings: {e}"}
 
 
 @server.tool(
@@ -178,7 +178,7 @@ async def update_snmp_settings(
         return {"success": False, "error": "Failed to update SNMP settings."}
     except Exception as e:
         logger.error(f"Error updating SNMP settings: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to update SNMP settings: {e}"}
 
 
 # Print confirmation that all tools have been registered

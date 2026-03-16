@@ -70,7 +70,7 @@ async def list_events(
         }
     except Exception as e:
         logger.error(f"Error listing events: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list events: {e}"}
 
 
 @server.tool(
@@ -104,7 +104,7 @@ async def list_alarms(
         }
     except Exception as e:
         logger.error(f"Error listing alarms: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list alarms: {e}"}
 
 
 @server.tool(
@@ -127,7 +127,7 @@ async def get_event_types() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting event types: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get event types: {e}"}
 
 
 @server.tool(
@@ -158,7 +158,7 @@ async def archive_alarm(alarm_id: str, confirm: bool = False) -> Dict[str, Any]:
         return {"success": False, "error": f"Failed to archive alarm {alarm_id}."}
     except Exception as e:
         logger.error(f"Error archiving alarm {alarm_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to archive alarm {alarm_id}: {e}"}
 
 
 @server.tool(
@@ -189,4 +189,4 @@ async def archive_all_alarms(confirm: bool = False) -> Dict[str, Any]:
         return {"success": False, "error": "Failed to archive all alarms."}
     except Exception as e:
         logger.error(f"Error archiving all alarms: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to archive all alarms: {e}"}

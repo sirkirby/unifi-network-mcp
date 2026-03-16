@@ -168,7 +168,7 @@ async def list_devices(device_type: str = "all", status: str = "all", include_de
         }
     except Exception as e:
         logger.error(f"Error listing devices: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list devices: {e}"}
 
 
 @server.tool(
@@ -197,7 +197,7 @@ async def get_device_details(mac_address: str) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting device details for {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get device details for {mac_address}: {e}"}
 
 
 @server.tool(
@@ -269,7 +269,7 @@ async def reboot_device(mac_address: str, confirm: bool = False) -> Dict[str, An
             }
     except Exception as e:
         logger.error(f"Error rebooting device {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to reboot device {mac_address}: {e}"}
 
 
 @server.tool(
@@ -320,7 +320,7 @@ async def rename_device(mac_address: str, name: str, confirm: bool = False) -> D
         return {"success": False, "error": f"Failed to rename device {mac_address}."}
     except Exception as e:
         logger.error(f"Error renaming device {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to rename device {mac_address}: {e}"}
 
 
 @server.tool(
@@ -377,7 +377,7 @@ async def adopt_device(mac_address: str, confirm: bool = False) -> Dict[str, Any
         return {"success": False, "error": f"Failed to adopt device {mac_address}."}
     except Exception as e:
         logger.error(f"Error adopting device {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to adopt device {mac_address}: {e}"}
 
 
 @server.tool(
@@ -446,7 +446,7 @@ async def upgrade_device(mac_address: str, confirm: bool = False) -> Dict[str, A
         return {"success": False, "error": f"Failed to upgrade device {mac_address}."}
     except Exception as e:
         logger.error(f"Error upgrading device {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to upgrade device {mac_address}: {e}"}
 
 
 RADIO_BAND_LABELS = {"ng": "2.4GHz", "na": "5GHz", "6e": "6GHz", "wifi6e": "6GHz"}
@@ -481,7 +481,7 @@ async def get_device_radio(mac_address: str) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting radio info for {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get radio info for device {mac_address}: {e}"}
 
 
 @server.tool(
@@ -599,4 +599,4 @@ async def update_device_radio(
         return {"success": False, "error": f"Failed to update radio '{radio}' on device {mac_address}."}
     except Exception as e:
         logger.error(f"Error updating radio on {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to update radio on device {mac_address}: {e}"}

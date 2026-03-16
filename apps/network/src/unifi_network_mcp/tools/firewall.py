@@ -91,7 +91,7 @@ async def list_firewall_policies(include_predefined: bool = False) -> Dict[str, 
         }
     except Exception as e:
         logger.error(f"Error listing firewall policies: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list firewall policies: {e}"}
 
 
 @server.tool(
@@ -162,7 +162,7 @@ async def get_firewall_policy_details(policy_id: str) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting firewall policy details for {policy_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get firewall policy details for {policy_id}: {e}"}
 
 
 @server.tool(
@@ -263,7 +263,7 @@ async def toggle_firewall_policy(policy_id: str, confirm: bool = False) -> Dict[
             }
     except Exception as e:
         logger.error(f"Error toggling firewall policy {policy_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to toggle firewall policy {policy_id}: {e}"}
 
 
 @server.tool(
@@ -425,7 +425,7 @@ async def create_firewall_policy(policy_data: Dict[str, Any], confirm: bool = Fa
             f"Unexpected error creating firewall policy '{policy_name}': {e}",
             exc_info=True,
         )
-        return {"success": False, "error": f"An unexpected error occurred: {str(e)}"}
+        return {"success": False, "error": f"Failed to create firewall policy '{policy_name}': {e}"}
 
 
 @server.tool(
@@ -570,7 +570,7 @@ async def update_firewall_policy(policy_id: str, update_data: Dict[str, Any], co
 
     except Exception as e:
         logger.error(f"Error updating firewall policy {policy_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to update firewall policy {policy_id}: {e}"}
 
 
 @server.tool(

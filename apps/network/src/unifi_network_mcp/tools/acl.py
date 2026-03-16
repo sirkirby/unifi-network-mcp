@@ -65,7 +65,7 @@ async def list_acl_rules(network_id: Optional[str] = None) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error listing ACL rules: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list ACL rules: {e}"}
 
 
 @server.tool(
@@ -106,7 +106,7 @@ async def get_acl_rule_details(rule_id: str) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting ACL rule {rule_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get ACL rule {rule_id}: {e}"}
 
 
 @server.tool(
@@ -191,7 +191,7 @@ async def create_acl_rule(
         return {"success": False, "error": "Failed to create ACL rule."}
     except Exception as e:
         logger.error(f"Error creating ACL rule: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to create ACL rule: {e}"}
 
 
 @server.tool(
@@ -228,7 +228,7 @@ async def update_acl_rule(rule_id: str, rule_data: dict, confirm: bool = False) 
         return {"success": False, "error": f"Failed to update ACL rule '{rule_id}'."}
     except Exception as e:
         logger.error(f"Error updating ACL rule {rule_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to update ACL rule {rule_id}: {e}"}
 
 
 @server.tool(
@@ -265,4 +265,4 @@ async def delete_acl_rule(rule_id: str, confirm: bool = False) -> Dict[str, Any]
         return {"success": False, "error": f"Failed to delete ACL rule '{rule_id}'."}
     except Exception as e:
         logger.error(f"Error deleting ACL rule {rule_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to delete ACL rule {rule_id}: {e}"}

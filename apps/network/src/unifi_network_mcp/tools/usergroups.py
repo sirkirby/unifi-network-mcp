@@ -73,7 +73,7 @@ async def list_usergroups() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error listing user groups: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list user groups: {e}"}
 
 
 @server.tool(
@@ -99,7 +99,7 @@ async def get_usergroup_details(group_id: str) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting user group details for {group_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get user group details for {group_id}: {e}"}
 
 
 @server.tool(
@@ -159,7 +159,7 @@ async def create_usergroup(
         return {"success": False, "error": "Failed to create user group."}
     except Exception as e:
         logger.error(f"Error creating user group: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to create user group: {e}"}
 
 
 @server.tool(
@@ -240,4 +240,4 @@ async def update_usergroup(
         return {"success": False, "error": f"Failed to update user group {group_id}."}
     except Exception as e:
         logger.error(f"Error updating user group {group_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to update user group {group_id}: {e}"}

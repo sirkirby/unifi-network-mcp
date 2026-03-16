@@ -82,7 +82,7 @@ async def list_port_forwards() -> Dict[str, Any]:  # Removed context, adjusted r
         }
     except Exception as e:
         logger.error(f"Error listing port forwards: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list port forwards: {e}"}
 
 
 @server.tool(
@@ -150,7 +150,7 @@ async def get_port_forward(
         }
     except Exception as e:
         logger.error(f"Error getting port forward {port_forward_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get port forward {port_forward_id}: {e}"}
 
 
 @server.tool(
@@ -261,7 +261,7 @@ async def toggle_port_forward(
 
     except Exception as e:
         logger.error(f"Error toggling port forward {port_forward_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to toggle port forward {port_forward_id}: {e}"}
 
 
 # Create Port Forward
@@ -538,7 +538,7 @@ async def update_port_forward(
 
     except Exception as e:
         logger.error(f"Error updating port forward {port_forward_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to update port forward {port_forward_id}: {e}"}
 
 
 @server.tool(

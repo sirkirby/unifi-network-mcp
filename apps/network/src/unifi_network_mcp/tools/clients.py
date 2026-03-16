@@ -46,7 +46,7 @@ async def lookup_by_ip(ip_address: str) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error looking up client by IP {ip_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to look up client by IP {ip_address}: {e}"}
 
 
 @server.tool(
@@ -113,7 +113,7 @@ async def list_clients(filter_type: str = "all", include_offline: bool = False, 
         }
     except Exception as e:
         logger.error(f"Error listing clients: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list clients: {e}"}
 
 
 @server.tool(
@@ -143,7 +143,7 @@ async def get_client_details(mac_address: str) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting client details for {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get client details for {mac_address}: {e}"}
 
 
 @server.tool(
@@ -180,7 +180,7 @@ async def list_blocked_clients() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error listing blocked clients: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list blocked clients: {e}"}
 
 
 @server.tool(
@@ -232,7 +232,7 @@ async def block_client(mac_address: str, confirm: bool = False) -> Dict[str, Any
         return {"success": False, "error": f"Failed to block client {mac_address}."}
     except Exception as e:
         logger.error(f"Error blocking client {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to block client {mac_address}: {e}"}
 
 
 @server.tool(
@@ -284,7 +284,7 @@ async def unblock_client(mac_address: str, confirm: bool = False) -> Dict[str, A
         return {"success": False, "error": f"Failed to unblock client {mac_address}."}
     except Exception as e:
         logger.error(f"Error unblocking client {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to unblock client {mac_address}: {e}"}
 
 
 @server.tool(
@@ -329,7 +329,7 @@ async def rename_client(mac_address: str, name: str, confirm: bool = False) -> D
         return {"success": False, "error": f"Failed to rename client {mac_address}."}
     except Exception as e:
         logger.error(f"Error renaming client {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to rename client {mac_address}: {e}"}
 
 
 @server.tool(
@@ -392,7 +392,7 @@ async def force_reconnect_client(mac_address: str, confirm: bool = False) -> Dic
         }
     except Exception as e:
         logger.error(f"Error forcing reconnect for client {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to force reconnect for client {mac_address}: {e}"}
 
 
 @server.tool(
@@ -463,7 +463,7 @@ async def authorize_guest(
         return {"success": False, "error": f"Failed to authorize guest {mac_address}."}
     except Exception as e:
         logger.error(f"Error authorizing guest {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to authorize guest {mac_address}: {e}"}
 
 
 @server.tool(
@@ -522,7 +522,7 @@ async def unauthorize_guest(mac_address: str, confirm: bool = False) -> Dict[str
         }
     except Exception as e:
         logger.error(f"Error unauthorizing guest {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to unauthorize guest {mac_address}: {e}"}
 
 
 @server.tool(
@@ -630,4 +630,4 @@ async def set_client_ip_settings(
         }
     except Exception as e:
         logger.error(f"Error setting IP settings for {mac_address}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to set IP settings for client {mac_address}: {e}"}

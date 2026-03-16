@@ -73,7 +73,7 @@ async def list_qos_rules() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error listing QoS rules: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to list QoS rules: {e}"}
 
 
 @server.tool(
@@ -137,7 +137,7 @@ async def get_qos_rule_details(rule_id: str) -> Dict[str, Any]:
             }
     except Exception as e:
         logger.error(f"Error getting QoS rule {rule_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get QoS rule {rule_id}: {e}"}
 
 
 @server.tool(
@@ -235,7 +235,7 @@ async def toggle_qos_rule_enabled(rule_id: str, confirm: bool = False) -> Dict[s
 
     except Exception as e:
         logger.error(f"Error toggling QoS rule {rule_id} state: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to toggle QoS rule {rule_id} state: {e}"}
 
 
 # --- NEW UPDATE QOS RULE TOOL ---
@@ -320,7 +320,7 @@ async def update_qos_rule(rule_id: str, update_data: Dict[str, Any], confirm: bo
         logger.info(f"Attempting to update QoS rule '{rule_id}' with fields: {', '.join(updated_fields_list)}")
     except Exception as e:
         logger.error(f"Error fetching QoS rule {rule_id} for preview: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to fetch QoS rule {rule_id} for preview: {e}"}
     try:
         # Assuming qos_manager.update_qos_rule handles fetch-merge-put or accepts partial data
         success = await qos_manager.update_qos_rule(rule_id, validated_data)
@@ -347,7 +347,7 @@ async def update_qos_rule(rule_id: str, update_data: Dict[str, Any], confirm: bo
 
     except Exception as e:
         logger.error(f"Error updating QoS rule {rule_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to update QoS rule {rule_id}: {e}"}
 
 
 @server.tool(
@@ -449,7 +449,7 @@ async def create_qos_rule(
 
     except Exception as e:
         logger.error(f"Error creating QoS rule '{rule_name}': {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to create QoS rule '{rule_name}': {e}"}
 
 
 @server.tool(

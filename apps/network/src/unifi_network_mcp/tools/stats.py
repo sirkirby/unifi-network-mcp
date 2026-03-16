@@ -59,7 +59,7 @@ async def get_network_stats(duration: str = "hourly") -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting network stats: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get network stats: {e}"}
 
 
 @server.tool(
@@ -98,7 +98,7 @@ async def get_client_stats(client_id: str, duration: str = "hourly") -> Dict[str
         }
     except Exception as e:
         logger.error(f"Error getting client stats for {client_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get client stats for {client_id}: {e}"}
 
 
 @server.tool(
@@ -145,7 +145,7 @@ async def get_device_stats(device_id: str, duration: str = "hourly") -> Dict[str
         }
     except Exception as e:
         logger.error(f"Error getting device stats for {device_id}: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get device stats for {device_id}: {e}"}
 
 
 @server.tool(
@@ -180,7 +180,7 @@ async def get_top_clients(duration: str = "daily", limit: int = 10) -> Dict[str,
         }
     except Exception as e:
         logger.error(f"Error getting top clients: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get top clients: {e}"}
 
 
 @server.tool(
@@ -209,7 +209,7 @@ async def get_dpi_stats() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error getting DPI stats: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get DPI stats: {e}"}
 
 
 @server.tool(
@@ -230,4 +230,4 @@ async def get_alerts(limit: int = 10, include_archived: bool = False) -> Dict[st
         }
     except Exception as e:
         logger.error(f"Error getting alerts: {e}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Failed to get alerts: {e}"}
