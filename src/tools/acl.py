@@ -231,7 +231,7 @@ async def update_acl_rule(rule_id: str, rule_data: dict, confirm: bool = False) 
     description="Delete a MAC ACL rule. Requires confirmation. WARNING: Removing an ALLOW rule "
     "may block device communication. Removing a BLOCK rule may open access.",
     permission_category="acl_rules",
-    permission_action="update",
+    permission_action="delete",
 )
 async def delete_acl_rule(rule_id: str, confirm: bool = False) -> Dict[str, Any]:
     """
