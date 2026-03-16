@@ -82,7 +82,7 @@ class TestServerConfigFromActualFile:
         """Verify src/config/config.yaml uses OmegaConf env interpolation for host/port."""
         from pathlib import Path
 
-        config_path = Path(__file__).parent.parent.parent / "src" / "config" / "config.yaml"
+        config_path = Path(__file__).parent.parent.parent / "src" / "unifi_network_mcp" / "config" / "config.yaml"
         content = config_path.read_text()
 
         assert "${oc.env:UNIFI_MCP_HOST,0.0.0.0}" in content, (
