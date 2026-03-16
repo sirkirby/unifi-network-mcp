@@ -8,7 +8,7 @@ Application with Policy Engine support.
 
 import json
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from src.runtime import acl_manager, config, server
 from src.utils.confirmation import create_preview, should_auto_confirm
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
     description="List MAC ACL rules (Policy Engine) for Layer 2 access control. "
     "These rules control which devices can communicate at Layer 2 within a VLAN.",
 )
-async def list_acl_rules(network_id: str = None) -> Dict[str, Any]:
+async def list_acl_rules(network_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Lists MAC ACL rules configured in the Policy Engine.
 
@@ -119,8 +119,8 @@ async def create_acl_rule(
     acl_index: int,
     action: str,
     mac_acl_network_id: str,
-    traffic_source: dict = None,
-    traffic_destination: dict = None,
+    traffic_source: Optional[dict] = None,
+    traffic_destination: Optional[dict] = None,
     confirm: bool = False,
 ) -> Dict[str, Any]:
     """

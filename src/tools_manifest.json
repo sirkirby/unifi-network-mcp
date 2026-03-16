@@ -37,7 +37,7 @@
     "unifi_get_port_forward": "src.tools.port_forwards",
     "unifi_get_qos_rule_details": "src.tools.qos",
     "unifi_get_route_details": "src.tools.routing",
-    "unifi_get_site_settings": "src.tools.system",
+    "unifi_get_site_settings": "src.tools.config",
     "unifi_get_snmp_settings": "src.tools.system",
     "unifi_get_system_info": "src.tools.system",
     "unifi_get_top_clients": "src.tools.stats",
