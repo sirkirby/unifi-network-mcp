@@ -44,9 +44,13 @@ jobs:
       - name: Get version from git
         id: version
         run: |
-          # Use centralized version script (single source of truth)
-          VERSION=$(./scripts/get-version.sh)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # Derive version from git describe (hatch-vcs compatible)
+          if git describe --tags --match 'v*' HEAD >/dev/null 2>&1; then
+            VERSION=$(git describe --tags --match 'v*' HEAD | sed 's/^v//')
+          else
+            VERSION="0.0.0.dev$(git rev-list --count HEAD)+g$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Detected version: $VERSION"
 
       - name: Extract metadata for Docker
@@ -73,7 +77,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
-          context: . # Use the root directory as the build context
+          context: .  # Workspace root (monorepo layout)
+          file: apps/network/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -81,4 +86,4 @@ jobs:
           build-args: |
             VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max 
+          cache-to: type=gha,mode=max
