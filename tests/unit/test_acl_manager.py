@@ -166,13 +166,15 @@ class TestAclManager:
         """Test create_acl_rule returns None when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await acl_manager.create_acl_rule({
-            "name": "Test",
-            "acl_index": 0,
-            "action": "ALLOW",
-            "mac_acl_network_id": "net1",
-            "type": "MAC",
-        })
+        result = await acl_manager.create_acl_rule(
+            {
+                "name": "Test",
+                "acl_index": 0,
+                "action": "ALLOW",
+                "mac_acl_network_id": "net1",
+                "type": "MAC",
+            }
+        )
 
         assert result is None
 
@@ -181,13 +183,15 @@ class TestAclManager:
         """Test create_acl_rule returns None on API error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await acl_manager.create_acl_rule({
-            "name": "Test",
-            "acl_index": 0,
-            "action": "ALLOW",
-            "mac_acl_network_id": "net1",
-            "type": "MAC",
-        })
+        result = await acl_manager.create_acl_rule(
+            {
+                "name": "Test",
+                "acl_index": 0,
+                "action": "ALLOW",
+                "mac_acl_network_id": "net1",
+                "type": "MAC",
+            }
+        )
 
         assert result is None
 
@@ -196,13 +200,15 @@ class TestAclManager:
         """Test create_acl_rule handles response with data key."""
         mock_connection.request.return_value = {"data": {"_id": "new1", "name": "Test"}}
 
-        result = await acl_manager.create_acl_rule({
-            "name": "Test",
-            "acl_index": 0,
-            "action": "ALLOW",
-            "mac_acl_network_id": "net1",
-            "type": "MAC",
-        })
+        result = await acl_manager.create_acl_rule(
+            {
+                "name": "Test",
+                "acl_index": 0,
+                "action": "ALLOW",
+                "mac_acl_network_id": "net1",
+                "type": "MAC",
+            }
+        )
 
         assert result == {"_id": "new1", "name": "Test"}
 
@@ -295,13 +301,15 @@ class TestAclManager:
         """Test create_acl_rule uses POST to the correct endpoint."""
         mock_connection.request.return_value = {"_id": "new1"}
 
-        await acl_manager.create_acl_rule({
-            "name": "Test",
-            "acl_index": 0,
-            "action": "ALLOW",
-            "mac_acl_network_id": "net1",
-            "type": "MAC",
-        })
+        await acl_manager.create_acl_rule(
+            {
+                "name": "Test",
+                "acl_index": 0,
+                "action": "ALLOW",
+                "mac_acl_network_id": "net1",
+                "type": "MAC",
+            }
+        )
 
         call_args = mock_connection.request.call_args
         api_request = call_args[0][0]
