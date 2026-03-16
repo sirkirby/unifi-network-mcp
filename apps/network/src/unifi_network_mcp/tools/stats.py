@@ -7,6 +7,7 @@ This module provides MCP tools to fetch statistics from a Unifi Network Controll
 import logging
 from typing import Any, Dict
 
+from mcp.types import ToolAnnotations
 from unifi_network_mcp.runtime import client_manager, server, stats_manager, system_manager
 
 logger = logging.getLogger(__name__)
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 @server.tool(
     name="unifi_get_network_stats",
     description="Get network statistics from the Unifi Network controller",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_network_stats(duration: str = "hourly") -> Dict[str, Any]:
     """Implementation for getting network stats."""
@@ -63,6 +65,7 @@ async def get_network_stats(duration: str = "hourly") -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_client_stats",
     description="Get statistics for a specific client/device",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_client_stats(client_id: str, duration: str = "hourly") -> Dict[str, Any]:
     """Implementation for getting client stats."""
@@ -100,6 +103,7 @@ async def get_client_stats(client_id: str, duration: str = "hourly") -> Dict[str
 
 @server.tool(
     name="unifi_get_device_stats",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
     description=(
         "Returns historical traffic time-series (rx/tx bytes, client counts) for one "
         "device by MAC or _id. Duration: hourly/daily/weekly/monthly. "
@@ -147,6 +151,7 @@ async def get_device_stats(device_id: str, duration: str = "hourly") -> Dict[str
 @server.tool(
     name="unifi_get_top_clients",
     description="Get a list of top clients by usage (sorted by total bytes)",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_top_clients(duration: str = "daily", limit: int = 10) -> Dict[str, Any]:
     """Implementation for getting top clients by usage."""
@@ -181,6 +186,7 @@ async def get_top_clients(duration: str = "daily", limit: int = 10) -> Dict[str,
 @server.tool(
     name="unifi_get_dpi_stats",
     description="Get Deep Packet Inspection (DPI) statistics (applications and categories)",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_dpi_stats() -> Dict[str, Any]:
     """Implementation for getting DPI stats."""
@@ -209,6 +215,7 @@ async def get_dpi_stats() -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_alerts",
     description="Get recent alerts from the Unifi Network controller",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_alerts(limit: int = 10, include_archived: bool = False) -> Dict[str, Any]:
     """Implementation for getting alerts."""

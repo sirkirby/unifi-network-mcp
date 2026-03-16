@@ -7,6 +7,7 @@ This module provides MCP tools to view events and manage alarms on a UniFi Netwo
 import logging
 from typing import Any, Dict, Optional
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import should_auto_confirm
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, server
@@ -30,6 +31,7 @@ def _get_event_manager():
 
 @server.tool(
     name="unifi_list_events",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
     description=(
         "Returns timestamped event log entries (client connects/disconnects, device "
         "state changes, firmware updates, config changes) sorted newest-first. "
@@ -73,6 +75,7 @@ async def list_events(
 
 @server.tool(
     name="unifi_list_alarms",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
     description=(
         "Returns active alarms (security alerts, connectivity issues, firmware warnings). "
         "Each alarm includes type, message, timestamp, and related device/client MAC. "
@@ -109,6 +112,7 @@ async def list_alarms(
     description="""Get a list of known event type prefixes for filtering events.
 
 Use these prefixes with unifi_list_events event_type parameter to filter specific event categories.""",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_event_types() -> Dict[str, Any]:
     """Get list of event type prefixes."""
@@ -131,6 +135,7 @@ async def get_event_types() -> Dict[str, Any]:
     description="Archive (resolve/dismiss) a specific alarm by its ID",
     permission_category="events",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def archive_alarm(alarm_id: str, confirm: bool = False) -> Dict[str, Any]:
     """Archive a specific alarm."""
@@ -161,6 +166,7 @@ async def archive_alarm(alarm_id: str, confirm: bool = False) -> Dict[str, Any]:
     description="Archive (resolve/dismiss) all active alarms",
     permission_category="events",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def archive_all_alarms(confirm: bool = False) -> Dict[str, Any]:
     """Archive all active alarms."""

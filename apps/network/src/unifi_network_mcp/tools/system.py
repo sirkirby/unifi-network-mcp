@@ -7,6 +7,7 @@ This module provides MCP tools to interact with a Unifi Network Controller's sys
 import logging
 from typing import Any, Dict, Optional
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, server, system_manager
@@ -19,6 +20,7 @@ logger.info(f"System tools module loaded, server instance: {server}")
 
 @server.tool(
     name="unifi_get_system_info",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
     description=(
         "Returns controller version, uptime, hostname, memory/CPU usage, and update availability. "
         "Use for basic 'is the controller healthy?' checks. "
@@ -43,6 +45,7 @@ async def get_system_info() -> Dict[str, Any]:
 
 @server.tool(
     name="unifi_get_network_health",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
     description=(
         "Returns per-subsystem health status for WAN, LAN, WLAN, and VPN — each with "
         "status, number of gateways/switches/APs, and active user counts. "
@@ -72,6 +75,7 @@ async def get_network_health() -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_site_settings",
     description="Get current site settings (e.g., country code, timezone, connectivity monitoring).",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_site_settings() -> Dict[str, Any]:
     """Implementation for getting site settings."""
@@ -91,6 +95,7 @@ async def get_site_settings() -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_snmp_settings",
     description="Get current SNMP settings for the site (enabled state, community string).",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_snmp_settings() -> Dict[str, Any]:
     """Implementation for getting SNMP settings."""
@@ -114,6 +119,7 @@ async def get_snmp_settings() -> Dict[str, Any]:
 @server.tool(
     name="unifi_update_snmp_settings",
     description="Update SNMP settings for the site (enable/disable, set community string). Requires confirm=true to apply changes.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_snmp_settings(
     enabled: bool,

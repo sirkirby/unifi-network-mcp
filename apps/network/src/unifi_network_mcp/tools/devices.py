@@ -8,6 +8,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import create_preview, preview_response, should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
 
@@ -39,6 +40,7 @@ def get_wifi_bands(device: Dict[str, Any]) -> List[str]:
         "Set include_details=true for radio tables, port tables, and client counts. "
         "For a single device's full raw object, use unifi_get_device_details."
     ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_devices(device_type: str = "all", status: str = "all", include_details: bool = False) -> Dict[str, Any]:
     """Implementation for listing devices."""
@@ -177,6 +179,7 @@ async def list_devices(device_type: str = "all", status: str = "all", include_de
         "controller-reported fields. Use when you need deep inspection of a specific "
         "device. For a filtered overview of all devices, use unifi_list_devices."
     ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_device_details(mac_address: str) -> Dict[str, Any]:
     """Implementation for getting device details."""
@@ -202,6 +205,7 @@ async def get_device_details(mac_address: str) -> Dict[str, Any]:
     description="Reboot a specific device by MAC address",
     permission_category="devices",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
 )
 async def reboot_device(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for rebooting a device."""
@@ -273,6 +277,7 @@ async def reboot_device(mac_address: str, confirm: bool = False) -> Dict[str, An
     description="Rename a device in the Unifi Network controller by MAC address",
     permission_category="devices",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def rename_device(mac_address: str, name: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for renaming a device."""
@@ -323,6 +328,7 @@ async def rename_device(mac_address: str, name: str, confirm: bool = False) -> D
     description="Adopt a pending device into the Unifi Network by MAC address",
     permission_category="devices",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def adopt_device(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for adopting a device."""
@@ -379,6 +385,7 @@ async def adopt_device(mac_address: str, confirm: bool = False) -> Dict[str, Any
     description="Initiate a firmware upgrade for a device by MAC address (uses cached firmware by default)",
     permission_category="devices",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
 )
 async def upgrade_device(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for upgrading a device."""
@@ -456,6 +463,7 @@ VALID_HT_VALUES = {"20", "40", "80", "160", "320"}
         "Returns per-band config (channel, tx_power, channel width, min_rssi) "
         "and live stats (actual tx_power, channel utilization, client count, retries)."
     ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_device_radio(mac_address: str) -> Dict[str, Any]:
     """Implementation for getting focused radio config and stats for an AP."""
@@ -485,6 +493,7 @@ async def get_device_radio(mac_address: str) -> Dict[str, Any]:
     ),
     permission_category="devices",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_device_radio(
     mac_address: str,

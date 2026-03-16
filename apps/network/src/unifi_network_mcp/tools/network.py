@@ -9,6 +9,7 @@ import json
 import logging
 from typing import Any, Dict
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, network_manager, server
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
         "For a single network's full config, use unifi_get_network_details. "
         "For wireless SSIDs, use unifi_list_wlans."
     ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_networks() -> Dict[str, Any]:
     """Lists all networks configured on the UniFi Network controller for the current site using the V1 API structure.
@@ -111,6 +113,7 @@ async def list_networks() -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_network_details",
     description="Get details for a specific network by ID.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_network_details(network_id: str) -> Dict[str, Any]:
     """Gets the detailed configuration of a specific network by its ID.
@@ -179,6 +182,7 @@ async def get_network_details(network_id: str) -> Dict[str, Any]:
     description="Update specific fields of an existing network (LAN/VLAN). Requires confirmation. Note: Network isolation is only supported on 'corporate' networks, not 'guest' networks.",
     permission_category="networks",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_network(network_id: str, update_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Updates specific fields of an existing network.
@@ -302,6 +306,7 @@ async def update_network(network_id: str, update_data: Dict[str, Any], confirm: 
     description="Create a new network (LAN/VLAN) with schema validation. Requires confirmation.",
     permission_category="networks",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_network(network_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Create a new network (LAN/VLAN) with comprehensive validation.
@@ -476,6 +481,7 @@ async def create_network(network_data: Dict[str, Any], confirm: bool = False) ->
 @server.tool(
     name="unifi_list_wlans",
     description="List all configured Wireless LANs (WLANs) on the Unifi Network controller.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_wlans() -> Dict[str, Any]:
     """Lists all WLANs (Wireless SSIDs) configured on the UniFi Network controller.
@@ -540,7 +546,11 @@ async def list_wlans() -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@server.tool(name="unifi_get_wlan_details", description="Get details for a specific WLAN by ID.")
+@server.tool(
+    name="unifi_get_wlan_details",
+    description="Get details for a specific WLAN by ID.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
 async def get_wlan_details(wlan_id: str) -> Dict[str, Any]:
     """Gets the detailed configuration of a specific WLAN (SSID) by its ID.
 
@@ -601,6 +611,7 @@ async def get_wlan_details(wlan_id: str) -> Dict[str, Any]:
     description="Update specific fields of an existing WLAN (SSID). Requires confirmation.",
     permission_category="wlans",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_wlan(wlan_id: str, update_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Updates specific fields of an existing WLAN (Wireless SSID).
@@ -712,6 +723,7 @@ async def update_wlan(wlan_id: str, update_data: Dict[str, Any], confirm: bool =
     description=("Create a new Wireless LAN (WLAN/SSID) with schema validation. Requires confirmation."),
     permission_category="wlans",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_wlan(wlan_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Create a new WLAN (SSID) with comprehensive validation.

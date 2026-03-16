@@ -7,6 +7,7 @@ This module provides MCP tools to manage network clients/devices on a Unifi Netw
 import logging
 from typing import Any, Dict, Optional
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.categories import parse_permission
 
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 @server.tool(
     name="unifi_lookup_by_ip",
     description="Quick IP-to-hostname lookup. Returns only essential fields (hostname, name, MAC) to minimize token usage.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def lookup_by_ip(ip_address: str) -> Dict[str, Any]:
     """Lookup client by IP address - returns only essential fields to minimize token usage.
@@ -56,6 +58,7 @@ async def lookup_by_ip(ip_address: str) -> Dict[str, Any]:
         "historical clients. For a single client's full raw object, use "
         "unifi_get_client_details. For IP-to-hostname lookup, use unifi_lookup_by_ip."
     ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_clients(filter_type: str = "all", include_offline: bool = False, limit: int = 100) -> Dict[str, Any]:
     """Implementation for listing clients."""
@@ -121,6 +124,7 @@ async def list_clients(filter_type: str = "all", include_offline: bool = False, 
         "network/WLAN associations, traffic counters, and fixed-IP settings. "
         "For a summary of all clients, use unifi_list_clients."
     ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_client_details(mac_address: str) -> Dict[str, Any]:
     """Implementation for getting client details."""
@@ -145,6 +149,7 @@ async def get_client_details(mac_address: str) -> Dict[str, Any]:
 @server.tool(
     name="unifi_list_blocked_clients",
     description="List clients/devices that are currently blocked from the network",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_blocked_clients() -> Dict[str, Any]:
     """Implementation for listing blocked clients."""
@@ -183,6 +188,7 @@ async def list_blocked_clients() -> Dict[str, Any]:
     description="Block a client/device from the network by MAC address",
     permission_category="clients",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
 )
 async def block_client(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for blocking a client."""
@@ -234,6 +240,7 @@ async def block_client(mac_address: str, confirm: bool = False) -> Dict[str, Any
     description="Unblock a previously blocked client/device by MAC address",
     permission_category="clients",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def unblock_client(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for unblocking a client."""
@@ -283,6 +290,7 @@ async def unblock_client(mac_address: str, confirm: bool = False) -> Dict[str, A
 @server.tool(
     name="unifi_rename_client",
     description="Rename a client/device in the Unifi Network controller by MAC address",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def rename_client(mac_address: str, name: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for renaming a client."""
@@ -329,6 +337,7 @@ async def rename_client(mac_address: str, name: str, confirm: bool = False) -> D
     description="Force a client to reconnect to the network (kick) by MAC address",
     permission_category="clients",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
 )
 async def force_reconnect_client(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for forcing a client to reconnect."""
@@ -391,6 +400,7 @@ async def force_reconnect_client(mac_address: str, confirm: bool = False) -> Dic
     description="Authorize a guest client to access the guest network by MAC address",
     permission_category="clients",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def authorize_guest(
     mac_address: str,
@@ -461,6 +471,7 @@ async def authorize_guest(
     description="Revoke authorization for a guest client by MAC address",
     permission_category="clients",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
 )
 async def unauthorize_guest(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
     """Implementation for unauthorizing a guest."""
@@ -516,6 +527,7 @@ async def unauthorize_guest(mac_address: str, confirm: bool = False) -> Dict[str
 
 @server.tool(
     name="unifi_set_client_ip_settings",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
     description="""Set fixed IP address and/or local DNS record for a client device.
 
 Allows configuring:

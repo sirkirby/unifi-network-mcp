@@ -7,6 +7,7 @@ This module provides MCP tools to manage user groups (bandwidth profiles) on a U
 import logging
 from typing import Any, Dict, Optional
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, server
@@ -34,6 +35,7 @@ def _get_usergroup_manager():
 
 User groups define bandwidth limits that can be applied to clients.
 Each group specifies upload/download speed caps in Kbps.""",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_usergroups() -> Dict[str, Any]:
     """List all user groups."""
@@ -77,6 +79,7 @@ async def list_usergroups() -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_usergroup_details",
     description="Get detailed information about a specific user group by its ID",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_usergroup_details(group_id: str) -> Dict[str, Any]:
     """Get details for a specific user group."""
@@ -107,6 +110,7 @@ Bandwidth limits are specified in Kbps. Use -1 for unlimited.
 User groups can be assigned to clients to enforce bandwidth policies.""",
     permission_category="usergroups",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_usergroup(
     name: str,
@@ -165,6 +169,7 @@ async def create_usergroup(
 Use -1 for unlimited bandwidth. Changes affect all clients assigned to this group.""",
     permission_category="usergroups",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_usergroup(
     group_id: str,

@@ -7,6 +7,7 @@ This module provides MCP tools to manage hotspot vouchers on a UniFi Network Con
 import logging
 from typing import Any, Dict, Optional
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import create_preview, preview_response, should_auto_confirm
 from unifi_network_mcp.runtime import server
 
@@ -33,6 +34,7 @@ def _get_hotspot_manager():
 
 Returns voucher codes, expiration times, usage quotas, and bandwidth limits.
 Vouchers are used for guest network access in captive portal setups.""",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_vouchers() -> Dict[str, Any]:
     """List all hotspot vouchers."""
@@ -75,6 +77,7 @@ async def list_vouchers() -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_voucher_details",
     description="Get detailed information about a specific voucher by its ID",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_voucher_details(voucher_id: str) -> Dict[str, Any]:
     """Get details for a specific voucher."""
@@ -108,6 +111,7 @@ Vouchers can have:
 - Data caps: Total data transfer limit in MB""",
     permission_category="vouchers",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_voucher(
     expire_minutes: int = 1440,
@@ -178,6 +182,7 @@ async def create_voucher(
     description="Revoke/delete a hotspot voucher by its ID, preventing further use",
     permission_category="vouchers",
     permission_action="delete",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
 )
 async def revoke_voucher(voucher_id: str, confirm: bool = False) -> Dict[str, Any]:
     """Revoke a hotspot voucher."""

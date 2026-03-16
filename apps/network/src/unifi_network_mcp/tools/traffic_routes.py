@@ -8,6 +8,7 @@ on a UniFi Network Controller using the V2 API.
 import logging
 from typing import Any, Dict
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, server
@@ -35,6 +36,7 @@ def _get_traffic_route_manager():
 
 Traffic routes define how specific traffic is routed based on domains,
 IP addresses, regions, or target devices. Often used for VPN routing.""",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_traffic_routes() -> Dict[str, Any]:
     """List all traffic routes."""
@@ -75,6 +77,7 @@ async def list_traffic_routes() -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_traffic_route_details",
     description="Get detailed information for a specific traffic route by ID.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_traffic_route_details(route_id: str) -> Dict[str, Any]:
     """Get details for a specific traffic route."""
@@ -107,6 +110,7 @@ Can update:
 At least one parameter must be provided.""",
     permission_category="traffic_routes",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_traffic_route(
     route_id: str,
@@ -190,6 +194,7 @@ async def update_traffic_route(
     description="Toggle a traffic route on/off by ID.",
     permission_category="traffic_routes",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def toggle_traffic_route(route_id: str, confirm: bool = False) -> Dict[str, Any]:
     """Toggle a traffic route's enabled state."""

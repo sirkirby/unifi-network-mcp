@@ -8,6 +8,7 @@ including managing VPN clients and servers.
 import logging
 from typing import Any, Dict
 
+from mcp.types import ToolAnnotations
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, server, vpn_manager
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 @server.tool(
     name="unifi_list_vpn_clients",
     description="List all configured VPN clients (Wireguard, OpenVPN, etc).",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_vpn_clients() -> Dict[str, Any]:
     """Implementation for listing VPN clients."""
@@ -39,6 +41,7 @@ async def list_vpn_clients() -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_vpn_client_details",
     description="Get details for a specific VPN client by ID.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_vpn_client_details(client_id: str) -> Dict[str, Any]:
     """Implementation for getting VPN client details."""
@@ -69,6 +72,7 @@ async def get_vpn_client_details(client_id: str) -> Dict[str, Any]:
     description="Enable or disable a specific VPN client by ID.",
     permission_category="vpn_clients",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_vpn_client_state(client_id: str, enabled: bool) -> Dict[str, Any]:
     """Implementation for updating VPN client state."""
@@ -103,6 +107,7 @@ async def update_vpn_client_state(client_id: str, enabled: bool) -> Dict[str, An
 @server.tool(
     name="unifi_list_vpn_servers",
     description="List all configured VPN servers (Wireguard, OpenVPN, L2TP, etc).",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_vpn_servers() -> Dict[str, Any]:
     """Implementation for listing VPN servers."""
@@ -125,6 +130,7 @@ async def list_vpn_servers() -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_vpn_server_details",
     description="Get details for a specific VPN server by ID.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_vpn_server_details(server_id: str) -> Dict[str, Any]:
     """Implementation for getting VPN server details."""
@@ -155,6 +161,7 @@ async def get_vpn_server_details(server_id: str) -> Dict[str, Any]:
     description="Enable or disable a specific VPN server by ID.",
     permission_category="vpn_servers",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_vpn_server_state(server_id: str, enabled: bool) -> Dict[str, Any]:
     """Implementation for updating VPN server state."""

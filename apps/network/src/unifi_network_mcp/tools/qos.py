@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Any, Dict
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, qos_manager, server
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 @server.tool(
     name="unifi_list_qos_rules",
     description="List all QoS rules on the Unifi Network controller for the current site.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_qos_rules() -> Dict[str, Any]:
     """Lists all Quality of Service (QoS) rules configured for the current UniFi site.
@@ -77,6 +79,7 @@ async def list_qos_rules() -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_qos_rule_details",
     description="Get details for a specific QoS rule by ID.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_qos_rule_details(rule_id: str) -> Dict[str, Any]:
     """Gets the detailed configuration of a specific QoS rule by its ID.
@@ -142,6 +145,7 @@ async def get_qos_rule_details(rule_id: str) -> Dict[str, Any]:
     description="Enable or disable a specific QoS rule by ID. Requires confirmation.",
     permission_category="qos_rules",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def toggle_qos_rule_enabled(rule_id: str, confirm: bool = False) -> Dict[str, Any]:  # Removed 'enabled' param
     """Enables or disables a specific QoS rule. Requires confirmation.
@@ -240,6 +244,7 @@ async def toggle_qos_rule_enabled(rule_id: str, confirm: bool = False) -> Dict[s
     description="Update specific fields of an existing QoS rule. Requires confirmation.",
     permission_category="qos_rules",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_qos_rule(rule_id: str, update_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Updates specific fields of an existing Quality of Service (QoS) rule.
@@ -350,6 +355,7 @@ async def update_qos_rule(rule_id: str, update_data: Dict[str, Any], confirm: bo
     description="Create a new QoS rule on the Unifi Network controller. Requires confirmation.",
     permission_category="qos_rules",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_qos_rule(
     qos_data: Dict[str, Any],
@@ -451,6 +457,7 @@ async def create_qos_rule(
     description=("Create a QoS rule using a simplified high-level schema. Returns a preview unless confirm=true."),
     permission_category="qos_rules",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_simple_qos_rule(rule: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Create a QoS rule with a compact schema and optional preview.

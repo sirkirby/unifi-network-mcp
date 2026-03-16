@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Any, Dict
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, firewall_manager, network_manager, server
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 @server.tool(
     name="unifi_list_firewall_policies",
     description="List firewall policies configured on the Unifi Network controller.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_firewall_policies(include_predefined: bool = False) -> Dict[str, Any]:
     """
@@ -95,6 +97,7 @@ async def list_firewall_policies(include_predefined: bool = False) -> Dict[str, 
 @server.tool(
     name="unifi_get_firewall_policy_details",
     description="Get detailed configuration for a specific firewall policy by ID.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_firewall_policy_details(policy_id: str) -> Dict[str, Any]:
     """
@@ -167,6 +170,7 @@ async def get_firewall_policy_details(policy_id: str) -> Dict[str, Any]:
     description="Enable or disable a specific firewall policy by ID.",
     permission_category="firewall_policies",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def toggle_firewall_policy(policy_id: str, confirm: bool = False) -> Dict[str, Any]:
     """
@@ -267,6 +271,7 @@ async def toggle_firewall_policy(policy_id: str, confirm: bool = False) -> Dict[
     description="Create a new firewall policy with schema validation.",
     permission_category="firewall_policies",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_firewall_policy(policy_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """
@@ -428,6 +433,7 @@ async def create_firewall_policy(policy_data: Dict[str, Any], confirm: bool = Fa
     description="Update specific fields of an existing firewall policy by ID.",
     permission_category="firewall_policies",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_firewall_policy(policy_id: str, update_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """
@@ -575,6 +581,7 @@ async def update_firewall_policy(policy_id: str, update_data: Dict[str, Any], co
     ),
     permission_category="firewall_policies",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_simple_firewall_policy(policy: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Create a firewall rule with a compact schema and optional preview.
@@ -695,6 +702,7 @@ async def create_simple_firewall_policy(policy: Dict[str, Any], confirm: bool = 
 @server.tool(
     name="unifi_list_firewall_zones",
     description="List controller firewall zones (V2 API).",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_firewall_zones() -> Dict[str, Any]:
     zones = await firewall_manager.get_firewall_zones()
@@ -704,6 +712,7 @@ async def list_firewall_zones() -> Dict[str, Any]:
 @server.tool(
     name="unifi_list_ip_groups",
     description="List IP groups configured on the controller (V2 API).",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_ip_groups() -> Dict[str, Any]:
     groups = await firewall_manager.get_ip_groups()

@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Any, Dict
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, firewall_manager, server
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)  # Changed logger name for consistency
 @server.tool(
     name="unifi_list_port_forwards",
     description="List all port forwarding rules on your Unifi Network controller.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_port_forwards() -> Dict[str, Any]:  # Removed context, adjusted return type
     """List all port forwarding rules configured on the UniFi Network controller.
@@ -86,6 +88,7 @@ async def list_port_forwards() -> Dict[str, Any]:  # Removed context, adjusted r
 @server.tool(
     name="unifi_get_port_forward",
     description="Get a specific port forwarding rule by ID from your Unifi Network controller.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_port_forward(
     port_forward_id: str,
@@ -155,6 +158,7 @@ async def get_port_forward(
     description="Toggle a port forwarding rule on or off on your Unifi Network controller.",
     permission_category="port_forwards",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def toggle_port_forward(
     port_forward_id: str, confirm: bool = False
@@ -266,6 +270,7 @@ async def toggle_port_forward(
     description="Create a new port forwarding rule on your Unifi Network controller using schema validation.",
     permission_category="port_forwards",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_port_forward(port_forward_data: Dict[str, Any]) -> Dict[str, Any]:
     """Create a new port forwarding rule with comprehensive validation.
@@ -378,6 +383,7 @@ async def create_port_forward(port_forward_data: Dict[str, Any]) -> Dict[str, An
     description="Update specific fields of an existing port forwarding rule using schema validation. Requires confirmation.",
     permission_category="port_forwards",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_port_forward(
     port_forward_id: str, update_data: Dict[str, Any], confirm: bool = False
@@ -540,6 +546,7 @@ async def update_port_forward(
     description=("Create a port forward using a simplified schema. Returns a preview unless confirm=true."),
     permission_category="port_forwards",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_simple_port_forward(rule: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
     """Create port forward with compact input.

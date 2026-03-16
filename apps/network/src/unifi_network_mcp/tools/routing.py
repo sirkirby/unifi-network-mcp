@@ -8,6 +8,7 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, server
@@ -54,6 +55,7 @@ def _validate_ip(ip: str) -> bool:
 
 Returns route names, destination networks, next-hop addresses, and status.
 These are manually configured routes, not dynamic or system routes.""",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_routes() -> Dict[str, Any]:
     """List all user-defined static routes."""
@@ -95,6 +97,7 @@ This shows the actual routing table state on the gateway device.
 
 Note: This endpoint may not be available on all controller versions.
 Returns empty list if unavailable.""",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_active_routes() -> Dict[str, Any]:
     """List all active routes from the routing table."""
@@ -116,6 +119,7 @@ async def list_active_routes() -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_route_details",
     description="Get detailed information about a specific static route by its ID",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_route_details(route_id: str) -> Dict[str, Any]:
     """Get details for a specific route."""
@@ -146,6 +150,7 @@ Specify destination network in CIDR format (e.g., "10.0.0.0/24") and
 next-hop IP address (e.g., "192.168.1.1").""",
     permission_category="routes",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_route(
     name: str,
@@ -221,6 +226,7 @@ async def create_route(
 Can modify name, destination network, next-hop, distance, or enabled status.""",
     permission_category="routes",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_route(
     route_id: str,

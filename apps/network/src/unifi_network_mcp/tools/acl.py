@@ -10,6 +10,7 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
+from mcp.types import ToolAnnotations
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import acl_manager, config, server
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
     name="unifi_list_acl_rules",
     description="List MAC ACL rules (Policy Engine) for Layer 2 access control. "
     "These rules control which devices can communicate at Layer 2 within a VLAN.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_acl_rules(network_id: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -69,6 +71,7 @@ async def list_acl_rules(network_id: Optional[str] = None) -> Dict[str, Any]:
 @server.tool(
     name="unifi_get_acl_rule_details",
     description="Get detailed configuration for a specific MAC ACL rule by ID.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_acl_rule_details(rule_id: str) -> Dict[str, Any]:
     """
@@ -113,6 +116,7 @@ async def get_acl_rule_details(rule_id: str) -> Dict[str, Any]:
     "(not 'ANY'). Use an empty specific_mac_addresses list to match any device.",
     permission_category="acl_rules",
     permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_acl_rule(
     name: str,
@@ -196,6 +200,7 @@ async def create_acl_rule(
     "Requires confirmation. IMPORTANT: traffic source/destination type MUST be 'CLIENT_MAC' (not 'ANY').",
     permission_category="acl_rules",
     permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_acl_rule(rule_id: str, rule_data: dict, confirm: bool = False) -> Dict[str, Any]:
     """
@@ -232,6 +237,7 @@ async def update_acl_rule(rule_id: str, rule_data: dict, confirm: bool = False) 
     "may block device communication. Removing a BLOCK rule may open access.",
     permission_category="acl_rules",
     permission_action="delete",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
 )
 async def delete_acl_rule(rule_id: str, confirm: bool = False) -> Dict[str, Any]:
     """
