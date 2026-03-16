@@ -138,7 +138,8 @@ class FirewallManager:
             if not hasattr(policy_to_update, "raw") or not isinstance(policy_to_update.raw, dict):
                 logger.error(f"Could not get raw data for policy {policy_id}. Update aborted.")
                 return False
-            policy_data = policy_to_update.raw.copy()
+            # Deep copy to avoid mutating the cached FirewallPolicy.raw
+            policy_data = copy.deepcopy(policy_to_update.raw)
 
             for key, value in updates.items():
                 policy_data[key] = value
@@ -459,20 +460,19 @@ class FirewallManager:
                 logger.error(f"Could not get raw data for port forward {rule_id}. Update aborted.")
                 return False
 
-            current_data = rule_to_update_obj.raw.copy()
+            # Deep copy to avoid mutating the cached PortForward.raw
+            updated_data = copy.deepcopy(rule_to_update_obj.raw)
 
-            # Merge updates into current data
+            # Merge updates into copied data
             for key, value in updates.items():
-                current_data[key] = value
+                updated_data[key] = value
 
-            update_payload = current_data
-
-            logger.info(f"Updating port forward {rule_id} with full data: {update_payload}")
+            logger.info(f"Updating port forward {rule_id} with full data: {updated_data}")
 
             api_request = ApiRequest(
                 method="put",
                 path=f"/rest/portforward/{rule_id}",  # V1 endpoint path, corrected
-                data=update_payload,
+                data=updated_data,
             )
 
             await self._connection.request(api_request)
