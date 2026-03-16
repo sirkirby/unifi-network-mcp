@@ -550,6 +550,7 @@ When using eager mode with category filtering, these are the valid category name
 | `config` | Configuration management | - |
 | `devices` | Device listing, radio config, reboot, locate, upgrade | `unifi_list_devices`, `unifi_get_device_radio` |
 | `events` | Events and alarms | `unifi_list_events`, `unifi_list_alarms` |
+| `acl` | MAC ACL rules (Policy Engine, Layer 2 access control) | `unifi_list_acl_rules`, `unifi_create_acl_rule` |
 | `firewall` | Firewall rules and groups | `unifi_list_firewall_rules`, `unifi_create_firewall_rule` |
 | `hotspot` | Vouchers for guest network | `unifi_list_vouchers`, `unifi_create_voucher` |
 | `network` | Network/VLAN management | `unifi_list_networks`, `unifi_create_network` |
@@ -832,6 +833,18 @@ See [docs/permissions.md](docs/permissions.md) for complete documentation includ
 * `unifi_create_simple_firewall_policy`
 * `unifi_list_firewall_zones`
 * `unifi_list_ip_groups`
+
+### MAC ACL Rules (Policy Engine)
+
+* `unifi_list_acl_rules` — List MAC ACL rules, optionally filtered by network/VLAN
+* `unifi_get_acl_rule_details` — Get full configuration of a specific ACL rule
+* `unifi_create_acl_rule` — Create a new MAC ACL rule for Layer 2 access control
+* `unifi_update_acl_rule` — Update an existing MAC ACL rule (full object replacement)
+* `unifi_delete_acl_rule` — Delete a MAC ACL rule
+
+> **Note:** MAC ACL rules require UniFi Network Application with Policy Engine support.
+> These rules control Layer 2 (MAC address) communication within a VLAN.
+> Use `CLIENT_MAC` type with an empty `specific_mac_addresses` list to match any device.
 
 ### Traffic Routes
 

@@ -26,6 +26,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
 from src.bootstrap import load_config, logger
+from src.managers.acl_manager import AclManager
 from src.managers.client_manager import ClientManager
 from src.managers.connection_manager import ConnectionManager
 from src.managers.device_manager import DeviceManager
@@ -135,6 +136,11 @@ def get_connection_manager() -> ConnectionManager:
 
 
 @lru_cache
+def get_acl_manager() -> AclManager:
+    return AclManager(get_connection_manager())
+
+
+@lru_cache
 def get_client_manager() -> ClientManager:
     return ClientManager(get_connection_manager())
 
@@ -215,6 +221,7 @@ def get_tool_registry() -> dict[str, Any]:
 config = get_config()
 server = get_server()
 connection_manager = get_connection_manager()
+acl_manager = get_acl_manager()
 client_manager = get_client_manager()
 device_manager = get_device_manager()
 stats_manager = get_stats_manager()

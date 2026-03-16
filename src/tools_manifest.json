@@ -1,5 +1,5 @@
 {
-  "count": 86,
+  "count": 91,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "src.tools.devices",
@@ -7,6 +7,7 @@
     "unifi_archive_all_alarms": "src.tools.events",
     "unifi_authorize_guest": "src.tools.clients",
     "unifi_block_client": "src.tools.clients",
+    "unifi_create_acl_rule": "src.tools.acl",
     "unifi_create_firewall_policy": "src.tools.firewall",
     "unifi_create_network": "src.tools.network",
     "unifi_create_port_forward": "src.tools.port_forwards",
@@ -18,7 +19,9 @@
     "unifi_create_usergroup": "src.tools.usergroups",
     "unifi_create_voucher": "src.tools.hotspot",
     "unifi_create_wlan": "src.tools.network",
+    "unifi_delete_acl_rule": "src.tools.acl",
     "unifi_force_reconnect_client": "src.tools.clients",
+    "unifi_get_acl_rule_details": "src.tools.acl",
     "unifi_get_alerts": "src.tools.stats",
     "unifi_get_client_details": "src.tools.clients",
     "unifi_get_client_stats": "src.tools.stats",
@@ -44,6 +47,7 @@
     "unifi_get_vpn_client_details": "src.tools.vpn",
     "unifi_get_vpn_server_details": "src.tools.vpn",
     "unifi_get_wlan_details": "src.tools.network",
+    "unifi_list_acl_rules": "src.tools.acl",
     "unifi_list_active_routes": "src.tools.routing",
     "unifi_list_alarms": "src.tools.events",
     "unifi_list_blocked_clients": "src.tools.clients",
@@ -75,6 +79,7 @@
     "unifi_toggle_traffic_route": "src.tools.traffic_routes",
     "unifi_unauthorize_guest": "src.tools.clients",
     "unifi_unblock_client": "src.tools.clients",
+    "unifi_update_acl_rule": "src.tools.acl",
     "unifi_update_device_radio": "src.tools.devices",
     "unifi_update_firewall_policy": "src.tools.firewall",
     "unifi_update_network": "src.tools.network",
@@ -192,6 +197,44 @@
           },
           "required": [
             "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a new MAC ACL rule for Layer 2 access control within a VLAN. Requires confirmation. IMPORTANT: traffic_source and traffic_destination type MUST be 'CLIENT_MAC' (not 'ANY'). Use an empty specific_mac_addresses list to match any device.",
+      "name": "unifi_create_acl_rule",
+      "schema": {
+        "input": {
+          "properties": {
+            "acl_index": {
+              "type": "integer"
+            },
+            "action": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
+            },
+            "mac_acl_network_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "traffic_destination": {
+              "type": "object"
+            },
+            "traffic_source": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "name",
+            "acl_index",
+            "action",
+            "mac_acl_network_id"
           ],
           "type": "object"
         }
@@ -450,6 +493,26 @@
       }
     },
     {
+      "description": "Delete a MAC ACL rule. Requires confirmation. WARNING: Removing an ALLOW rule may block device communication. Removing a BLOCK rule may open access.",
+      "name": "unifi_delete_acl_rule",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "rule_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rule_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
       "description": "Force a client to reconnect to the network (kick) by MAC address",
       "name": "unifi_force_reconnect_client",
       "schema": {
@@ -464,6 +527,23 @@
           },
           "required": [
             "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get detailed configuration for a specific MAC ACL rule by ID.",
+      "name": "unifi_get_acl_rule_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "rule_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rule_id"
           ],
           "type": "object"
         }
@@ -851,6 +931,20 @@
           "required": [
             "wlan_id"
           ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List MAC ACL rules (Policy Engine) for Layer 2 access control. These rules control which devices can communicate at Layer 2 within a VLAN.",
+      "name": "unifi_list_acl_rules",
+      "schema": {
+        "input": {
+          "properties": {
+            "network_id": {
+              "type": "string"
+            }
+          },
           "type": "object"
         }
       }
@@ -1341,6 +1435,30 @@
           },
           "required": [
             "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Update an existing MAC ACL rule. Requires the full rule object (PUT replaces entire resource). Requires confirmation. IMPORTANT: traffic source/destination type MUST be 'CLIENT_MAC' (not 'ANY').",
+      "name": "unifi_update_acl_rule",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "rule_data": {
+              "type": "object"
+            },
+            "rule_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rule_id",
+            "rule_data"
           ],
           "type": "object"
         }
