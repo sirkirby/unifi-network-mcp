@@ -50,7 +50,7 @@ def parse_permission(permissions: Dict[str, Any], category: str, action: str) ->
     1. Environment variable: UNIFI_PERMISSIONS_<CATEGORY>_<ACTION>
     2. Config file: permissions.<category>.<action>
     3. Config file: permissions.default.<action>
-    4. Hardcoded default (read=true, delete=false, others=false)
+    4. Hardcoded fallback (read=true, all others=false)
 
     Args:
         permissions: The permissions dictionary (loaded from config.yaml).
@@ -65,11 +65,6 @@ def parse_permission(permissions: Dict[str, Any], category: str, action: str) ->
         UNIFI_PERMISSIONS_DEVICES_UPDATE=true
         UNIFI_PERMISSIONS_CLIENTS_UPDATE=false
     """
-    # Never allow delete operations regardless of configuration
-    if action == "delete":
-        logger.info(f"Delete operation requested for category '{category}'. All delete operations are disabled.")
-        return False
-
     # 0. Check environment variable override first (highest priority)
     config_category_key = CATEGORY_MAP.get(category, category)
     env_var = f"UNIFI_PERMISSIONS_{config_category_key.upper()}_{action.upper()}"
@@ -82,8 +77,8 @@ def parse_permission(permissions: Dict[str, Any], category: str, action: str) ->
         logger.info(f"Permission override via {env_var}={env_value} -> {is_enabled}")
         return is_enabled
 
-    if not permissions:
-        logger.warning("Permissions dictionary is empty or None. Defaulting to False.")
+    if permissions is None:
+        logger.warning("Permissions dictionary is None. Defaulting to False.")
         return False
 
     # 1. Try specific category mapping
