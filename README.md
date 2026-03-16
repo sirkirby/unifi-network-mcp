@@ -781,15 +781,17 @@ The server includes a comprehensive permission system with **safe defaults**:
 # For Claude Desktop - add to env section:
 "env": {
   "UNIFI_PERMISSIONS_NETWORKS_CREATE": "true",
-  "UNIFI_PERMISSIONS_DEVICES_UPDATE": "true"
+  "UNIFI_PERMISSIONS_DEVICES_UPDATE": "true",
+  "UNIFI_PERMISSIONS_ACL_RULES_DELETE": "true"
 }
 
 # For command line:
 export UNIFI_PERMISSIONS_NETWORKS_CREATE=true
 export UNIFI_PERMISSIONS_DEVICES_UPDATE=true
+export UNIFI_PERMISSIONS_ACL_RULES_DELETE=true
 
 # For Docker:
-docker run -e UNIFI_PERMISSIONS_NETWORKS_CREATE=true ...
+docker run -e UNIFI_PERMISSIONS_NETWORKS_CREATE=true -e UNIFI_PERMISSIONS_ACL_RULES_DELETE=true ...
 ```
 
 **Alternative: Config File** (only for local git clone development)
