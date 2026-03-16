@@ -19,7 +19,13 @@ logger = logging.getLogger(__name__)
 
 @server.tool(
     name="unifi_list_networks",
-    description="List all configured networks (LAN, WAN, VLAN-only) on the Unifi Network controller (V1 API based).",
+    description=(
+        "Returns all configured networks (LAN, WAN, VLAN-only) with name, purpose, "
+        "IP subnet, VLAN ID, DHCP settings, and enabled state. "
+        "Use to understand network topology and VLAN layout. "
+        "For a single network's full config, use unifi_get_network_details. "
+        "For wireless SSIDs, use unifi_list_wlans."
+    ),
 )
 async def list_networks() -> Dict[str, Any]:
     """Lists all networks configured on the UniFi Network controller for the current site using the V1 API structure.

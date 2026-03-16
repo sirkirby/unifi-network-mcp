@@ -48,7 +48,13 @@ async def lookup_by_ip(ip_address: str) -> Dict[str, Any]:
 
 @server.tool(
     name="unifi_list_clients",
-    description="List clients/devices connected to the Unifi Network",
+    description=(
+        "Returns connected clients with MAC, name, hostname, IP, connection type "
+        "(wired/wireless), and for wireless clients: SSID, signal dBm, channel, radio. "
+        "Filter by filter_type (all/wired/wireless), set include_offline=true for "
+        "historical clients. For a single client's full raw object, use "
+        "unifi_get_client_details. For IP-to-hostname lookup, use unifi_lookup_by_ip."
+    ),
 )
 async def list_clients(filter_type: str = "all", include_offline: bool = False, limit: int = 100) -> Dict[str, Any]:
     """Implementation for listing clients."""
@@ -108,7 +114,12 @@ async def list_clients(filter_type: str = "all", include_offline: bool = False, 
 
 @server.tool(
     name="unifi_get_client_details",
-    description="Get detailed information about a specific client/device by MAC address",
+    description=(
+        "Returns the full raw client object for one client by MAC address — includes "
+        "all controller-reported fields: IP, hostname, connection stats, DHCP info, "
+        "network/WLAN associations, traffic counters, and fixed-IP settings. "
+        "For a summary of all clients, use unifi_list_clients."
+    ),
 )
 async def get_client_details(mac_address: str) -> Dict[str, Any]:
     """Implementation for getting client details."""
