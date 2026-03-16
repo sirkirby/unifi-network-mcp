@@ -23,6 +23,9 @@ from typing import Any
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
+from unifi_mcp_shared.config import setup_logging as _shared_setup_logging
+from unifi_mcp_shared.config import load_yaml_config  # noqa: F401 — re-export for convenience
+
 # ---------------------------------------------------------------------------
 # Environment & logging
 # ---------------------------------------------------------------------------
@@ -30,23 +33,12 @@ from omegaconf import OmegaConf
 load_dotenv()
 
 
-LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 DEFAULT_LOG_LEVEL = os.getenv("UNIFI_MCP_LOG_LEVEL", "INFO").upper()
 
 
 def setup_logging(level: str | None = None) -> logging.Logger:
     """Configure root logger once and return the project logger."""
-    chosen_level = getattr(logging, (level or DEFAULT_LOG_LEVEL), logging.INFO)
-
-    root_logger = logging.getLogger()
-    # Skip re‑adding handlers when running reload in dev
-    if not root_logger.handlers:
-        handler = logging.StreamHandler(sys.stderr)
-        handler.setFormatter(logging.Formatter(LOG_FORMAT))
-        root_logger.addHandler(handler)
-    root_logger.setLevel(chosen_level)
-
-    return logging.getLogger("unifi-network-mcp")
+    return _shared_setup_logging("unifi-network-mcp", level=level or DEFAULT_LOG_LEVEL)
 
 
 logger = setup_logging()

@@ -1,5 +1,6 @@
 """Shared MCP server patterns: permissions, confirmation, lazy loading, config."""
 
+from unifi_mcp_shared.config import load_yaml_config, setup_logging
 from unifi_mcp_shared.confirmation import (
     create_preview,
     preview_response,
@@ -22,10 +23,12 @@ __all__ = [
     "auto_load_tools",
     "build_tool_module_map",
     "create_preview",
+    "load_yaml_config",
     "preview_response",
     "register_load_tools",
     "register_meta_tools",
     "setup_lazy_loading",
+    "setup_logging",
     "should_auto_confirm",
     "toggle_preview",
     "update_preview",
