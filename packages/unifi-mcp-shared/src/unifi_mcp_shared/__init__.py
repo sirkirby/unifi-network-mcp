@@ -14,10 +14,12 @@ from unifi_mcp_shared.lazy_tools import (
 )
 from unifi_mcp_shared.meta_tools import register_load_tools, register_meta_tools
 from unifi_mcp_shared.permissions import PermissionChecker
+from unifi_mcp_shared.tool_loader import auto_load_tools
 
 __all__ = [
     "LazyToolLoader",
     "PermissionChecker",
+    "auto_load_tools",
     "build_tool_module_map",
     "create_preview",
     "preview_response",
