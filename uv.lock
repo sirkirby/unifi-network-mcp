@@ -1280,6 +1280,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "typing-extensions" },
+    { name = "unifi-core" },
     { name = "unifi-mcp-shared" },
 ]
 
@@ -1302,6 +1303,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "typing-extensions", specifier = ">=4.4.0" },
+    { name = "unifi-core", editable = "packages/unifi-core" },
     { name = "unifi-mcp-shared", editable = "packages/unifi-mcp-shared" },
 ]
 

@@ -57,6 +57,7 @@ class UniFiSettings:
     site: str = "default"
     verify_ssl: bool = False
     controller_type: str = "auto"
+    api_key: str = ""  # Optional API key for official API access
 
     @classmethod
     def from_omegaconf(cls, cfg: Any) -> "UniFiSettings":
@@ -69,6 +70,7 @@ class UniFiSettings:
             site=str(cfg.get("site", "default")),
             verify_ssl=bool(cfg.get("verify_ssl", False)),
             controller_type=str(cfg.get("controller_type", "auto")),
+            api_key=str(cfg.get("api_key", "")),
         )
 
 
@@ -142,6 +144,7 @@ def load_config(path_override: str | Path | None = None) -> OmegaConf:
         "site",
         "verify_ssl",
         "controller_type",
+        "api_key",
     ):
         env_key = f"UNIFI_{key.upper()}"
         if (val := os.getenv(env_key)) is not None:

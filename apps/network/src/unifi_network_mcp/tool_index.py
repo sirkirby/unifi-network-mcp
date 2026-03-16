@@ -34,12 +34,14 @@ class ToolMetadata:
         description: Human-readable description of what the tool does
         input_schema: JSON Schema describing the tool's input parameters
         output_schema: Optional JSON Schema describing the tool's output structure
+        auth_method: Auth strategy hint — "local_only" (default), "api_key_only", or "either"
     """
 
     name: str
     description: str
     input_schema: Dict[str, Any] = field(default_factory=dict)
     output_schema: Dict[str, Any] | None = None
+    auth_method: str = "local_only"
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary, excluding None values."""
@@ -60,6 +62,7 @@ def register_tool(
     description: str,
     input_schema: Dict[str, Any] | None = None,
     output_schema: Dict[str, Any] | None = None,
+    auth_method: str = "local_only",
 ) -> None:
     """Register a tool in the global registry.
 
@@ -71,6 +74,7 @@ def register_tool(
         description: Tool description
         input_schema: JSON Schema for input parameters (defaults to empty object)
         output_schema: Optional JSON Schema for output structure
+        auth_method: Auth strategy hint — "local_only", "api_key_only", or "either"
     """
     if input_schema is None:
         input_schema = {"type": "object", "properties": {}}
@@ -80,6 +84,7 @@ def register_tool(
         description=description,
         input_schema=input_schema,
         output_schema=output_schema,
+        auth_method=auth_method,
     )
 
     TOOL_REGISTRY[name] = metadata

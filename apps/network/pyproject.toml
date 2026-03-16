@@ -6,6 +6,7 @@ readme = "../../README.md"
 requires-python = ">=3.13"
 dependencies = [
     "unifi-mcp-shared",
+    "unifi-core",
     "mcp[cli]>=1.26.0,<2",
     "aiohttp>=3.8.5",
     "aiounifi>=88",
@@ -18,6 +19,7 @@ dependencies = [
 
 [tool.uv.sources]
 unifi-mcp-shared = { workspace = true }
+unifi-core = { workspace = true }
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
@@ -84,7 +86,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["unifi_network_mcp", "unifi_mcp_shared"]
+known-first-party = ["unifi_network_mcp", "unifi_mcp_shared", "unifi_core"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -25,6 +25,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
+from unifi_core.auth import UniFiAuth
 from unifi_network_mcp.bootstrap import load_config, logger
 from unifi_network_mcp.managers.acl_manager import AclManager
 from unifi_network_mcp.managers.client_manager import ClientManager
@@ -54,6 +55,14 @@ def get_config():
     return load_config()
 
 
+@lru_cache
+def get_auth() -> UniFiAuth:
+    """Create and cache the dual-auth instance."""
+    settings = get_config().unifi
+    api_key = getattr(settings, "api_key", None) or os.environ.get("UNIFI_API_KEY")
+    return UniFiAuth(api_key=api_key if api_key else None)
+
+
 def _create_permissioned_tool_wrapper(original_tool_decorator):
     """Wrap the FastMCP tool decorator to handle permission kwargs.
 
@@ -70,6 +79,7 @@ def _create_permissioned_tool_wrapper(original_tool_decorator):
         # Strip permission-related kwargs that FastMCP doesn't understand
         kwargs.pop("permission_category", None)
         kwargs.pop("permission_action", None)
+        kwargs.pop("auth", None)
         return original_tool_decorator(*args, **kwargs)
 
     return wrapper
@@ -219,6 +229,7 @@ def get_tool_registry() -> dict[str, Any]:
 # the first time the corresponding factory is called.
 
 config = get_config()
+auth = get_auth()
 server = get_server()
 connection_manager = get_connection_manager()
 acl_manager = get_acl_manager()

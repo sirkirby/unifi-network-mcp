@@ -50,6 +50,10 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
 
     category = d_kwargs.pop("permission_category", None)
     action = d_kwargs.pop("permission_action", None)
+    auth_method = d_kwargs.pop("auth", None)  # "local_only", "api_key_only", "either" — metadata for future routing
+
+    # Default to local_only when auth is not specified (backward compatible)
+    resolved_auth = auth_method if auth_method else "local_only"
 
     def decorator(func):
         """Inner decorator actually registering the tool if allowed."""
@@ -133,6 +137,7 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
                 description=description,
                 input_schema=input_schema,
                 output_schema=output_schema,
+                auth_method=resolved_auth,
             )
             return _original_tool_decorator(*d_args, **d_kwargs)(func)
 
@@ -143,6 +148,7 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
             description=description,
             input_schema=input_schema,
             output_schema=output_schema,
+            auth_method=resolved_auth,
         )
 
         # Check permissions for MCP server registration
