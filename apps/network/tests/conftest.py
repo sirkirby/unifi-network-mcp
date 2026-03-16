@@ -3,6 +3,5 @@
 import sys
 from pathlib import Path
 
-# Add the project root to Python path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+# Add the network app's src directory to path so unifi_network_mcp is importable
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
