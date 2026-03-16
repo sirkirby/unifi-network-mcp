@@ -9,6 +9,7 @@ import logging
 from typing import Any, Dict
 
 from mcp.types import ToolAnnotations
+
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, server, vpn_manager
 
