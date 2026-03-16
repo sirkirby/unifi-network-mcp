@@ -487,7 +487,7 @@
       }
     },
     {
-      "description": "Get detailed information about a specific client/device by MAC address",
+      "description": "Returns the full raw client object for one client by MAC address \u2014 includes all controller-reported fields: IP, hostname, connection stats, DHCP info, network/WLAN associations, traffic counters, and fixed-IP settings. For a summary of all clients, use unifi_list_clients.",
       "name": "unifi_get_client_details",
       "schema": {
         "input": {
@@ -524,7 +524,7 @@
       }
     },
     {
-      "description": "Get detailed information about a specific device by MAC address",
+      "description": "Returns the full raw device object for one device by MAC address \u2014 includes radio tables, port tables, system stats, WAN info, firmware details, and all controller-reported fields. Use when you need deep inspection of a specific device. For a filtered overview of all devices, use unifi_list_devices.",
       "name": "unifi_get_device_details",
       "schema": {
         "input": {
@@ -558,7 +558,7 @@
       }
     },
     {
-      "description": "Get statistics for a specific device (access point, switch, etc.)",
+      "description": "Returns historical traffic time-series (rx/tx bytes, client counts) for one device by MAC or _id. Duration: hourly/daily/weekly/monthly. For APs, includes avg/max client counts. For current device status instead of stats, use unifi_get_device_details.",
       "name": "unifi_get_device_stats",
       "schema": {
         "input": {
@@ -632,7 +632,7 @@
       }
     },
     {
-      "description": "Get the current network health summary (WAN status, device counts).",
+      "description": "Returns per-subsystem health status for WAN, LAN, WLAN, and VPN \u2014 each with status, number of gateways/switches/APs, and active user counts. Use to check WAN connectivity, see how many devices are online per subsystem, or detect degraded network segments. For controller-level info (version, uptime), use unifi_get_system_info.",
       "name": "unifi_get_network_health",
       "schema": {
         "input": {
@@ -727,7 +727,7 @@
       }
     },
     {
-      "description": "Get general system information from the Unifi Network controller (version, uptime, etc).",
+      "description": "Returns controller version, uptime, hostname, memory/CPU usage, and update availability. Use for basic 'is the controller healthy?' checks. For network subsystem status (WAN/LAN/WLAN), use unifi_get_network_health instead. For network subsystem details, use unifi_get_network_health.",
       "name": "unifi_get_system_info",
       "schema": {
         "input": {
@@ -866,7 +866,7 @@
       }
     },
     {
-      "description": "List active alarms/alerts from the UniFi controller.\n\nReturns security alerts, connectivity issues, and other critical notifications.\nBy default returns only active (non-archived) alarms.",
+      "description": "Returns active alarms (security alerts, connectivity issues, firmware warnings). Each alarm includes type, message, timestamp, and related device/client MAC. By default shows only unresolved alarms; set include_archived=true for history. For general event logs (non-critical), use unifi_list_events.",
       "name": "unifi_list_alarms",
       "schema": {
         "input": {
@@ -893,7 +893,7 @@
       }
     },
     {
-      "description": "List clients/devices connected to the Unifi Network",
+      "description": "Returns connected clients with MAC, name, hostname, IP, connection type (wired/wireless), and for wireless clients: SSID, signal dBm, channel, radio. Filter by filter_type (all/wired/wireless), set include_offline=true for historical clients. For a single client's full raw object, use unifi_get_client_details. For IP-to-hostname lookup, use unifi_lookup_by_ip.",
       "name": "unifi_list_clients",
       "schema": {
         "input": {
@@ -913,7 +913,7 @@
       }
     },
     {
-      "description": "List devices adopted by the Unifi Network controller for the current site",
+      "description": "Returns adopted device inventory with MAC, name, model, IP, firmware version, uptime, and status (online/offline/upgrading/etc). Filter by device_type (ap/switch/gateway/pdu) and status (online/offline/pending/upgrading). Set include_details=true for radio tables, port tables, and client counts. For a single device's full raw object, use unifi_get_device_details.",
       "name": "unifi_list_devices",
       "schema": {
         "input": {
@@ -933,7 +933,7 @@
       }
     },
     {
-      "description": "List events from the UniFi controller with optional filters.\n\nReturns system events like client connections, device status changes, and network alerts.\nEvents are sorted by most recent first.",
+      "description": "Returns timestamped event log entries (client connects/disconnects, device state changes, firmware updates, config changes) sorted newest-first. Filter by within_hours (default 24), event_type prefix (use unifi_get_event_types for valid prefixes), and paginate with start/limit. For critical alerts specifically, use unifi_list_alarms instead.",
       "name": "unifi_list_events",
       "schema": {
         "input": {
@@ -990,7 +990,7 @@
       }
     },
     {
-      "description": "List all configured networks (LAN, WAN, VLAN-only) on the Unifi Network controller (V1 API based).",
+      "description": "Returns all configured networks (LAN, WAN, VLAN-only) with name, purpose, IP subnet, VLAN ID, DHCP settings, and enabled state. Use to understand network topology and VLAN layout. For a single network's full config, use unifi_get_network_details. For wireless SSIDs, use unifi_list_wlans.",
       "name": "unifi_list_networks",
       "schema": {
         "input": {

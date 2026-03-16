@@ -23,7 +23,7 @@ logger.info(f"System tools module loaded, server instance: {server}")
         "Returns controller version, uptime, hostname, memory/CPU usage, and update availability. "
         "Use for basic 'is the controller healthy?' checks. "
         "For network subsystem status (WAN/LAN/WLAN), use unifi_get_network_health instead. "
-        "For a combined overview, use unifi_network_diagnosis."
+        "For network subsystem details, use unifi_get_network_health."
     ),
 )
 async def get_system_info() -> Dict[str, Any]:
