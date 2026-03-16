@@ -164,18 +164,20 @@ Falls back to the defaults in config.yaml if no overrides are set.
 
 Environment variables follow the pattern: `UNIFI_PERMISSIONS_<CATEGORY>_<ACTION>`
 
-| Category | Create Variable | Update Variable |
-|----------|----------------|-----------------|
-| **networks** | `UNIFI_PERMISSIONS_NETWORKS_CREATE` | `UNIFI_PERMISSIONS_NETWORKS_UPDATE` |
-| **wlans** | `UNIFI_PERMISSIONS_WLANS_CREATE` | `UNIFI_PERMISSIONS_WLANS_UPDATE` |
-| **devices** | `UNIFI_PERMISSIONS_DEVICES_CREATE` | `UNIFI_PERMISSIONS_DEVICES_UPDATE` |
-| **clients** | N/A | `UNIFI_PERMISSIONS_CLIENTS_UPDATE` |
-| **firewall_policies** | `UNIFI_PERMISSIONS_FIREWALL_POLICIES_CREATE` | `UNIFI_PERMISSIONS_FIREWALL_POLICIES_UPDATE` |
-| **traffic_routes** | `UNIFI_PERMISSIONS_TRAFFIC_ROUTES_CREATE` | `UNIFI_PERMISSIONS_TRAFFIC_ROUTES_UPDATE` |
-| **port_forwards** | `UNIFI_PERMISSIONS_PORT_FORWARDS_CREATE` | `UNIFI_PERMISSIONS_PORT_FORWARDS_UPDATE` |
-| **qos_rules** | `UNIFI_PERMISSIONS_QOS_RULES_CREATE` | `UNIFI_PERMISSIONS_QOS_RULES_UPDATE` |
-| **vpn_clients** | `UNIFI_PERMISSIONS_VPN_CLIENTS_CREATE` | `UNIFI_PERMISSIONS_VPN_CLIENTS_UPDATE` |
-| **vpn_servers** | `UNIFI_PERMISSIONS_VPN_SERVERS_CREATE` | `UNIFI_PERMISSIONS_VPN_SERVERS_UPDATE` |
+| Category | Create Variable | Update Variable | Delete Variable |
+|----------|----------------|-----------------|-----------------|
+| **networks** | `UNIFI_PERMISSIONS_NETWORKS_CREATE` | `UNIFI_PERMISSIONS_NETWORKS_UPDATE` | `UNIFI_PERMISSIONS_NETWORKS_DELETE` |
+| **wlans** | `UNIFI_PERMISSIONS_WLANS_CREATE` | `UNIFI_PERMISSIONS_WLANS_UPDATE` | `UNIFI_PERMISSIONS_WLANS_DELETE` |
+| **devices** | `UNIFI_PERMISSIONS_DEVICES_CREATE` | `UNIFI_PERMISSIONS_DEVICES_UPDATE` | `UNIFI_PERMISSIONS_DEVICES_DELETE` |
+| **clients** | N/A | `UNIFI_PERMISSIONS_CLIENTS_UPDATE` | `UNIFI_PERMISSIONS_CLIENTS_DELETE` |
+| **firewall_policies** | `UNIFI_PERMISSIONS_FIREWALL_POLICIES_CREATE` | `UNIFI_PERMISSIONS_FIREWALL_POLICIES_UPDATE` | `UNIFI_PERMISSIONS_FIREWALL_POLICIES_DELETE` |
+| **traffic_routes** | `UNIFI_PERMISSIONS_TRAFFIC_ROUTES_CREATE` | `UNIFI_PERMISSIONS_TRAFFIC_ROUTES_UPDATE` | `UNIFI_PERMISSIONS_TRAFFIC_ROUTES_DELETE` |
+| **port_forwards** | `UNIFI_PERMISSIONS_PORT_FORWARDS_CREATE` | `UNIFI_PERMISSIONS_PORT_FORWARDS_UPDATE` | `UNIFI_PERMISSIONS_PORT_FORWARDS_DELETE` |
+| **qos_rules** | `UNIFI_PERMISSIONS_QOS_RULES_CREATE` | `UNIFI_PERMISSIONS_QOS_RULES_UPDATE` | `UNIFI_PERMISSIONS_QOS_RULES_DELETE` |
+| **vpn_clients** | `UNIFI_PERMISSIONS_VPN_CLIENTS_CREATE` | `UNIFI_PERMISSIONS_VPN_CLIENTS_UPDATE` | `UNIFI_PERMISSIONS_VPN_CLIENTS_DELETE` |
+| **vpn_servers** | `UNIFI_PERMISSIONS_VPN_SERVERS_CREATE` | `UNIFI_PERMISSIONS_VPN_SERVERS_UPDATE` | `UNIFI_PERMISSIONS_VPN_SERVERS_DELETE` |
+| **acl_rules** | `UNIFI_PERMISSIONS_ACL_RULES_CREATE` | `UNIFI_PERMISSIONS_ACL_RULES_UPDATE` | `UNIFI_PERMISSIONS_ACL_RULES_DELETE` |
+| **vouchers** | `UNIFI_PERMISSIONS_VOUCHERS_CREATE` | `UNIFI_PERMISSIONS_VOUCHERS_UPDATE` | `UNIFI_PERMISSIONS_VOUCHERS_DELETE` |
 
 **Accepted Values:** `true`, `1`, `yes`, `on` (case-insensitive) = enabled; anything else = disabled
 
@@ -234,13 +236,11 @@ In **lazy** and **meta_only** modes, all tools always appear in `unifi_tool_inde
 
 ## Permission Actions
 
-| Action | Typical Operations |
-|--------|-------------------|
-| **create** | Add new resources (networks, rules, etc.) |
-| **update** | Modify existing resources (rename, toggle, change config) |
-| **delete** | Remove resources (typically uses "update" permission) |
-
-Note: `delete` operations typically use the `update` permission since they modify the resource list.
+| Action | Typical Operations | Default |
+|--------|-------------------|---------|
+| **create** | Add new resources (networks, rules, etc.) | Varies by category |
+| **update** | Modify existing resources (rename, toggle, change config) | Varies by category |
+| **delete** | Remove resources (ACL rules, vouchers, etc.) | Denied (opt-in) |
 
 ## Tools by Permission
 
@@ -298,6 +298,15 @@ Note: `delete` operations typically use the `update` permission since they modif
 ### VPN (Mixed)
 - ✅ `unifi_update_vpn_client_state` (vpn_clients: enabled)
 - ✅ `unifi_update_vpn_server_state` (vpn_servers: update only)
+
+### ACL Rules (Enabled by Default)
+- ✅ `unifi_create_acl_rule`
+- ✅ `unifi_update_acl_rule`
+- ❌ `unifi_delete_acl_rule` (delete: disabled by default)
+
+### Vouchers (Enabled by Default)
+- ✅ `unifi_create_voucher`
+- ❌ `unifi_revoke_voucher` (delete: disabled by default)
 
 ## Best Practices
 
