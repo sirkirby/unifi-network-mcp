@@ -57,7 +57,7 @@ sirkirby/unifi-mcp/
 │       │       ├── config/
 │       │       │   └── config.yaml
 │       │       ├── managers/        # All 15 network managers
-│       │       ├── tools/           # All 17 tool modules (91 tools)
+│       │       ├── tools/           # All 16 tool modules (91 tools)
 │       │       └── utils/           # Network-specific only
 │       │           ├── diagnostics.py
 │       │           └── config_helpers.py
@@ -127,7 +127,7 @@ Owns the "talk to a UniFi controller" concern. Any MCP server depends on it for 
 
 **`detection.py`** — UniFi OS vs standalone/self-hosted controller detection.
 
-- Extracted from the network server's existing controller type detection logic.
+- New module informed by existing detection logic in `bootstrap.py` and `connection_manager.py`. This is not a pure file move — it requires distilling the detection logic from two sources into a clean, standalone module. Expect more design work here than in pure extraction modules.
 - Determines API path prefix (`/proxy/network/...` vs `/api/...`).
 - All three servers need this — the path structure differs by controller type regardless of product.
 
@@ -177,16 +177,16 @@ Owns "how to build an MCP server the UniFi way." Reusable patterns all servers i
 **`lazy_tools.py`** — Lazy/on-demand tool registration.
 
 - Extracted from `src/utils/lazy_tool_loader.py`.
-- `TOOL_MODULE_MAP` becomes a parameter. Each server provides its own map.
+- The current implementation dynamically builds `TOOL_MODULE_MAP` by scanning the tools directory at module load time, with the manifest as fallback. The shared version accepts two parameters: a `tools_package` string (e.g., `"unifi_network_mcp.tools"`) and a `manifest_path`. It performs the same filesystem scan against the provided package, keeping the DRY behavior while being server-agnostic.
 
 **`meta_tools.py`** — `tool_index`, `execute`, `batch` meta-tools.
 
 - Extracted from `src/utils/meta_tools.py`.
-- Manifest path and tool references made configurable via init.
+- Manifest path, tool references, and `LazyToolLoader` instance made configurable via dependency injection (passed at registration time, not imported). This avoids circular imports between shared modules and ensures each server's meta-tools reference its own tool loader and manifest.
 
 **`tool_loader.py`** — Eager tool registration.
 
-- Extracted from `src/utils/tool_loader.py`. Same generalization as lazy_tools.
+- Extracted from `src/utils/tool_loader.py`. The current implementation hardcodes `"src.tools"` as the base package. The shared version accepts `tools_package` as a parameter, same pattern as `lazy_tools.py`.
 
 **`config.py`** — Shared config loading.
 
@@ -196,6 +196,7 @@ Owns "how to build an MCP server the UniFi way." Reusable patterns all servers i
 **`formatting.py`** — Response formatting helpers.
 
 - Enforces the `{"success": bool, "data": ...}` / `{"success": false, "error": ...}` contract as helpers.
+- **Note:** The current codebase has an inconsistency between CLAUDE.md (which documents `success: True` for preview responses) and `confirmation.py` (which returns `success: False`). This must be reconciled during PR 3 extraction — the shared `formatting.py` will codify the canonical behavior. Recommend aligning on `success: True` with `requires_confirmation: True` for previews, since previews are successful operations (the tool worked, it's just awaiting confirmation).
 
 ### Generalization Pattern
 
@@ -239,9 +240,11 @@ async def unifi_list_clients(...):
 ```
 
 Auth annotation values:
-- `local_only` — requires username/password session (private API, richer payloads)
+- `local_only` — requires username/password session (private API, richer payloads). **This is the default when `auth` is omitted**, preserving backward compatibility for all 91 existing tools.
 - `api_key_only` — only available via official API
 - `either` — both auth methods return equivalent data
+
+The `auth` annotation is resolved in the app's `permissioned_tool` decorator (which already handles `category` and `action`), not in `unifi-mcp-shared`. This keeps the shared permission package auth-agnostic — it checks permissions, not auth routing. Auth resolution is an app-level concern because each app has its own auth adapter.
 
 ### Auth Flow
 
@@ -294,6 +297,7 @@ When a tool using API key auth hits a 403, the error message is explicit: "This 
 ### Versioning
 
 - `hatch-vcs` with prefixed tags: `network/v0.5.0`
+- Each app's `pyproject.toml` configures `hatch-vcs` with a `tag-pattern` matching its prefix (e.g., `tag-pattern = "network/v*"` for the network app). Without this, `hatch-vcs` falls back to `0.0.0` or dirty tags.
 - Each app independently versioned
 - Shared packages versioned separately
 
@@ -362,6 +366,14 @@ Each PR leaves tests green. No release tag until all 7 land.
 | **7** | MCP tool annotations + error audit + CLAUDE.md update | Low — metadata + copy |
 
 After PR 7: tag `network/v0.5.0` (or appropriate version), publish to PyPI, push Docker image, announce ecosystem.
+
+### Implementation Notes
+
+- **PR 2 (highest risk):** Will require updating GitHub Actions workflows — test matrix, paths, publish jobs all change. Plan for CI/CD updates as part of this PR.
+- **PR 3:** `python-dotenv` dependency: decide whether `.env` loading stays in each app's `bootstrap.py` (simpler) or moves into `unifi-mcp-shared/config.py`. Recommendation: keep it in each app since `.env` file location is app-specific.
+- **PR 4:** `detection.py` is new code informed by existing logic in two files (`bootstrap.py`, `connection_manager.py`), not a simple extraction. Budget accordingly.
+- **PR 5:** The existing `UniFiSettings` dataclass in `bootstrap.py` needs an `api_key` field, or gets replaced by `UniFiAuth`'s config model. Decide during implementation.
+- **`.well-known/mcp-server.json`** stays at repo root for now. When Protect/Access ship (Phase 2+), each app will need its own. Not a Phase 1 concern.
 
 ---
 
