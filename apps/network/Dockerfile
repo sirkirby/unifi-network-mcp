@@ -9,19 +9,25 @@ ENV SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION}
 RUN pip install --upgrade pip \
  && pip install uv
 
-# Copy only metadata to leverage layer caching
-COPY pyproject.toml README.md ./
+# --- Layer-cached dependency install ---
+# Copy workspace root pyproject.toml and lockfile first (changes rarely)
+COPY pyproject.toml uv.lock ./
 
-# Bring in package code needed for installation
-COPY src ./src
+# Copy package metadata for dependency resolution (source changes more often)
+COPY apps/network/pyproject.toml apps/network/pyproject.toml
+COPY packages/unifi-core/pyproject.toml packages/unifi-core/pyproject.toml
+COPY packages/unifi-mcp-shared/pyproject.toml packages/unifi-mcp-shared/pyproject.toml
 
-# Build & install package (pulls aiounifi from PyPI per pyproject)
-RUN pip install .
+# Copy README (referenced by apps/network/pyproject.toml)
+COPY README.md ./
 
-# Do NOT copy the entire repository to avoid shadowing installed deps with
-# similarly named top-level folders (e.g., aiounifi/). If you need runtime
-# config defaults available without a bind mount, copy only config.
-COPY src/config ./src/config
+# Copy package source trees
+COPY apps/network/src apps/network/src
+COPY packages/unifi-core/src packages/unifi-core/src
+COPY packages/unifi-mcp-shared/src packages/unifi-mcp-shared/src
+
+# Install the network app (resolves workspace deps automatically)
+RUN uv pip install --system ./apps/network
 
 # Expose the MCP server port (for optional HTTP transport: streamable-http or SSE)
 EXPOSE 3000
