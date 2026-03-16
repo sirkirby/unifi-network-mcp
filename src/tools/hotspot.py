@@ -7,9 +7,8 @@ This module provides MCP tools to manage hotspot vouchers on a UniFi Network Con
 import logging
 from typing import Any, Dict, Optional
 
-from src.runtime import config, server
+from src.runtime import server
 from src.utils.confirmation import create_preview, preview_response, should_auto_confirm
-from src.utils.permissions import parse_permission
 
 logger = logging.getLogger(__name__)
 
@@ -121,10 +120,6 @@ async def create_voucher(
     confirm: bool = False,
 ) -> Dict[str, Any]:
     """Create one or more hotspot vouchers."""
-    if not parse_permission(config.permissions, "voucher", "create"):
-        logger.warning("Permission denied for creating vouchers.")
-        return {"success": False, "error": "Permission denied to create vouchers."}
-
     if expire_minutes < 1:
         return {"success": False, "error": "expire_minutes must be at least 1."}
 
@@ -182,13 +177,10 @@ async def create_voucher(
     name="unifi_revoke_voucher",
     description="Revoke/delete a hotspot voucher by its ID, preventing further use",
     permission_category="vouchers",
-    permission_action="update",
+    permission_action="delete",
 )
 async def revoke_voucher(voucher_id: str, confirm: bool = False) -> Dict[str, Any]:
     """Revoke a hotspot voucher."""
-    if not parse_permission(config.permissions, "voucher", "update"):
-        logger.warning(f"Permission denied for revoking voucher ({voucher_id}).")
-        return {"success": False, "error": "Permission denied to revoke vouchers."}
 
     try:
         hotspot_manager = _get_hotspot_manager()
