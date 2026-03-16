@@ -7,8 +7,8 @@ This module provides MCP tools to manage hotspot vouchers on a UniFi Network Con
 import logging
 from typing import Any, Dict, Optional
 
-from unifi_network_mcp.runtime import server
 from unifi_mcp_shared.confirmation import create_preview, preview_response, should_auto_confirm
+from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
 

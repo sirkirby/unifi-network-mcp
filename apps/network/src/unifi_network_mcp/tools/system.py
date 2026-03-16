@@ -7,9 +7,9 @@ This module provides MCP tools to interact with a Unifi Network Controller's sys
 import logging
 from typing import Any, Dict, Optional
 
-from unifi_network_mcp.runtime import config, server, system_manager
 from unifi_mcp_shared.confirmation import should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
+from unifi_network_mcp.runtime import config, server, system_manager
 
 logger = logging.getLogger(__name__)
 

@@ -7,10 +7,11 @@ This module provides MCP tools to manage network clients/devices on a Unifi Netw
 import logging
 from typing import Any, Dict, Optional
 
-# Import the global FastMCP server instance, config, and managers
-from unifi_network_mcp.runtime import client_manager, config, server
 from unifi_mcp_shared.confirmation import should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.categories import parse_permission
+
+# Import the global FastMCP server instance, config, and managers
+from unifi_network_mcp.runtime import client_manager, config, server
 
 logger = logging.getLogger(__name__)
 

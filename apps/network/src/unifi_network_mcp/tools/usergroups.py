@@ -7,9 +7,9 @@ This module provides MCP tools to manage user groups (bandwidth profiles) on a U
 import logging
 from typing import Any, Dict, Optional
 
-from unifi_network_mcp.runtime import config, server
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
+from unifi_network_mcp.runtime import config, server
 
 logger = logging.getLogger(__name__)
 

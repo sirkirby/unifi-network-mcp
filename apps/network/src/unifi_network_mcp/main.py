@@ -16,10 +16,14 @@ from typing import Union
 
 import uvicorn.config
 
+from unifi_mcp_shared.meta_tools import register_load_tools, register_meta_tools
+from unifi_mcp_shared.permissions import PermissionChecker
+from unifi_mcp_shared.tool_loader import auto_load_tools
 from unifi_network_mcp.bootstrap import (
     UNIFI_TOOL_REGISTRATION_MODE,
     logger,
 )  # ensures logging/env setup early
+from unifi_network_mcp.categories import NETWORK_CATEGORY_MAP, TOOL_MODULE_MAP, setup_lazy_loading
 from unifi_network_mcp.jobs import get_job_status, start_async_tool
 
 # Shared singletons
@@ -31,12 +35,6 @@ from unifi_network_mcp.runtime import (
 from unifi_network_mcp.tool_index import register_tool, tool_index_handler
 from unifi_network_mcp.utils.config_helpers import parse_config_bool
 from unifi_network_mcp.utils.diagnostics import diagnostics_enabled, wrap_tool
-from unifi_network_mcp.categories import setup_lazy_loading
-from unifi_mcp_shared.meta_tools import register_load_tools, register_meta_tools
-from unifi_mcp_shared.permissions import PermissionChecker
-from unifi_network_mcp.categories import NETWORK_CATEGORY_MAP
-from unifi_network_mcp.categories import TOOL_MODULE_MAP
-from unifi_mcp_shared.tool_loader import auto_load_tools
 
 # Use the original FastMCP tool decorator (saved in runtime.py before wrapping)
 _original_tool_decorator = getattr(server, "_original_tool", server.tool)

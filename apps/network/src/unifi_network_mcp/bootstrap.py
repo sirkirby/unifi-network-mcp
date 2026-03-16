@@ -15,7 +15,6 @@ exposes a `load_config()` helper that the rest of the codebase can share.
 import importlib.resources
 import logging
 import os
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -23,8 +22,8 @@ from typing import Any
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
-from unifi_mcp_shared.config import setup_logging as _shared_setup_logging
 from unifi_mcp_shared.config import load_yaml_config  # noqa: F401 — re-export for convenience
+from unifi_mcp_shared.config import setup_logging as _shared_setup_logging
 
 # ---------------------------------------------------------------------------
 # Environment & logging
