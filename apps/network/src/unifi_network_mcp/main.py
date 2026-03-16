@@ -33,11 +33,15 @@ from unifi_network_mcp.utils.config_helpers import parse_config_bool
 from unifi_network_mcp.utils.diagnostics import diagnostics_enabled, wrap_tool
 from unifi_network_mcp.utils.lazy_tool_loader import setup_lazy_loading
 from unifi_network_mcp.utils.meta_tools import register_load_tools, register_meta_tools
-from unifi_network_mcp.utils.permissions import parse_permission  # noqa: E402
+from unifi_mcp_shared.permissions import PermissionChecker
+from unifi_network_mcp.categories import NETWORK_CATEGORY_MAP
 from unifi_network_mcp.utils.tool_loader import auto_load_tools
 
 # Use the original FastMCP tool decorator (saved in runtime.py before wrapping)
 _original_tool_decorator = getattr(server, "_original_tool", server.tool)
+
+# Shared permission checker instance for the permissioned_tool decorator
+permission_checker = PermissionChecker(category_map=NETWORK_CATEGORY_MAP, permissions=config.permissions)
 
 
 def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
@@ -144,7 +148,7 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
 
         # Check permissions for MCP server registration
         try:
-            allowed = parse_permission(config.permissions, category, action)
+            allowed = permission_checker.check(category, action)
         except Exception as exc:  # mis‑config should not crash server
             logger.error("Permission check failed for tool %s: %s", tool_name, exc)
             allowed = False
