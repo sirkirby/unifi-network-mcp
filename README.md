@@ -459,10 +459,10 @@ Add (or update) the `unifi-network-mcp` block under `mcpServers` in your `claude
 
 ### Option 3 – Claude attaches to an existing Docker container (recommended for compose)
 
-1) Using the container name as specified in `docker-compose.yml` from the repository root:
+1) Using the container name as specified in `docker/docker-compose.yml`:
 
 ```yaml
-docker-compose up --build
+docker compose -f docker/docker-compose.yml up --build
 ```
 
 2) Then configure Claude Desktop:
@@ -477,7 +477,7 @@ docker-compose up --build
 Notes:
 
 * Use `-T` only with `docker compose exec` (it disables TTY for clean JSON). Do not use `-T` with `docker exec`.
-* Ensure the compose service is running (`docker compose up -d`) before attaching.
+* Ensure the compose service is running (`docker compose -f docker/docker-compose.yml up -d`) before attaching.
 
 After editing the config **restart Claude Desktop**, then test with:
 
@@ -1079,7 +1079,7 @@ uv pip install unifi-network-mcp
 Test with Docker and Claude Desktop:
 
 ```bash
-docker compose up --build
+docker compose -f docker/docker-compose.yml up --build
 ```
 
 Then configure Claude Desktop to use the Docker container (see [Configuration](#configuration) above).
