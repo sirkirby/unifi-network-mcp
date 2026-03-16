@@ -9,7 +9,7 @@ import logging
 from typing import Any, Dict
 
 from unifi_network_mcp.runtime import config, server, vpn_manager
-from unifi_network_mcp.utils.permissions import parse_permission
+from unifi_network_mcp.categories import parse_permission
 
 logger = logging.getLogger(__name__)
 

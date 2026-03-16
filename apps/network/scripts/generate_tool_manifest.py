@@ -101,11 +101,11 @@ def generate_manifest() -> dict[str, Any]:
 
     try:
         # Import the auto loader which will trigger all tool registrations
-        from unifi_network_mcp.utils.tool_loader import auto_load_tools
+        from unifi_mcp_shared.tool_loader import auto_load_tools
 
         # Load all tools - this will trigger all @server.tool decorators
         # which in turn call register_tool() to populate TOOL_REGISTRY
-        auto_load_tools()
+        auto_load_tools(base_package="unifi_network_mcp.tools")
 
         logger.info(f"   ✅ Loaded {len(TOOL_REGISTRY)} tools into registry")
 
@@ -116,7 +116,7 @@ def generate_manifest() -> dict[str, Any]:
 
         # Fallback to minimal manifest if tool loading fails
         logger.warning("   Falling back to minimal manifest from TOOL_MODULE_MAP")
-        from unifi_network_mcp.utils.lazy_tool_loader import TOOL_MODULE_MAP
+        from unifi_network_mcp.categories import TOOL_MODULE_MAP
 
         tools = []
         for tool_name in sorted(TOOL_MODULE_MAP.keys()):

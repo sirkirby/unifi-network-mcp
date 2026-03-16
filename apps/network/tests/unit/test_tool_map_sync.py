@@ -25,7 +25,7 @@ class TestToolMapSync:
     @pytest.fixture
     def tool_module_map(self) -> dict[str, str]:
         """Load the TOOL_MODULE_MAP."""
-        from unifi_network_mcp.utils.lazy_tool_loader import TOOL_MODULE_MAP
+        from unifi_network_mcp.categories import TOOL_MODULE_MAP
 
         return TOOL_MODULE_MAP
 
@@ -89,7 +89,7 @@ class TestToolMapSync:
 
     def test_dynamic_discovery_works(self):
         """Verify the dynamic tool discovery function works correctly."""
-        from unifi_network_mcp.utils.lazy_tool_loader import _build_tool_module_map
+        from unifi_network_mcp.categories import _build_tool_module_map
 
         tool_map = _build_tool_module_map()
 

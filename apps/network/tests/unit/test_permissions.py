@@ -3,7 +3,7 @@
 import os
 from unittest.mock import patch
 
-from unifi_network_mcp.utils.permissions import parse_permission
+from unifi_network_mcp.categories import parse_permission
 
 
 class TestDeletePermissions:
@@ -83,9 +83,9 @@ class TestExistingPermissionsBehaviorUnchanged:
         """Read is still allowed by default when not configured."""
         assert parse_permission({}, "acl_rules", "read") is True
 
-    def test_read_denied_when_permissions_is_none(self):
-        """Read is denied when permissions is None (no config loaded)."""
-        assert parse_permission(None, "acl_rules", "read") is False
+    def test_read_allowed_when_permissions_is_none(self):
+        """Read is allowed when permissions is None (hardcoded fallback: read=True)."""
+        assert parse_permission(None, "acl_rules", "read") is True
 
     def test_create_denied_by_hardcoded_fallback(self):
         """Create is still denied when no config exists (non-read fallback)."""
