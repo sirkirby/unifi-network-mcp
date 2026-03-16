@@ -106,7 +106,8 @@ sirkirby/unifi-mcp/
 ├── pyproject.toml                   # uv workspace root
 ├── Makefile                         # Top-level delegation
 ├── README.md                        # Ecosystem landing page
-└── docker-compose.yml
+└── docker/
+    └── docker-compose.yml           # Full local dev stack
 ```
 
 ---
