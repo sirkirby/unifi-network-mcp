@@ -11,7 +11,7 @@ MCP servers that expose UniFi controller functionality as structured tools for L
 | Server | Status | Tools | Package |
 |--------|--------|-------|---------|
 | [Network](apps/network/) | Stable | 91 | [`unifi-network-mcp`](https://pypi.org/project/unifi-network-mcp/) |
-| Protect | Coming Soon | — | — |
+| [Protect](apps/protect/) | Beta | 34 | `unifi-protect-mcp` |
 | Access | Planned | — | — |
 
 ## What is this?
@@ -20,18 +20,14 @@ UniFi MCP is a collection of [Model Context Protocol](https://modelcontextprotoc
 
 ## Quick Start
 
-The fastest way to run the Network server:
+The fastest way to run the servers:
 
 ```bash
-# Using uvx (recommended)
+# Network server
 uvx unifi-network-mcp
 
-# Using Docker
-docker run -i --rm \
-  -e UNIFI_HOST=192.168.1.1 \
-  -e UNIFI_USERNAME=admin \
-  -e UNIFI_PASSWORD=secret \
-  ghcr.io/sirkirby/unifi-network-mcp:latest
+# Protect server
+uvx unifi-protect-mcp
 ```
 
 For Claude Desktop, add to your `claude_desktop_config.json`:
@@ -39,9 +35,18 @@ For Claude Desktop, add to your `claude_desktop_config.json`:
 ```jsonc
 {
   "mcpServers": {
-    "unifi": {
+    "unifi-network": {
       "command": "uvx",
       "args": ["unifi-network-mcp"],
+      "env": {
+        "UNIFI_HOST": "192.168.1.1",
+        "UNIFI_USERNAME": "admin",
+        "UNIFI_PASSWORD": "your-password"
+      }
+    },
+    "unifi-protect": {
+      "command": "uvx",
+      "args": ["unifi-protect-mcp"],
       "env": {
         "UNIFI_HOST": "192.168.1.1",
         "UNIFI_USERNAME": "admin",
@@ -72,6 +77,7 @@ This is a monorepo with shared packages:
 ```
 apps/
   network/          # UniFi Network MCP server (stable, 91 tools)
+  protect/          # UniFi Protect MCP server (beta, 34 tools)
 packages/
   unifi-core/       # Shared UniFi connectivity (auth, detection, retry)
   unifi-mcp-shared/ # Shared MCP patterns (permissions, confirmation, lazy loading)
@@ -84,7 +90,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
 ## Roadmap
 
-Protect and Access servers are planned for future phases. See the [ecosystem design spec](docs/superpowers/specs/) for the full roadmap.
+The Protect server is in beta. An Access server is planned for a future phase. See the [ecosystem design spec](docs/superpowers/specs/) for the full roadmap.
 
 ## Contributing
 

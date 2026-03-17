@@ -1,0 +1,91 @@
+# Tool Catalog
+
+The UniFi Protect MCP server exposes 34 tools, all prefixed with `protect_`. Read-only tools are always available. Mutating tools are controlled by the [permission system](permissions.md).
+
+For machine-readable tool metadata, call the `protect_tool_index` meta-tool at runtime, or inspect `src/unifi_protect_mcp/tools_manifest.json`.
+
+## Meta-Tools
+
+These are always registered regardless of mode:
+
+- `protect_tool_index` -- List all available tools with schemas
+- `protect_execute` -- Execute a tool by name (for lazy/meta_only modes)
+- `protect_batch` -- Execute multiple tools in parallel
+- `protect_batch_status` -- Check batch job status
+
+In lazy mode, an additional meta-tool is available:
+
+- `protect_load_tools` -- Load a set of tools by category or name for direct calling
+
+## Cameras (10 tools)
+
+- `protect_list_cameras` -- List all cameras with name, model, state, recording mode
+- `protect_get_camera` -- Detailed camera info: firmware, IP, MAC, IR/HDR, smart detection, PTZ
+- `protect_get_snapshot` -- Fetch JPEG snapshot (base64 or resource reference)
+- `protect_get_camera_streams` -- RTSP/RTSPS stream URLs by channel (High/Medium/Low)
+- `protect_get_camera_analytics` -- Motion and smart detection analytics with timestamps
+- `protect_update_camera_settings` -- Update IR, HDR, mic, speaker, status light, motion detection (confirm required)
+- `protect_toggle_recording` -- Enable/disable recording on a camera (confirm required)
+- `protect_ptz_move` -- Adjust PTZ camera zoom level (confirm required)
+- `protect_ptz_preset` -- Move PTZ camera to a saved preset position (confirm required)
+- `protect_reboot_camera` -- Reboot a camera; interrupts active recordings (confirm required)
+
+## Events (7 tools)
+
+- `protect_list_events` -- Query events from NVR with filters (time range, type, camera, limit)
+- `protect_get_event` -- Get single event details by ID
+- `protect_get_event_thumbnail` -- Get event thumbnail as base64 JPEG
+- `protect_list_smart_detections` -- List smart detections (person, vehicle, animal, package) with confidence filter
+- `protect_recent_events` -- Get events from the in-memory websocket buffer (fast, no API call)
+- `protect_subscribe_events` -- Get instructions for real-time event subscription via MCP resources
+- `protect_acknowledge_event` -- Mark event as favorite/acknowledged (confirm required)
+
+## Recordings (4 tools)
+
+- `protect_get_recording_status` -- Recording state for one or all cameras (mode, active, time range)
+- `protect_list_recordings` -- Recording availability for a camera within a time range
+- `protect_export_clip` -- Export video clip with metadata (max 2 hours, timelapse support)
+- `protect_delete_recording` -- Recording deletion info (not supported by uiprotect API)
+
+## Devices (6 tools)
+
+### Lights
+
+- `protect_list_lights` -- List floodlights with brightness, PIR sensitivity, paired camera
+- `protect_update_light` -- Update on/off, brightness (1-6), sensitivity (0-100), duration (confirm required)
+
+### Sensors
+
+- `protect_list_sensors` -- List sensors with battery status, readings (temp, humidity, motion, leak)
+
+### Chimes
+
+- `protect_list_chimes` -- List chimes with volume, ring settings, available ringtones
+- `protect_update_chime` -- Update volume (0-100), repeat times (1-6), name (confirm required)
+- `protect_trigger_chime` -- Play chime tone with optional volume/repeat override
+
+## Liveviews (3 tools)
+
+- `protect_list_liveviews` -- List multi-camera layouts with slots, cameras, cycle settings
+- `protect_create_liveview` -- Validate liveview creation (not supported by uiprotect API)
+- `protect_delete_liveview` -- Validate liveview deletion (not supported by uiprotect API)
+
+## System (4 tools)
+
+- `protect_get_system_info` -- NVR model, firmware, uptime, storage, device counts
+- `protect_get_health` -- CPU load/temp, memory usage, storage utilization
+- `protect_list_viewers` -- Connected Protect viewers (Viewport) with firmware and liveview
+- `protect_get_firmware_status` -- Firmware update availability for NVR and all devices
+
+## MCP Resources
+
+In addition to tools, the server registers MCP resources for data that benefits from polling:
+
+| Resource URI | Type | Description |
+|-------------|------|-------------|
+| `protect://events/stream` | JSON | Recent events from the websocket buffer |
+| `protect://events/stream/summary` | JSON | Event count summary by type and camera |
+| `protect://cameras/{camera_id}/snapshot` | JPEG | Live snapshot from a camera (template) |
+| `protect://cameras/snapshots` | JSON | Index of all cameras with snapshot URIs |
+
+See [events.md](events.md) for details on the event streaming resources.
