@@ -1,11 +1,11 @@
 unifi:
-  host: ${oc.env:UNIFI_HOST,""}
-  username: ${oc.env:UNIFI_USERNAME,""}
-  password: ${oc.env:UNIFI_PASSWORD,""}
-  port: ${oc.env:UNIFI_PORT,443}
-  site: ${oc.env:UNIFI_SITE,default}
-  verify_ssl: ${oc.env:UNIFI_VERIFY_SSL,false}
-  api_key: ${oc.env:UNIFI_API_KEY,""}
+  host: ${oc.env:UNIFI_PROTECT_HOST,""}
+  username: ${oc.env:UNIFI_PROTECT_USERNAME,""}
+  password: ${oc.env:UNIFI_PROTECT_PASSWORD,""}
+  port: ${oc.env:UNIFI_PROTECT_PORT,443}
+  site: ${oc.env:UNIFI_PROTECT_SITE,default}
+  verify_ssl: ${oc.env:UNIFI_PROTECT_VERIFY_SSL,false}
+  api_key: ${oc.env:UNIFI_PROTECT_API_KEY,""}
 
 server:
   host: ${oc.env:UNIFI_MCP_HOST,0.0.0.0}
