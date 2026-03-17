@@ -323,6 +323,7 @@ class ConnectionManager:
                         password=self.password,
                         port=self.port,
                         site=self.site,
+                        ssl_context=False if not self.verify_ssl else None,
                     )
 
                     self.controller = Controller(config=config)
