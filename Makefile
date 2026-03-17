@@ -1,16 +1,22 @@
-.PHONY: help test lint format manifest pre-commit core-test shared-test
+.PHONY: help test lint format manifest pre-commit core-test shared-test \
+       docker-build docker-up docker-down docker-logs
 
 help:
 	@echo "UniFi MCP Ecosystem — Top-Level Commands"
 	@echo ""
-	@echo "  make test         Run all tests (core + shared + all apps)"
-	@echo "  make lint         Lint all apps"
-	@echo "  make format       Format all apps"
-	@echo "  make manifest     Regenerate tool manifests for all apps"
-	@echo "  make pre-commit   Format + lint + test"
+	@echo "  make test           Run all tests (core + shared + all apps)"
+	@echo "  make lint           Lint all apps"
+	@echo "  make format         Format all apps"
+	@echo "  make manifest       Regenerate tool manifests for all apps"
+	@echo "  make pre-commit     Format + lint + test"
 	@echo ""
-	@echo "  make core-test    Run unifi-core tests only"
-	@echo "  make shared-test  Run unifi-mcp-shared tests only"
+	@echo "  make docker-build   Build all Docker images"
+	@echo "  make docker-up      Start all servers (docker compose)"
+	@echo "  make docker-down    Stop all servers"
+	@echo "  make docker-logs    Tail logs from all servers"
+	@echo ""
+	@echo "  make core-test      Run unifi-core tests only"
+	@echo "  make shared-test    Run unifi-mcp-shared tests only"
 
 core-test:
 	uv run --package unifi-core pytest packages/unifi-core/tests -v
@@ -35,3 +41,15 @@ manifest:
 	$(MAKE) -C apps/protect manifest
 
 pre-commit: format lint test
+
+docker-build:
+	docker compose -f docker/docker-compose.yml build
+
+docker-up:
+	docker compose -f docker/docker-compose.yml up --build -d
+
+docker-down:
+	docker compose -f docker/docker-compose.yml down
+
+docker-logs:
+	docker compose -f docker/docker-compose.yml logs -f
