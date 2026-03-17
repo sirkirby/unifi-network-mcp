@@ -2,6 +2,9 @@
 
 Provides methods to query and manage Access hardware devices (hubs, readers,
 relays, intercoms) via the Access controller API.
+
+Dual-path routing: tries the API client (py-unifi-access) first when
+available, then falls back to the proxy session path.
 """
 
 from __future__ import annotations
@@ -10,6 +13,7 @@ import logging
 from typing import Any, Dict, List
 
 from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
+from unifi_core.exceptions import UniFiConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -21,21 +25,109 @@ class DeviceManager:
         self._cm = connection_manager
 
     # ------------------------------------------------------------------
-    # Read-only methods (stubs)
+    # Read-only methods
     # ------------------------------------------------------------------
 
     async def list_devices(self) -> List[Dict[str, Any]]:
-        """Return all Access devices as summary dicts."""
-        raise NotImplementedError("DeviceManager.list_devices not yet implemented")
+        """Return all Access devices as summary dicts.
+
+        Tries the API client first, then falls back to the proxy path.
+        """
+        try:
+            if self._cm.has_api_client:
+                devices = await self._cm.api_client.get_devices()
+                return [
+                    {
+                        "id": getattr(d, "id", None),
+                        "name": getattr(d, "name", None),
+                        "type": getattr(d, "type", None),
+                        "connected": getattr(d, "connected", None),
+                        "firmware_version": getattr(d, "firmware_version", None),
+                    }
+                    for d in devices
+                ]
+            elif self._cm.has_proxy:
+                data = await self._cm.proxy_request("GET", "devices")
+                return data.get("data", data) if isinstance(data, dict) else data
+            else:
+                raise UniFiConnectionError("No auth path available for list_devices")
+        except UniFiConnectionError:
+            raise
+        except Exception as e:
+            logger.error("Failed to list devices: %s", e, exc_info=True)
+            raise
 
     async def get_device(self, device_id: str) -> Dict[str, Any]:
-        """Return detailed information for a single device."""
-        raise NotImplementedError("DeviceManager.get_device not yet implemented")
+        """Return detailed information for a single device.
+
+        Tries the API client first, then falls back to the proxy path.
+        """
+        if not device_id:
+            raise ValueError("device_id is required")
+        try:
+            if self._cm.has_api_client:
+                device = await self._cm.api_client.get_device(device_id)
+                return {
+                    "id": getattr(device, "id", None),
+                    "name": getattr(device, "name", None),
+                    "type": getattr(device, "type", None),
+                    "connected": getattr(device, "connected", None),
+                    "firmware_version": getattr(device, "firmware_version", None),
+                    "mac": getattr(device, "mac", None),
+                    "ip": getattr(device, "ip", None),
+                }
+            elif self._cm.has_proxy:
+                data = await self._cm.proxy_request("GET", f"devices/{device_id}")
+                return data.get("data", data) if isinstance(data, dict) else data
+            else:
+                raise UniFiConnectionError("No auth path available for get_device")
+        except (UniFiConnectionError, ValueError):
+            raise
+        except Exception as e:
+            logger.error("Failed to get device %s: %s", device_id, e, exc_info=True)
+            raise
 
     # ------------------------------------------------------------------
-    # Mutation methods (stubs)
+    # Mutation methods (preview/confirm pattern)
     # ------------------------------------------------------------------
 
-    async def restart_device(self, device_id: str) -> Dict[str, Any]:
-        """Restart a device. Returns preview data."""
-        raise NotImplementedError("DeviceManager.restart_device not yet implemented")
+    async def reboot_device(self, device_id: str) -> Dict[str, Any]:
+        """Preview a device reboot. Returns preview data for confirmation."""
+        if not device_id:
+            raise ValueError("device_id is required")
+
+        current = await self.get_device(device_id)
+        return {
+            "device_id": device_id,
+            "device_name": current.get("name"),
+            "device_type": current.get("type"),
+            "current_state": {
+                "connected": current.get("connected"),
+                "firmware_version": current.get("firmware_version"),
+            },
+            "proposed_changes": {
+                "action": "reboot",
+            },
+        }
+
+    async def apply_reboot_device(self, device_id: str) -> Dict[str, Any]:
+        """Execute the device reboot on the controller.
+
+        Uses the proxy path since device reboot is not exposed by the
+        py-unifi-access API client.
+        """
+        try:
+            if self._cm.has_proxy:
+                await self._cm.proxy_request("POST", f"devices/{device_id}/reboot")
+                return {
+                    "device_id": device_id,
+                    "action": "reboot",
+                    "result": "success",
+                }
+            else:
+                raise UniFiConnectionError("No proxy session available for reboot_device")
+        except UniFiConnectionError:
+            raise
+        except Exception as e:
+            logger.error("Failed to reboot device %s: %s", device_id, e, exc_info=True)
+            raise

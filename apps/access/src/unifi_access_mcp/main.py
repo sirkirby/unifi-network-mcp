@@ -313,8 +313,7 @@ async def main_async():
     elif UNIFI_TOOL_REGISTRATION_MODE == "lazy":
         logger.info("Tool registration mode: lazy")
         logger.info(
-            "   Meta-tools: access_tool_index, access_execute, access_batch, "
-            "access_batch_status, access_load_tools"
+            "   Meta-tools: access_tool_index, access_execute, access_batch, access_batch_status, access_load_tools"
         )
         logger.info("   Use access_execute to run any tool - works with all clients")
 

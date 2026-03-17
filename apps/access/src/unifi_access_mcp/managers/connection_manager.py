@@ -223,9 +223,7 @@ class AccessConnectionManager:
                     body = await resp.text()
                 except Exception:
                     pass
-                raise UniFiAuthError(
-                    f"Proxy login failed: HTTP {resp.status}{(' — ' + body[:200]) if body else ''}"
-                )
+                raise UniFiAuthError(f"Proxy login failed: HTTP {resp.status}{(' — ' + body[:200]) if body else ''}")
             self._csrf_token = resp.headers.get("x-updated-csrf-token", resp.headers.get("x-csrf-token", ""))
             logger.debug("[access-cm] Proxy login successful, CSRF token obtained.")
 
@@ -262,9 +260,7 @@ class AccessConnectionManager:
         url = f"https://{self.host}:{self.port}/proxy/access/api/v2/{path.lstrip('/')}"
         headers = {"X-CSRF-Token": self._csrf_token}
 
-        async with self._proxy_session.request(
-            method, url, headers=headers, ssl=self._ssl_context, **kwargs
-        ) as resp:
+        async with self._proxy_session.request(method, url, headers=headers, ssl=self._ssl_context, **kwargs) as resp:
             if resp.status == 401:
                 # Session expired — re-login under lock to prevent concurrent re-auths
                 async with self._auth_lock:
@@ -290,8 +286,7 @@ class AccessConnectionManager:
                 except Exception:
                     pass
                 raise UniFiConnectionError(
-                    f"Proxy request failed: HTTP {resp.status} {method} {path}"
-                    f"{(' — ' + body[:200]) if body else ''}"
+                    f"Proxy request failed: HTTP {resp.status} {method} {path}{(' — ' + body[:200]) if body else ''}"
                 )
             return await resp.json()
 

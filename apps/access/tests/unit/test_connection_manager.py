@@ -5,12 +5,10 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import aiohttp
 import pytest
 
 from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
 from unifi_core.exceptions import UniFiAuthError, UniFiConnectionError
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -117,7 +115,9 @@ class TestApiClientAuth:
         with (
             patch("unifi_access_mcp.managers.connection_manager.aiohttp.ClientSession") as mock_session_cls,
             patch("unifi_access_mcp.managers.connection_manager.aiohttp.TCPConnector"),
-            patch.dict("sys.modules", {"unifi_access_api": MagicMock(UnifiAccessApiClient=MagicMock(return_value=mock_client))}),
+            patch.dict(
+                "sys.modules", {"unifi_access_api": MagicMock(UnifiAccessApiClient=MagicMock(return_value=mock_client))}
+            ),
         ):
             mock_session_cls.return_value = AsyncMock()
             mock_session_cls.return_value.closed = False
@@ -150,9 +150,7 @@ class TestApiClientAuth:
     @pytest.mark.asyncio
     async def test_api_client_failure_is_non_fatal(self, cm_dual):
         """API client auth failure logs warning but doesn't raise."""
-        with patch(
-            "unifi_access_mcp.managers.connection_manager.aiohttp.ClientSession"
-        ) as mock_session_cls:
+        with patch("unifi_access_mcp.managers.connection_manager.aiohttp.ClientSession") as mock_session_cls:
             mock_session = AsyncMock()
             mock_session.closed = False
             mock_session.close = AsyncMock()
@@ -384,7 +382,7 @@ class TestAuthLock:
         cm_proxy_only._proxy_login = mock_proxy_login
 
         # Fire two concurrent requests that both hit 401
-        results = await asyncio.gather(
+        await asyncio.gather(
             cm_proxy_only.proxy_request("GET", "doors"),
             cm_proxy_only.proxy_request("GET", "users"),
             return_exceptions=True,

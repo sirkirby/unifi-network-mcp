@@ -11,9 +11,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
-from unifi_core.exceptions import UniFiConnectionError
-
 from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
+from unifi_core.exceptions import UniFiConnectionError
 
 logger = logging.getLogger(__name__)
 
