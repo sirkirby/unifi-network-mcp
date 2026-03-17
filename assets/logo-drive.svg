@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <!-- Three interlocking loop strands in drive teal -->
+  <!-- Upper strand -->
+  <path d="M 36,58 C 50,58 56,68 66,74 Q 80,82 94,74 C 104,68 110,58 124,58"
+        stroke="#00D4AA" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <!-- Middle strand -->
+  <path d="M 36,80 C 52,80 56,96 68,96 C 76,96 80,86 80,80 C 80,74 84,64 92,64 C 104,64 108,80 124,80"
+        stroke="#00D4AA" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <!-- Lower strand -->
+  <path d="M 36,102 C 50,102 56,92 66,86 Q 80,78 94,86 C 104,92 110,102 124,102"
+        stroke="#00D4AA" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <!-- Over/under crossings -->
+  <path d="M 58,64 C 62,68 65,72 68,75" stroke="#00D4AA" stroke-width="9" stroke-linecap="round" fill="none"/>
+  <path d="M 102,92 C 98,88 95,86 92,84" stroke="#00D4AA" stroke-width="9" stroke-linecap="round" fill="none"/>
+  <path d="M 88,66 C 90,64 93,64 96,66" stroke="#00D4AA" stroke-width="9" stroke-linecap="round" fill="none"/>
+  <path d="M 64,94 C 66,96 69,96 72,94" stroke="#00D4AA" stroke-width="9" stroke-linecap="round" fill="none"/>
+  <!-- Stacked drive/disk icon centered in knot -->
+  <!-- Top disk -->
+  <ellipse cx="80" cy="75" rx="7" ry="2.5"
+           stroke="#00D4AA" stroke-width="1.5" fill="none"/>
+  <!-- Middle disk body -->
+  <line x1="73" y1="75" x2="73" y2="80" stroke="#00D4AA" stroke-width="1.5"/>
+  <line x1="87" y1="75" x2="87" y2="80" stroke="#00D4AA" stroke-width="1.5"/>
+  <ellipse cx="80" cy="80" rx="7" ry="2.5"
+           stroke="#00D4AA" stroke-width="1.5" fill="none"/>
+  <!-- Bottom disk body -->
+  <line x1="73" y1="80" x2="73" y2="85" stroke="#00D4AA" stroke-width="1.5"/>
+  <line x1="87" y1="80" x2="87" y2="85" stroke="#00D4AA" stroke-width="1.5"/>
+  <ellipse cx="80" cy="85" rx="7" ry="2.5"
+           stroke="#00D4AA" stroke-width="1.5" fill="none"/>
+  <!-- Outer nodes -->
+  <circle cx="22" cy="54" r="5" fill="#00D4AA"/>
+  <circle cx="18" cy="80" r="4" fill="#00D4AA"/>
+  <circle cx="22" cy="106" r="5" fill="#00D4AA"/>
+  <circle cx="138" cy="54" r="5" fill="#00D4AA"/>
+  <circle cx="142" cy="80" r="4" fill="#00D4AA"/>
+  <circle cx="138" cy="106" r="5" fill="#00D4AA"/>
+  <!-- Node connections -->
+  <line x1="22" y1="54" x2="36" y2="58" stroke="#00D4AA" stroke-width="2" opacity=".5"/>
+  <line x1="18" y1="80" x2="36" y2="80" stroke="#00D4AA" stroke-width="2" opacity=".5"/>
+  <line x1="22" y1="106" x2="36" y2="102" stroke="#00D4AA" stroke-width="2" opacity=".5"/>
+  <line x1="138" y1="54" x2="124" y2="58" stroke="#00D4AA" stroke-width="2" opacity=".5"/>
+  <line x1="142" y1="80" x2="124" y2="80" stroke="#00D4AA" stroke-width="2" opacity=".5"/>
+  <line x1="138" y1="106" x2="124" y2="102" stroke="#00D4AA" stroke-width="2" opacity=".5"/>
+</svg>
