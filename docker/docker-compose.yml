@@ -1,0 +1,18 @@
+services:
+  unifi-network-mcp:
+    build:
+      context: ..
+      dockerfile: apps/network/Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      # Enable HTTP transport for remote MCP clients (LM Studio, etc.)
+      - UNIFI_MCP_HTTP_ENABLED=true
+      - UNIFI_MCP_HTTP_TRANSPORT=streamable-http
+      - UNIFI_MCP_HOST=0.0.0.0
+      - UNIFI_MCP_PORT=3000
+      - UNIFI_MCP_ALLOWED_HOSTS=localhost,localhost:3000,127.0.0.1,127.0.0.1:3000,host.docker.internal,host.docker.internal:3000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    container_name: unifi-network-mcp

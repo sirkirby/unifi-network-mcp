@@ -1,0 +1,43 @@
+name: "Network: Publish to PyPI"
+
+on:
+  release:
+    types: [created] # Trigger only when a new GitHub release is published
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    name: Build and publish Python distributions to PyPI
+    runs-on: ubuntu-latest
+    environment:
+       name: pypi
+       url: https://pypi.org/p/unifi-network-mcp # Link to the PyPI package page
+    permissions:
+      id-token: write # IMPORTANT: required for trusted publishing
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0  # Full history needed for hatch-vcs to determine version from tags
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.13"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+
+    - name: Build package
+      run: uv build --package unifi-network-mcp
+
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      # No API token needed if using trusted publishing
+      # with:
+      #   password: ${{ secrets.PYPI_API_TOKEN }} # Use this if not using trusted publishing

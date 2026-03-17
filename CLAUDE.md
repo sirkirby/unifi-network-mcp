@@ -1,12 +1,55 @@
 ## Metadata
 
-- **Project:** unifi-network-mcp
+- **Project:** unifi-network-mcp (monorepo)
 - **Status:** Adopted
 - **Version:** 1.0.0
-- **Last Updated:** 2026-02-17
+- **Last Updated:** 2026-03-16
 - **Tech Stack:** Python 3.13+, FastMCP, aiounifi, aiohttp, OmegaConf, jsonschema, ruff, pytest, Docker
 - **License:** MIT
 - **Repository:** https://github.com/sirkirby/unifi-network-mcp
+
+---
+
+## 0. Monorepo Layout
+
+This repository is a **uv workspace monorepo** with one application and two shared packages:
+
+```
+unifi-network-mcp/
+  apps/
+    network/                          # MCP server application
+      src/unifi_network_mcp/          # Main package
+      tests/                          # Network server tests
+      Makefile                        # App-level targets
+      pyproject.toml                  # App build config
+  packages/
+    unifi-core/                       # Low-level controller abstractions
+      src/unifi_core/                 # auth, connection, detection, retry
+      tests/
+    unifi-mcp-shared/                 # Shared MCP utilities
+      src/unifi_mcp_shared/           # permissions, confirmation, meta_tools, lazy_tools
+      tests/
+  Makefile                            # Root: delegates to app/package targets
+  pyproject.toml                      # Workspace root
+  uv.lock                             # Single lockfile for all packages
+```
+
+**Import patterns:**
+- `from unifi_network_mcp.<module>` -- network server code
+- `from unifi_mcp_shared.<module>` -- shared MCP utilities (permissions, confirmation, tool loading)
+- `from unifi_core.<module>` -- low-level controller abstractions (auth, connection, retry)
+
+**Build commands (root Makefile delegates):**
+```bash
+make test              # Run ALL tests (core + shared + network)
+make core-test         # Run unifi-core tests only
+make shared-test       # Run unifi-mcp-shared tests only
+make network-test      # Run network server tests only
+make lint              # Lint network server
+make format            # Format network server
+make network-manifest  # Regenerate tools manifest
+make pre-commit        # format + lint + test
+```
 
 ---
 
@@ -38,7 +81,7 @@ unifi-network-mcp is **not**:
 **"Context-optimized"** means:
 - Lazy tool loading is the default mode (~200 tokens vs ~5,000 for eager)
 - Tools are discoverable via meta-tools without being registered
-- The pre-generated manifest (`src/tools_manifest.json`) avoids runtime import overhead
+- The pre-generated manifest (`apps/network/src/unifi_network_mcp/tools_manifest.json`) avoids runtime import overhead
 - Tool responses minimize token usage with essential fields only
 
 **"Async throughout"** means:
@@ -59,6 +102,7 @@ All changes MUST follow a golden path. If no path applies, ask before inventing 
 - Add a configuration value
 - Modify the permission system
 - Add or modify an HTTP transport
+- Add shared functionality (new module in a shared package)
 
 ### 2.2 Canonical Anchor Index (Single Source of Truth)
 
@@ -66,49 +110,56 @@ If an anchor doesn't fit, ask. Do not invent new patterns.
 
 #### Add a new tool to an existing category
 
-1. Add the manager method in the appropriate `src/managers/<domain>_manager.py`
-   - **Anchor:** `src/managers/client_manager.py` (read-only method pattern)
-   - **Anchor:** `src/managers/firewall_manager.py` (mutating method pattern)
-2. Add the tool function in `src/tools/<category>.py`
-   - **Anchor (read-only tool):** `src/tools/clients.py:lookup_by_ip` (lines 18-46)
-   - **Anchor (permissioned tool):** `src/tools/firewall.py:create_simple_firewall_policy` (lines 579-692)
-3. Add the tool name to `TOOL_MODULE_MAP` in `src/utils/lazy_tool_loader.py`
-4. Run `make manifest` to regenerate `src/tools_manifest.json`
-5. Add tests in `tests/unit/test_<category>.py`
-6. Commit code + manifest + tests together
+1. Add the manager method in `apps/network/src/unifi_network_mcp/managers/<domain>_manager.py`
+   - **Anchor:** `apps/network/src/unifi_network_mcp/managers/client_manager.py` (read-only method pattern)
+   - **Anchor:** `apps/network/src/unifi_network_mcp/managers/firewall_manager.py` (mutating method pattern)
+2. Add the tool function in `apps/network/src/unifi_network_mcp/tools/<category>.py`
+   - **Anchor (read-only tool):** `apps/network/src/unifi_network_mcp/tools/clients.py:lookup_by_ip`
+   - **Anchor (permissioned tool):** `apps/network/src/unifi_network_mcp/tools/firewall.py:create_simple_firewall_policy`
+3. Add the tool name to `TOOL_MODULE_MAP` in `apps/network/src/unifi_network_mcp/categories.py`
+4. Run `make network-manifest` to regenerate `apps/network/src/unifi_network_mcp/tools_manifest.json`
+5. Add tests in `apps/network/tests/unit/test_<category>.py`
+6. Add MCP `ToolAnnotations` to the `@server.tool()` decorator (readOnlyHint, destructiveHint, etc.)
+7. Commit code + manifest + tests together
 
 #### Add a new tool category
 
-1. Create `src/managers/<domain>_manager.py`
-   - **Anchor:** `src/managers/routing_manager.py` (small, clean manager)
-2. Add manager factory to `src/runtime.py` following the `@lru_cache` factory + alias pattern
-   - **Anchor:** `src/runtime.py:get_routing_manager` (lines 193-195) and alias at line 230
-3. Create `src/tools/<category>.py` importing from `src.runtime`
-   - **Anchor:** `src/tools/clients.py` (module structure, imports, decorator usage)
-4. Add tool names to `TOOL_MODULE_MAP` in `src/utils/lazy_tool_loader.py`
-5. Add permission config block to `src/config/config.yaml` under `permissions:`
-6. Add category mapping to `CATEGORY_MAP` in `src/utils/permissions.py`
-7. Run `make manifest`
+1. Create `apps/network/src/unifi_network_mcp/managers/<domain>_manager.py`
+   - **Anchor:** `apps/network/src/unifi_network_mcp/managers/routing_manager.py` (small, clean manager)
+2. Add manager factory to `apps/network/src/unifi_network_mcp/runtime.py` following the `@lru_cache` factory + alias pattern
+3. Create `apps/network/src/unifi_network_mcp/tools/<category>.py` importing from `unifi_network_mcp.runtime`
+   - **Anchor:** `apps/network/src/unifi_network_mcp/tools/clients.py` (module structure, imports, decorator usage)
+4. Add tool names to `TOOL_MODULE_MAP` in `apps/network/src/unifi_network_mcp/categories.py`
+5. Add permission config block to `apps/network/src/unifi_network_mcp/config/config.yaml` under `permissions:`
+6. Add category mapping to `NETWORK_CATEGORY_MAP` in `apps/network/src/unifi_network_mcp/categories.py`
+7. Run `make network-manifest`
 8. Add tests, update `docs/` and README as needed
 9. Commit everything together
 
 #### Add a configuration value
 
-1. Add the default to `src/config/config.yaml` with OmegaConf `${oc.env:VAR_NAME,default}` syntax
-   - **Anchor:** `src/config/config.yaml` (full file)
-2. Add the env var to `.env.example` with a comment
+1. Add the default to `apps/network/src/unifi_network_mcp/config/config.yaml` with OmegaConf `${oc.env:VAR_NAME,default}` syntax
+   - **Anchor:** `apps/network/src/unifi_network_mcp/config/config.yaml` (full file)
+2. Add the env var to `env.example` with a comment
 3. Document in README.md under the configuration section
 4. Access via `config.server.get("key")` or `config.unifi.key` in code
-   - **Anchor:** `src/main.py:321-337` (reading config values with defaults)
 
 #### Modify the permission system
 
-1. All permission logic lives in `src/utils/permissions.py`
-   - **Anchor:** `src/utils/permissions.py` (full file, 117 lines)
-2. Category mappings live in `CATEGORY_MAP` (line 21-39)
-3. Enforcement happens in `src/main.py:permissioned_tool` decorator (lines 42-161)
-4. Config defaults live in `src/config/config.yaml` under `permissions:`
-5. Tests in `tests/unit/` cover permission edge cases
+1. Shared permission logic lives in `packages/unifi-mcp-shared/src/unifi_mcp_shared/permissions.py`
+   - **Anchor:** `packages/unifi-mcp-shared/src/unifi_mcp_shared/permissions.py` (PermissionChecker class)
+2. Network-specific category mappings live in `NETWORK_CATEGORY_MAP` in `apps/network/src/unifi_network_mcp/categories.py`
+3. Enforcement happens in `apps/network/src/unifi_network_mcp/main.py:permissioned_tool` decorator
+4. Config defaults live in `apps/network/src/unifi_network_mcp/config/config.yaml` under `permissions:`
+5. Tests in `packages/unifi-mcp-shared/tests/` and `apps/network/tests/unit/` cover permission edge cases
+
+#### Add shared functionality
+
+1. Decide which package: `unifi-core` (controller abstractions) or `unifi-mcp-shared` (MCP utilities)
+2. Add the module to the appropriate `packages/<pkg>/src/<pkg_name>/` directory
+3. Add tests in `packages/<pkg>/tests/`
+4. Run `make core-test` or `make shared-test` to verify
+5. Import from consuming code: `from unifi_core.<module>` or `from unifi_mcp_shared.<module>`
 
 ---
 
@@ -121,35 +172,40 @@ MCP Client (Claude Desktop, LM Studio, automation platforms)
     |
     v  MCP Protocol (JSON-RPC over stdio / Streamable HTTP / SSE)
     |
-FastMCP Server (src/main.py)
+FastMCP Server (apps/network/src/unifi_network_mcp/main.py)
     |
     v  Tool Registration (permissioned_tool decorator)
     |
-Tool Functions (src/tools/*.py)        <-- thin wrappers, 5-30 lines
+Tool Functions (apps/network/.../tools/*.py)     <-- thin wrappers, 5-30 lines
     |
     v  Manager method calls
     |
-Manager Layer (src/managers/*.py)      <-- domain logic, 30-200 lines
+Manager Layer (apps/network/.../managers/*.py)   <-- domain logic, 30-200 lines
     |
     v  aiounifi API calls
     |
-Connection Manager (src/managers/connection_manager.py)
-    |
+Connection Manager (apps/network/.../managers/connection_manager.py)
+    |                    uses unifi_core.auth (API key / local credential auth)
     v  aiohttp + auto-detection (UniFi OS vs standalone)
     |
 UniFi Network Controller (REST API)
 ```
 
+**Shared package layers:**
+- `unifi_core` -- auth strategies, connection detection, retry policies (no MCP dependency)
+- `unifi_mcp_shared` -- permissions, confirmation, meta-tools, lazy loading, config (MCP-aware, server-agnostic)
+
 **Rules:**
 - Tool functions MUST NOT contain business logic beyond argument validation and response formatting
 - Tool functions MUST delegate to manager methods for all controller interactions
-- Manager methods MUST NOT import from `src/tools/` (no circular dependencies)
+- Manager methods MUST NOT import from `unifi_network_mcp.tools` (no circular dependencies)
 - All controller communication MUST flow through `ConnectionManager`
-- Tool modules MUST import singletons from `src.runtime`, never instantiate directly
+- Tool modules MUST import singletons from `unifi_network_mcp.runtime`, never instantiate directly
+- Shared packages MUST NOT import from `unifi_network_mcp` (dependency flows downward only)
 
 ### 3.2 Singleton Pattern (Do Not Duplicate)
 
-- All shared objects (server, config, managers) MUST be created via `@lru_cache` factories in `src/runtime.py`
+- All shared objects (server, config, managers) MUST be created via `@lru_cache` factories in `apps/network/src/unifi_network_mcp/runtime.py`
 - Module-level aliases (e.g., `config = get_config()`) provide convenient import-time access
 - Tests MUST monkey-patch the factory or alias before importing tool modules
 - There MUST be exactly one `ConnectionManager` instance per server process
@@ -171,6 +227,7 @@ All tools MUST return a `Dict[str, Any]` with this structure:
 
 - Exceptions MUST NOT escape tool functions. Catch, log with `exc_info=True`, return error dict.
 - Error messages MUST be specific and actionable, never raw tracebacks.
+- Error messages MUST include the operation that failed (e.g., "Failed to list devices: ..." not just `str(e)`).
 
 ### 3.4 Permission Enforcement
 
@@ -188,9 +245,19 @@ All state-changing tools MUST implement the preview-then-confirm pattern:
 - Default call (`confirm=False`): validate input, return preview payload
 - Explicit call (`confirm=True`): execute the mutation on the controller
 - `UNIFI_AUTO_CONFIRM=true` bypasses for automation workflows
-- **Anchor:** `src/utils/confirmation.py`
+- **Anchor:** `packages/unifi-mcp-shared/src/unifi_mcp_shared/confirmation.py`
 
-### 3.6 Extension Over Patching
+### 3.6 MCP Tool Annotations
+
+All tools MUST include `annotations=ToolAnnotations(...)` in the `@server.tool()` decorator:
+
+- Read-only tools: `readOnlyHint=True, openWorldHint=False`
+- Mutating tools: `readOnlyHint=False, destructiveHint=<bool>, idempotentHint=<bool>, openWorldHint=False`
+- `destructiveHint=True` for delete, block, reboot, revoke operations
+- `idempotentHint=True` for update/rename (same args = same result)
+- All tools use `openWorldHint=False` (closed UniFi controller domain)
+
+### 3.7 Extension Over Patching
 
 - Prefer adding new tool modules and managers over modifying existing ones
 - New tool categories get their own manager + tool module (vertical slice)
@@ -203,7 +270,7 @@ All state-changing tools MUST implement the preview-then-confirm pattern:
 ### 4.1 Configuration Values
 
 All runtime-configurable values MUST live in:
-- `src/config/config.yaml` with OmegaConf interpolation for env var support
+- `apps/network/src/unifi_network_mcp/config/config.yaml` with OmegaConf interpolation for env var support
 - Environment variables with `UNIFI_` or `UNIFI_MCP_` prefix
 
 Hardcoding host, port, credentials, or feature flags in Python source is **banned**.
@@ -211,20 +278,20 @@ Hardcoding host, port, credentials, or feature flags in Python source is **banne
 ### 4.2 Permission Categories
 
 All permission category strings MUST be defined in:
-- `CATEGORY_MAP` in `src/utils/permissions.py` (tool shorthand to config key mapping)
-- `permissions:` section of `src/config/config.yaml` (defaults)
+- `NETWORK_CATEGORY_MAP` in `apps/network/src/unifi_network_mcp/categories.py` (tool shorthand to config key mapping)
+- `permissions:` section of `apps/network/src/unifi_network_mcp/config/config.yaml` (defaults)
 
 ### 4.3 Tool Registration
 
 All tool-to-module mappings MUST be defined in:
-- `TOOL_MODULE_MAP` in `src/utils/lazy_tool_loader.py`
-- `src/tools_manifest.json` (auto-generated, MUST be committed)
+- `TOOL_MODULE_MAP` in `apps/network/src/unifi_network_mcp/categories.py`
+- `apps/network/src/unifi_network_mcp/tools_manifest.json` (auto-generated, MUST be committed)
 
 ### 4.4 Validation Schemas
 
 Input validation schemas MUST be defined in:
-- `src/schemas.py` (JSON Schema definitions)
-- `src/validators.py` / `src/validator_registry.py` (validation logic)
+- `apps/network/src/unifi_network_mcp/schemas.py` (JSON Schema definitions)
+- `apps/network/src/unifi_network_mcp/validators.py` / `apps/network/src/unifi_network_mcp/validator_registry.py` (validation logic)
 
 Never inline JSON schema dicts inside tool functions.
 
@@ -256,12 +323,12 @@ The server supports three transport modes:
 
 - `lazy` is the RECOMMENDED mode for LLM clients
 - `eager` is for the dev console, automation scripts, and local testing
-- All three modes MUST be tested when adding new tools (`make run-lazy`, `make run-eager`, `make run-meta`)
+- All three modes MUST be tested when adding new tools
 
 ### 5.3 Error Handling
 
 - Errors MUST be logged to stderr (never stdout, which is reserved for JSON-RPC in stdio mode)
-- Errors MUST include specific, actionable messages
+- Errors MUST include specific, actionable messages with the failed operation name
 - Raw tracebacks MUST NOT be exposed to MCP clients (log with `exc_info=True`, return clean message)
 - Configuration errors SHOULD fail fast at startup with clear guidance
 
@@ -287,20 +354,20 @@ logger.info("[diagnostics] Tool '%s' completed in %.2fs", name, duration)
 
 - Version is derived from git tags via `hatch-vcs` (e.g., `v0.4.0` -> `0.4.0`)
 - MUST NOT manually edit version in `pyproject.toml` (it uses `dynamic = ["version"]`)
-- `.well-known/mcp-server.json` MUST be updated to match the release version
-- `src/tools_manifest.json` MUST be regenerated and committed before release
+- `apps/network/src/unifi_network_mcp/tools_manifest.json` MUST be regenerated and committed before release
 
 ### 6.2 Manifest Ownership
 
-- `src/tools_manifest.json` is auto-generated by `scripts/generate_tool_manifest.py`
+- `apps/network/src/unifi_network_mcp/tools_manifest.json` is auto-generated by `apps/network/scripts/generate_tool_manifest.py`
 - It MUST be committed to git (allows lazy loading without build tools)
-- Run `make manifest` after adding, removing, or renaming any tool
+- Run `make network-manifest` after adding, removing, or renaming any tool
 
 ### 6.3 Dependency Management
 
-- Dependencies are managed via `uv` (lockfile: `uv.lock`)
-- `pyproject.toml` defines version ranges; `uv.lock` pins exact versions
-- Update with `make deps-update`, verify with `make test`
+- Dependencies are managed via `uv` (workspace lockfile: `uv.lock`)
+- Each package has its own `pyproject.toml` with version ranges; `uv.lock` pins exact versions for all
+- Shared packages use path dependencies: `unifi-core = { path = "../../packages/unifi-core", editable = true }`
+- Update with `uv lock --upgrade`, verify with `make test`
 
 ---
 
@@ -313,7 +380,7 @@ A change is not done unless ALL of the following pass:
 ```bash
 make format       # Code formatted with ruff (line-length: 120)
 make lint         # ruff check passes (E, F, I rules)
-make test         # All pytest tests pass
+make test         # All pytest tests pass (core + shared + network)
 ```
 
 Or equivalently: `make pre-commit`
@@ -324,10 +391,11 @@ When adding or modifying tools:
 
 - [ ] Tool function follows the anchor pattern (thin wrapper, delegates to manager)
 - [ ] Tool returns standardized `{"success": bool, ...}` response
-- [ ] Tool is added to `TOOL_MODULE_MAP` in `src/utils/lazy_tool_loader.py`
-- [ ] `make manifest` has been run and `src/tools_manifest.json` is committed
+- [ ] Tool is added to `TOOL_MODULE_MAP` in `apps/network/src/unifi_network_mcp/categories.py`
+- [ ] `make network-manifest` has been run and `tools_manifest.json` is committed
 - [ ] Mutating tools implement preview-then-confirm pattern
 - [ ] Permission category and action are set via decorator kwargs
+- [ ] MCP `ToolAnnotations` added (readOnlyHint, destructiveHint, idempotentHint, openWorldHint)
 - [ ] Tests cover success path, error path, and permission denial
 - [ ] Tool works in all three registration modes (lazy, eager, meta_only)
 
@@ -335,14 +403,14 @@ When adding or modifying tools:
 
 When adding config values:
 
-- [ ] Default added to `src/config/config.yaml` with `${oc.env:VAR,default}` syntax
-- [ ] `.env.example` updated
+- [ ] Default added to `apps/network/src/unifi_network_mcp/config/config.yaml` with `${oc.env:VAR,default}` syntax
+- [ ] `env.example` updated
 - [ ] README.md configuration table updated
 
 ### 7.4 Release Gate
 
 ```bash
-make pre-release  # clean + manifest + format + lint + test + build-check
+make pre-commit   # format + lint + test
 ```
 
 ---
@@ -368,6 +436,7 @@ Before non-trivial changes, produce a short plan covering:
 After any tool change, verify in all three registration modes:
 
 ```bash
+# From apps/network/ directory:
 make run-lazy    # Default mode (lazy loading)
 make run-eager   # All tools loaded
 make run-meta    # Meta-only mode
@@ -383,21 +452,49 @@ make run-meta    # Meta-only mode
 
 ## Appendix A: Key File Reference
 
+### Network Server (apps/network/)
+
 | File | Purpose |
 |------|---------|
-| `src/main.py` | Entry point, tool registration, transport dispatch |
-| `src/bootstrap.py` | Config loading, logging setup, env var processing |
-| `src/runtime.py` | Singleton factories, global objects (single source of truth) |
-| `src/tool_index.py` | Tool registry and discovery |
-| `src/config/config.yaml` | All configuration defaults (OmegaConf) |
-| `src/utils/permissions.py` | Permission checking logic |
-| `src/utils/lazy_tool_loader.py` | Lazy loading, `TOOL_MODULE_MAP` |
-| `src/utils/meta_tools.py` | Meta-tools: tool_index, execute, batch |
-| `src/utils/confirmation.py` | Preview-then-confirm pattern |
-| `src/validators.py` | Base validator class, response helpers |
-| `src/tools_manifest.json` | Pre-generated tool metadata (committed) |
-| `.well-known/mcp-server.json` | MCP identity and capabilities |
-| `Makefile` | All development commands |
+| `src/unifi_network_mcp/main.py` | Entry point, tool registration, transport dispatch |
+| `src/unifi_network_mcp/bootstrap.py` | Config loading, logging setup, env var processing |
+| `src/unifi_network_mcp/runtime.py` | Singleton factories, global objects (single source of truth) |
+| `src/unifi_network_mcp/categories.py` | `NETWORK_CATEGORY_MAP`, `TOOL_MODULE_MAP`, lazy loading setup |
+| `src/unifi_network_mcp/tool_index.py` | Tool registry and discovery |
+| `src/unifi_network_mcp/config/config.yaml` | All configuration defaults (OmegaConf) |
+| `src/unifi_network_mcp/tools/*.py` | Tool modules (one per category) |
+| `src/unifi_network_mcp/managers/*.py` | Domain logic managers |
+| `src/unifi_network_mcp/schemas.py` | JSON Schema definitions |
+| `src/unifi_network_mcp/validators.py` | Base validator class |
+| `src/unifi_network_mcp/validator_registry.py` | Validation dispatch |
+| `src/unifi_network_mcp/tools_manifest.json` | Pre-generated tool metadata (committed) |
+| `Makefile` | App-level development commands |
+
+### Shared Packages
+
+| File | Purpose |
+|------|---------|
+| `packages/unifi-core/src/unifi_core/auth.py` | Auth strategies (local credentials, API key) |
+| `packages/unifi-core/src/unifi_core/connection.py` | HTTP session management |
+| `packages/unifi-core/src/unifi_core/detection.py` | UniFi OS vs standalone detection |
+| `packages/unifi-core/src/unifi_core/retry.py` | Retry policies for transient failures |
+| `packages/unifi-core/src/unifi_core/exceptions.py` | Core exception types |
+| `packages/unifi-mcp-shared/src/unifi_mcp_shared/permissions.py` | PermissionChecker class |
+| `packages/unifi-mcp-shared/src/unifi_mcp_shared/confirmation.py` | Preview-then-confirm helpers |
+| `packages/unifi-mcp-shared/src/unifi_mcp_shared/meta_tools.py` | Meta-tools: tool_index, execute, batch |
+| `packages/unifi-mcp-shared/src/unifi_mcp_shared/lazy_tools.py` | LazyToolLoader, TOOL_MODULE_MAP builder |
+| `packages/unifi-mcp-shared/src/unifi_mcp_shared/tool_loader.py` | Eager tool auto-discovery |
+| `packages/unifi-mcp-shared/src/unifi_mcp_shared/config.py` | Shared config helpers |
+| `packages/unifi-mcp-shared/src/unifi_mcp_shared/formatting.py` | Response formatting utilities |
+
+### Root
+
+| File | Purpose |
+|------|---------|
+| `Makefile` | Root targets (delegates to app/package) |
+| `pyproject.toml` | Workspace root config |
+| `uv.lock` | Single lockfile for all packages |
+| `env.example` | Environment variable template |
 | `CONTRIBUTING.md` | Contributor workflow |
 
 ## Appendix B: Environment Variable Quick Reference
@@ -405,8 +502,9 @@ make run-meta    # Meta-only mode
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `UNIFI_HOST` | (required) | Controller IP/hostname |
-| `UNIFI_USERNAME` | (required) | Admin username |
-| `UNIFI_PASSWORD` | (required) | Admin password |
+| `UNIFI_USERNAME` | (required*) | Admin username (*required for local auth) |
+| `UNIFI_PASSWORD` | (required*) | Admin password (*required for local auth) |
+| `UNIFI_API_KEY` | (optional) | API key for UniFi OS API key auth (alternative to username/password) |
 | `UNIFI_PORT` | 443 | Controller HTTPS port |
 | `UNIFI_SITE` | default | UniFi site name |
 | `UNIFI_VERIFY_SSL` | false | SSL certificate verification |
