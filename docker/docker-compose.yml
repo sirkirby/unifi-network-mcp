@@ -4,9 +4,8 @@ services:
       context: ..
       dockerfile: apps/network/Dockerfile
     env_file:
-      - network.env
+      - ../.env
     environment:
-      # Enable HTTP transport for remote MCP clients (LM Studio, etc.)
       - UNIFI_MCP_HTTP_ENABLED=true
       - UNIFI_MCP_HTTP_TRANSPORT=streamable-http
       - UNIFI_MCP_HOST=0.0.0.0
@@ -22,7 +21,7 @@ services:
       context: ..
       dockerfile: apps/protect/Dockerfile
     env_file:
-      - protect.env
+      - ../.env
     environment:
       - UNIFI_MCP_HTTP_ENABLED=true
       - UNIFI_MCP_HTTP_TRANSPORT=streamable-http
