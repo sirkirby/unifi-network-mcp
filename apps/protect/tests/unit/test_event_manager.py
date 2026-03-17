@@ -63,7 +63,9 @@ class TestEventManagerInit:
 
     def test_custom_config(self):
         cm = _make_connection_manager()
-        mgr = EventManager(cm, config={"buffer_size": 50, "buffer_ttl_seconds": 60, "smart_detection_min_confidence": 70})
+        mgr = EventManager(
+            cm, config={"buffer_size": 50, "buffer_ttl_seconds": 60, "smart_detection_min_confidence": 70}
+        )
         assert mgr._min_confidence == 70
         assert mgr._buffer._buffer.maxlen == 50
         assert mgr._buffer._ttl == 60

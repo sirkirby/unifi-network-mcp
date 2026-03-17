@@ -80,6 +80,4 @@ async def event_stream_summary() -> str:
         return json.dumps({"error": str(exc)})
 
 
-logger.info(
-    "Event resources registered: protect://events/stream, protect://events/stream/summary"
-)
+logger.info("Event resources registered: protect://events/stream, protect://events/stream/summary")

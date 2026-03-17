@@ -99,7 +99,9 @@ def _make_camera(**overrides):
     return c
 
 
-def _make_bootstrap(nvr=None, cameras=None, lights=None, sensors=None, viewers=None, chimes=None, bridges=None, doorlocks=None):
+def _make_bootstrap(
+    nvr=None, cameras=None, lights=None, sensors=None, viewers=None, chimes=None, bridges=None, doorlocks=None
+):
     bs = MagicMock()
     bs.nvr = nvr or _make_nvr()
     bs.cameras = cameras or {}
@@ -291,9 +293,7 @@ class TestProtectGetSystemInfoTool:
     async def test_success(self, mock_system_manager):
         from unifi_protect_mcp.tools.system import protect_get_system_info
 
-        mock_system_manager.get_system_info = AsyncMock(
-            return_value={"id": "nvr-001", "name": "Test"}
-        )
+        mock_system_manager.get_system_info = AsyncMock(return_value={"id": "nvr-001", "name": "Test"})
         result = await protect_get_system_info()
         assert result["success"] is True
         assert result["data"]["id"] == "nvr-001"
@@ -302,9 +302,7 @@ class TestProtectGetSystemInfoTool:
     async def test_error(self, mock_system_manager):
         from unifi_protect_mcp.tools.system import protect_get_system_info
 
-        mock_system_manager.get_system_info = AsyncMock(
-            side_effect=RuntimeError("boom")
-        )
+        mock_system_manager.get_system_info = AsyncMock(side_effect=RuntimeError("boom"))
         result = await protect_get_system_info()
         assert result["success"] is False
         assert "boom" in result["error"]
@@ -315,9 +313,7 @@ class TestProtectGetHealthTool:
     async def test_success(self, mock_system_manager):
         from unifi_protect_mcp.tools.system import protect_get_health
 
-        mock_system_manager.get_health = AsyncMock(
-            return_value={"cpu": {"average_load": 0.1}}
-        )
+        mock_system_manager.get_health = AsyncMock(return_value={"cpu": {"average_load": 0.1}})
         result = await protect_get_health()
         assert result["success"] is True
         assert "cpu" in result["data"]
@@ -336,9 +332,7 @@ class TestProtectListViewersTool:
     async def test_success(self, mock_system_manager):
         from unifi_protect_mcp.tools.system import protect_list_viewers
 
-        mock_system_manager.list_viewers = AsyncMock(
-            return_value=[{"id": "v1"}]
-        )
+        mock_system_manager.list_viewers = AsyncMock(return_value=[{"id": "v1"}])
         result = await protect_list_viewers()
         assert result["success"] is True
         assert result["data"]["count"] == 1
@@ -357,9 +351,7 @@ class TestProtectGetFirmwareStatusTool:
     async def test_success(self, mock_system_manager):
         from unifi_protect_mcp.tools.system import protect_get_firmware_status
 
-        mock_system_manager.get_firmware_status = AsyncMock(
-            return_value={"total_devices": 3}
-        )
+        mock_system_manager.get_firmware_status = AsyncMock(return_value={"total_devices": 3})
         result = await protect_get_firmware_status()
         assert result["success"] is True
         assert result["data"]["total_devices"] == 3
@@ -368,8 +360,6 @@ class TestProtectGetFirmwareStatusTool:
     async def test_error(self, mock_system_manager):
         from unifi_protect_mcp.tools.system import protect_get_firmware_status
 
-        mock_system_manager.get_firmware_status = AsyncMock(
-            side_effect=RuntimeError("err")
-        )
+        mock_system_manager.get_firmware_status = AsyncMock(side_effect=RuntimeError("err"))
         result = await protect_get_firmware_status()
         assert result["success"] is False

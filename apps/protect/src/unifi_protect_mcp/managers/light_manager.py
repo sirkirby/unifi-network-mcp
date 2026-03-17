@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from unifi_protect_mcp.managers.connection_manager import ProtectConnectionManager
 
@@ -130,9 +130,7 @@ class LightManager:
                 current_state["led_level"] = current_led
                 proposed_changes["led_level"] = value
             elif key == "sensitivity":
-                current_sens = (
-                    light.light_device_settings.pir_sensitivity if light.light_device_settings else None
-                )
+                current_sens = light.light_device_settings.pir_sensitivity if light.light_device_settings else None
                 current_state["sensitivity"] = current_sens
                 proposed_changes["sensitivity"] = value
             elif key == "duration_seconds":

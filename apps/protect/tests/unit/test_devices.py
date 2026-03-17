@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Fake enum types
 # ---------------------------------------------------------------------------
@@ -548,9 +547,7 @@ class TestProtectListLightsTool:
     async def test_success(self, mock_light_manager):
         from unifi_protect_mcp.tools.devices import protect_list_lights
 
-        mock_light_manager.list_lights = AsyncMock(
-            return_value=[{"id": "light-001", "name": "Front Flood"}]
-        )
+        mock_light_manager.list_lights = AsyncMock(return_value=[{"id": "light-001", "name": "Front Flood"}])
         result = await protect_list_lights()
         assert result["success"] is True
         assert result["data"]["count"] == 1
@@ -623,9 +620,7 @@ class TestProtectListSensorsTool:
     async def test_success(self, mock_sensor_manager):
         from unifi_protect_mcp.tools.devices import protect_list_sensors
 
-        mock_sensor_manager.list_sensors = AsyncMock(
-            return_value=[{"id": "sensor-001", "name": "Front Door"}]
-        )
+        mock_sensor_manager.list_sensors = AsyncMock(return_value=[{"id": "sensor-001", "name": "Front Door"}])
         result = await protect_list_sensors()
         assert result["success"] is True
         assert result["data"]["count"] == 1
@@ -644,9 +639,7 @@ class TestProtectListChimesTool:
     async def test_success(self, mock_chime_manager):
         from unifi_protect_mcp.tools.devices import protect_list_chimes
 
-        mock_chime_manager.list_chimes = AsyncMock(
-            return_value=[{"id": "chime-001", "name": "Front Door Chime"}]
-        )
+        mock_chime_manager.list_chimes = AsyncMock(return_value=[{"id": "chime-001", "name": "Front Door Chime"}])
         result = await protect_list_chimes()
         assert result["success"] is True
         assert result["data"]["count"] == 1
@@ -731,9 +724,7 @@ class TestProtectTriggerChimeTool:
     async def test_not_found(self, mock_chime_manager):
         from unifi_protect_mcp.tools.devices import protect_trigger_chime
 
-        mock_chime_manager.trigger_chime = AsyncMock(
-            side_effect=ValueError("Chime not found: bad-id")
-        )
+        mock_chime_manager.trigger_chime = AsyncMock(side_effect=ValueError("Chime not found: bad-id"))
         result = await protect_trigger_chime("bad-id")
         assert result["success"] is False
         assert "Chime not found" in result["error"]

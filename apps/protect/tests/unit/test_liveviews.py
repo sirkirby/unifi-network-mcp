@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Mock factories
 # ---------------------------------------------------------------------------
@@ -206,9 +205,7 @@ class TestProtectListLiveviewsTool:
     async def test_success(self, mock_liveview_manager):
         from unifi_protect_mcp.tools.liveviews import protect_list_liveviews
 
-        mock_liveview_manager.list_liveviews = AsyncMock(
-            return_value=[{"id": "lv-001", "name": "All Cameras"}]
-        )
+        mock_liveview_manager.list_liveviews = AsyncMock(return_value=[{"id": "lv-001", "name": "All Cameras"}])
         result = await protect_list_liveviews()
         assert result["success"] is True
         assert result["data"]["count"] == 1
@@ -298,9 +295,7 @@ class TestProtectDeleteLiveviewTool:
     async def test_not_found(self, mock_liveview_manager):
         from unifi_protect_mcp.tools.liveviews import protect_delete_liveview
 
-        mock_liveview_manager.delete_liveview = AsyncMock(
-            side_effect=ValueError("Liveview not found: bad-id")
-        )
+        mock_liveview_manager.delete_liveview = AsyncMock(side_effect=ValueError("Liveview not found: bad-id"))
         result = await protect_delete_liveview("bad-id")
         assert result["success"] is False
         assert "Liveview not found" in result["error"]

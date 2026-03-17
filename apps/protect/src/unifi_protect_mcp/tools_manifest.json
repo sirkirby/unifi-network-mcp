@@ -1,8 +1,12 @@
 {
-  "count": 21,
+  "count": 34,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "protect_acknowledge_event": "unifi_protect_mcp.tools.events",
+    "protect_create_liveview": "unifi_protect_mcp.tools.liveviews",
+    "protect_delete_liveview": "unifi_protect_mcp.tools.liveviews",
+    "protect_delete_recording": "unifi_protect_mcp.tools.recordings",
+    "protect_export_clip": "unifi_protect_mcp.tools.recordings",
     "protect_get_camera": "unifi_protect_mcp.tools.cameras",
     "protect_get_camera_analytics": "unifi_protect_mcp.tools.cameras",
     "protect_get_camera_streams": "unifi_protect_mcp.tools.cameras",
@@ -10,10 +14,16 @@
     "protect_get_event_thumbnail": "unifi_protect_mcp.tools.events",
     "protect_get_firmware_status": "unifi_protect_mcp.tools.system",
     "protect_get_health": "unifi_protect_mcp.tools.system",
+    "protect_get_recording_status": "unifi_protect_mcp.tools.recordings",
     "protect_get_snapshot": "unifi_protect_mcp.tools.cameras",
     "protect_get_system_info": "unifi_protect_mcp.tools.system",
     "protect_list_cameras": "unifi_protect_mcp.tools.cameras",
+    "protect_list_chimes": "unifi_protect_mcp.tools.devices",
     "protect_list_events": "unifi_protect_mcp.tools.events",
+    "protect_list_lights": "unifi_protect_mcp.tools.devices",
+    "protect_list_liveviews": "unifi_protect_mcp.tools.liveviews",
+    "protect_list_recordings": "unifi_protect_mcp.tools.recordings",
+    "protect_list_sensors": "unifi_protect_mcp.tools.devices",
     "protect_list_smart_detections": "unifi_protect_mcp.tools.events",
     "protect_list_viewers": "unifi_protect_mcp.tools.system",
     "protect_ptz_move": "unifi_protect_mcp.tools.cameras",
@@ -22,7 +32,10 @@
     "protect_recent_events": "unifi_protect_mcp.tools.events",
     "protect_subscribe_events": "unifi_protect_mcp.tools.events",
     "protect_toggle_recording": "unifi_protect_mcp.tools.cameras",
-    "protect_update_camera_settings": "unifi_protect_mcp.tools.cameras"
+    "protect_trigger_chime": "unifi_protect_mcp.tools.devices",
+    "protect_update_camera_settings": "unifi_protect_mcp.tools.cameras",
+    "protect_update_chime": "unifi_protect_mcp.tools.devices",
+    "protect_update_light": "unifi_protect_mcp.tools.devices"
   },
   "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
   "tools": [
@@ -41,6 +54,109 @@
           },
           "required": [
             "event_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Validates input for creating a new liveview with the given name and camera IDs. Note: liveview creation is not directly supported by the uiprotect Python API; this tool validates camera IDs and returns a preview. Use the Protect web UI to create liveviews.",
+      "name": "protect_create_liveview",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_ids": {
+              "type": "array"
+            },
+            "confirm": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "camera_ids"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Validates a liveview for deletion by ID. Note: liveview deletion is not directly supported by the uiprotect Python API; this tool returns information about the liveview. Use the Protect web UI to delete liveviews.",
+      "name": "protect_delete_liveview",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "liveview_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "liveview_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Attempts to delete recordings for a camera in a time range. Note: Individual recording deletion is NOT supported by the uiprotect API. Recording retention is managed automatically by the NVR. This tool returns information about the limitation and alternative approaches.",
+      "name": "protect_delete_recording",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
+            },
+            "end": {
+              "type": "string"
+            },
+            "start": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "camera_id",
+            "start",
+            "end"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Exports a video clip from a camera for a specified time range. Returns metadata about the export (size, duration) but not the video data itself (too large for MCP responses). Maximum duration is 2 hours. For timelapse exports, pass fps (4=60x, 8=120x, 20=300x, 40=600x). Times must be ISO-8601 format (e.g., '2026-03-16T12:00:00Z').",
+      "name": "protect_export_clip",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "type": "string"
+            },
+            "channel_index": {
+              "type": "integer"
+            },
+            "end": {
+              "type": "string"
+            },
+            "fps": {
+              "type": "integer"
+            },
+            "start": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "camera_id",
+            "start",
+            "end"
           ],
           "type": "object"
         }
@@ -158,6 +274,20 @@
       }
     },
     {
+      "description": "Returns the current recording state for one or all cameras. Shows recording mode (always, never, detections), whether actively recording, and available recording time range from NVR stats. Pass a camera_id to check a single camera, or omit for all cameras.",
+      "name": "protect_get_recording_status",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
       "description": "Fetches a JPEG snapshot from a camera. When include_image is True, returns the image as a base64-encoded string. When False (default), returns a reference URL. Optionally specify width and height to resize.",
       "name": "protect_get_snapshot",
       "schema": {
@@ -204,6 +334,16 @@
       }
     },
     {
+      "description": "Lists all UniFi Protect chime devices with their name, connection state, volume, ring settings per camera, and available ringtones/tracks. Use to see chime configuration and which cameras trigger which chimes.",
+      "name": "protect_list_chimes",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
       "description": "Query events from the NVR with optional filters. Returns events from the Protect controller's database via REST API. Supports filtering by time range, event type (motion, smartDetectZone, ring, etc.), camera ID, and result limit. For real-time buffer events use protect_recent_events.",
       "name": "protect_list_events",
       "schema": {
@@ -225,6 +365,59 @@
               "type": "string"
             }
           },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Lists all UniFi Protect floodlight devices with their name, connection state, brightness level, PIR motion sensitivity, and paired camera. Use to get an overview of all lights in the system.",
+      "name": "protect_list_lights",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Lists all liveview configurations from the Protect NVR. Each liveview defines a multi-camera layout with slots, camera assignments, and cycle settings. Shows name, layout grid size, slot count, camera count, and whether it is the default or global view.",
+      "name": "protect_list_liveviews",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns recording availability information for a camera within a time range. Shows the recording window and whether footage exists. UniFi Protect stores recordings as continuous streams, not discrete segments. Defaults to the last 24 hours if no time range is specified. Times should be ISO-8601 format (e.g., '2026-03-16T00:00:00Z').",
+      "name": "protect_list_recordings",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "type": "string"
+            },
+            "end": {
+              "type": "string"
+            },
+            "start": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "camera_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Lists all UniFi Protect sensor devices (motion, door/window, temperature, humidity, light level, leak detection). Shows connection state, battery status, current readings, and recent detection timestamps. Use to monitor environmental conditions and sensor health.",
+      "name": "protect_list_sensors",
+      "schema": {
+        "input": {
+          "properties": {},
           "type": "object"
         }
       }
@@ -393,6 +586,29 @@
       }
     },
     {
+      "description": "Plays the chime tone on a specific chime device. Optionally override volume (0-100) and repeat times (1-6) for this playback only. The chime's default settings are used if not specified.",
+      "name": "protect_trigger_chime",
+      "schema": {
+        "input": {
+          "properties": {
+            "chime_id": {
+              "type": "string"
+            },
+            "repeat_times": {
+              "type": "integer"
+            },
+            "volume": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "chime_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
       "description": "Updates camera settings such as IR LED mode, HDR mode, mic/speaker volume, status light, and motion detection. Requires confirm=True to apply. Supported keys: ir_led_mode, hdr_mode, mic_enabled, mic_volume, status_light_on, speaker_volume, name, motion_detection.",
       "name": "protect_update_camera_settings",
       "schema": {
@@ -410,6 +626,54 @@
           },
           "required": [
             "camera_id",
+            "settings"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Updates chime settings such as speaker volume (0-100), repeat times (1-6), and device name. Requires confirm=True to apply. Supported keys: volume, repeat_times, name.",
+      "name": "protect_update_chime",
+      "schema": {
+        "input": {
+          "properties": {
+            "chime_id": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
+            },
+            "settings": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "chime_id",
+            "settings"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Updates light settings such as on/off state, LED brightness level (1-6), PIR motion sensitivity (0-100), motion-triggered duration (15-900 seconds), status indicator light, and device name. Requires confirm=True to apply. Supported keys: light_on, led_level, sensitivity, duration_seconds, status_light, name.",
+      "name": "protect_update_light",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "light_id": {
+              "type": "string"
+            },
+            "settings": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "light_id",
             "settings"
           ],
           "type": "object"

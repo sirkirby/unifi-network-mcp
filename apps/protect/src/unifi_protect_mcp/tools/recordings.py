@@ -119,7 +119,10 @@ async def protect_export_clip(
         start_dt = _parse_datetime(start)
         end_dt = _parse_datetime(end)
         if start_dt is None:
-            return {"success": False, "error": "Invalid start time. Use ISO-8601 format (e.g., '2026-03-16T12:00:00Z')."}
+            return {
+                "success": False,
+                "error": "Invalid start time. Use ISO-8601 format (e.g., '2026-03-16T12:00:00Z').",
+            }
         if end_dt is None:
             return {"success": False, "error": "Invalid end time. Use ISO-8601 format (e.g., '2026-03-16T12:30:00Z')."}
 
@@ -159,7 +162,10 @@ async def protect_delete_recording(
     """Delete recording for a camera (not supported by API)."""
     logger.info(
         "protect_delete_recording called (camera=%s, start=%s, end=%s, confirm=%s)",
-        camera_id, start, end, confirm,
+        camera_id,
+        start,
+        end,
+        confirm,
     )
     try:
         start_dt = _parse_datetime(start)

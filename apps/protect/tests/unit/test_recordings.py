@@ -1,11 +1,10 @@
 """Tests for RecordingManager and recording tools."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Fixtures: mock pyunifiprotect Camera model data for recordings
@@ -21,12 +20,8 @@ class _FakeRecordingMode(Enum):
 def _make_video_stats(**overrides):
     """Build a mock video stats object."""
     stats = MagicMock()
-    stats.recording_start = overrides.get(
-        "recording_start", datetime(2026, 3, 10, tzinfo=timezone.utc)
-    )
-    stats.recording_end = overrides.get(
-        "recording_end", datetime(2026, 3, 16, 12, 0, tzinfo=timezone.utc)
-    )
+    stats.recording_start = overrides.get("recording_start", datetime(2026, 3, 10, tzinfo=timezone.utc))
+    stats.recording_end = overrides.get("recording_end", datetime(2026, 3, 16, 12, 0, tzinfo=timezone.utc))
     stats.timelapse_start = overrides.get("timelapse_start", None)
     stats.timelapse_end = overrides.get("timelapse_end", None)
     return stats
@@ -51,9 +46,7 @@ def _make_camera(**overrides):
     cam.stats.video = video_stats
 
     # Async methods
-    cam.get_video = AsyncMock(
-        return_value=overrides.get("video_bytes", b"\x00\x00\x01\xb3FAKEMP4")
-    )
+    cam.get_video = AsyncMock(return_value=overrides.get("video_bytes", b"\x00\x00\x01\xb3FAKEMP4"))
 
     return cam
 
@@ -86,9 +79,7 @@ def mock_cm_multi():
         is_recording=False,
         recording_mode=_FakeRecordingMode.NEVER,
     )
-    cm.client.bootstrap = _make_bootstrap(
-        cameras={"cam-001": cam1, "cam-002": cam2}
-    )
+    cm.client.bootstrap = _make_bootstrap(cameras={"cam-001": cam1, "cam-002": cam2})
     return cm
 
 
@@ -324,9 +315,7 @@ class TestProtectGetRecordingStatusTool:
     async def test_camera_not_found(self, mock_recording_manager):
         from unifi_protect_mcp.tools.recordings import protect_get_recording_status
 
-        mock_recording_manager.get_recording_status = AsyncMock(
-            side_effect=ValueError("Camera not found: bad-id")
-        )
+        mock_recording_manager.get_recording_status = AsyncMock(side_effect=ValueError("Camera not found: bad-id"))
         result = await protect_get_recording_status(camera_id="bad-id")
         assert result["success"] is False
         assert "Camera not found" in result["error"]
@@ -335,9 +324,7 @@ class TestProtectGetRecordingStatusTool:
     async def test_error(self, mock_recording_manager):
         from unifi_protect_mcp.tools.recordings import protect_get_recording_status
 
-        mock_recording_manager.get_recording_status = AsyncMock(
-            side_effect=RuntimeError("connection lost")
-        )
+        mock_recording_manager.get_recording_status = AsyncMock(side_effect=RuntimeError("connection lost"))
         result = await protect_get_recording_status()
         assert result["success"] is False
         assert "connection lost" in result["error"]
@@ -348,9 +335,7 @@ class TestProtectListRecordingsTool:
     async def test_success(self, mock_recording_manager):
         from unifi_protect_mcp.tools.recordings import protect_list_recordings
 
-        mock_recording_manager.list_recordings = AsyncMock(
-            return_value={"camera_id": "cam-001", "is_recording": True}
-        )
+        mock_recording_manager.list_recordings = AsyncMock(return_value={"camera_id": "cam-001", "is_recording": True})
         result = await protect_list_recordings("cam-001")
         assert result["success"] is True
         assert result["data"]["camera_id"] == "cam-001"
@@ -359,9 +344,7 @@ class TestProtectListRecordingsTool:
     async def test_with_time_range(self, mock_recording_manager):
         from unifi_protect_mcp.tools.recordings import protect_list_recordings
 
-        mock_recording_manager.list_recordings = AsyncMock(
-            return_value={"camera_id": "cam-001"}
-        )
+        mock_recording_manager.list_recordings = AsyncMock(return_value={"camera_id": "cam-001"})
         result = await protect_list_recordings(
             "cam-001",
             start="2026-03-16T10:00:00Z",
@@ -373,9 +356,7 @@ class TestProtectListRecordingsTool:
     async def test_error(self, mock_recording_manager):
         from unifi_protect_mcp.tools.recordings import protect_list_recordings
 
-        mock_recording_manager.list_recordings = AsyncMock(
-            side_effect=RuntimeError("fail")
-        )
+        mock_recording_manager.list_recordings = AsyncMock(side_effect=RuntimeError("fail"))
         result = await protect_list_recordings("cam-001")
         assert result["success"] is False
 
@@ -420,9 +401,7 @@ class TestProtectExportClipTool:
     async def test_error(self, mock_recording_manager):
         from unifi_protect_mcp.tools.recordings import protect_export_clip
 
-        mock_recording_manager.export_clip = AsyncMock(
-            side_effect=ValueError("End time must be after start time")
-        )
+        mock_recording_manager.export_clip = AsyncMock(side_effect=ValueError("End time must be after start time"))
         result = await protect_export_clip(
             "cam-001",
             start="2026-03-16T12:00:00Z",
@@ -463,9 +442,7 @@ class TestProtectDeleteRecordingTool:
     async def test_error(self, mock_recording_manager):
         from unifi_protect_mcp.tools.recordings import protect_delete_recording
 
-        mock_recording_manager.delete_recording = AsyncMock(
-            side_effect=RuntimeError("connection error")
-        )
+        mock_recording_manager.delete_recording = AsyncMock(side_effect=RuntimeError("connection error"))
         result = await protect_delete_recording(
             "cam-001",
             start="2026-03-16T10:00:00Z",

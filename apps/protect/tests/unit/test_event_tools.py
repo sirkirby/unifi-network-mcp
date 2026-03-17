@@ -101,9 +101,7 @@ class TestProtectGetEvent:
     async def test_success(self, mock_event_manager):
         from unifi_protect_mcp.tools.events import protect_get_event
 
-        mock_event_manager.get_event = AsyncMock(
-            return_value={"id": "evt-123", "type": "motion", "score": 85}
-        )
+        mock_event_manager.get_event = AsyncMock(return_value={"id": "evt-123", "type": "motion", "score": 85})
         result = await protect_get_event("evt-123")
         assert result["success"] is True
         assert result["data"]["id"] == "evt-123"

@@ -109,6 +109,4 @@ async def protect_delete_liveview(
         return {"success": False, "error": f"Failed to delete liveview: {e}"}
 
 
-logger.info(
-    "Liveview tools registered: protect_list_liveviews, protect_create_liveview, protect_delete_liveview"
-)
+logger.info("Liveview tools registered: protect_list_liveviews, protect_create_liveview, protect_delete_liveview")

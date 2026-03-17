@@ -156,9 +156,7 @@ class ProtectConnectionManager:
         Raises :class:`UniFiConnectionError` if not yet initialized.
         """
         if self._client is None or not self._initialized:
-            raise UniFiConnectionError(
-                "ProtectConnectionManager is not initialized. Call initialize() first."
-            )
+            raise UniFiConnectionError("ProtectConnectionManager is not initialized. Call initialize() first.")
         return self._client
 
     @property

@@ -62,18 +62,12 @@ class SensorManager:
             "mount_type": str(sensor.mount_type.value) if sensor.mount_type else None,
             "is_motion_detected": sensor.is_motion_detected,
             "is_opened": sensor.is_opened,
-            "motion_detected_at": (
-                sensor.motion_detected_at.isoformat() if sensor.motion_detected_at else None
-            ),
+            "motion_detected_at": (sensor.motion_detected_at.isoformat() if sensor.motion_detected_at else None),
             "open_status_changed_at": (
                 sensor.open_status_changed_at.isoformat() if sensor.open_status_changed_at else None
             ),
-            "alarm_triggered_at": (
-                sensor.alarm_triggered_at.isoformat() if sensor.alarm_triggered_at else None
-            ),
-            "leak_detected_at": (
-                sensor.leak_detected_at.isoformat() if sensor.leak_detected_at else None
-            ),
+            "alarm_triggered_at": (sensor.alarm_triggered_at.isoformat() if sensor.alarm_triggered_at else None),
+            "leak_detected_at": (sensor.leak_detected_at.isoformat() if sensor.leak_detected_at else None),
             "tampering_detected_at": (
                 sensor.tampering_detected_at.isoformat() if sensor.tampering_detected_at else None
             ),

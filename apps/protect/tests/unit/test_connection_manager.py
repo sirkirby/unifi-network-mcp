@@ -138,12 +138,15 @@ class TestInitialize:
         mock_client = MagicMock()
         mock_client.update = AsyncMock(side_effect=ConnectionError("down"))
 
-        with patch(
-            "unifi_protect_mcp.managers.connection_manager.ProtectApiClient",
-            return_value=mock_client,
-        ), patch(
-            "unifi_protect_mcp.managers.connection_manager.retry_with_backoff",
-            side_effect=ConnectionError("down after retries"),
+        with (
+            patch(
+                "unifi_protect_mcp.managers.connection_manager.ProtectApiClient",
+                return_value=mock_client,
+            ),
+            patch(
+                "unifi_protect_mcp.managers.connection_manager.retry_with_backoff",
+                side_effect=ConnectionError("down after retries"),
+            ),
         ):
             result = await cm.initialize()
 
