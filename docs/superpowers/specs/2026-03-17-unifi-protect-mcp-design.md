@@ -25,8 +25,9 @@ This is the first server built on the shared infrastructure from scratch. It val
 | Connection manager | Thin wrapper (~100-150 lines) | pyunifiprotect manages its own lifecycle; we handle init/retry/cleanup |
 | Event streaming | MCP resource subscriptions + websocket buffer | Standard MCP spec pattern; real-time push to agents |
 | Media handling | URLs default, base64 optional, MCP image resources | Low token cost by default, multimodal support on request |
-| Tool naming | `protect_` prefix | No `unifi_` prefix; MCP server namespacing handles disambiguation |
-| Permissions | Read=true, mutations opt-in, delete denied | Same "secure by default" as Network |
+| Tool naming | `protect_` prefix | Departs from parent plan's `unifi_` prefix. Rationale: servers may run independently, `protect_` aids discoverability without relying on MCP client namespacing. Network keeps `unifi_` for backward compatibility; new servers use product-specific prefixes. |
+| Meta-tools | Shared names (`unifi_tool_index`, etc.) | Each server registers its own meta-tools with the same names. MCP client-level namespacing disambiguates. Each server's `tool_index` returns only its own tools. |
+| Permissions | Read=true, mutations opt-in, delete denied | Intentionally more conservative than Network (which defaults create/update to true for some categories). All Protect mutations require explicit opt-in. |
 | Deployment | Separate Docker image (`unifi-protect-mcp`) | Independent versioning and release cycle |
 | Versioning | Prefixed tags (`protect/v0.1.0`) | Same pattern as Network |
 
@@ -108,6 +109,14 @@ Thin wrapper around `pyunifiprotect`'s `ProtectApiClient`. ~100-150 lines.
 - No request-level caching (pyunifiprotect manages its own state)
 - No CSRF/cookie management (pyunifiprotect handles auth internally)
 
+**Dual auth with pyunifiprotect:**
+
+`pyunifiprotect` handles all authentication internally (username/password → cookie session). There is no way to inject an API key session into it. For the official API endpoints accessible via API key, the connection manager maintains a separate `aiohttp` session with the API key header (via `unifi-core`'s `UniFiAuth`). Tools marked `auth: either` can use either code path. In practice, most tools will go through `pyunifiprotect` (local auth) for the richer response data. The `auth: either` annotation is forward-looking — as UniFi expands official API coverage, tools can be migrated to the API key path without changing their interface.
+
+**Two code paths in the connection manager:**
+- `connection_manager.client` → `pyunifiprotect.ProtectApiClient` (local auth, full API surface)
+- `connection_manager.api_session` → `aiohttp.ClientSession` with API key header (official endpoints only)
+
 **Managers access the underlying client:**
 ```python
 class CameraManager:
@@ -182,6 +191,8 @@ Document which MCP clients support resource subscriptions. Research during imple
 
 ## MCP Resources
 
+**Implementation note:** MCP resources are a new pattern not used in the Network app. FastMCP provides `@server.resource("uri://...")` for registration and `ctx.send_notification(ResourceUpdatedNotification())` for push notifications. Verify that the current `mcp[cli]>=1.26.0` dependency supports resource subscriptions; pin to a minimum version that does if needed. This is net-new functionality with no existing codebase anchor.
+
 ### Camera Snapshots
 
 ```
@@ -231,7 +242,7 @@ protect://events/stream
 | `protect_get_event_thumbnail` | read | either | Event thumbnail (URL or base64) |
 | `protect_list_smart_detections` | read | either | Person/vehicle/animal/package with confidence |
 | `protect_recent_events` | read | either | From websocket buffer (fast, no API call) |
-| `protect_subscribe_events` | read | either | Start subscription (returns resource URI) |
+| `protect_subscribe_events` | read | either | Convenience tool: returns the resource URI (`protect://events/stream`) and instructions for the client to call `resources/subscribe`. Optionally sets server-side filters (camera ID, event types, min confidence) that persist for the session. Does NOT replace MCP-level subscription — it's a helper for agents that don't know the URI. |
 | `protect_acknowledge_event` | update | local_only | Mark event as acknowledged |
 
 ### Recordings (~5 tools)
@@ -310,6 +321,23 @@ permissions:
 ```
 
 Same env var override pattern: `UNIFI_PERMISSIONS_CAMERAS_UPDATE=true`.
+
+### PROTECT_CATEGORY_MAP
+
+Simple 1:1 mapping (unlike Network which has multi-key aliases):
+
+```python
+PROTECT_CATEGORY_MAP = {
+    "camera": "cameras",
+    "event": "events",
+    "recording": "recordings",
+    "light": "lights",
+    "sensor": "sensors",
+    "chime": "chimes",
+    "liveview": "liveviews",
+    "system": "system",
+}
+```
 
 ---
 
@@ -422,3 +450,11 @@ After PR 8: tag `protect/v0.1.0`, publish to PyPI, push Docker image, update roo
 - **Video analytics ML** — out of scope (Protect NVR handles this)
 - **Multi-NVR support** — single NVR per server instance for now
 - **Access server** — Phase 3, separate design cycle
+
+### Implementation Notes
+
+- **`protect_get_camera_analytics` and `protect_generate_timelapse`** may depend on specific NVR firmware versions or pyunifiprotect support. Flag as implementation-dependent; skip if not supported and add in a follow-up.
+- **`protect_export_clip`** triggers server-side processing (video transcoding). Consider whether this should be `create` action rather than `read` if it's resource-intensive on the NVR.
+- **EventBuffer thread safety**: pyunifiprotect's websocket callback runs in the same asyncio event loop, so the ring buffer doesn't need thread-safety. Verify during implementation.
+- **WebSocket reconnection**: pyunifiprotect has built-in reconnection logic. Use it rather than wrapping with `unifi-core` retry. Reserve `unifi-core` retry for the initial connection only.
+- **`utils/` directory**: Add `utils/diagnostics.py` and `utils/config_helpers.py` if needed (Network uses these). Alternatively, promote common helpers to `unifi-mcp-shared` if they'd benefit both servers.
