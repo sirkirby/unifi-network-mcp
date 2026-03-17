@@ -32,6 +32,8 @@ jobs:
         enable-cache: true
 
     - name: Install dependencies
+      env:
+        SETUPTOOLS_SCM_PRETEND_VERSION: "0.0.0.dev0"
       run: |
         uv sync
 

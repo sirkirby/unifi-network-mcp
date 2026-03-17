@@ -28,7 +28,7 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "vcs"
 raw-options.root = "../.."
-raw-options.tag_regex = "^protect/v(?P<version>\\d+(?:\\.\\d+)*)(?:\\S*)$"
+raw-options.tag_regex = "^(?:protect/)?v(?P<version>\\d+(?:\\.\\d+)*)(?:\\S*)$"
 raw-options.fallback_version = "0.0.0"
 
 [tool.hatch.build.hooks.vcs]
