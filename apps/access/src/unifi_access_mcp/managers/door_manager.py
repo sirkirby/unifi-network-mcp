@@ -61,7 +61,11 @@ class DoorManager:
                 ]
             elif self._cm.has_proxy:
                 data = await self._cm.proxy_request("GET", f"dashboard/locations?{_LOCATIONS_EXPAND}")
-                return data.get("data", data) if isinstance(data, dict) else data
+                # Response is {"data": {"locations": [...]}}
+                inner = data.get("data", data) if isinstance(data, dict) else data
+                if isinstance(inner, dict):
+                    return inner.get("locations", [])
+                return inner
             else:
                 raise UniFiConnectionError("No auth path available for list_doors")
         except UniFiConnectionError:
@@ -92,7 +96,9 @@ class DoorManager:
                 }
             elif self._cm.has_proxy:
                 data = await self._cm.proxy_request("GET", f"dashboard/locations?{_LOCATIONS_EXPAND}")
-                locations = data.get("data", data) if isinstance(data, dict) else data
+                # Response is {"data": {"locations": [...]}}
+                inner = data.get("data", data) if isinstance(data, dict) else data
+                locations = inner.get("locations", inner) if isinstance(inner, dict) else inner
                 if isinstance(locations, list):
                     for loc in locations:
                         if isinstance(loc, dict) and loc.get("id") == door_id:
@@ -124,7 +130,9 @@ class DoorManager:
                 }
             elif self._cm.has_proxy:
                 data = await self._cm.proxy_request("GET", f"dashboard/locations?{_LOCATIONS_EXPAND}")
-                locations = data.get("data", data) if isinstance(data, dict) else data
+                # Response is {"data": {"locations": [...]}}
+                inner = data.get("data", data) if isinstance(data, dict) else data
+                locations = inner.get("locations", inner) if isinstance(inner, dict) else inner
                 if isinstance(locations, list):
                     for loc in locations:
                         if isinstance(loc, dict) and loc.get("id") == door_id:
