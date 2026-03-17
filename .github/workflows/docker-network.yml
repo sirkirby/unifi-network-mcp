@@ -1,4 +1,4 @@
-name: Docker Multi-arch Build and Publish
+name: "Network: Docker Build and Publish"
 
 on:
   push:
