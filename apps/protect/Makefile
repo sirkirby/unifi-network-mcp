@@ -1,6 +1,6 @@
 .PHONY: help venv install test test-cov lint format format-fix format-check manifest \
        run run-lazy run-eager run-meta version build build-check build-test docker docker-run \
-       clean pre-commit pre-release \
+       clean console console-debug pre-commit pre-release \
        deps-check deps-update info
 
 UV_RUN = cd ../.. && uv run --package unifi-protect-mcp
@@ -19,6 +19,8 @@ help:
 	@echo "  make run-eager      Run with eager loading (all tools)"
 	@echo "  make run-meta       Run with meta-only mode"
 	@echo "  make manifest       Regenerate tool manifest"
+	@echo "  make console        Start interactive dev console"
+	@echo "  make console-debug  Start dev console with debug logging"
 	@echo ""
 	@echo "Testing & Quality:"
 	@echo "  make test           Run tests"
@@ -69,6 +71,12 @@ run-meta:
 
 manifest:
 	$(UV_RUN) python apps/protect/scripts/generate_tool_manifest.py
+
+console:
+	cd ../.. && UNIFI_TOOL_REGISTRATION_MODE=eager uv run --package unifi-protect-mcp python apps/protect/devtools/dev_console.py
+
+console-debug:
+	cd ../.. && UNIFI_MCP_LOG_LEVEL=DEBUG UNIFI_TOOL_REGISTRATION_MODE=eager uv run --package unifi-protect-mcp python apps/protect/devtools/dev_console.py
 
 # Testing
 test:
