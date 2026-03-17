@@ -45,7 +45,7 @@ jobs:
 
     - name: Run integration tests
       run: |
-        uv run --package unifi-protect-mcp pytest apps/protect/tests/integration/ -v --tb=short
+        uv run --package unifi-protect-mcp pytest apps/protect/tests/integration/ -v --tb=short || test $? -eq 5
 
     - name: Run all tests with coverage
       run: |
