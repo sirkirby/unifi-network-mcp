@@ -4,6 +4,13 @@ Provides methods to query Access system information, health,
 and user listings from the Access controller.  Each method
 tries the API client first (if available) and falls back to
 the proxy session path.
+
+Proxy paths discovered via browser inspection:
+- ``access/info`` -- Access application info (version, etc.)
+- ``dashboard/stats?expand[]=stats.hub&...`` -- dashboard statistics
+- ``settings`` -- Access settings
+- Users are under the ULP-Go sub-proxy:
+  ``/proxy/access/ulp-go/api/v2/users/search?page_num=1&page_size=25``
 """
 
 from __future__ import annotations
@@ -15,6 +22,17 @@ from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
 from unifi_core.exceptions import UniFiConnectionError
 
 logger = logging.getLogger(__name__)
+
+# Query parameters for the dashboard stats endpoint (includes all
+# useful expansions discovered from browser network inspection).
+_STATS_EXPAND = (
+    "expand[]=stats.hub"
+    "&expand[]=stats.reader"
+    "&expand[]=stats.viewer"
+    "&expand[]=stats.visitor"
+    "&expand[]=stats.credential"
+    "&expand[]=stats.user"
+)
 
 
 class SystemManager:
@@ -31,7 +49,7 @@ class SystemManager:
         """Return Access controller model, version, uptime, and overview.
 
         Uses the API client ``get_doors`` as a connectivity probe when
-        available; falls back to the proxy ``system/info`` endpoint.
+        available; falls back to the proxy ``access/info`` endpoint.
         """
         if self._cm.has_api_client:
             try:
@@ -54,7 +72,7 @@ class SystemManager:
 
         if self._cm.has_proxy:
             try:
-                data = await self._cm.proxy_request("GET", "system/info")
+                data = await self._cm.proxy_request("GET", "access/info")
                 return data.get("data", data) if isinstance(data, dict) else data
             except Exception as exc:
                 logger.error("[system] Failed to get system info via proxy: %s", exc, exc_info=True)
@@ -66,6 +84,7 @@ class SystemManager:
         """Return system health summary.
 
         Checks both auth paths and reports their individual status.
+        Uses the ``dashboard/stats`` endpoint for a meaningful health probe.
         """
         health: Dict[str, Any] = {
             "host": self._cm.host,
@@ -84,10 +103,10 @@ class SystemManager:
                 health["api_client_healthy"] = False
                 health["api_client_error"] = str(exc)
 
-        # Probe proxy path
+        # Probe proxy path using dashboard stats
         if self._cm.has_proxy:
             try:
-                await self._cm.proxy_request("GET", "system/health")
+                await self._cm.proxy_request("GET", f"dashboard/stats?{_STATS_EXPAND}")
                 health["proxy_healthy"] = True
             except Exception as exc:
                 logger.warning("[system] Proxy health probe failed: %s", exc)
@@ -96,22 +115,31 @@ class SystemManager:
 
         return health
 
-    async def list_users(self) -> list[Dict[str, Any]]:
+    async def list_users(self, page_num: int = 1, page_size: int = 25) -> list[Dict[str, Any]]:
         """List users with access.
 
-        Uses the proxy path ``/proxy/access/api/v2/users`` since the
-        ``py-unifi-access`` library does not expose a user listing endpoint.
+        Users are served by the ULP-Go sub-proxy at
+        ``/proxy/access/ulp-go/api/v2/users/search``, which requires a
+        POST request and uses a different base path from the main Access API.
+
+        Parameters
+        ----------
+        page_num:
+            Page number for pagination (default 1).
+        page_size:
+            Number of users per page (default 25).
         """
         if self._cm.has_proxy:
             try:
-                data = await self._cm.proxy_request("GET", "users")
+                path = f"users/search?page_num={page_num}&page_size={page_size}"
+                data = await self._cm.proxy_request_ulp("POST", path, json={})
                 if isinstance(data, dict):
                     return data.get("data", [data])
                 if isinstance(data, list):
                     return data
                 return [data]
             except Exception as exc:
-                logger.error("[system] Failed to list users via proxy: %s", exc, exc_info=True)
+                logger.error("[system] Failed to list users via ulp-go proxy: %s", exc, exc_info=True)
                 raise
 
         raise UniFiConnectionError("No auth path available for list_users (proxy session required)")

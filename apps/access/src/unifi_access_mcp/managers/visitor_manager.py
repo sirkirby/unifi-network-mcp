@@ -5,6 +5,12 @@ via the Access controller API.
 
 All methods use the proxy session path since visitor management is
 not exposed by the py-unifi-access API client.
+
+NOTE: Visitor endpoints were not directly visible in browser network
+traces (visitors may be part of the user system under ulp-go).  The
+paths below are best-effort guesses.  Each method includes graceful
+error handling that returns an empty result with a clear message when
+the endpoint returns 404.
 """
 
 from __future__ import annotations
@@ -29,20 +35,33 @@ class VisitorManager:
     # ------------------------------------------------------------------
 
     async def list_visitors(self) -> List[Dict[str, Any]]:
-        """Return all visitors as summary dicts."""
+        """Return all visitors as summary dicts.
+
+        Returns an empty list with a warning if the endpoint is not available
+        (404), since the exact visitor API path has not been confirmed.
+        """
         if not self._cm.has_proxy:
             raise UniFiConnectionError("No proxy session available for list_visitors")
         try:
             data = await self._cm.proxy_request("GET", "visitors")
             return data.get("data", data) if isinstance(data, dict) else data
-        except UniFiConnectionError:
+        except UniFiConnectionError as e:
+            if "HTTP 404" in str(e):
+                logger.warning(
+                    "[visitors] Visitor endpoint returned 404 — endpoint path may not be correct. "
+                    "Returning empty list."
+                )
+                return []
             raise
         except Exception as e:
             logger.error("Failed to list visitors: %s", e, exc_info=True)
             raise
 
     async def get_visitor(self, visitor_id: str) -> Dict[str, Any]:
-        """Return detailed information for a single visitor."""
+        """Return detailed information for a single visitor.
+
+        Returns an error if the endpoint is not available (404).
+        """
         if not visitor_id:
             raise ValueError("visitor_id is required")
         if not self._cm.has_proxy:
@@ -50,7 +69,16 @@ class VisitorManager:
         try:
             data = await self._cm.proxy_request("GET", f"visitors/{visitor_id}")
             return data.get("data", data) if isinstance(data, dict) else data
-        except (UniFiConnectionError, ValueError):
+        except UniFiConnectionError as e:
+            if "HTTP 404" in str(e):
+                logger.warning(
+                    "[visitors] Visitor endpoint returned 404 for %s — endpoint path may not be correct.",
+                    visitor_id,
+                )
+                raise ValueError(
+                    f"Visitor not found or endpoint not available: {visitor_id}. "
+                    "The visitor API path has not been confirmed via browser inspection."
+                ) from e
             raise
         except Exception as e:
             logger.error("Failed to get visitor %s: %s", visitor_id, e, exc_info=True)

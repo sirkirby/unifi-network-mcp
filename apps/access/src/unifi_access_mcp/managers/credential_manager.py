@@ -5,6 +5,11 @@ mobile credentials) via the Access controller API.
 
 All methods use the proxy session path since credential management is
 not exposed by the py-unifi-access API client.
+
+NOTE: Credential endpoints were not directly visible in browser network
+traces.  The paths below are best-effort guesses.  Each method includes
+graceful error handling that returns an empty result with a clear message
+when the endpoint returns 404.
 """
 
 from __future__ import annotations
@@ -29,20 +34,33 @@ class CredentialManager:
     # ------------------------------------------------------------------
 
     async def list_credentials(self) -> List[Dict[str, Any]]:
-        """Return all credentials as summary dicts."""
+        """Return all credentials as summary dicts.
+
+        Returns an empty list with a warning if the endpoint is not available
+        (404), since the exact credential API path has not been confirmed.
+        """
         if not self._cm.has_proxy:
             raise UniFiConnectionError("No proxy session available for list_credentials")
         try:
             data = await self._cm.proxy_request("GET", "credentials")
             return data.get("data", data) if isinstance(data, dict) else data
-        except UniFiConnectionError:
+        except UniFiConnectionError as e:
+            if "HTTP 404" in str(e):
+                logger.warning(
+                    "[credentials] Credential endpoint returned 404 — endpoint path may not be correct. "
+                    "Returning empty list."
+                )
+                return []
             raise
         except Exception as e:
             logger.error("Failed to list credentials: %s", e, exc_info=True)
             raise
 
     async def get_credential(self, credential_id: str) -> Dict[str, Any]:
-        """Return detailed information for a single credential."""
+        """Return detailed information for a single credential.
+
+        Returns an error dict if the endpoint is not available (404).
+        """
         if not credential_id:
             raise ValueError("credential_id is required")
         if not self._cm.has_proxy:
@@ -50,7 +68,16 @@ class CredentialManager:
         try:
             data = await self._cm.proxy_request("GET", f"credentials/{credential_id}")
             return data.get("data", data) if isinstance(data, dict) else data
-        except (UniFiConnectionError, ValueError):
+        except UniFiConnectionError as e:
+            if "HTTP 404" in str(e):
+                logger.warning(
+                    "[credentials] Credential endpoint returned 404 for %s — endpoint path may not be correct.",
+                    credential_id,
+                )
+                raise ValueError(
+                    f"Credential not found or endpoint not available: {credential_id}. "
+                    "The credential API path has not been confirmed via browser inspection."
+                ) from e
             raise
         except Exception as e:
             logger.error("Failed to get credential %s: %s", credential_id, e, exc_info=True)

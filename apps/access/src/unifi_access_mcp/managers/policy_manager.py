@@ -5,6 +5,11 @@ via the Access controller API.
 
 All methods use the proxy session path since policy management is
 not exposed by the py-unifi-access API client.
+
+Proxy paths discovered via browser inspection:
+- ``access_policies?expand[]=schedule`` -- policies with schedule data
+- ``access_policies/{id}?expand[]=schedule`` -- single policy
+- ``schedules?expand[]=week_schedule`` -- schedules with weekly detail
 """
 
 from __future__ import annotations
@@ -33,7 +38,7 @@ class PolicyManager:
         if not self._cm.has_proxy:
             raise UniFiConnectionError("No proxy session available for list_policies")
         try:
-            data = await self._cm.proxy_request("GET", "policies")
+            data = await self._cm.proxy_request("GET", "access_policies?expand[]=schedule")
             return data.get("data", data) if isinstance(data, dict) else data
         except UniFiConnectionError:
             raise
@@ -48,7 +53,7 @@ class PolicyManager:
         if not self._cm.has_proxy:
             raise UniFiConnectionError("No proxy session available for get_policy")
         try:
-            data = await self._cm.proxy_request("GET", f"policies/{policy_id}")
+            data = await self._cm.proxy_request("GET", f"access_policies/{policy_id}?expand[]=schedule")
             return data.get("data", data) if isinstance(data, dict) else data
         except (UniFiConnectionError, ValueError):
             raise
@@ -61,7 +66,7 @@ class PolicyManager:
         if not self._cm.has_proxy:
             raise UniFiConnectionError("No proxy session available for list_schedules")
         try:
-            data = await self._cm.proxy_request("GET", "schedules")
+            data = await self._cm.proxy_request("GET", "schedules?expand[]=week_schedule")
             return data.get("data", data) if isinstance(data, dict) else data
         except UniFiConnectionError:
             raise
@@ -101,7 +106,7 @@ class PolicyManager:
         if not self._cm.has_proxy:
             raise UniFiConnectionError("No proxy session available for update_policy")
         try:
-            await self._cm.proxy_request("PUT", f"policies/{policy_id}", json=changes)
+            await self._cm.proxy_request("PUT", f"access_policies/{policy_id}", json=changes)
             return {
                 "policy_id": policy_id,
                 "action": "update",

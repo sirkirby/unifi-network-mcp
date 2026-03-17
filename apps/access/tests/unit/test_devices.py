@@ -77,11 +77,13 @@ class TestListDevices:
 
     @pytest.mark.asyncio
     async def test_list_devices_proxy(self, device_mgr_proxy, cm_proxy):
+        """list_devices uses devices/topology4 via proxy."""
         expected = [{"id": "dev-2", "name": "Reader G2"}]
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = {"data": expected}
             devices = await device_mgr_proxy.list_devices()
         assert devices == expected
+        mock_req.assert_awaited_once_with("GET", "devices/topology4")
 
     @pytest.mark.asyncio
     async def test_list_devices_no_auth(self, device_mgr_none):
@@ -115,11 +117,24 @@ class TestGetDevice:
 
     @pytest.mark.asyncio
     async def test_get_device_proxy(self, device_mgr_proxy, cm_proxy):
-        expected = {"id": "dev-2", "name": "Reader G2", "type": "reader"}
+        """get_device filters from topology4 response by ID."""
+        topology = [
+            {"id": "dev-1", "name": "Hub Pro"},
+            {"id": "dev-2", "name": "Reader G2", "type": "reader"},
+        ]
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
-            mock_req.return_value = {"data": expected}
+            mock_req.return_value = {"data": topology}
             detail = await device_mgr_proxy.get_device("dev-2")
-        assert detail == expected
+        assert detail == {"id": "dev-2", "name": "Reader G2", "type": "reader"}
+        mock_req.assert_awaited_once_with("GET", "devices/topology4")
+
+    @pytest.mark.asyncio
+    async def test_get_device_proxy_not_found(self, device_mgr_proxy, cm_proxy):
+        """get_device raises ValueError when device ID not found in topology."""
+        with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = {"data": [{"id": "other-dev"}]}
+            with pytest.raises(ValueError, match="Device not found"):
+                await device_mgr_proxy.get_device("missing-dev")
 
     @pytest.mark.asyncio
     async def test_get_device_empty_id(self, device_mgr_api):

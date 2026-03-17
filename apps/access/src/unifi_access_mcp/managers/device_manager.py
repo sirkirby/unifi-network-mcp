@@ -5,6 +5,10 @@ relays, intercoms) via the Access controller API.
 
 Dual-path routing: tries the API client (py-unifi-access) first when
 available, then falls back to the proxy session path.
+
+Proxy paths discovered via browser inspection:
+- ``devices/topology4`` -- device topology (full device tree)
+- ``protect_devices?include_adopted_by_access=true`` -- Protect devices paired with Access
 """
 
 from __future__ import annotations
@@ -31,7 +35,8 @@ class DeviceManager:
     async def list_devices(self) -> List[Dict[str, Any]]:
         """Return all Access devices as summary dicts.
 
-        Tries the API client first, then falls back to the proxy path.
+        Tries the API client first, then falls back to the proxy path
+        using the ``devices/topology4`` endpoint.
         """
         try:
             if self._cm.has_api_client:
@@ -47,7 +52,7 @@ class DeviceManager:
                     for d in devices
                 ]
             elif self._cm.has_proxy:
-                data = await self._cm.proxy_request("GET", "devices")
+                data = await self._cm.proxy_request("GET", "devices/topology4")
                 return data.get("data", data) if isinstance(data, dict) else data
             else:
                 raise UniFiConnectionError("No auth path available for list_devices")
@@ -61,6 +66,8 @@ class DeviceManager:
         """Return detailed information for a single device.
 
         Tries the API client first, then falls back to the proxy path.
+        When using the proxy path we fetch the full topology and filter
+        by device ID.
         """
         if not device_id:
             raise ValueError("device_id is required")
@@ -77,8 +84,13 @@ class DeviceManager:
                     "ip": getattr(device, "ip", None),
                 }
             elif self._cm.has_proxy:
-                data = await self._cm.proxy_request("GET", f"devices/{device_id}")
-                return data.get("data", data) if isinstance(data, dict) else data
+                data = await self._cm.proxy_request("GET", "devices/topology4")
+                devices = data.get("data", data) if isinstance(data, dict) else data
+                if isinstance(devices, list):
+                    for dev in devices:
+                        if isinstance(dev, dict) and dev.get("id") == device_id:
+                            return dev
+                raise ValueError(f"Device not found: {device_id}")
             else:
                 raise UniFiConnectionError("No auth path available for get_device")
         except (UniFiConnectionError, ValueError):

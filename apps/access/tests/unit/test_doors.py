@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
-from unifi_access_mcp.managers.door_manager import DoorManager
+from unifi_access_mcp.managers.door_manager import _LOCATIONS_EXPAND, DoorManager
 from unifi_core.exceptions import UniFiConnectionError
 
 # ---------------------------------------------------------------------------
@@ -97,7 +97,7 @@ class TestListDoors:
 
     @pytest.mark.asyncio
     async def test_list_doors_proxy(self, door_mgr_proxy, cm_proxy):
-        """list_doors falls back to proxy when no API client."""
+        """list_doors falls back to proxy using dashboard/locations endpoint."""
         expected = [{"id": "door-2", "name": "Back Door"}]
 
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
@@ -105,7 +105,7 @@ class TestListDoors:
             doors = await door_mgr_proxy.list_doors()
 
         assert doors == expected
-        mock_req.assert_awaited_once_with("GET", "doors")
+        mock_req.assert_awaited_once_with("GET", f"dashboard/locations?{_LOCATIONS_EXPAND}")
 
     @pytest.mark.asyncio
     async def test_list_doors_no_auth(self, door_mgr_none):
@@ -157,15 +157,26 @@ class TestGetDoor:
 
     @pytest.mark.asyncio
     async def test_get_door_proxy(self, door_mgr_proxy, cm_proxy):
-        """get_door falls back to proxy."""
-        expected = {"id": "door-2", "name": "Back Door", "lock_relay_status": "locked"}
+        """get_door filters from dashboard/locations response by ID."""
+        locations = [
+            {"id": "door-1", "name": "Front Door"},
+            {"id": "door-2", "name": "Back Door", "lock_relay_status": "locked"},
+        ]
 
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
-            mock_req.return_value = {"data": expected}
+            mock_req.return_value = {"data": locations}
             detail = await door_mgr_proxy.get_door("door-2")
 
-        assert detail == expected
-        mock_req.assert_awaited_once_with("GET", "doors/door-2")
+        assert detail == {"id": "door-2", "name": "Back Door", "lock_relay_status": "locked"}
+        mock_req.assert_awaited_once_with("GET", f"dashboard/locations?{_LOCATIONS_EXPAND}")
+
+    @pytest.mark.asyncio
+    async def test_get_door_proxy_not_found(self, door_mgr_proxy, cm_proxy):
+        """get_door raises ValueError when door ID not found in locations."""
+        with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = {"data": [{"id": "other-door"}]}
+            with pytest.raises(ValueError, match="Door not found"):
+                await door_mgr_proxy.get_door("missing-door")
 
     @pytest.mark.asyncio
     async def test_get_door_empty_id(self, door_mgr_api):
@@ -204,17 +215,19 @@ class TestGetDoorStatus:
 
     @pytest.mark.asyncio
     async def test_get_door_status_proxy(self, door_mgr_proxy, cm_proxy):
-        """get_door_status extracts status fields via proxy."""
-        raw = {
-            "id": "door-2",
-            "name": "Back Door",
-            "door_position_status": "open",
-            "lock_relay_status": "unlocked",
-            "extra_field": "ignored",
-        }
+        """get_door_status extracts status fields from locations via proxy."""
+        locations = [
+            {
+                "id": "door-2",
+                "name": "Back Door",
+                "door_position_status": "open",
+                "lock_relay_status": "unlocked",
+                "extra_field": "ignored",
+            }
+        ]
 
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
-            mock_req.return_value = {"data": raw}
+            mock_req.return_value = {"data": locations}
             status = await door_mgr_proxy.get_door_status("door-2")
 
         assert status["lock_relay_status"] == "unlocked"
@@ -235,7 +248,7 @@ class TestGetDoorStatus:
 class TestListDoorGroups:
     @pytest.mark.asyncio
     async def test_list_door_groups_proxy(self, door_mgr_proxy, cm_proxy):
-        """list_door_groups returns groups via proxy."""
+        """list_door_groups returns groups via proxy using access_groups endpoint."""
         expected = [{"id": "grp-1", "name": "Building A"}]
 
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
@@ -243,7 +256,7 @@ class TestListDoorGroups:
             groups = await door_mgr_proxy.list_door_groups()
 
         assert groups == expected
-        mock_req.assert_awaited_once_with("GET", "door_groups")
+        mock_req.assert_awaited_once_with("GET", "access_groups")
 
     @pytest.mark.asyncio
     async def test_list_door_groups_no_proxy(self, door_mgr_api):
@@ -311,13 +324,13 @@ class TestApplyUnlockDoor:
 
     @pytest.mark.asyncio
     async def test_apply_unlock_proxy(self, door_mgr_proxy, cm_proxy):
-        """apply_unlock_door uses proxy when no API client."""
+        """apply_unlock_door uses proxy with dashboard/locations unlock endpoint."""
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = {}
             result = await door_mgr_proxy.apply_unlock_door("door-2", duration=3)
 
         assert result["result"] == "success"
-        mock_req.assert_awaited_once_with("PUT", "doors/door-2/unlock", json={"duration": 3})
+        mock_req.assert_awaited_once_with("PUT", "dashboard/locations/door-2/unlock", json={"duration": 3})
 
     @pytest.mark.asyncio
     async def test_apply_unlock_no_auth(self, door_mgr_none):
@@ -335,15 +348,17 @@ class TestLockDoor:
     @pytest.mark.asyncio
     async def test_lock_door_preview(self, door_mgr_proxy, cm_proxy):
         """lock_door returns preview data."""
-        raw = {
-            "id": "door-1",
-            "name": "Front Door",
-            "door_position_status": "closed",
-            "lock_relay_status": "unlocked",
-        }
+        locations = [
+            {
+                "id": "door-1",
+                "name": "Front Door",
+                "door_position_status": "closed",
+                "lock_relay_status": "unlocked",
+            }
+        ]
 
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
-            mock_req.return_value = {"data": raw}
+            mock_req.return_value = {"data": locations}
             preview = await door_mgr_proxy.lock_door("door-1")
 
         assert preview["door_id"] == "door-1"
@@ -364,14 +379,14 @@ class TestLockDoor:
 class TestApplyLockDoor:
     @pytest.mark.asyncio
     async def test_apply_lock_proxy(self, door_mgr_proxy, cm_proxy):
-        """apply_lock_door uses proxy."""
+        """apply_lock_door uses proxy with dashboard/locations lock endpoint."""
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = {}
             result = await door_mgr_proxy.apply_lock_door("door-1")
 
         assert result["result"] == "success"
         assert result["action"] == "lock"
-        mock_req.assert_awaited_once_with("PUT", "doors/door-1/lock")
+        mock_req.assert_awaited_once_with("PUT", "dashboard/locations/door-1/lock")
 
     @pytest.mark.asyncio
     async def test_apply_lock_no_proxy(self, door_mgr_api):

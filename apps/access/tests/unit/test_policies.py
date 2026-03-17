@@ -51,6 +51,7 @@ class TestListPolicies:
             mock_req.return_value = {"data": expected}
             result = await policy_mgr.list_policies()
         assert result == expected
+        mock_req.assert_awaited_once_with("GET", "access_policies?expand[]=schedule")
 
     @pytest.mark.asyncio
     async def test_list_policies_no_proxy(self, policy_mgr_none):
@@ -71,6 +72,7 @@ class TestGetPolicy:
             mock_req.return_value = {"data": expected}
             result = await policy_mgr.get_policy("pol-1")
         assert result == expected
+        mock_req.assert_awaited_once_with("GET", "access_policies/pol-1?expand[]=schedule")
 
     @pytest.mark.asyncio
     async def test_get_policy_empty_id(self, policy_mgr):
@@ -96,6 +98,7 @@ class TestListSchedules:
             mock_req.return_value = {"data": expected}
             result = await policy_mgr.list_schedules()
         assert result == expected
+        mock_req.assert_awaited_once_with("GET", "schedules?expand[]=week_schedule")
 
     @pytest.mark.asyncio
     async def test_list_schedules_no_proxy(self, policy_mgr_none):
@@ -142,6 +145,7 @@ class TestApplyUpdatePolicy:
             result = await policy_mgr.apply_update_policy("pol-1", {"name": "Updated"})
         assert result["result"] == "success"
         assert "name" in result["updated_fields"]
+        mock_req.assert_awaited_once_with("PUT", "access_policies/pol-1", json={"name": "Updated"})
 
     @pytest.mark.asyncio
     async def test_apply_update_no_proxy(self, policy_mgr_none):

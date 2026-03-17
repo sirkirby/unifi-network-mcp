@@ -338,7 +338,102 @@ class TestProxyRequest:
         cm_proxy_only._csrf_token = "test"
 
         with pytest.raises(UniFiConnectionError, match="HTTP 500"):
-            await cm_proxy_only.proxy_request("GET", "system/info")
+            await cm_proxy_only.proxy_request("GET", "access/info")
+
+
+# ---------------------------------------------------------------------------
+# ULP proxy request tests
+# ---------------------------------------------------------------------------
+
+
+class TestUlpProxyRequest:
+    @pytest.mark.asyncio
+    async def test_ulp_proxy_request_success(self, cm_proxy_only):
+        """ULP proxy request succeeds and returns JSON using ulp-go base path."""
+        expected = {"data": [{"id": "user-1"}]}
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value=expected)
+        mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_resp.__aexit__ = AsyncMock(return_value=False)
+
+        mock_session = AsyncMock()
+        mock_session.request = MagicMock(return_value=mock_resp)
+
+        cm_proxy_only._proxy_session = mock_session
+        cm_proxy_only._proxy_available = True
+        cm_proxy_only._csrf_token = "test-csrf"
+
+        result = await cm_proxy_only.proxy_request_ulp("POST", "users/search?page_num=1&page_size=25")
+
+        assert result == expected
+        mock_session.request.assert_called_once()
+        call_args = mock_session.request.call_args
+        # Verify it uses the ulp-go base path
+        url = call_args[0][1]
+        assert "/proxy/access/ulp-go/api/v2/users/search" in url
+        assert call_args[1]["headers"]["X-CSRF-Token"] == "test-csrf"
+
+    @pytest.mark.asyncio
+    async def test_ulp_proxy_request_raises_when_not_available(self, cm_proxy_only):
+        """ULP proxy request raises when proxy session is not initialized."""
+        cm_proxy_only._proxy_available = False
+        cm_proxy_only._proxy_session = None
+
+        with pytest.raises(UniFiConnectionError, match="Proxy session is not available"):
+            await cm_proxy_only.proxy_request_ulp("POST", "users/search")
+
+    @pytest.mark.asyncio
+    async def test_ulp_proxy_request_non_200_error(self, cm_proxy_only):
+        """ULP proxy request raises on non-200 non-401 response."""
+        mock_resp = AsyncMock()
+        mock_resp.status = 404
+        mock_resp.text = AsyncMock(return_value="Not Found")
+        mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_resp.__aexit__ = AsyncMock(return_value=False)
+
+        mock_session = AsyncMock()
+        mock_session.request = MagicMock(return_value=mock_resp)
+
+        cm_proxy_only._proxy_session = mock_session
+        cm_proxy_only._proxy_available = True
+        cm_proxy_only._csrf_token = "test"
+
+        with pytest.raises(UniFiConnectionError, match="HTTP 404"):
+            await cm_proxy_only.proxy_request_ulp("POST", "users/search")
+
+    @pytest.mark.asyncio
+    async def test_ulp_proxy_request_reauth_on_401(self, cm_proxy_only):
+        """ULP proxy request re-authenticates on 401 and retries."""
+        mock_resp_401 = AsyncMock()
+        mock_resp_401.status = 401
+        mock_resp_401.__aenter__ = AsyncMock(return_value=mock_resp_401)
+        mock_resp_401.__aexit__ = AsyncMock(return_value=False)
+
+        mock_resp_200 = AsyncMock()
+        mock_resp_200.status = 200
+        mock_resp_200.json = AsyncMock(return_value={"data": "refreshed"})
+        mock_resp_200.__aenter__ = AsyncMock(return_value=mock_resp_200)
+        mock_resp_200.__aexit__ = AsyncMock(return_value=False)
+
+        mock_session = AsyncMock()
+        mock_session.request = MagicMock(side_effect=[mock_resp_401, mock_resp_200])
+
+        mock_login_resp = AsyncMock()
+        mock_login_resp.status = 200
+        mock_login_resp.headers = {"x-updated-csrf-token": "new-csrf"}
+        mock_login_resp.__aenter__ = AsyncMock(return_value=mock_login_resp)
+        mock_login_resp.__aexit__ = AsyncMock(return_value=False)
+        mock_session.post = MagicMock(return_value=mock_login_resp)
+
+        cm_proxy_only._proxy_session = mock_session
+        cm_proxy_only._proxy_available = True
+        cm_proxy_only._csrf_token = "old-csrf"
+
+        result = await cm_proxy_only.proxy_request_ulp("POST", "users/search")
+
+        assert result == {"data": "refreshed"}
+        assert mock_session.request.call_count == 2
 
 
 # ---------------------------------------------------------------------------

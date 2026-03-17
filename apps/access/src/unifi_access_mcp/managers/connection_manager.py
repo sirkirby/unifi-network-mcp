@@ -290,6 +290,66 @@ class AccessConnectionManager:
                 )
             return await resp.json()
 
+    async def proxy_request_ulp(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
+        """Make a request via the ULP-Go sub-proxy path.
+
+        The UniFi Access user management API lives under a different
+        sub-proxy: ``/proxy/access/ulp-go/api/v2/...`` rather than
+        ``/proxy/access/api/v2/...``.
+
+        Parameters
+        ----------
+        method:
+            HTTP method (GET, POST, PUT, DELETE).
+        path:
+            API path relative to ``/proxy/access/ulp-go/api/v2/``.
+        **kwargs:
+            Extra keyword arguments forwarded to ``aiohttp.ClientSession.request``
+            (e.g. ``json=``, ``params=``).
+
+        Returns
+        -------
+        dict
+            Parsed JSON response body.
+
+        Raises
+        ------
+        UniFiConnectionError
+            If the proxy session is not available.
+        """
+        if not self._proxy_available or self._proxy_session is None:
+            raise UniFiConnectionError("Proxy session is not available. Call initialize() first.")
+
+        url = f"https://{self.host}:{self.port}/proxy/access/ulp-go/api/v2/{path.lstrip('/')}"
+        headers = {"X-CSRF-Token": self._csrf_token}
+
+        async with self._proxy_session.request(method, url, headers=headers, ssl=self._ssl_context, **kwargs) as resp:
+            if resp.status == 401:
+                async with self._auth_lock:
+                    logger.info("[access-cm] Proxy session expired (ulp-go), re-authenticating...")
+                    await self._proxy_login()
+
+                retry_headers = {"X-CSRF-Token": self._csrf_token}
+                async with self._proxy_session.request(
+                    method, url, headers=retry_headers, ssl=self._ssl_context, **kwargs
+                ) as retry_resp:
+                    if retry_resp.status != 200:
+                        raise UniFiConnectionError(
+                            f"ULP proxy request failed after re-auth: HTTP {retry_resp.status} {method} {path}"
+                        )
+                    return await retry_resp.json()
+
+            if resp.status != 200:
+                body = ""
+                try:
+                    body = await resp.text()
+                except Exception:
+                    pass
+                raise UniFiConnectionError(
+                    f"ULP proxy request failed: HTTP {resp.status} {method} {path}{(' — ' + body[:200]) if body else ''}"
+                )
+            return await resp.json()
+
     # ------------------------------------------------------------------
     # Properties
     # ------------------------------------------------------------------

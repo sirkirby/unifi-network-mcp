@@ -5,6 +5,11 @@ door configurations via the Access controller API.
 
 Dual-path routing: tries the API client (py-unifi-access) first when
 available, then falls back to the proxy session path.
+
+Proxy paths discovered via browser inspection:
+- ``dashboard/locations?expand[]=...`` -- lists doors with lock state, thumbnails
+- ``access_groups`` -- lists door/access groups
+- ``dashboard/locations/{id}/...`` -- per-door operations (unlock/lock)
 """
 
 from __future__ import annotations
@@ -16,6 +21,15 @@ from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
 from unifi_core.exceptions import UniFiConnectionError
 
 logger = logging.getLogger(__name__)
+
+# Query parameters for the dashboard locations endpoint (includes all
+# useful expansions discovered from browser network inspection).
+_LOCATIONS_EXPAND = (
+    "expand[]=location.thumbnail"
+    "&expand[]=device.access_method"
+    "&expand[]=device.lock_state"
+    "&expand[]=device.thumbnail"
+)
 
 
 class DoorManager:
@@ -46,7 +60,7 @@ class DoorManager:
                     for d in doors
                 ]
             elif self._cm.has_proxy:
-                data = await self._cm.proxy_request("GET", "doors")
+                data = await self._cm.proxy_request("GET", f"dashboard/locations?{_LOCATIONS_EXPAND}")
                 return data.get("data", data) if isinstance(data, dict) else data
             else:
                 raise UniFiConnectionError("No auth path available for list_doors")
@@ -60,6 +74,8 @@ class DoorManager:
         """Return detailed information for a single door.
 
         Tries the API client first, then falls back to the proxy path.
+        When using the proxy path we fetch all locations and filter by ID
+        since there is no single-door endpoint.
         """
         if not door_id:
             raise ValueError("door_id is required")
@@ -75,8 +91,13 @@ class DoorManager:
                     "door_guard": getattr(door, "door_guard", None),
                 }
             elif self._cm.has_proxy:
-                data = await self._cm.proxy_request("GET", f"doors/{door_id}")
-                return data.get("data", data) if isinstance(data, dict) else data
+                data = await self._cm.proxy_request("GET", f"dashboard/locations?{_LOCATIONS_EXPAND}")
+                locations = data.get("data", data) if isinstance(data, dict) else data
+                if isinstance(locations, list):
+                    for loc in locations:
+                        if isinstance(loc, dict) and loc.get("id") == door_id:
+                            return loc
+                raise ValueError(f"Door not found: {door_id}")
             else:
                 raise UniFiConnectionError("No auth path available for get_door")
         except (UniFiConnectionError, ValueError):
@@ -102,16 +123,18 @@ class DoorManager:
                     "lock_relay_status": getattr(door, "lock_relay_status", None),
                 }
             elif self._cm.has_proxy:
-                data = await self._cm.proxy_request("GET", f"doors/{door_id}")
-                raw = data.get("data", data) if isinstance(data, dict) else data
-                if isinstance(raw, dict):
-                    return {
-                        "id": raw.get("id", door_id),
-                        "name": raw.get("name"),
-                        "door_position_status": raw.get("door_position_status"),
-                        "lock_relay_status": raw.get("lock_relay_status"),
-                    }
-                return raw
+                data = await self._cm.proxy_request("GET", f"dashboard/locations?{_LOCATIONS_EXPAND}")
+                locations = data.get("data", data) if isinstance(data, dict) else data
+                if isinstance(locations, list):
+                    for loc in locations:
+                        if isinstance(loc, dict) and loc.get("id") == door_id:
+                            return {
+                                "id": loc.get("id", door_id),
+                                "name": loc.get("name"),
+                                "door_position_status": loc.get("door_position_status"),
+                                "lock_relay_status": loc.get("lock_relay_status"),
+                            }
+                raise ValueError(f"Door not found: {door_id}")
             else:
                 raise UniFiConnectionError("No auth path available for get_door_status")
         except (UniFiConnectionError, ValueError):
@@ -121,13 +144,13 @@ class DoorManager:
             raise
 
     async def list_door_groups(self) -> List[Dict[str, Any]]:
-        """Return all door groups.
+        """Return all access groups (door groupings).
 
         This is only available via the proxy path (private API).
         """
         try:
             if self._cm.has_proxy:
-                data = await self._cm.proxy_request("GET", "door_groups")
+                data = await self._cm.proxy_request("GET", "access_groups")
                 return data.get("data", data) if isinstance(data, dict) else data
             else:
                 raise UniFiConnectionError("No auth path available for list_door_groups (proxy session required)")
@@ -188,7 +211,7 @@ class DoorManager:
             elif self._cm.has_proxy:
                 await self._cm.proxy_request(
                     "PUT",
-                    f"doors/{door_id}/unlock",
+                    f"dashboard/locations/{door_id}/unlock",
                     json={"duration": duration},
                 )
                 return {
@@ -234,7 +257,7 @@ class DoorManager:
         """
         try:
             if self._cm.has_proxy:
-                await self._cm.proxy_request("PUT", f"doors/{door_id}/lock")
+                await self._cm.proxy_request("PUT", f"dashboard/locations/{door_id}/lock")
                 return {
                     "door_id": door_id,
                     "action": "lock",

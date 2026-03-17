@@ -7,6 +7,10 @@ Provides:
 Dual-path routing: tries the API client (py-unifi-access) first when
 available for websocket subscription, then falls back to the proxy session
 path for REST event queries.
+
+Proxy paths discovered via browser inspection:
+- ``POST insights/system_log/search?page_size={n}&page_num={n}&isAccess`` -- system log search
+- ``GET activities/histogram?since={ts}&until={ts}&interval=3600`` -- activity histogram
 """
 
 from __future__ import annotations
@@ -195,8 +199,8 @@ class EventManager:
     ) -> list[dict[str, Any]]:
         """Query events from the Access controller via REST API.
 
-        Uses the proxy path since event listing is not available via the
-        py-unifi-access API client.
+        Uses the proxy path to POST to the system log search endpoint,
+        which is the correct Access API discovered via browser inspection.
 
         Parameters
         ----------
@@ -209,25 +213,28 @@ class EventManager:
         user_id:
             Filter events by user UUID.
         limit:
-            Maximum number of events to return.
+            Maximum number of events to return (page size).
         """
         if not self._cm.has_proxy:
             raise UniFiConnectionError("No proxy session available for list_events")
 
         try:
-            params: dict[str, Any] = {}
+            # Build the search payload -- the system_log/search endpoint
+            # expects a POST with filter criteria in the request body.
+            body: dict[str, Any] = {}
             if start:
-                params["start"] = start
+                body["start"] = start
             if end:
-                params["end"] = end
+                body["end"] = end
             if door_id:
-                params["door_id"] = door_id
+                body["door_id"] = door_id
             if user_id:
-                params["user_id"] = user_id
-            if limit:
-                params["limit"] = limit
+                body["user_id"] = user_id
 
-            data = await self._cm.proxy_request("GET", "events", params=params)
+            page_size = limit or 30
+            path = f"insights/system_log/search?page_size={page_size}&page_num=1&isAccess"
+
+            data = await self._cm.proxy_request("POST", path, json=body)
 
             if isinstance(data, dict):
                 events = data.get("data", data)
@@ -246,7 +253,8 @@ class EventManager:
     async def get_event(self, event_id: str) -> dict[str, Any]:
         """Get a single event by ID.
 
-        Raises ``ValueError`` if the event is not found.
+        Searches the system log for the specific event. Raises
+        ``ValueError`` if the event is not found.
         """
         if not event_id:
             raise ValueError("event_id is required")
@@ -255,9 +263,17 @@ class EventManager:
             raise UniFiConnectionError("No proxy session available for get_event")
 
         try:
-            data = await self._cm.proxy_request("GET", f"events/{event_id}")
-            return data.get("data", data) if isinstance(data, dict) else data
-        except UniFiConnectionError:
+            # Search for the specific event by ID in the system log
+            path = "insights/system_log/search?page_size=1&page_num=1&isAccess"
+            data = await self._cm.proxy_request("POST", path, json={"event_id": event_id})
+            result = data.get("data", data) if isinstance(data, dict) else data
+            # If the result is a list, return the first matching entry
+            if isinstance(result, list):
+                if result:
+                    return result[0]
+                raise ValueError(f"Event not found: {event_id}")
+            return result
+        except (UniFiConnectionError, ValueError):
             raise
         except Exception as e:
             logger.error("Failed to get event %s: %s", event_id, e, exc_info=True)
@@ -268,9 +284,10 @@ class EventManager:
         door_id: str | None = None,
         days: int = 7,
     ) -> dict[str, Any]:
-        """Get aggregated activity summary.
+        """Get aggregated activity summary via the activities histogram endpoint.
 
-        Uses the proxy path to query the activity endpoint.
+        Uses the proxy path to query the activity histogram endpoint
+        discovered via browser inspection.
 
         Parameters
         ----------
@@ -283,11 +300,13 @@ class EventManager:
             raise UniFiConnectionError("No proxy session available for get_activity_summary")
 
         try:
-            params: dict[str, Any] = {"days": days}
+            now = int(time.time())
+            since = now - (days * 86400)
+            path = f"activities/histogram?since={since}&until={now}&interval=3600"
             if door_id:
-                params["door_id"] = door_id
+                path += f"&door_id={door_id}"
 
-            data = await self._cm.proxy_request("GET", "events/activity", params=params)
+            data = await self._cm.proxy_request("GET", path)
             return data.get("data", data) if isinstance(data, dict) else data
         except UniFiConnectionError:
             raise
