@@ -21,6 +21,7 @@ This installs all workspace packages (apps + shared packages) in development mod
 |------|------|----------|
 | `/` | Workspace root | `make test` runs all tests |
 | `apps/network/` | Network MCP server | `make test`, `make lint`, `make manifest` |
+| `apps/protect/` | Protect MCP server | `make test`, `make lint`, `make manifest` |
 | `packages/unifi-core/` | Shared connectivity | Tested via root `make core-test` |
 | `packages/unifi-mcp-shared/` | Shared MCP patterns | Tested via root `make shared-test` |
 
@@ -29,7 +30,7 @@ This installs all workspace packages (apps + shared packages) in development mod
 The root Makefile delegates to app/package Makefiles:
 
 ```bash
-make test              # Run ALL tests (core + shared + network)
+make test              # Run ALL tests (core + shared + network + protect)
 make lint              # Lint all packages
 make format            # Format all packages
 make pre-commit        # Format + lint + test
@@ -39,7 +40,10 @@ make core-test         # Run unifi-core tests
 make shared-test       # Run unifi-mcp-shared tests
 make network-test      # Run network server tests
 make network-lint      # Lint network server
-make network-manifest  # Regenerate tools manifest
+make network-manifest  # Regenerate network tools manifest
+make protect-test      # Run protect server tests
+make protect-lint      # Lint protect server
+make protect-manifest  # Regenerate protect tools manifest
 ```
 
 ## App-Level Makefile
@@ -58,6 +62,21 @@ make run-meta     # Run in meta_only mode
 make pre-commit   # Format + lint + test
 ```
 
+The protect server has the same targets:
+
+```bash
+cd apps/protect
+make test         # Run protect tests
+make lint         # Lint protect code
+make format       # Format protect code
+make manifest     # Regenerate tools_manifest.json
+make run-lazy     # Run in lazy mode (default)
+make run-eager    # Run in eager mode
+make run-meta     # Run in meta_only mode
+make console      # Start interactive dev console
+make pre-commit   # Format + lint + test
+```
+
 ## Development Workflow
 
 ### Adding a tool to the network server
@@ -68,6 +87,15 @@ make pre-commit   # Format + lint + test
 4. Run `make network-manifest` from the repo root (or `make manifest` from `apps/network/`)
 5. Add tests in `apps/network/tests/`
 6. Commit code + manifest + tests together
+
+### Adding a tool to the protect server
+
+1. Add the manager method in `apps/protect/src/unifi_protect_mcp/managers/<domain>_manager.py`
+2. Add the tool function in `apps/protect/src/unifi_protect_mcp/tools/<category>.py`
+3. Run `make protect-manifest` from the repo root (or `make manifest` from `apps/protect/`)
+   - The manifest auto-discovers tools from `@server.tool()` decorators; no manual map update needed
+4. Add tests in `apps/protect/tests/`
+5. Commit code + manifest + tests together
 
 ### Adding a shared package feature
 
@@ -114,11 +142,13 @@ Commit message style:
 # All tests
 make test
 
-# With coverage (network server)
+# With coverage
 cd apps/network && make test-cov
+cd apps/protect && make test-cov
 
 # Specific test file
 uv run --package unifi-network-mcp pytest apps/network/tests/unit/test_permissions.py -v
+uv run --package unifi-protect-mcp pytest apps/protect/tests/unit/test_camera_tools.py -v
 ```
 
 Tests use `pytest-asyncio` for async support and `aioresponses` for HTTP mocking.

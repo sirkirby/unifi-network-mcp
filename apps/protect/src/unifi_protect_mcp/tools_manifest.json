@@ -1,0 +1,753 @@
+{
+  "count": 34,
+  "generated_by": "scripts/generate_tool_manifest.py",
+  "module_map": {
+    "protect_acknowledge_event": "unifi_protect_mcp.tools.events",
+    "protect_create_liveview": "unifi_protect_mcp.tools.liveviews",
+    "protect_delete_liveview": "unifi_protect_mcp.tools.liveviews",
+    "protect_delete_recording": "unifi_protect_mcp.tools.recordings",
+    "protect_export_clip": "unifi_protect_mcp.tools.recordings",
+    "protect_get_camera": "unifi_protect_mcp.tools.cameras",
+    "protect_get_camera_analytics": "unifi_protect_mcp.tools.cameras",
+    "protect_get_camera_streams": "unifi_protect_mcp.tools.cameras",
+    "protect_get_event": "unifi_protect_mcp.tools.events",
+    "protect_get_event_thumbnail": "unifi_protect_mcp.tools.events",
+    "protect_get_firmware_status": "unifi_protect_mcp.tools.system",
+    "protect_get_health": "unifi_protect_mcp.tools.system",
+    "protect_get_recording_status": "unifi_protect_mcp.tools.recordings",
+    "protect_get_snapshot": "unifi_protect_mcp.tools.cameras",
+    "protect_get_system_info": "unifi_protect_mcp.tools.system",
+    "protect_list_cameras": "unifi_protect_mcp.tools.cameras",
+    "protect_list_chimes": "unifi_protect_mcp.tools.devices",
+    "protect_list_events": "unifi_protect_mcp.tools.events",
+    "protect_list_lights": "unifi_protect_mcp.tools.devices",
+    "protect_list_liveviews": "unifi_protect_mcp.tools.liveviews",
+    "protect_list_recordings": "unifi_protect_mcp.tools.recordings",
+    "protect_list_sensors": "unifi_protect_mcp.tools.devices",
+    "protect_list_smart_detections": "unifi_protect_mcp.tools.events",
+    "protect_list_viewers": "unifi_protect_mcp.tools.system",
+    "protect_ptz_move": "unifi_protect_mcp.tools.cameras",
+    "protect_ptz_preset": "unifi_protect_mcp.tools.cameras",
+    "protect_reboot_camera": "unifi_protect_mcp.tools.cameras",
+    "protect_recent_events": "unifi_protect_mcp.tools.events",
+    "protect_subscribe_events": "unifi_protect_mcp.tools.events",
+    "protect_toggle_recording": "unifi_protect_mcp.tools.cameras",
+    "protect_trigger_chime": "unifi_protect_mcp.tools.devices",
+    "protect_update_camera_settings": "unifi_protect_mcp.tools.cameras",
+    "protect_update_chime": "unifi_protect_mcp.tools.devices",
+    "protect_update_light": "unifi_protect_mcp.tools.devices"
+  },
+  "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
+  "tools": [
+    {
+      "description": "Acknowledge an event by marking it as a favorite on the NVR. This is the closest equivalent to 'marking as read' in the Protect system. Requires confirm=True to apply.",
+      "name": "protect_acknowledge_event",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, marks the event as acknowledged. When false (default), returns a preview of the changes.",
+              "type": "boolean"
+            },
+            "event_id": {
+              "description": "Event UUID to acknowledge (from protect_list_events or protect_recent_events)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "event_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Validates input for creating a new liveview with the given name and camera IDs. Note: liveview creation is not directly supported by the uiprotect Python API; this tool validates camera IDs and returns a preview. Use the Protect web UI to create liveviews.",
+      "name": "protect_create_liveview",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_ids": {
+              "description": "List of camera UUIDs to include in the liveview (from protect_list_cameras). At least one required.",
+              "type": "array"
+            },
+            "confirm": {
+              "description": "When true, attempts to create the liveview. When false (default), returns a validation preview. Note: creation is not supported via the API.",
+              "type": "boolean"
+            },
+            "name": {
+              "description": "Display name for the new liveview (e.g., 'Front Yard Cameras')",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "camera_ids"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Validates a liveview for deletion by ID. Note: liveview deletion is not directly supported by the uiprotect Python API; this tool returns information about the liveview. Use the Protect web UI to delete liveviews.",
+      "name": "protect_delete_liveview",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, attempts the deletion. When false (default), returns liveview info. Note: deletion is not supported via the API.",
+              "type": "boolean"
+            },
+            "liveview_id": {
+              "description": "Liveview UUID (from protect_list_liveviews)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "liveview_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Attempts to delete recordings for a camera in a time range. Note: Individual recording deletion is NOT supported by the uiprotect API. Recording retention is managed automatically by the NVR. This tool returns information about the limitation and alternative approaches.",
+      "name": "protect_delete_recording",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras) to delete recordings for.",
+              "type": "string"
+            },
+            "confirm": {
+              "description": "When true, attempts the deletion. When false (default), returns a preview. Note: deletion is not supported by the API regardless.",
+              "type": "boolean"
+            },
+            "end": {
+              "description": "End of the deletion range as ISO 8601 timestamp (e.g., 2026-03-16T12:00:00Z).",
+              "type": "string"
+            },
+            "start": {
+              "description": "Start of the deletion range as ISO 8601 timestamp (e.g., 2026-03-16T00:00:00Z).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "camera_id",
+            "start",
+            "end"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Exports a video clip from a camera for a specified time range. Returns metadata about the export (size, duration) but not the video data itself (too large for MCP responses). Maximum duration is 2 hours. For timelapse exports, pass fps (4=60x, 8=120x, 20=300x, 40=600x). Times must be ISO-8601 format (e.g., '2026-03-16T12:00:00Z').",
+      "name": "protect_export_clip",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras) to export footage from.",
+              "type": "string"
+            },
+            "channel_index": {
+              "description": "Video channel index: 0 = high quality (default), 1 = medium, 2 = low.",
+              "type": "integer"
+            },
+            "end": {
+              "description": "Clip end time as ISO 8601 timestamp (e.g., 2026-03-16T12:30:00Z). Maximum 2 hours after start.",
+              "type": "string"
+            },
+            "fps": {
+              "description": "Frames per second for timelapse export. Common values: 4 (60x speed), 8 (120x), 20 (300x), 40 (600x). Omit for normal speed.",
+              "type": "integer"
+            },
+            "start": {
+              "description": "Clip start time as ISO 8601 timestamp (e.g., 2026-03-16T12:00:00Z).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "camera_id",
+            "start",
+            "end"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns detailed information for a single camera including firmware, IP address, MAC, mic/speaker settings, IR/HDR mode, stream channels, smart detection types, and PTZ capability. Use to inspect one camera.",
+      "name": "protect_get_camera",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "camera_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns motion and smart detection analytics for a camera including current detection state, last-detected timestamps for each type (person, vehicle, animal, etc.), and zone counts. For historical events, use the events API tools.",
+      "name": "protect_get_camera_analytics",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "camera_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns RTSP/RTSPS stream URLs for a camera organized by channel (High, Medium, Low). Includes resolution, FPS, and bitrate for each stream. Use to connect a video player or integration to camera feeds.",
+      "name": "protect_get_camera_streams",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "camera_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get detailed information for a single event by ID. Returns event type, camera, timestamps, score, smart detection types, and thumbnail info.",
+      "name": "protect_get_event",
+      "schema": {
+        "input": {
+          "properties": {
+            "event_id": {
+              "description": "Event UUID (from protect_list_events or protect_recent_events)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "event_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get the thumbnail image for an event. Returns a base64-encoded JPEG. Thumbnails are generated after an event ends; in-progress events may not have thumbnails yet. Optionally specify width/height to resize.",
+      "name": "protect_get_event_thumbnail",
+      "schema": {
+        "input": {
+          "properties": {
+            "event_id": {
+              "description": "Event UUID (from protect_list_events or protect_recent_events)",
+              "type": "string"
+            },
+            "height": {
+              "description": "Resize the thumbnail to this height in pixels. Aspect ratio is preserved if only width or height is set.",
+              "type": "integer"
+            },
+            "width": {
+              "description": "Resize the thumbnail to this width in pixels. Aspect ratio is preserved if only width or height is set.",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "event_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns firmware update availability for the NVR and all adopted devices (cameras, lights, sensors, viewers, chimes, bridges, doorlocks). Use to check whether any device needs a firmware update.",
+      "name": "protect_get_firmware_status",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns NVR health summary including CPU load and temperature, memory usage, and storage utilization. Use to diagnose performance issues or storage pressure.",
+      "name": "protect_get_health",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns the current recording state for one or all cameras. Shows recording mode (always, never, detections), whether actively recording, and available recording time range from NVR stats. Pass a camera_id to check a single camera, or omit for all cameras.",
+      "name": "protect_get_recording_status",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras) to check. Omit to get recording status for all cameras.",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Fetches a JPEG snapshot from a camera. When include_image is True, returns the image as a base64-encoded string. When False (default), returns a reference URL. Optionally specify width and height to resize.",
+      "name": "protect_get_snapshot",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
+              "type": "string"
+            },
+            "height": {
+              "description": "Resize the snapshot to this height in pixels. Aspect ratio is preserved if only width or height is set.",
+              "type": "integer"
+            },
+            "include_image": {
+              "description": "When true, returns base64-encoded JPEG image data in the response. When false (default), returns a resource URI.",
+              "type": "boolean"
+            },
+            "width": {
+              "description": "Resize the snapshot to this width in pixels. Aspect ratio is preserved if only width or height is set.",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "camera_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns NVR model, firmware version, uptime, storage usage, and connected device counts. Use for basic 'is the NVR healthy?' checks and capacity overview.",
+      "name": "protect_get_system_info",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Lists all cameras adopted by the Protect NVR with their name, model, connection state, recording mode, and whether they are currently recording. Use to get an overview of all cameras in the system.",
+      "name": "protect_list_cameras",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Lists all UniFi Protect chime devices with their name, connection state, volume, ring settings per camera, and available ringtones/tracks. Use to see chime configuration and which cameras trigger which chimes.",
+      "name": "protect_list_chimes",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Query events from the NVR with optional filters. Returns events from the Protect controller's database via REST API. Supports filtering by time range, event type (motion, smartDetectZone, ring, etc.), camera ID, and result limit. For real-time buffer events use protect_recent_events.",
+      "name": "protect_list_events",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Filter events to a specific camera by its UUID (from protect_list_cameras). Omit to include all cameras.",
+              "type": "string"
+            },
+            "end": {
+              "description": "End time as ISO 8601 timestamp (e.g., 2026-03-17T23:59:59Z). Defaults to now.",
+              "type": "string"
+            },
+            "event_type": {
+              "description": "Filter by event type: motion, smartDetectZone, ring, sensorMotion, sensorContact, sensorDoorbell.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Maximum number of events to return (default 30).",
+              "type": "integer"
+            },
+            "start": {
+              "description": "Start time as ISO 8601 timestamp (e.g., 2026-03-17T00:00:00Z). Defaults to 24 hours ago.",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Lists all UniFi Protect floodlight devices with their name, connection state, brightness level, PIR motion sensitivity, and paired camera. Use to get an overview of all lights in the system.",
+      "name": "protect_list_lights",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Lists all liveview configurations from the Protect NVR. Each liveview defines a multi-camera layout with slots, camera assignments, and cycle settings. Shows name, layout grid size, slot count, camera count, and whether it is the default or global view.",
+      "name": "protect_list_liveviews",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns recording availability information for a camera within a time range. Shows the recording window and whether footage exists. UniFi Protect stores recordings as continuous streams, not discrete segments. Defaults to the last 24 hours if no time range is specified. Times should be ISO-8601 format (e.g., '2026-03-16T00:00:00Z').",
+      "name": "protect_list_recordings",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras) to query recordings for.",
+              "type": "string"
+            },
+            "end": {
+              "description": "End of the time range as ISO 8601 timestamp (e.g., 2026-03-17T00:00:00Z). Defaults to now.",
+              "type": "string"
+            },
+            "start": {
+              "description": "Start of the time range as ISO 8601 timestamp (e.g., 2026-03-16T00:00:00Z). Defaults to 24 hours ago.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "camera_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Lists all UniFi Protect sensor devices (motion, door/window, temperature, humidity, light level, leak detection). Shows connection state, battery status, current readings, and recent detection timestamps. Use to monitor environmental conditions and sensor health.",
+      "name": "protect_list_sensors",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "List smart detection events (person, vehicle, animal, package, etc.) with optional filters. Filters by detection type, camera, confidence score, and time range. Only returns events above the minimum confidence threshold (default 50, configurable via PROTECT_SMART_DETECTION_MIN_CONFIDENCE).",
+      "name": "protect_list_smart_detections",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Filter detections to a specific camera by its UUID (from protect_list_cameras). Omit to include all cameras.",
+              "type": "string"
+            },
+            "detection_type": {
+              "description": "Filter by smart detection type: person, vehicle, animal, package, face, licensePlate.",
+              "type": "string"
+            },
+            "end": {
+              "description": "End time as ISO 8601 timestamp (e.g., 2026-03-17T23:59:59Z). Defaults to now.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Maximum number of smart detection events to return (default 30).",
+              "type": "integer"
+            },
+            "min_confidence": {
+              "description": "Minimum confidence score (0-100) to include. Overrides the server default (50). Higher values return fewer, more certain detections.",
+              "type": "integer"
+            },
+            "start": {
+              "description": "Start time as ISO 8601 timestamp (e.g., 2026-03-17T00:00:00Z). Defaults to 24 hours ago.",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Lists all connected Protect viewers (e.g., UP-Viewer, Viewport) with their connection state, firmware version, and assigned liveview.",
+      "name": "protect_list_viewers",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Adjusts PTZ camera position. Currently only zoom level is supported via the API. For pan/tilt, use protect_ptz_preset to move to a saved preset position. Only works on PTZ-capable cameras.",
+      "name": "protect_ptz_move",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID of a PTZ-capable camera (from protect_list_cameras)",
+              "type": "string"
+            },
+            "pan": {
+              "description": "Pan position in degrees. Note: not currently supported via the API; use protect_ptz_preset for pan control.",
+              "type": "number"
+            },
+            "tilt": {
+              "description": "Tilt position in degrees. Note: not currently supported via the API; use protect_ptz_preset for tilt control.",
+              "type": "number"
+            },
+            "zoom": {
+              "description": "Zoom level (0 = wide, higher values = more zoom). The maximum depends on the camera model.",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "camera_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Moves a PTZ camera to a saved preset position by slot number. Returns available presets for the camera. Only works on PTZ-capable cameras.",
+      "name": "protect_ptz_preset",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID of a PTZ-capable camera (from protect_list_cameras)",
+              "type": "string"
+            },
+            "preset_slot": {
+              "description": "Preset slot number to move the camera to. Available slots can be seen in the camera's PTZ preset list.",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "camera_id",
+            "preset_slot"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Reboots a camera. The camera will be temporarily unavailable during reboot. Requires confirm=True to execute. Use with caution \u2014 active recordings will be interrupted.",
+      "name": "protect_reboot_camera",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
+              "type": "string"
+            },
+            "confirm": {
+              "description": "When true, executes the reboot. When false (default), returns a preview showing camera state and warnings.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "camera_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Get recent events from the in-memory websocket buffer. This is fast (no API call) and returns events received via the real-time websocket stream. Supports filtering by event_type, camera_id, min_confidence, and limit. Use this for real-time monitoring; use protect_list_events for historical queries.",
+      "name": "protect_recent_events",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Filter events to a specific camera by its UUID (from protect_list_cameras). Omit to include all cameras.",
+              "type": "string"
+            },
+            "event_type": {
+              "description": "Filter by event type: motion, smartDetectZone, ring, sensorMotion, sensorContact, sensorDoorbell.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Maximum number of events to return from the buffer. Omit to return all buffered events.",
+              "type": "integer"
+            },
+            "min_confidence": {
+              "description": "Minimum confidence score (0-100) to include. Only applies to smart detection events.",
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns instructions for subscribing to real-time Protect events. Provides the MCP resource URI for the event stream and guidance on polling intervals. Use this to set up continuous event monitoring.",
+      "name": "protect_subscribe_events",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Enables or disables recording on a camera. When enabled, sets recording mode to 'always'. When disabled, sets to 'never'. Requires confirm=True to apply.",
+      "name": "protect_toggle_recording",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
+              "type": "string"
+            },
+            "confirm": {
+              "description": "When true, executes the mutation. When false (default), returns a preview of the changes.",
+              "type": "boolean"
+            },
+            "enabled": {
+              "description": "When true, enables recording (mode set to 'always'). When false, disables recording (mode set to 'never').",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "camera_id",
+            "enabled"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Plays the chime tone on a specific chime device. Optionally override volume (0-100) and repeat times (1-6) for this playback only. The chime's default settings are used if not specified.",
+      "name": "protect_trigger_chime",
+      "schema": {
+        "input": {
+          "properties": {
+            "chime_id": {
+              "description": "Chime device UUID (from protect_list_chimes)",
+              "type": "string"
+            },
+            "repeat_times": {
+              "description": "Override repeat count for this playback only (1-6). Omit to use the chime's configured repeat setting.",
+              "type": "integer"
+            },
+            "volume": {
+              "description": "Override speaker volume for this playback only (0-100). Omit to use the chime's configured volume.",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "chime_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Updates camera settings such as IR LED mode, HDR mode, mic/speaker volume, status light, and motion detection. Requires confirm=True to apply. Supported keys: ir_led_mode, hdr_mode, mic_enabled, mic_volume, status_light_on, speaker_volume, name, motion_detection.",
+      "name": "protect_update_camera_settings",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
+              "type": "string"
+            },
+            "confirm": {
+              "description": "When true, executes the mutation. When false (default), returns a preview of the changes.",
+              "type": "boolean"
+            },
+            "settings": {
+              "description": "Dictionary of settings to update. Supported keys: ir_led_mode (auto, on, autoFilterOnly), hdr_mode (true/false), mic_enabled (true/false), mic_volume (0-100), status_light_on (true/false), speaker_volume (0-100), name (string), motion_detection (true/false).",
+              "type": "object"
+            }
+          },
+          "required": [
+            "camera_id",
+            "settings"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Updates chime settings such as speaker volume (0-100), repeat times (1-6), and device name. Requires confirm=True to apply. Supported keys: volume, repeat_times, name.",
+      "name": "protect_update_chime",
+      "schema": {
+        "input": {
+          "properties": {
+            "chime_id": {
+              "description": "Chime device UUID (from protect_list_chimes)",
+              "type": "string"
+            },
+            "confirm": {
+              "description": "When true, executes the mutation. When false (default), returns a preview of the changes.",
+              "type": "boolean"
+            },
+            "settings": {
+              "description": "Dictionary of settings to update. Supported keys: volume (0-100 - speaker volume), repeat_times (1-6 - number of times to repeat the chime tone), name (string - device display name).",
+              "type": "object"
+            }
+          },
+          "required": [
+            "chime_id",
+            "settings"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Updates light settings such as on/off state, LED brightness level (1-6), PIR motion sensitivity (0-100), motion-triggered duration (15-900 seconds), status indicator light, and device name. Requires confirm=True to apply. Supported keys: light_on, led_level, sensitivity, duration_seconds, status_light, name.",
+      "name": "protect_update_light",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, executes the mutation. When false (default), returns a preview of the changes.",
+              "type": "boolean"
+            },
+            "light_id": {
+              "description": "Light device UUID (from protect_list_lights)",
+              "type": "string"
+            },
+            "settings": {
+              "description": "Dictionary of settings to update. Supported keys: light_on (true/false - turn light on or off), led_level (1-6 - brightness level), sensitivity (0-100 - PIR motion sensitivity), duration_seconds (15-900 - how long light stays on after motion), status_light (true/false - status indicator LED), name (string - device display name).",
+              "type": "object"
+            }
+          },
+          "required": [
+            "light_id",
+            "settings"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  ]
+}

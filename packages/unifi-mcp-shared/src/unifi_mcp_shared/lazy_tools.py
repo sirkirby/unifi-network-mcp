@@ -17,7 +17,11 @@ from typing import Any, Callable, Dict, Set
 logger = logging.getLogger(__name__)
 
 
-def build_tool_module_map(tools_package: str, manifest_path: str | Path | None = None) -> Dict[str, str]:
+def build_tool_module_map(
+    tools_package: str,
+    manifest_path: str | Path | None = None,
+    tool_prefix: str = "unifi_",
+) -> Dict[str, str]:
     """Build tool-to-module mapping by scanning tool files.
 
     Dynamically discovers all tools and their modules by scanning Python files
@@ -32,6 +36,8 @@ def build_tool_module_map(tools_package: str, manifest_path: str | Path | None =
         manifest_path: Optional path to a pre-generated ``tools_manifest.json``.
                        Used as fallback when the package directory cannot be
                        resolved on disk.
+        tool_prefix: Prefix for tool names to discover (default ``"unifi_"``).
+                     Use ``"protect_"`` for Protect tools.
 
     Returns:
         Dictionary mapping tool names to their dotted module paths.
@@ -52,6 +58,8 @@ def build_tool_module_map(tools_package: str, manifest_path: str | Path | None =
         return _load_module_map_from_manifest(manifest_path)
 
     # Scan each .py file in tools directory
+    # Escape prefix for regex safety
+    escaped_prefix = re.escape(tool_prefix)
     for tool_file in tools_dir.glob("*.py"):
         if tool_file.name.startswith("_"):
             continue
@@ -61,12 +69,12 @@ def build_tool_module_map(tools_package: str, manifest_path: str | Path | None =
         try:
             content = tool_file.read_text()
 
-            # Find tool names: name="unifi_xxx" or name='unifi_xxx'
-            pattern = r'name\s*=\s*["\'](unifi_[a-z_]+)["\']'
+            # Find tool names matching the configured prefix
+            pattern = rf'name\s*=\s*["\']({escaped_prefix}[a-z_]+)["\']'
             matches = re.findall(pattern, content)
 
             for tool_name in matches:
-                if tool_name.startswith("unifi_"):
+                if tool_name.startswith(tool_prefix):
                     tool_map[tool_name] = module_name
 
         except Exception as exc:

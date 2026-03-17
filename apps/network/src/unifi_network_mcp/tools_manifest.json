@@ -103,9 +103,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, initiates device adoption. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "mac_address": {
+              "description": "MAC address of the pending device to adopt, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with status='pending')",
               "type": "string"
             }
           },
@@ -123,9 +125,11 @@
         "input": {
           "properties": {
             "alarm_id": {
+              "description": "Unique identifier (_id) of the alarm to archive (from unifi_list_alarms)",
               "type": "string"
             },
             "confirm": {
+              "description": "When true, archives the alarm. When false (default), requires confirmation",
               "type": "boolean"
             }
           },
@@ -143,6 +147,7 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, archives all active alarms. When false (default), requires confirmation",
               "type": "boolean"
             }
           },
@@ -157,21 +162,27 @@
         "input": {
           "properties": {
             "bytes_quota": {
+              "description": "Total data transfer quota in bytes. Omit for unlimited",
               "type": "integer"
             },
             "confirm": {
+              "description": "When true, executes the authorization. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "down_kbps": {
+              "description": "Download bandwidth limit in Kbps (e.g., 10000 for 10 Mbps). Omit for unlimited",
               "type": "integer"
             },
             "mac_address": {
+              "description": "MAC address of the guest client to authorize, in format AA:BB:CC:DD:EE:FF",
               "type": "string"
             },
             "minutes": {
+              "description": "Duration in minutes the guest is authorized (default 1440 = 24 hours)",
               "type": "integer"
             },
             "up_kbps": {
+              "description": "Upload bandwidth limit in Kbps (e.g., 5000 for 5 Mbps). Omit for unlimited",
               "type": "integer"
             }
           },
@@ -189,9 +200,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, executes the block. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "mac_address": {
+              "description": "MAC address of the client to block, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)",
               "type": "string"
             }
           },
@@ -209,24 +222,31 @@
         "input": {
           "properties": {
             "acl_index": {
+              "description": "Position in the rule chain (lower numbers are evaluated first)",
               "type": "integer"
             },
             "action": {
+              "description": "Rule action: 'ALLOW' or 'BLOCK'",
               "type": "string"
             },
             "confirm": {
+              "description": "When true, creates the rule. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "mac_acl_network_id": {
+              "description": "Network/VLAN ID this rule applies to (from unifi_list_networks)",
               "type": "string"
             },
             "name": {
+              "description": "Descriptive name for the ACL rule",
               "type": "string"
             },
             "traffic_destination": {
+              "description": "Destination config dict with same structure as traffic_source. Defaults to matching any destination",
               "type": "object"
             },
             "traffic_source": {
+              "description": "Source config dict with keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs, empty list = any). Defaults to matching any source",
               "type": "object"
             }
           },
@@ -247,9 +267,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, creates the policy. When false (default), validates and returns a preview",
               "type": "boolean"
             },
             "policy_data": {
+              "description": "Firewall policy configuration dict. Required keys: name (str), ruleset (str, e.g. 'WAN_IN', 'LAN_OUT'), action (str: 'accept', 'drop', 'reject'), index (int: rule priority). Optional: enabled, description, protocol, connection_states, source, destination, logging",
               "type": "object"
             }
           },
@@ -267,9 +289,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, creates the network. When false (default), validates and returns a preview",
               "type": "boolean"
             },
             "network_data": {
+              "description": "Network configuration dict. Required: name (str), purpose (str: 'corporate', 'guest', 'wan', 'vlan-only', 'vpn-client', 'vpn-server'). Required if purpose != 'vlan-only': ip_subnet (CIDR, e.g. '192.168.1.0/24'). Required if purpose == 'vlan-only': vlan (int 1-4094). Optional: vlan_enabled, vlan, dhcp_enabled, dhcp_start, dhcp_stop, enabled, network_isolation_enabled",
               "type": "object"
             }
           },
@@ -287,6 +311,7 @@
         "input": {
           "properties": {
             "port_forward_data": {
+              "description": "Port forward configuration dict. Required: name (str), dst_port (external port, e.g. '80' or '10000-10010'), fwd_port (internal port), fwd_ip (internal IP, e.g. '192.168.1.100'). Optional: protocol ('tcp'/'udp'/'tcp_udp', default 'tcp_udp'), enabled (bool, default true), src_ip (source IP/CIDR), log (bool)",
               "type": "object"
             }
           },
@@ -304,9 +329,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, creates the rule. When false (default), validates and returns a preview",
               "type": "boolean"
             },
             "qos_data": {
+              "description": "QoS rule configuration dict. Required: name (str), interface ('WAN'/'LAN'), direction ('upload'/'download'), bandwidth_limit_kbps (int). Optional: target_ip_address (IP), target_subnet (CIDR), dscp_value (0-63), enabled (bool, default true)",
               "type": "object"
             }
           },
@@ -324,21 +351,27 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, creates the route. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "distance": {
+              "description": "Administrative distance / route metric (1-255, default 1, lower = preferred)",
               "type": "integer"
             },
             "enabled": {
+              "description": "Whether the route is active (default true)",
               "type": "boolean"
             },
             "name": {
+              "description": "Descriptive name for the static route (e.g., 'Office subnet via VPN')",
               "type": "string"
             },
             "network": {
+              "description": "Destination network in CIDR notation (e.g., '10.0.0.0/24', '172.16.0.0/16')",
               "type": "string"
             },
             "nexthop": {
+              "description": "Next-hop gateway IP address (e.g., '192.168.1.1')",
               "type": "string"
             }
           },
@@ -358,9 +391,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, creates the policy. When false (default), validates and returns a preview",
               "type": "boolean"
             },
             "policy": {
+              "description": "Simplified firewall policy dict. Required: name (str), ruleset (str: 'LAN_OUT', 'WAN_IN', etc.), action (str: 'drop', 'accept', 'reject'), src (dict with type+value), dst (dict with type+value). src/dst type options: 'zone' (value: 'wan'/'lan'), 'network' (value: network name/ID), 'client_mac' (value: MAC address), 'ip_group' (value: group ID). Optional: protocol, index, enabled, log",
               "type": "object"
             }
           },
@@ -378,9 +413,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, creates the rule. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "rule": {
+              "description": "Simplified port forward dict. Required: name (str), ext_port (external port, e.g. '8443'), to_ip (internal IP, e.g. '192.168.1.10'). Optional: int_port (internal port, defaults to ext_port), protocol ('tcp'/'udp'/'both', default 'both'), enabled (bool, default true)",
               "type": "object"
             }
           },
@@ -398,9 +435,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, creates the rule. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "rule": {
+              "description": "Simplified QoS rule dict. Required: name (str), interface ('wan'/'lan'), direction ('upload'/'download'), limit_kbps (int). Optional: enabled (bool, default true), dscp_value (int 0-63), target (dict with type='ip'/'subnet' and value, e.g. {'type': 'ip', 'value': '192.168.1.50'})",
               "type": "object"
             }
           },
@@ -418,15 +457,19 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, creates the user group. When false (default), returns a preview",
               "type": "boolean"
             },
             "down_limit_kbps": {
+              "description": "Download speed limit in Kbps (e.g., 10000 for 10 Mbps). Use -1 for unlimited. Omit to leave uncapped",
               "type": "integer"
             },
             "name": {
+              "description": "Name for the user group / bandwidth profile",
               "type": "string"
             },
             "up_limit_kbps": {
+              "description": "Upload speed limit in Kbps (e.g., 5000 for 5 Mbps). Use -1 for unlimited. Omit to leave uncapped",
               "type": "integer"
             }
           },
@@ -444,27 +487,35 @@
         "input": {
           "properties": {
             "bytes_limit_mb": {
+              "description": "Total data transfer limit in MB. Omit for unlimited",
               "type": "integer"
             },
             "confirm": {
+              "description": "When true, creates the voucher(s). When false (default), returns a preview",
               "type": "boolean"
             },
             "count": {
+              "description": "Number of vouchers to create in this batch (1-10000, default 1)",
               "type": "integer"
             },
             "down_limit_kbps": {
+              "description": "Download speed limit in Kbps (e.g., 10000 for 10 Mbps). Omit for unlimited",
               "type": "integer"
             },
             "expire_minutes": {
+              "description": "Duration in minutes the voucher is valid after activation (default 1440 = 24 hours)",
               "type": "integer"
             },
             "note": {
+              "description": "Optional note/label for the voucher batch (e.g., 'Conference guests')",
               "type": "string"
             },
             "quota": {
+              "description": "Usage limit per voucher: 1 = single-use (default), 0 = unlimited uses, N = N-times usable",
               "type": "integer"
             },
             "up_limit_kbps": {
+              "description": "Upload speed limit in Kbps (e.g., 5000 for 5 Mbps). Omit for unlimited",
               "type": "integer"
             }
           },
@@ -479,9 +530,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, creates the WLAN. When false (default), validates and returns a preview",
               "type": "boolean"
             },
             "wlan_data": {
+              "description": "WLAN configuration dict. Required: name (SSID string), security ('open'/'wpa-psk'/'wpa2-psk'). Required if security != 'open': x_passphrase (password). Optional: enabled (bool, default true), hide_ssid (bool), guest_policy (bool), usergroup_id, networkconf_id (network to associate)",
               "type": "object"
             }
           },
@@ -499,9 +552,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, deletes the rule. When false (default), returns a preview. WARNING: Removing an ALLOW rule may block device communication",
               "type": "boolean"
             },
             "rule_id": {
+              "description": "Unique identifier (_id) of the ACL rule to delete (from unifi_list_acl_rules)",
               "type": "string"
             }
           },
@@ -519,9 +574,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, executes the forced reconnect. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "mac_address": {
+              "description": "MAC address of the client to force reconnect, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)",
               "type": "string"
             }
           },
@@ -539,6 +596,7 @@
         "input": {
           "properties": {
             "rule_id": {
+              "description": "Unique identifier (_id) of the ACL rule (from unifi_list_acl_rules)",
               "type": "string"
             }
           },
@@ -556,9 +614,11 @@
         "input": {
           "properties": {
             "include_archived": {
+              "description": "When true, includes previously archived/resolved alerts. Default false",
               "type": "boolean"
             },
             "limit": {
+              "description": "Maximum number of alerts to return (default 10)",
               "type": "integer"
             }
           },
@@ -573,6 +633,7 @@
         "input": {
           "properties": {
             "mac_address": {
+              "description": "Client MAC address in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)",
               "type": "string"
             }
           },
@@ -590,9 +651,11 @@
         "input": {
           "properties": {
             "client_id": {
+              "description": "Client MAC address or _id (from unifi_list_clients)",
               "type": "string"
             },
             "duration": {
+              "description": "Time period for stats: 'hourly' (last 1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)",
               "type": "string"
             }
           },
@@ -610,6 +673,7 @@
         "input": {
           "properties": {
             "mac_address": {
+              "description": "Device MAC address in format AA:BB:CC:DD:EE:FF (from unifi_list_devices)",
               "type": "string"
             }
           },
@@ -627,6 +691,7 @@
         "input": {
           "properties": {
             "mac_address": {
+              "description": "MAC address of the access point, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='ap')",
               "type": "string"
             }
           },
@@ -644,9 +709,11 @@
         "input": {
           "properties": {
             "device_id": {
+              "description": "Device MAC address or _id (from unifi_list_devices)",
               "type": "string"
             },
             "duration": {
+              "description": "Time period for stats: 'hourly' (last 1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)",
               "type": "string"
             }
           },
@@ -684,6 +751,7 @@
         "input": {
           "properties": {
             "policy_id": {
+              "description": "Unique identifier (_id) of the firewall policy (from unifi_list_firewall_policies)",
               "type": "string"
             }
           },
@@ -701,6 +769,7 @@
         "input": {
           "properties": {
             "network_id": {
+              "description": "Unique identifier (_id) of the network (from unifi_list_networks)",
               "type": "string"
             }
           },
@@ -728,6 +797,7 @@
         "input": {
           "properties": {
             "duration": {
+              "description": "Time period for stats: 'hourly' (last 1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)",
               "type": "string"
             }
           },
@@ -742,6 +812,7 @@
         "input": {
           "properties": {
             "port_forward_id": {
+              "description": "Unique identifier (_id) of the port forwarding rule (from unifi_list_port_forwards)",
               "type": "string"
             }
           },
@@ -759,6 +830,7 @@
         "input": {
           "properties": {
             "rule_id": {
+              "description": "Unique identifier (_id) of the QoS rule (from unifi_list_qos_rules)",
               "type": "string"
             }
           },
@@ -776,6 +848,7 @@
         "input": {
           "properties": {
             "route_id": {
+              "description": "Unique identifier (_id) of the static route (from unifi_list_routes)",
               "type": "string"
             }
           },
@@ -823,9 +896,11 @@
         "input": {
           "properties": {
             "duration": {
+              "description": "Time period for stats: 'hourly' (1h), 'daily' (24h, default), 'weekly' (7d), or 'monthly' (30d)",
               "type": "string"
             },
             "limit": {
+              "description": "Maximum number of top clients to return (default 10)",
               "type": "integer"
             }
           },
@@ -840,6 +915,7 @@
         "input": {
           "properties": {
             "route_id": {
+              "description": "Unique identifier (_id) of the traffic route (from unifi_list_traffic_routes)",
               "type": "string"
             }
           },
@@ -857,6 +933,7 @@
         "input": {
           "properties": {
             "group_id": {
+              "description": "Unique identifier (_id) of the user group (from unifi_list_usergroups)",
               "type": "string"
             }
           },
@@ -874,6 +951,7 @@
         "input": {
           "properties": {
             "voucher_id": {
+              "description": "Unique identifier (_id) of the voucher (from unifi_list_vouchers)",
               "type": "string"
             }
           },
@@ -891,6 +969,7 @@
         "input": {
           "properties": {
             "client_id": {
+              "description": "Unique identifier (_id) of the VPN client (from unifi_list_vpn_clients)",
               "type": "string"
             }
           },
@@ -908,6 +987,7 @@
         "input": {
           "properties": {
             "server_id": {
+              "description": "Unique identifier (_id) of the VPN server (from unifi_list_vpn_servers)",
               "type": "string"
             }
           },
@@ -925,6 +1005,7 @@
         "input": {
           "properties": {
             "wlan_id": {
+              "description": "Unique identifier (_id) of the WLAN/SSID (from unifi_list_wlans)",
               "type": "string"
             }
           },
@@ -942,6 +1023,7 @@
         "input": {
           "properties": {
             "network_id": {
+              "description": "Filter rules by network/VLAN ID (from unifi_list_networks). Omit to list all ACL rules",
               "type": "string"
             }
           },
@@ -966,9 +1048,11 @@
         "input": {
           "properties": {
             "include_archived": {
+              "description": "When true, includes previously resolved/archived alarms. Default false (active only)",
               "type": "boolean"
             },
             "limit": {
+              "description": "Maximum number of alarms to return (default 100)",
               "type": "integer"
             }
           },
@@ -993,12 +1077,15 @@
         "input": {
           "properties": {
             "filter_type": {
+              "description": "Filter clients by connection type: 'all' (default), 'wired', or 'wireless'",
               "type": "string"
             },
             "include_offline": {
+              "description": "When true, includes offline/disconnected clients from controller history. Default false",
               "type": "boolean"
             },
             "limit": {
+              "description": "Maximum number of clients to return (default 100)",
               "type": "integer"
             }
           },
@@ -1013,12 +1100,15 @@
         "input": {
           "properties": {
             "device_type": {
+              "description": "Filter by device type: 'all' (default), 'ap' (access points), 'switch', 'gateway', or 'pdu'",
               "type": "string"
             },
             "include_details": {
+              "description": "When true, includes additional details like radio tables (APs), port tables (switches), WAN info (gateways), and client counts. Default false",
               "type": "boolean"
             },
             "status": {
+              "description": "Filter by device status: 'all' (default), 'online', 'offline', 'pending', 'adopting', 'provisioning', or 'upgrading'",
               "type": "string"
             }
           },
@@ -1033,15 +1123,19 @@
         "input": {
           "properties": {
             "event_type": {
+              "description": "Filter by event type prefix (e.g., 'EVT_WU_' for wireless user events, 'EVT_SW_' for switch events). Use unifi_get_event_types to see valid prefixes",
               "type": "string"
             },
             "limit": {
+              "description": "Maximum number of events to return (default 100)",
               "type": "integer"
             },
             "start": {
+              "description": "Offset for pagination, skip the first N events (default 0)",
               "type": "integer"
             },
             "within_hours": {
+              "description": "Only return events from the last N hours (default 24)",
               "type": "integer"
             }
           },
@@ -1056,6 +1150,7 @@
         "input": {
           "properties": {
             "include_predefined": {
+              "description": "When true, includes predefined system policies in results. Default false (user-defined only)",
               "type": "boolean"
             }
           },
@@ -1190,6 +1285,7 @@
         "input": {
           "properties": {
             "ip_address": {
+              "description": "IPv4 address to look up (e.g., '192.168.1.100')",
               "type": "string"
             }
           },
@@ -1207,9 +1303,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, executes the reboot. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "mac_address": {
+              "description": "MAC address of the device to reboot, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices)",
               "type": "string"
             }
           },
@@ -1227,12 +1325,15 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, executes the rename. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "mac_address": {
+              "description": "MAC address of the client to rename, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)",
               "type": "string"
             },
             "name": {
+              "description": "New display name for the client (e.g., 'Living Room TV')",
               "type": "string"
             }
           },
@@ -1251,12 +1352,15 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, executes the rename. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "mac_address": {
+              "description": "MAC address of the device to rename, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices)",
               "type": "string"
             },
             "name": {
+              "description": "New display name for the device (e.g., 'Office AP')",
               "type": "string"
             }
           },
@@ -1275,9 +1379,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, revokes the voucher. When false (default), returns a preview",
               "type": "boolean"
             },
             "voucher_id": {
+              "description": "Unique identifier (_id) of the voucher to revoke (from unifi_list_vouchers)",
               "type": "string"
             }
           },
@@ -1295,21 +1401,27 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, applies the IP settings. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "fixed_ip": {
+              "description": "Static IP address to assign (e.g., '192.168.1.50'). Only used when use_fixedip is true",
               "type": "string"
             },
             "local_dns_record": {
+              "description": "Local DNS hostname for this client (e.g., 'mydevice.local'). Only used when local_dns_record_enabled is true",
               "type": "string"
             },
             "local_dns_record_enabled": {
+              "description": "Enable (true) or disable (false) local DNS record for this client (UniFi Network 7.2+)",
               "type": "boolean"
             },
             "mac_address": {
+              "description": "MAC address of the client to configure, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)",
               "type": "string"
             },
             "use_fixedip": {
+              "description": "Enable (true) or disable (false) fixed IP / DHCP reservation for this client",
               "type": "boolean"
             }
           },
@@ -1327,9 +1439,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, executes the toggle. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "policy_id": {
+              "description": "Unique identifier (_id) of the firewall policy to toggle (from unifi_list_firewall_policies)",
               "type": "string"
             }
           },
@@ -1347,9 +1461,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, executes the toggle. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "port_forward_id": {
+              "description": "Unique identifier (_id) of the port forwarding rule to toggle (from unifi_list_port_forwards)",
               "type": "string"
             }
           },
@@ -1367,9 +1483,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, executes the toggle. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "rule_id": {
+              "description": "Unique identifier (_id) of the QoS rule to toggle (from unifi_list_qos_rules)",
               "type": "string"
             }
           },
@@ -1387,9 +1505,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, executes the toggle. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "route_id": {
+              "description": "Unique identifier (_id) of the traffic route to toggle (from unifi_list_traffic_routes)",
               "type": "string"
             }
           },
@@ -1407,9 +1527,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, revokes guest authorization. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "mac_address": {
+              "description": "MAC address of the guest client to unauthorize, in format AA:BB:CC:DD:EE:FF",
               "type": "string"
             }
           },
@@ -1427,9 +1549,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, executes the unblock. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "mac_address": {
+              "description": "MAC address of the client to unblock, in format AA:BB:CC:DD:EE:FF (from unifi_list_blocked_clients)",
               "type": "string"
             }
           },
@@ -1447,12 +1571,15 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, applies the update. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "rule_data": {
+              "description": "Complete updated rule object (PUT replaces entire resource). Must include all fields: name, acl_index, action, enabled, mac_acl_network_id, traffic_source, traffic_destination, type",
               "type": "object"
             },
             "rule_id": {
+              "description": "Unique identifier (_id) of the ACL rule to update (from unifi_list_acl_rules)",
               "type": "string"
             }
           },
@@ -1471,30 +1598,39 @@
         "input": {
           "properties": {
             "channel": {
+              "description": "WiFi channel number (e.g., 1, 6, 11 for 2.4GHz; 36, 44, 149 for 5GHz)",
               "type": "integer"
             },
             "confirm": {
+              "description": "When true, applies radio changes. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "ht": {
+              "description": "Channel width: '20', '40', '80', '160', or '320' MHz",
               "type": "string"
             },
             "mac_address": {
+              "description": "MAC address of the access point, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices)",
               "type": "string"
             },
             "min_rssi": {
+              "description": "Minimum RSSI value in dBm (e.g., -75). Only valid when min_rssi_enabled=true",
               "type": "integer"
             },
             "min_rssi_enabled": {
+              "description": "Enable minimum RSSI threshold to disconnect weak clients",
               "type": "boolean"
             },
             "radio": {
+              "description": "Radio band code to configure: 'na' (5GHz), 'ng' (2.4GHz), '6e'/'wifi6e' (6GHz), or internal name like 'wifi0', 'wifi1'",
               "type": "string"
             },
             "tx_power": {
+              "description": "Custom transmit power in dBm (only valid when tx_power_mode='custom')",
               "type": "integer"
             },
             "tx_power_mode": {
+              "description": "Transmit power mode: 'auto', 'high', 'medium', 'low', or 'custom' (requires tx_power)",
               "type": "string"
             }
           },
@@ -1513,12 +1649,15 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, applies the update. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "policy_id": {
+              "description": "Unique identifier (_id) of the firewall policy to update (from unifi_list_firewall_policies)",
               "type": "string"
             },
             "update_data": {
+              "description": "Dictionary of fields to update. Allowed keys: name, ruleset, action ('accept'/'drop'/'reject'), rule_index, protocol, src_address, dst_address, src_port, dst_port, enabled, description, state_new, state_established, state_related, state_invalid, logging",
               "type": "object"
             }
           },
@@ -1537,12 +1676,15 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, applies the update. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "network_id": {
+              "description": "Unique identifier (_id) of the network to update (from unifi_list_networks)",
               "type": "string"
             },
             "update_data": {
+              "description": "Dictionary of fields to update. Allowed keys: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), vlan (1-4094), ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), enabled (bool), network_isolation_enabled (bool, corporate networks only)",
               "type": "object"
             }
           },
@@ -1561,12 +1703,15 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, applies the update. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "port_forward_id": {
+              "description": "Unique identifier (_id) of the port forwarding rule to update (from unifi_list_port_forwards)",
               "type": "string"
             },
             "update_data": {
+              "description": "Dictionary of fields to update. Allowed keys: name, dst_port (external port), fwd_port (internal port), fwd_ip (internal IP), protocol ('tcp'/'udp'/'tcp_udp'), enabled (bool), src_ip (source IP/CIDR, empty string to remove), log (bool)",
               "type": "object"
             }
           },
@@ -1585,12 +1730,15 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, applies the update. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "rule_id": {
+              "description": "Unique identifier (_id) of the QoS rule to update (from unifi_list_qos_rules)",
               "type": "string"
             },
             "update_data": {
+              "description": "Dictionary of fields to update. Allowed keys: name, interface ('WAN'/'LAN'), direction ('upload'/'download'), bandwidth_limit_kbps (int), target_ip_address (IP), target_subnet (CIDR), dscp_value (0-63), enabled (bool)",
               "type": "object"
             }
           },
@@ -1609,24 +1757,31 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, applies the update. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "distance": {
+              "description": "New administrative distance (1-255, lower = preferred)",
               "type": "integer"
             },
             "enabled": {
+              "description": "New enabled state (true/false)",
               "type": "boolean"
             },
             "name": {
+              "description": "New descriptive name for the route",
               "type": "string"
             },
             "network": {
+              "description": "New destination network in CIDR notation (e.g., '10.0.0.0/24')",
               "type": "string"
             },
             "nexthop": {
+              "description": "New next-hop gateway IP address (e.g., '192.168.1.1')",
               "type": "string"
             },
             "route_id": {
+              "description": "Unique identifier (_id) of the static route to update (from unifi_list_routes)",
               "type": "string"
             }
           },
@@ -1644,12 +1799,15 @@
         "input": {
           "properties": {
             "community": {
+              "description": "SNMP community string (e.g., 'public'). Omit to keep the current value",
               "type": "string"
             },
             "confirm": {
+              "description": "When true, applies the changes. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "enabled": {
+              "description": "Set to true to enable SNMP on the site, false to disable it",
               "type": "boolean"
             }
           },
@@ -1667,15 +1825,19 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, applies the update. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "enabled": {
+              "description": "Enable (true) or disable (false) the traffic route",
               "type": "boolean"
             },
             "kill_switch_enabled": {
+              "description": "Enable (true) or disable (false) the kill switch, which blocks traffic if the VPN goes down",
               "type": "boolean"
             },
             "route_id": {
+              "description": "Unique identifier (_id) of the traffic route to update (from unifi_list_traffic_routes)",
               "type": "string"
             }
           },
@@ -1693,18 +1855,23 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, applies the update. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "down_limit_kbps": {
+              "description": "New download speed limit in Kbps. Use -1 for unlimited",
               "type": "integer"
             },
             "group_id": {
+              "description": "Unique identifier (_id) of the user group to update (from unifi_list_usergroups)",
               "type": "string"
             },
             "name": {
+              "description": "New name for the user group",
               "type": "string"
             },
             "up_limit_kbps": {
+              "description": "New upload speed limit in Kbps. Use -1 for unlimited",
               "type": "integer"
             }
           },
@@ -1722,9 +1889,11 @@
         "input": {
           "properties": {
             "client_id": {
+              "description": "Unique identifier (_id) of the VPN client to update (from unifi_list_vpn_clients)",
               "type": "string"
             },
             "enabled": {
+              "description": "Set to true to enable the VPN client, false to disable it",
               "type": "boolean"
             }
           },
@@ -1743,9 +1912,11 @@
         "input": {
           "properties": {
             "enabled": {
+              "description": "Set to true to enable the VPN server, false to disable it",
               "type": "boolean"
             },
             "server_id": {
+              "description": "Unique identifier (_id) of the VPN server to update (from unifi_list_vpn_servers)",
               "type": "string"
             }
           },
@@ -1764,12 +1935,15 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, applies the update. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "update_data": {
+              "description": "Dictionary of fields to update. Allowed keys: name (SSID), security ('open'/'wpapsk'/'wpa2-psk'), x_passphrase (password), enabled (bool), hide_ssid (bool), guest_policy (bool), usergroup_id (str), networkconf_id (network ID to associate)",
               "type": "object"
             },
             "wlan_id": {
+              "description": "Unique identifier (_id) of the WLAN to update (from unifi_list_wlans)",
               "type": "string"
             }
           },
@@ -1788,9 +1962,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, initiates the firmware upgrade. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
             "mac_address": {
+              "description": "MAC address of the device to upgrade, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices)",
               "type": "string"
             }
           },

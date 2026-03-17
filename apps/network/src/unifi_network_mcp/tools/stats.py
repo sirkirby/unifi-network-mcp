@@ -5,9 +5,10 @@ This module provides MCP tools to fetch statistics from a Unifi Network Controll
 """
 
 import logging
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_network_mcp.runtime import client_manager, server, stats_manager, system_manager
 
@@ -19,7 +20,14 @@ logger = logging.getLogger(__name__)
     description="Get network statistics from the Unifi Network controller",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_network_stats(duration: str = "hourly") -> Dict[str, Any]:
+async def get_network_stats(
+    duration: Annotated[
+        str,
+        Field(
+            description="Time period for stats: 'hourly' (last 1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"
+        ),
+    ] = "hourly",
+) -> Dict[str, Any]:
     """Implementation for getting network stats."""
     try:
         duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(duration, 1)
@@ -68,7 +76,15 @@ async def get_network_stats(duration: str = "hourly") -> Dict[str, Any]:
     description="Get statistics for a specific client/device",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_client_stats(client_id: str, duration: str = "hourly") -> Dict[str, Any]:
+async def get_client_stats(
+    client_id: Annotated[str, Field(description="Client MAC address or _id (from unifi_list_clients)")],
+    duration: Annotated[
+        str,
+        Field(
+            description="Time period for stats: 'hourly' (last 1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"
+        ),
+    ] = "hourly",
+) -> Dict[str, Any]:
     """Implementation for getting client stats."""
     try:
         duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(duration, 1)
@@ -112,7 +128,15 @@ async def get_client_stats(client_id: str, duration: str = "hourly") -> Dict[str
         "For current device status instead of stats, use unifi_get_device_details."
     ),
 )
-async def get_device_stats(device_id: str, duration: str = "hourly") -> Dict[str, Any]:
+async def get_device_stats(
+    device_id: Annotated[str, Field(description="Device MAC address or _id (from unifi_list_devices)")],
+    duration: Annotated[
+        str,
+        Field(
+            description="Time period for stats: 'hourly' (last 1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"
+        ),
+    ] = "hourly",
+) -> Dict[str, Any]:
     """Implementation for getting device stats."""
     try:
         duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(duration, 1)
@@ -154,7 +178,15 @@ async def get_device_stats(device_id: str, duration: str = "hourly") -> Dict[str
     description="Get a list of top clients by usage (sorted by total bytes)",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_top_clients(duration: str = "daily", limit: int = 10) -> Dict[str, Any]:
+async def get_top_clients(
+    duration: Annotated[
+        str,
+        Field(
+            description="Time period for stats: 'hourly' (1h), 'daily' (24h, default), 'weekly' (7d), or 'monthly' (30d)"
+        ),
+    ] = "daily",
+    limit: Annotated[int, Field(description="Maximum number of top clients to return (default 10)")] = 10,
+) -> Dict[str, Any]:
     """Implementation for getting top clients by usage."""
     try:
         duration_hours = {"hourly": 1, "daily": 24, "weekly": 168, "monthly": 720}.get(duration, 1)
@@ -218,7 +250,12 @@ async def get_dpi_stats() -> Dict[str, Any]:
     description="Get recent alerts from the Unifi Network controller",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_alerts(limit: int = 10, include_archived: bool = False) -> Dict[str, Any]:
+async def get_alerts(
+    limit: Annotated[int, Field(description="Maximum number of alerts to return (default 10)")] = 10,
+    include_archived: Annotated[
+        bool, Field(description="When true, includes previously archived/resolved alerts. Default false")
+    ] = False,
+) -> Dict[str, Any]:
     """Implementation for getting alerts."""
     try:
         alerts = await stats_manager.get_alerts(limit=limit, include_archived=include_archived)

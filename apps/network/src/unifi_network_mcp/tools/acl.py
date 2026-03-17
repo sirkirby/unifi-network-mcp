@@ -8,9 +8,10 @@ Application with Policy Engine support.
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm
 from unifi_network_mcp.categories import parse_permission
@@ -25,7 +26,12 @@ logger = logging.getLogger(__name__)
     "These rules control which devices can communicate at Layer 2 within a VLAN.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def list_acl_rules(network_id: Optional[str] = None) -> Dict[str, Any]:
+async def list_acl_rules(
+    network_id: Annotated[
+        Optional[str],
+        Field(description="Filter rules by network/VLAN ID (from unifi_list_networks). Omit to list all ACL rules"),
+    ] = None,
+) -> Dict[str, Any]:
     """
     Lists MAC ACL rules configured in the Policy Engine.
 
@@ -74,7 +80,9 @@ async def list_acl_rules(network_id: Optional[str] = None) -> Dict[str, Any]:
     description="Get detailed configuration for a specific MAC ACL rule by ID.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_acl_rule_details(rule_id: str) -> Dict[str, Any]:
+async def get_acl_rule_details(
+    rule_id: Annotated[str, Field(description="Unique identifier (_id) of the ACL rule (from unifi_list_acl_rules)")],
+) -> Dict[str, Any]:
     """
     Gets the detailed configuration of a specific MAC ACL rule.
 
@@ -120,13 +128,29 @@ async def get_acl_rule_details(rule_id: str) -> Dict[str, Any]:
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_acl_rule(
-    name: str,
-    acl_index: int,
-    action: str,
-    mac_acl_network_id: str,
-    traffic_source: Optional[dict] = None,
-    traffic_destination: Optional[dict] = None,
-    confirm: bool = False,
+    name: Annotated[str, Field(description="Descriptive name for the ACL rule")],
+    acl_index: Annotated[int, Field(description="Position in the rule chain (lower numbers are evaluated first)")],
+    action: Annotated[str, Field(description="Rule action: 'ALLOW' or 'BLOCK'")],
+    mac_acl_network_id: Annotated[
+        str,
+        Field(description="Network/VLAN ID this rule applies to (from unifi_list_networks)"),
+    ],
+    traffic_source: Annotated[
+        Optional[dict],
+        Field(
+            description="Source config dict with keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs, empty list = any). Defaults to matching any source"
+        ),
+    ] = None,
+    traffic_destination: Annotated[
+        Optional[dict],
+        Field(
+            description="Destination config dict with same structure as traffic_source. Defaults to matching any destination"
+        ),
+    ] = None,
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the rule. When false (default), returns a preview of the changes"),
+    ] = False,
 ) -> Dict[str, Any]:
     """
     Creates a new MAC ACL rule in the Policy Engine.
@@ -203,7 +227,21 @@ async def create_acl_rule(
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def update_acl_rule(rule_id: str, rule_data: dict, confirm: bool = False) -> Dict[str, Any]:
+async def update_acl_rule(
+    rule_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the ACL rule to update (from unifi_list_acl_rules)")
+    ],
+    rule_data: Annotated[
+        dict,
+        Field(
+            description="Complete updated rule object (PUT replaces entire resource). Must include all fields: name, acl_index, action, enabled, mac_acl_network_id, traffic_source, traffic_destination, type"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the update. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """
     Updates an existing MAC ACL rule.
 
@@ -240,7 +278,17 @@ async def update_acl_rule(rule_id: str, rule_data: dict, confirm: bool = False) 
     permission_action="delete",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
 )
-async def delete_acl_rule(rule_id: str, confirm: bool = False) -> Dict[str, Any]:
+async def delete_acl_rule(
+    rule_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the ACL rule to delete (from unifi_list_acl_rules)")
+    ],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, deletes the rule. When false (default), returns a preview. WARNING: Removing an ALLOW rule may block device communication"
+        ),
+    ] = False,
+) -> Dict[str, Any]:
     """
     Deletes a MAC ACL rule.
 

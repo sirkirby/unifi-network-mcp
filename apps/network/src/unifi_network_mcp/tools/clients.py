@@ -5,9 +5,10 @@ This module provides MCP tools to manage network clients/devices on a Unifi Netw
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.categories import parse_permission
@@ -23,7 +24,9 @@ logger = logging.getLogger(__name__)
     description="Quick IP-to-hostname lookup. Returns only essential fields (hostname, name, MAC) to minimize token usage.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def lookup_by_ip(ip_address: str) -> Dict[str, Any]:
+async def lookup_by_ip(
+    ip_address: Annotated[str, Field(description="IPv4 address to look up (e.g., '192.168.1.100')")],
+) -> Dict[str, Any]:
     """Lookup client by IP address - returns only essential fields to minimize token usage.
 
     Args:
@@ -61,7 +64,16 @@ async def lookup_by_ip(ip_address: str) -> Dict[str, Any]:
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def list_clients(filter_type: str = "all", include_offline: bool = False, limit: int = 100) -> Dict[str, Any]:
+async def list_clients(
+    filter_type: Annotated[
+        str, Field(description="Filter clients by connection type: 'all' (default), 'wired', or 'wireless'")
+    ] = "all",
+    include_offline: Annotated[
+        bool,
+        Field(description="When true, includes offline/disconnected clients from controller history. Default false"),
+    ] = False,
+    limit: Annotated[int, Field(description="Maximum number of clients to return (default 100)")] = 100,
+) -> Dict[str, Any]:
     """Implementation for listing clients."""
     try:
         clients = await client_manager.get_all_clients() if include_offline else await client_manager.get_clients()
@@ -127,7 +139,11 @@ async def list_clients(filter_type: str = "all", include_offline: bool = False, 
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_client_details(mac_address: str) -> Dict[str, Any]:
+async def get_client_details(
+    mac_address: Annotated[
+        str, Field(description="Client MAC address in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)")
+    ],
+) -> Dict[str, Any]:
     """Implementation for getting client details."""
     try:
         client_obj = await client_manager.get_client_details(mac_address)
@@ -191,7 +207,16 @@ async def list_blocked_clients() -> Dict[str, Any]:
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
 )
-async def block_client(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
+async def block_client(
+    mac_address: Annotated[
+        str,
+        Field(description="MAC address of the client to block, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the block. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Implementation for blocking a client."""
     if not parse_permission(config.permissions, "client", "block"):
         logger.warning(f"Permission denied for blocking client ({mac_address}).")
@@ -243,7 +268,18 @@ async def block_client(mac_address: str, confirm: bool = False) -> Dict[str, Any
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def unblock_client(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
+async def unblock_client(
+    mac_address: Annotated[
+        str,
+        Field(
+            description="MAC address of the client to unblock, in format AA:BB:CC:DD:EE:FF (from unifi_list_blocked_clients)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the unblock. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Implementation for unblocking a client."""
     if not parse_permission(config.permissions, "client", "block"):
         logger.warning(f"Permission denied for unblocking client ({mac_address}).")
@@ -293,7 +329,17 @@ async def unblock_client(mac_address: str, confirm: bool = False) -> Dict[str, A
     description="Rename a client/device in the Unifi Network controller by MAC address",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def rename_client(mac_address: str, name: str, confirm: bool = False) -> Dict[str, Any]:
+async def rename_client(
+    mac_address: Annotated[
+        str,
+        Field(description="MAC address of the client to rename, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)"),
+    ],
+    name: Annotated[str, Field(description="New display name for the client (e.g., 'Living Room TV')")],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the rename. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Implementation for renaming a client."""
     if not parse_permission(config.permissions, "client", "update"):
         logger.warning(f"Permission denied for renaming client ({mac_address}).")
@@ -340,7 +386,20 @@ async def rename_client(mac_address: str, name: str, confirm: bool = False) -> D
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
 )
-async def force_reconnect_client(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
+async def force_reconnect_client(
+    mac_address: Annotated[
+        str,
+        Field(
+            description="MAC address of the client to force reconnect, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, executes the forced reconnect. When false (default), returns a preview of the changes"
+        ),
+    ] = False,
+) -> Dict[str, Any]:
     """Implementation for forcing a client to reconnect."""
     if not parse_permission(config.permissions, "client", "reconnect"):
         logger.warning(f"Permission denied for forcing reconnect of client ({mac_address}).")
@@ -404,12 +463,29 @@ async def force_reconnect_client(mac_address: str, confirm: bool = False) -> Dic
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def authorize_guest(
-    mac_address: str,
-    minutes: int = 1440,
-    up_kbps: Optional[int] = None,
-    down_kbps: Optional[int] = None,
-    bytes_quota: Optional[int] = None,
-    confirm: bool = False,
+    mac_address: Annotated[
+        str,
+        Field(description="MAC address of the guest client to authorize, in format AA:BB:CC:DD:EE:FF"),
+    ],
+    minutes: Annotated[
+        int, Field(description="Duration in minutes the guest is authorized (default 1440 = 24 hours)")
+    ] = 1440,
+    up_kbps: Annotated[
+        Optional[int], Field(description="Upload bandwidth limit in Kbps (e.g., 5000 for 5 Mbps). Omit for unlimited")
+    ] = None,
+    down_kbps: Annotated[
+        Optional[int],
+        Field(description="Download bandwidth limit in Kbps (e.g., 10000 for 10 Mbps). Omit for unlimited"),
+    ] = None,
+    bytes_quota: Annotated[
+        Optional[int], Field(description="Total data transfer quota in bytes. Omit for unlimited")
+    ] = None,
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, executes the authorization. When false (default), returns a preview of the changes"
+        ),
+    ] = False,
 ) -> Dict[str, Any]:
     """Implementation for authorizing a guest."""
     if not parse_permission(config.permissions, "client", "authorize"):
@@ -474,7 +550,18 @@ async def authorize_guest(
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
 )
-async def unauthorize_guest(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
+async def unauthorize_guest(
+    mac_address: Annotated[
+        str,
+        Field(description="MAC address of the guest client to unauthorize, in format AA:BB:CC:DD:EE:FF"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, revokes guest authorization. When false (default), returns a preview of the changes"
+        ),
+    ] = False,
+) -> Dict[str, Any]:
     """Implementation for unauthorizing a guest."""
     if not parse_permission(config.permissions, "client", "authorize"):
         logger.warning(f"Permission denied for unauthorizing guest ({mac_address}).")
@@ -540,12 +627,34 @@ Either setting can be enabled/disabled independently.""",
     permission_action="update",
 )
 async def set_client_ip_settings(
-    mac_address: str,
-    use_fixedip: bool | None = None,
-    fixed_ip: str | None = None,
-    local_dns_record_enabled: bool | None = None,
-    local_dns_record: str | None = None,
-    confirm: bool = False,
+    mac_address: Annotated[
+        str,
+        Field(
+            description="MAC address of the client to configure, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)"
+        ),
+    ],
+    use_fixedip: Annotated[
+        Optional[bool],
+        Field(description="Enable (true) or disable (false) fixed IP / DHCP reservation for this client"),
+    ] = None,
+    fixed_ip: Annotated[
+        Optional[str],
+        Field(description="Static IP address to assign (e.g., '192.168.1.50'). Only used when use_fixedip is true"),
+    ] = None,
+    local_dns_record_enabled: Annotated[
+        Optional[bool],
+        Field(description="Enable (true) or disable (false) local DNS record for this client (UniFi Network 7.2+)"),
+    ] = None,
+    local_dns_record: Annotated[
+        Optional[str],
+        Field(
+            description="Local DNS hostname for this client (e.g., 'mydevice.local'). Only used when local_dns_record_enabled is true"
+        ),
+    ] = None,
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the IP settings. When false (default), returns a preview of the changes"),
+    ] = False,
 ) -> Dict[str, Any]:
     """Set fixed IP and/or local DNS record for a client."""
     if not parse_permission(config.permissions, "client", "update"):

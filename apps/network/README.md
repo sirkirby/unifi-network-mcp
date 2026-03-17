@@ -22,15 +22,18 @@ cd unifi-mcp && uv sync
 Set these environment variables (or create a `.env` file):
 
 ```bash
-UNIFI_HOST=192.168.1.1      # Controller IP or hostname
-UNIFI_USERNAME=admin         # Local admin username
-UNIFI_PASSWORD=your-password # Admin password
+# Server-specific variables (recommended)
+UNIFI_NETWORK_HOST=192.168.1.1      # Controller IP or hostname
+UNIFI_NETWORK_USERNAME=admin         # Local admin username
+UNIFI_NETWORK_PASSWORD=your-password # Admin password
 # Optional:
-# UNIFI_API_KEY=             # Official UniFi API key (dual auth)
-# UNIFI_PORT=443             # Controller HTTPS port
-# UNIFI_SITE=default         # UniFi site name
-# UNIFI_VERIFY_SSL=false     # SSL certificate verification
+# UNIFI_NETWORK_API_KEY=             # Official UniFi API key (dual auth)
+# UNIFI_NETWORK_PORT=443             # Controller HTTPS port
+# UNIFI_NETWORK_SITE=default         # UniFi site name
+# UNIFI_NETWORK_VERIFY_SSL=false     # SSL certificate verification
 ```
+
+**Fallback:** Existing `UNIFI_*` variables (e.g., `UNIFI_HOST`) continue to work. The server checks for `UNIFI_NETWORK_*` first and falls back to `UNIFI_*` if the server-specific variable is not set. For single-controller setups, the shared variables are all you need.
 
 ## Run
 
@@ -40,9 +43,9 @@ unifi-network-mcp
 
 # Docker
 docker run -i --rm \
-  -e UNIFI_HOST=192.168.1.1 \
-  -e UNIFI_USERNAME=admin \
-  -e UNIFI_PASSWORD=secret \
+  -e UNIFI_NETWORK_HOST=192.168.1.1 \
+  -e UNIFI_NETWORK_USERNAME=admin \
+  -e UNIFI_NETWORK_PASSWORD=secret \
   ghcr.io/sirkirby/unifi-network-mcp:latest
 ```
 
@@ -57,9 +60,9 @@ Add to `claude_desktop_config.json`:
       "command": "uvx",
       "args": ["unifi-network-mcp"],
       "env": {
-        "UNIFI_HOST": "192.168.1.1",
-        "UNIFI_USERNAME": "admin",
-        "UNIFI_PASSWORD": "your-password"
+        "UNIFI_NETWORK_HOST": "192.168.1.1",
+        "UNIFI_NETWORK_USERNAME": "admin",
+        "UNIFI_NETWORK_PASSWORD": "your-password"
       }
     }
   }

@@ -1,16 +1,22 @@
-.PHONY: help test lint format pre-commit core-test shared-test network-test network-lint network-format network-manifest
+.PHONY: help test lint format manifest pre-commit core-test shared-test \
+       docker-build docker-up docker-down docker-logs
 
 help:
 	@echo "UniFi MCP Ecosystem — Top-Level Commands"
 	@echo ""
-	@echo "  make test              Run all tests"
-	@echo "  make lint              Lint all packages"
-	@echo "  make format            Format all packages"
-	@echo "  make core-test         Run core package tests"
-	@echo "  make shared-test       Run shared package tests"
-	@echo "  make network-test      Run network server tests"
-	@echo "  make network-lint      Lint network server"
-	@echo "  make network-manifest  Regenerate network tools manifest"
+	@echo "  make test           Run all tests (core + shared + all apps)"
+	@echo "  make lint           Lint all apps"
+	@echo "  make format         Format all apps"
+	@echo "  make manifest       Regenerate tool manifests for all apps"
+	@echo "  make pre-commit     Format + lint + test"
+	@echo ""
+	@echo "  make docker-build   Build all Docker images"
+	@echo "  make docker-up      Start all servers (docker compose)"
+	@echo "  make docker-down    Stop all servers"
+	@echo "  make docker-logs    Tail logs from all servers"
+	@echo ""
+	@echo "  make core-test      Run unifi-core tests only"
+	@echo "  make shared-test    Run unifi-mcp-shared tests only"
 
 core-test:
 	uv run --package unifi-core pytest packages/unifi-core/tests -v
@@ -18,22 +24,32 @@ core-test:
 shared-test:
 	uv run --package unifi-mcp-shared pytest packages/unifi-mcp-shared/tests -v
 
-network-test:
+test: core-test shared-test
 	$(MAKE) -C apps/network test
+	$(MAKE) -C apps/protect test
 
-network-lint:
+lint:
 	$(MAKE) -C apps/network lint
+	$(MAKE) -C apps/protect lint
 
-network-format:
+format:
 	$(MAKE) -C apps/network format
+	$(MAKE) -C apps/protect format
 
-network-manifest:
+manifest:
 	$(MAKE) -C apps/network manifest
-
-test: core-test shared-test network-test
-
-lint: network-lint
-
-format: network-format
+	$(MAKE) -C apps/protect manifest
 
 pre-commit: format lint test
+
+docker-build:
+	docker compose -f docker/docker-compose.yml build
+
+docker-up:
+	docker compose -f docker/docker-compose.yml up --build -d
+
+docker-down:
+	docker compose -f docker/docker-compose.yml down
+
+docker-logs:
+	docker compose -f docker/docker-compose.yml logs -f

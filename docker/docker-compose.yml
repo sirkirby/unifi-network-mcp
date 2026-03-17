@@ -6,7 +6,6 @@ services:
     env_file:
       - ../.env
     environment:
-      # Enable HTTP transport for remote MCP clients (LM Studio, etc.)
       - UNIFI_MCP_HTTP_ENABLED=true
       - UNIFI_MCP_HTTP_TRANSPORT=streamable-http
       - UNIFI_MCP_HOST=0.0.0.0
@@ -16,3 +15,20 @@ services:
       - "3000:3000"
     restart: unless-stopped
     container_name: unifi-network-mcp
+
+  unifi-protect-mcp:
+    build:
+      context: ..
+      dockerfile: apps/protect/Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      - UNIFI_MCP_HTTP_ENABLED=true
+      - UNIFI_MCP_HTTP_TRANSPORT=streamable-http
+      - UNIFI_MCP_HOST=0.0.0.0
+      - UNIFI_MCP_PORT=3001
+      - UNIFI_MCP_ALLOWED_HOSTS=localhost,localhost:3001,127.0.0.1,127.0.0.1:3001,host.docker.internal,host.docker.internal:3001
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+    container_name: unifi-protect-mcp

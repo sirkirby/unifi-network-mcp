@@ -134,7 +134,9 @@ def load_config(path_override: str | Path | None = None) -> OmegaConf:
 
     cfg = OmegaConf.load(str(resolved_path))
 
-    # Merge env vars for UniFi settings so they override YAML
+    # Merge env vars for UniFi settings so they override YAML.
+    # Network-specific vars (UNIFI_NETWORK_*) take priority over shared (UNIFI_*).
+    # This allows running Network and Protect with different controllers from the same .env.
     unifi_env_overrides: dict[str, Any] = {}
     for key in (
         "host",
@@ -146,15 +148,18 @@ def load_config(path_override: str | Path | None = None) -> OmegaConf:
         "controller_type",
         "api_key",
     ):
-        env_key = f"UNIFI_{key.upper()}"
-        if (val := os.getenv(env_key)) is not None:
+        # Check UNIFI_NETWORK_HOST first, then fall back to UNIFI_HOST
+        network_key = f"UNIFI_NETWORK_{key.upper()}"
+        shared_key = f"UNIFI_{key.upper()}"
+        val = os.getenv(network_key) or os.getenv(shared_key)
+        if val is not None:
             if key == "verify_ssl":
                 val = val.lower() in {"1", "true", "yes"}
             elif key == "controller_type":
                 val = val.lower()
             unifi_env_overrides[key] = val
     if unifi_env_overrides:
-        logger.debug("Applying env overrides to Unifi config: %s", unifi_env_overrides)
+        logger.debug("Applying env overrides to Network config: %s", unifi_env_overrides)
         cfg.unifi = OmegaConf.merge(cfg.unifi, unifi_env_overrides)
 
     return cfg

@@ -8,21 +8,25 @@ The UniFi Network MCP server merges settings from three sources (highest priorit
 
 ## Essential Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `UNIFI_HOST` | Yes | — | Controller IP or hostname |
-| `UNIFI_USERNAME` | Yes | — | Local admin username |
-| `UNIFI_PASSWORD` | Yes | — | Admin password |
-| `UNIFI_API_KEY` | No | `""` | Official UniFi API key for dual auth |
-| `UNIFI_PORT` | No | `443` | Controller HTTPS port |
-| `UNIFI_SITE` | No | `default` | UniFi site name |
-| `UNIFI_VERIFY_SSL` | No | `false` | SSL certificate verification |
+The Network server supports server-specific environment variables with the `UNIFI_NETWORK_` prefix. These take priority over the shared `UNIFI_*` variables, which serve as a fallback. For single-controller setups, the shared variables are all you need.
+
+| Server-specific variable | Shared fallback | Required | Default | Description |
+|--------------------------|-----------------|----------|---------|-------------|
+| `UNIFI_NETWORK_HOST` | `UNIFI_HOST` | Yes | -- | Controller IP or hostname |
+| `UNIFI_NETWORK_USERNAME` | `UNIFI_USERNAME` | Yes | -- | Local admin username |
+| `UNIFI_NETWORK_PASSWORD` | `UNIFI_PASSWORD` | Yes | -- | Admin password |
+| `UNIFI_NETWORK_API_KEY` | `UNIFI_API_KEY` | No | `""` | Official UniFi API key for dual auth |
+| `UNIFI_NETWORK_PORT` | `UNIFI_PORT` | No | `443` | Controller HTTPS port |
+| `UNIFI_NETWORK_SITE` | `UNIFI_SITE` | No | `default` | UniFi site name |
+| `UNIFI_NETWORK_VERIFY_SSL` | `UNIFI_VERIFY_SSL` | No | `false` | SSL certificate verification |
+
+**Resolution order:** `UNIFI_NETWORK_*` > `UNIFI_*` > YAML config > hardcoded default.
 
 ## Controller Type Detection
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `UNIFI_CONTROLLER_TYPE` | `auto` | API path detection: `auto`, `proxy` (UniFi OS), `direct` (standalone) |
+| `UNIFI_NETWORK_CONTROLLER_TYPE` / `UNIFI_CONTROLLER_TYPE` | `auto` | API path detection: `auto`, `proxy` (UniFi OS), `direct` (standalone) |
 
 The server auto-detects whether your controller uses UniFi OS proxy paths (`/proxy/network/api/...`) or direct paths (`/api/...`). This adds ~300ms to the initial connection.
 

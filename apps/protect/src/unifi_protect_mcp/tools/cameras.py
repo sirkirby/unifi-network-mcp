@@ -1,0 +1,422 @@
+"""Camera tools for UniFi Protect MCP server.
+
+Provides tools for listing, inspecting, and managing cameras including
+snapshots, stream URLs, settings, recording, PTZ control, and reboots.
+"""
+
+import base64
+import logging
+from typing import Annotated, Any, Dict, Optional
+
+from mcp.types import ToolAnnotations
+from pydantic import Field
+
+from unifi_mcp_shared.confirmation import preview_response, should_auto_confirm
+from unifi_protect_mcp.runtime import camera_manager, server
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Read-only tools
+# ---------------------------------------------------------------------------
+
+
+@server.tool(
+    name="protect_list_cameras",
+    description=(
+        "Lists all cameras adopted by the Protect NVR with their name, model, "
+        "connection state, recording mode, and whether they are currently recording. "
+        "Use to get an overview of all cameras in the system."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def protect_list_cameras() -> Dict[str, Any]:
+    """List all cameras."""
+    logger.info("protect_list_cameras tool called")
+    try:
+        cameras = await camera_manager.list_cameras()
+        return {"success": True, "data": {"cameras": cameras, "count": len(cameras)}}
+    except Exception as e:
+        logger.error("Error listing cameras: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to list cameras: {e}"}
+
+
+@server.tool(
+    name="protect_get_camera",
+    description=(
+        "Returns detailed information for a single camera including firmware, "
+        "IP address, MAC, mic/speaker settings, IR/HDR mode, stream channels, "
+        "smart detection types, and PTZ capability. Use to inspect one camera."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def protect_get_camera(
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+) -> Dict[str, Any]:
+    """Get detailed camera information by ID."""
+    logger.info("protect_get_camera tool called for %s", camera_id)
+    try:
+        detail = await camera_manager.get_camera(camera_id)
+        return {"success": True, "data": detail}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error getting camera %s: %s", camera_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to get camera: {e}"}
+
+
+@server.tool(
+    name="protect_get_snapshot",
+    description=(
+        "Fetches a JPEG snapshot from a camera. When include_image is True, "
+        "returns the image as a base64-encoded string. When False (default), "
+        "returns a reference URL. Optionally specify width and height to resize."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def protect_get_snapshot(
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+    include_image: Annotated[
+        bool,
+        Field(
+            description="When true, returns base64-encoded JPEG image data in the response. When false (default), returns a resource URI."
+        ),
+    ] = False,
+    width: Annotated[
+        Optional[int],
+        Field(
+            description="Resize the snapshot to this width in pixels. Aspect ratio is preserved if only width or height is set."
+        ),
+    ] = None,
+    height: Annotated[
+        Optional[int],
+        Field(
+            description="Resize the snapshot to this height in pixels. Aspect ratio is preserved if only width or height is set."
+        ),
+    ] = None,
+) -> Dict[str, Any]:
+    """Get a snapshot from a camera."""
+    logger.info("protect_get_snapshot tool called for %s (include_image=%s)", camera_id, include_image)
+    try:
+        if include_image:
+            snapshot_bytes = await camera_manager.get_snapshot(camera_id, width=width, height=height)
+            return {
+                "success": True,
+                "data": {
+                    "image_base64": base64.b64encode(snapshot_bytes).decode(),
+                    "content_type": "image/jpeg",
+                },
+            }
+        else:
+            # Return a reference URL; snapshot resources handle actual delivery
+            return {
+                "success": True,
+                "data": {
+                    "snapshot_url": f"protect://cameras/{camera_id}/snapshot",
+                },
+            }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error getting snapshot for camera %s: %s", camera_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to get snapshot: {e}"}
+
+
+@server.tool(
+    name="protect_get_camera_streams",
+    description=(
+        "Returns RTSP/RTSPS stream URLs for a camera organized by channel "
+        "(High, Medium, Low). Includes resolution, FPS, and bitrate for each stream. "
+        "Use to connect a video player or integration to camera feeds."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def protect_get_camera_streams(
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+) -> Dict[str, Any]:
+    """Get stream URLs for a camera."""
+    logger.info("protect_get_camera_streams tool called for %s", camera_id)
+    try:
+        streams = await camera_manager.get_camera_streams(camera_id)
+        return {"success": True, "data": streams}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error getting streams for camera %s: %s", camera_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to get camera streams: {e}"}
+
+
+@server.tool(
+    name="protect_get_camera_analytics",
+    description=(
+        "Returns motion and smart detection analytics for a camera including "
+        "current detection state, last-detected timestamps for each type "
+        "(person, vehicle, animal, etc.), and zone counts. "
+        "For historical events, use the events API tools."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def protect_get_camera_analytics(
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+) -> Dict[str, Any]:
+    """Get motion/smart detection analytics for a camera."""
+    logger.info("protect_get_camera_analytics tool called for %s", camera_id)
+    try:
+        analytics = await camera_manager.get_camera_analytics(camera_id)
+        return {"success": True, "data": analytics}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error getting analytics for camera %s: %s", camera_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to get camera analytics: {e}"}
+
+
+# ---------------------------------------------------------------------------
+# Mutation tools (preview/confirm pattern)
+# ---------------------------------------------------------------------------
+
+
+@server.tool(
+    name="protect_update_camera_settings",
+    description=(
+        "Updates camera settings such as IR LED mode, HDR mode, mic/speaker volume, "
+        "status light, and motion detection. Requires confirm=True to apply. "
+        "Supported keys: ir_led_mode, hdr_mode, mic_enabled, mic_volume, "
+        "status_light_on, speaker_volume, name, motion_detection."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    permission_category="camera",
+    permission_action="update",
+)
+async def protect_update_camera_settings(
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+    settings: Annotated[
+        dict,
+        Field(
+            description=(
+                "Dictionary of settings to update. Supported keys: "
+                "ir_led_mode (auto, on, autoFilterOnly), hdr_mode (true/false), "
+                "mic_enabled (true/false), mic_volume (0-100), "
+                "status_light_on (true/false), speaker_volume (0-100), "
+                "name (string), motion_detection (true/false)."
+            )
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the mutation. When false (default), returns a preview of the changes."),
+    ] = False,
+) -> Dict[str, Any]:
+    """Update camera settings with preview/confirm."""
+    logger.info("protect_update_camera_settings tool called for %s (confirm=%s)", camera_id, confirm)
+    try:
+        if not settings:
+            return {"success": False, "error": "No settings provided. Specify at least one setting to update."}
+
+        preview_data = await camera_manager.update_camera_settings(camera_id, settings)
+
+        if not confirm and not should_auto_confirm():
+            return preview_response(
+                action="update",
+                resource_type="camera_settings",
+                resource_id=camera_id,
+                current_state=preview_data["current_state"],
+                proposed_changes=preview_data["proposed_changes"],
+                resource_name=preview_data["camera_name"],
+            )
+
+        # Apply the changes
+        result = await camera_manager.apply_camera_settings(camera_id, settings)
+        return {"success": True, "data": result}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error updating camera settings for %s: %s", camera_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to update camera settings: {e}"}
+
+
+@server.tool(
+    name="protect_toggle_recording",
+    description=(
+        "Enables or disables recording on a camera. When enabled, sets recording "
+        "mode to 'always'. When disabled, sets to 'never'. Requires confirm=True to apply."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    permission_category="camera",
+    permission_action="update",
+)
+async def protect_toggle_recording(
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+    enabled: Annotated[
+        bool,
+        Field(
+            description="When true, enables recording (mode set to 'always'). When false, disables recording (mode set to 'never')."
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the mutation. When false (default), returns a preview of the changes."),
+    ] = False,
+) -> Dict[str, Any]:
+    """Toggle camera recording on/off with preview/confirm."""
+    logger.info("protect_toggle_recording tool called for %s (enabled=%s, confirm=%s)", camera_id, enabled, confirm)
+    try:
+        preview_data = await camera_manager.toggle_recording(camera_id, enabled)
+
+        if not confirm and not should_auto_confirm():
+            return preview_response(
+                action="toggle",
+                resource_type="camera_recording",
+                resource_id=camera_id,
+                current_state={
+                    "recording_mode": preview_data["current_recording_mode"],
+                    "is_recording": preview_data["is_recording"],
+                },
+                proposed_changes={
+                    "recording_mode": preview_data["proposed_recording_mode"],
+                },
+                resource_name=preview_data["camera_name"],
+            )
+
+        # Apply the change
+        result = await camera_manager.apply_toggle_recording(camera_id, enabled)
+        return {"success": True, "data": result}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error toggling recording for camera %s: %s", camera_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to toggle recording: {e}"}
+
+
+@server.tool(
+    name="protect_ptz_move",
+    description=(
+        "Adjusts PTZ camera position. Currently only zoom level is supported via the API. "
+        "For pan/tilt, use protect_ptz_preset to move to a saved preset position. "
+        "Only works on PTZ-capable cameras."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    permission_category="camera",
+    permission_action="update",
+)
+async def protect_ptz_move(
+    camera_id: Annotated[str, Field(description="Camera UUID of a PTZ-capable camera (from protect_list_cameras)")],
+    pan: Annotated[
+        Optional[float],
+        Field(
+            description="Pan position in degrees. Note: not currently supported via the API; use protect_ptz_preset for pan control."
+        ),
+    ] = None,
+    tilt: Annotated[
+        Optional[float],
+        Field(
+            description="Tilt position in degrees. Note: not currently supported via the API; use protect_ptz_preset for tilt control."
+        ),
+    ] = None,
+    zoom: Annotated[
+        Optional[int],
+        Field(description="Zoom level (0 = wide, higher values = more zoom). The maximum depends on the camera model."),
+    ] = None,
+) -> Dict[str, Any]:
+    """Adjust PTZ camera position (zoom only; pan/tilt via presets)."""
+    logger.info("protect_ptz_move tool called for %s (pan=%s, tilt=%s, zoom=%s)", camera_id, pan, tilt, zoom)
+    try:
+        result = await camera_manager.ptz_move(camera_id, pan=pan, tilt=tilt, zoom=zoom)
+        return {"success": True, "data": result}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error with PTZ move for camera %s: %s", camera_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to execute PTZ move: {e}"}
+
+
+@server.tool(
+    name="protect_ptz_preset",
+    description=(
+        "Moves a PTZ camera to a saved preset position by slot number. "
+        "Returns available presets for the camera. Only works on PTZ-capable cameras."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    permission_category="camera",
+    permission_action="update",
+)
+async def protect_ptz_preset(
+    camera_id: Annotated[str, Field(description="Camera UUID of a PTZ-capable camera (from protect_list_cameras)")],
+    preset_slot: Annotated[
+        int,
+        Field(
+            description="Preset slot number to move the camera to. Available slots can be seen in the camera's PTZ preset list."
+        ),
+    ],
+) -> Dict[str, Any]:
+    """Move PTZ camera to a preset position."""
+    logger.info("protect_ptz_preset tool called for %s (slot=%s)", camera_id, preset_slot)
+    try:
+        result = await camera_manager.ptz_goto_preset(camera_id, preset_slot)
+        return {"success": True, "data": result}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error with PTZ preset for camera %s: %s", camera_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to go to PTZ preset: {e}"}
+
+
+@server.tool(
+    name="protect_reboot_camera",
+    description=(
+        "Reboots a camera. The camera will be temporarily unavailable during reboot. "
+        "Requires confirm=True to execute. Use with caution — active recordings will be interrupted."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False),
+    permission_category="camera",
+    permission_action="update",
+)
+async def protect_reboot_camera(
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, executes the reboot. When false (default), returns a preview showing camera state and warnings."
+        ),
+    ] = False,
+) -> Dict[str, Any]:
+    """Reboot a camera with preview/confirm."""
+    logger.info("protect_reboot_camera tool called for %s (confirm=%s)", camera_id, confirm)
+    try:
+        preview_data = await camera_manager.reboot_camera(camera_id)
+
+        if not confirm and not should_auto_confirm():
+            return preview_response(
+                action="reboot",
+                resource_type="camera",
+                resource_id=camera_id,
+                current_state={
+                    "state": preview_data["state"],
+                    "is_connected": preview_data["is_connected"],
+                },
+                proposed_changes={
+                    "action": "reboot",
+                    "state": "rebooting",
+                },
+                resource_name=preview_data["camera_name"],
+                warnings=[
+                    "Camera will be temporarily unavailable during reboot. Active recordings will be interrupted."
+                ],
+            )
+
+        # Execute reboot
+        result = await camera_manager.apply_reboot_camera(camera_id)
+        return {"success": True, "data": result}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error rebooting camera %s: %s", camera_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to reboot camera: {e}"}
+
+
+logger.info(
+    "Camera tools registered: protect_list_cameras, protect_get_camera, "
+    "protect_get_snapshot, protect_get_camera_streams, protect_get_camera_analytics, "
+    "protect_update_camera_settings, protect_toggle_recording, "
+    "protect_ptz_move, protect_ptz_preset, protect_reboot_camera"
+)

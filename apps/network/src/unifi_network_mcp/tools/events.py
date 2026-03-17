@@ -5,9 +5,10 @@ This module provides MCP tools to view events and manage alarms on a UniFi Netwo
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import should_auto_confirm
 from unifi_network_mcp.categories import parse_permission
@@ -42,10 +43,15 @@ def _get_event_manager():
     ),
 )
 async def list_events(
-    within_hours: int = 24,
-    limit: int = 100,
-    start: int = 0,
-    event_type: Optional[str] = None,
+    within_hours: Annotated[int, Field(description="Only return events from the last N hours (default 24)")] = 24,
+    limit: Annotated[int, Field(description="Maximum number of events to return (default 100)")] = 100,
+    start: Annotated[int, Field(description="Offset for pagination, skip the first N events (default 0)")] = 0,
+    event_type: Annotated[
+        Optional[str],
+        Field(
+            description="Filter by event type prefix (e.g., 'EVT_WU_' for wireless user events, 'EVT_SW_' for switch events). Use unifi_get_event_types to see valid prefixes"
+        ),
+    ] = None,
 ) -> Dict[str, Any]:
     """List events with optional filtering."""
     try:
@@ -85,8 +91,10 @@ async def list_events(
     ),
 )
 async def list_alarms(
-    include_archived: bool = False,
-    limit: int = 100,
+    include_archived: Annotated[
+        bool, Field(description="When true, includes previously resolved/archived alarms. Default false (active only)")
+    ] = False,
+    limit: Annotated[int, Field(description="Maximum number of alarms to return (default 100)")] = 100,
 ) -> Dict[str, Any]:
     """List alarms with optional archived filter."""
     try:
@@ -138,7 +146,15 @@ async def get_event_types() -> Dict[str, Any]:
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def archive_alarm(alarm_id: str, confirm: bool = False) -> Dict[str, Any]:
+async def archive_alarm(
+    alarm_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the alarm to archive (from unifi_list_alarms)")
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, archives the alarm. When false (default), requires confirmation"),
+    ] = False,
+) -> Dict[str, Any]:
     """Archive a specific alarm."""
     if not parse_permission(config.permissions, "event", "update"):
         logger.warning(f"Permission denied for archiving alarm ({alarm_id}).")
@@ -169,7 +185,12 @@ async def archive_alarm(alarm_id: str, confirm: bool = False) -> Dict[str, Any]:
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def archive_all_alarms(confirm: bool = False) -> Dict[str, Any]:
+async def archive_all_alarms(
+    confirm: Annotated[
+        bool,
+        Field(description="When true, archives all active alarms. When false (default), requires confirmation"),
+    ] = False,
+) -> Dict[str, Any]:
     """Archive all active alarms."""
     if not parse_permission(config.permissions, "event", "update"):
         logger.warning("Permission denied for archiving all alarms.")

@@ -6,9 +6,10 @@ This module provides MCP tools to manage devices in a Unifi Network Controller.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import Annotated, Any, Dict, List, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import create_preview, preview_response, should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
@@ -43,7 +44,26 @@ def get_wifi_bands(device: Dict[str, Any]) -> List[str]:
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def list_devices(device_type: str = "all", status: str = "all", include_details: bool = False) -> Dict[str, Any]:
+async def list_devices(
+    device_type: Annotated[
+        str,
+        Field(
+            description="Filter by device type: 'all' (default), 'ap' (access points), 'switch', 'gateway', or 'pdu'"
+        ),
+    ] = "all",
+    status: Annotated[
+        str,
+        Field(
+            description="Filter by device status: 'all' (default), 'online', 'offline', 'pending', 'adopting', 'provisioning', or 'upgrading'"
+        ),
+    ] = "all",
+    include_details: Annotated[
+        bool,
+        Field(
+            description="When true, includes additional details like radio tables (APs), port tables (switches), WAN info (gateways), and client counts. Default false"
+        ),
+    ] = False,
+) -> Dict[str, Any]:
     """Implementation for listing devices."""
     try:
         devices = await device_manager.get_devices()
@@ -182,7 +202,12 @@ async def list_devices(device_type: str = "all", status: str = "all", include_de
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_device_details(mac_address: str) -> Dict[str, Any]:
+async def get_device_details(
+    mac_address: Annotated[
+        str,
+        Field(description="Device MAC address in format AA:BB:CC:DD:EE:FF (from unifi_list_devices)"),
+    ],
+) -> Dict[str, Any]:
     """Implementation for getting device details."""
     try:
         device = await device_manager.get_device_details(mac_address)
@@ -208,7 +233,16 @@ async def get_device_details(mac_address: str) -> Dict[str, Any]:
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
 )
-async def reboot_device(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
+async def reboot_device(
+    mac_address: Annotated[
+        str,
+        Field(description="MAC address of the device to reboot, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices)"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the reboot. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Implementation for rebooting a device."""
     if not parse_permission(config.permissions, "device", "reboot"):
         logger.warning(f"Permission denied for rebooting device ({mac_address}).")
@@ -280,7 +314,17 @@ async def reboot_device(mac_address: str, confirm: bool = False) -> Dict[str, An
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def rename_device(mac_address: str, name: str, confirm: bool = False) -> Dict[str, Any]:
+async def rename_device(
+    mac_address: Annotated[
+        str,
+        Field(description="MAC address of the device to rename, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices)"),
+    ],
+    name: Annotated[str, Field(description="New display name for the device (e.g., 'Office AP')")],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the rename. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Implementation for renaming a device."""
     if not parse_permission(config.permissions, "device", "update"):
         logger.warning(f"Permission denied for renaming device ({mac_address}).")
@@ -331,7 +375,20 @@ async def rename_device(mac_address: str, name: str, confirm: bool = False) -> D
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def adopt_device(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
+async def adopt_device(
+    mac_address: Annotated[
+        str,
+        Field(
+            description="MAC address of the pending device to adopt, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with status='pending')"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, initiates device adoption. When false (default), returns a preview of the changes"
+        ),
+    ] = False,
+) -> Dict[str, Any]:
     """Implementation for adopting a device."""
     if not parse_permission(config.permissions, "device", "adopt"):
         logger.warning(f"Permission denied for adopting device ({mac_address}).")
@@ -388,7 +445,20 @@ async def adopt_device(mac_address: str, confirm: bool = False) -> Dict[str, Any
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
 )
-async def upgrade_device(mac_address: str, confirm: bool = False) -> Dict[str, Any]:
+async def upgrade_device(
+    mac_address: Annotated[
+        str,
+        Field(
+            description="MAC address of the device to upgrade, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, initiates the firmware upgrade. When false (default), returns a preview of the changes"
+        ),
+    ] = False,
+) -> Dict[str, Any]:
     """Implementation for upgrading a device."""
     if not parse_permission(config.permissions, "device", "upgrade"):
         logger.warning(f"Permission denied for upgrading device ({mac_address}).")
@@ -466,7 +536,14 @@ VALID_HT_VALUES = {"20", "40", "80", "160", "320"}
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_device_radio(mac_address: str) -> Dict[str, Any]:
+async def get_device_radio(
+    mac_address: Annotated[
+        str,
+        Field(
+            description="MAC address of the access point, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='ap')"
+        ),
+    ],
+) -> Dict[str, Any]:
     """Implementation for getting focused radio config and stats for an AP."""
     try:
         result = await device_manager.get_device_radio(mac_address)
@@ -497,15 +574,44 @@ async def get_device_radio(mac_address: str) -> Dict[str, Any]:
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_device_radio(
-    mac_address: str,
-    radio: str,
-    tx_power_mode: str | None = None,
-    tx_power: int | None = None,
-    channel: int | None = None,
-    ht: str | None = None,
-    min_rssi_enabled: bool | None = None,
-    min_rssi: int | None = None,
-    confirm: bool = False,
+    mac_address: Annotated[
+        str,
+        Field(description="MAC address of the access point, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices)"),
+    ],
+    radio: Annotated[
+        str,
+        Field(
+            description="Radio band code to configure: 'na' (5GHz), 'ng' (2.4GHz), '6e'/'wifi6e' (6GHz), or internal name like 'wifi0', 'wifi1'"
+        ),
+    ],
+    tx_power_mode: Annotated[
+        Optional[str],
+        Field(description="Transmit power mode: 'auto', 'high', 'medium', 'low', or 'custom' (requires tx_power)"),
+    ] = None,
+    tx_power: Annotated[
+        Optional[int],
+        Field(description="Custom transmit power in dBm (only valid when tx_power_mode='custom')"),
+    ] = None,
+    channel: Annotated[
+        Optional[int],
+        Field(description="WiFi channel number (e.g., 1, 6, 11 for 2.4GHz; 36, 44, 149 for 5GHz)"),
+    ] = None,
+    ht: Annotated[
+        Optional[str],
+        Field(description="Channel width: '20', '40', '80', '160', or '320' MHz"),
+    ] = None,
+    min_rssi_enabled: Annotated[
+        Optional[bool],
+        Field(description="Enable minimum RSSI threshold to disconnect weak clients"),
+    ] = None,
+    min_rssi: Annotated[
+        Optional[int],
+        Field(description="Minimum RSSI value in dBm (e.g., -75). Only valid when min_rssi_enabled=true"),
+    ] = None,
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies radio changes. When false (default), returns a preview of the changes"),
+    ] = False,
 ) -> Dict[str, Any]:
     """Implementation for updating AP radio settings."""
     if not parse_permission(config.permissions, "device", "update"):

@@ -5,9 +5,10 @@ This module provides MCP tools to manage user groups (bandwidth profiles) on a U
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
@@ -82,7 +83,11 @@ async def list_usergroups() -> Dict[str, Any]:
     description="Get detailed information about a specific user group by its ID",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_usergroup_details(group_id: str) -> Dict[str, Any]:
+async def get_usergroup_details(
+    group_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the user group (from unifi_list_usergroups)")
+    ],
+) -> Dict[str, Any]:
     """Get details for a specific user group."""
     try:
         usergroup_manager = _get_usergroup_manager()
@@ -114,10 +119,23 @@ User groups can be assigned to clients to enforce bandwidth policies.""",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_usergroup(
-    name: str,
-    down_limit_kbps: Optional[int] = None,
-    up_limit_kbps: Optional[int] = None,
-    confirm: bool = False,
+    name: Annotated[str, Field(description="Name for the user group / bandwidth profile")],
+    down_limit_kbps: Annotated[
+        Optional[int],
+        Field(
+            description="Download speed limit in Kbps (e.g., 10000 for 10 Mbps). Use -1 for unlimited. Omit to leave uncapped"
+        ),
+    ] = None,
+    up_limit_kbps: Annotated[
+        Optional[int],
+        Field(
+            description="Upload speed limit in Kbps (e.g., 5000 for 5 Mbps). Use -1 for unlimited. Omit to leave uncapped"
+        ),
+    ] = None,
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the user group. When false (default), returns a preview"),
+    ] = False,
 ) -> Dict[str, Any]:
     """Create a new user group."""
     if not parse_permission(config.permissions, "usergroup", "create"):
@@ -173,11 +191,22 @@ Use -1 for unlimited bandwidth. Changes affect all clients assigned to this grou
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_usergroup(
-    group_id: str,
-    name: Optional[str] = None,
-    down_limit_kbps: Optional[int] = None,
-    up_limit_kbps: Optional[int] = None,
-    confirm: bool = False,
+    group_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the user group to update (from unifi_list_usergroups)")
+    ],
+    name: Annotated[Optional[str], Field(description="New name for the user group")] = None,
+    down_limit_kbps: Annotated[
+        Optional[int],
+        Field(description="New download speed limit in Kbps. Use -1 for unlimited"),
+    ] = None,
+    up_limit_kbps: Annotated[
+        Optional[int],
+        Field(description="New upload speed limit in Kbps. Use -1 for unlimited"),
+    ] = None,
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the update. When false (default), returns a preview of the changes"),
+    ] = False,
 ) -> Dict[str, Any]:
     """Update an existing user group."""
     if not parse_permission(config.permissions, "usergroup", "update"):
