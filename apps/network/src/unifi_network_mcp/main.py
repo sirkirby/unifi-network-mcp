@@ -206,15 +206,6 @@ logger.info("Using global Manager instances.")
 async def main_async():
     """Main asynchronous function to setup and run the server."""
 
-    # ---- VERY EARLY ASYNC LOG TEST ----
-    try:
-        from unifi_network_mcp.bootstrap import logger as bootstrap_logger_async
-
-        bootstrap_logger_async.critical("ASYNCHRONOUS main_async() FUNCTION ENTERED - TEST MESSAGE")
-    except Exception as e:
-        print(f"Logging in main_async() failed: {e}", file=sys.stderr)  # Fallback
-    # ---- END VERY EARLY ASYNC LOG TEST ----
-
     # --- Add asyncio global exception handler ---
     loop = asyncio.get_event_loop()
 
@@ -404,15 +395,6 @@ async def main_async():
 
 def main():
     """Synchronous entry point."""
-    # ---- VERY EARLY LOG TEST ----
-    try:
-        from unifi_network_mcp.bootstrap import logger as bootstrap_logger
-
-        bootstrap_logger.critical("SYNCHRONOUS main() FUNCTION ENTERED - TEST MESSAGE")
-    except Exception as e:
-        print(f"Logging in main() failed: {e}", file=sys.stderr)  # Fallback
-    # ---- END VERY EARLY LOG TEST ----
-
     logger.debug("Starting main()")  # This uses the logger from bootstrap via global scope
     try:
         asyncio.run(main_async())

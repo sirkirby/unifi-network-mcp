@@ -1,32 +1,18 @@
 services:
   unifi-network-mcp:
-    build: .
-    stdin_open: true
-    tty: true
+    build:
+      context: ..
+      dockerfile: apps/network/Dockerfile
+    env_file:
+      - ../.env
     environment:
-      - UNIFI_HOST=${UNIFI_HOST:-localhost}
-      - UNIFI_USERNAME=${UNIFI_USERNAME}
-      - UNIFI_PASSWORD=${UNIFI_PASSWORD}
-      - UNIFI_PORT=${UNIFI_PORT:-443}
-      - UNIFI_SITE=${UNIFI_SITE:-default}
-      - UNIFI_VERIFY_SSL=${UNIFI_VERIFY_SSL:-false}
-      - CONFIG_PATH=/app/src/config/config.yaml
-      - UNIFI_MCP_HTTP_ENABLED=${UNIFI_MCP_HTTP_ENABLED:-false}
-      - UNIFI_MCP_HTTP_TRANSPORT=${UNIFI_MCP_HTTP_TRANSPORT:-streamable-http}
-      - UNIFI_MCP_HOST=${UNIFI_MCP_HOST:-0.0.0.0}
-      - UNIFI_MCP_PORT=${UNIFI_MCP_PORT:-3000}
-      - UNIFI_MCP_DIAGNOSTICS=${UNIFI_MCP_DIAGNOSTICS:-false}
-      - UNIFI_MCP_DIAG_LOG_TOOL_ARGS=${UNIFI_MCP_DIAG_LOG_TOOL_ARGS:-true}
-      - UNIFI_MCP_DIAG_LOG_TOOL_RESULT=${UNIFI_MCP_DIAG_LOG_TOOL_RESULT:-true}
-      - UNIFI_MCP_DIAG_MAX_PAYLOAD=${UNIFI_MCP_DIAG_MAX_PAYLOAD:-2000}
-      - UNIFI_MCP_LOG_LEVEL=${UNIFI_MCP_LOG_LEVEL:-INFO}
-      - UNIFI_CONTROLLER_TYPE=${UNIFI_CONTROLLER_TYPE:-auto}
-      - UNIFI_AUTO_CONFIRM=${UNIFI_AUTO_CONFIRM:-false}
-      - UNIFI_TOOL_REGISTRATION_MODE=${UNIFI_TOOL_REGISTRATION_MODE:-lazy}
-      - UNIFI_MCP_ALLOWED_HOSTS=${UNIFI_MCP_ALLOWED_HOSTS:-localhost,127.0.0.1}
-      #- UNIFI_ENABLED_CATEGORIES=${UNIFI_ENABLED_CATEGORIES:-clients,system,devices}
-      #- UNIFI_ENABLED_TOOLS=${UNIFI_ENABLED_TOOLS:-unifi_list_clients,unifi_list_devices}
-    volumes:
-      - ./src/config:/app/src/config
+      # Enable HTTP transport for remote MCP clients (LM Studio, etc.)
+      - UNIFI_MCP_HTTP_ENABLED=true
+      - UNIFI_MCP_HTTP_TRANSPORT=streamable-http
+      - UNIFI_MCP_HOST=0.0.0.0
+      - UNIFI_MCP_PORT=3000
+      - UNIFI_MCP_ALLOWED_HOSTS=localhost,localhost:3000,127.0.0.1,127.0.0.1:3000,host.docker.internal,host.docker.internal:3000
+    ports:
+      - "3000:3000"
     restart: unless-stopped
     container_name: unifi-network-mcp
