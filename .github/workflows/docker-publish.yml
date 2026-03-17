@@ -3,7 +3,7 @@ name: Docker Multi-arch Build and Publish
 on:
   push:
     branches: [ "main" ]
-    tags: [ 'v*.*.*' ]
+    tags: [ 'v*.*.*', 'network/v*.*.*' ]
   pull_request:
     types: [ opened, synchronize, reopened ]
     branches: [ "main" ]
@@ -44,11 +44,25 @@ jobs:
       - name: Get version from git
         id: version
         run: |
-          # Derive version from git describe (hatch-vcs compatible)
-          if git describe --tags --match 'v*' HEAD >/dev/null 2>&1; then
-            VERSION=$(git describe --tags --match 'v*' HEAD | sed 's/^v//')
+          # Derive PEP 440 version from git tags
+          # Check for network/ prefixed tags first (monorepo), then plain v* tags
+          if git describe --tags --match 'network/v*' HEAD >/dev/null 2>&1; then
+            RAW=$(git describe --tags --match 'network/v*' HEAD)
+            BASE=$(echo "$RAW" | sed 's|^network/v||' | sed 's/-.*//')
+          elif git describe --tags --match 'v*' HEAD >/dev/null 2>&1; then
+            RAW=$(git describe --tags --match 'v*' HEAD)
+            BASE=$(echo "$RAW" | sed 's/^v//' | sed 's/-.*//')
           else
-            VERSION="0.0.0.dev$(git rev-list --count HEAD)+g$(git rev-parse --short HEAD)"
+            RAW=""
+            BASE="0.0.0"
+          fi
+          # If exactly on a tag, use the clean version; otherwise build a PEP 440 dev version
+          if [ -n "$RAW" ] && ! echo "$RAW" | grep -q '-'; then
+            VERSION="$BASE"
+          else
+            COMMITS=$(git rev-list --count HEAD)
+            SHA=$(git rev-parse --short HEAD)
+            VERSION="${BASE}.dev${COMMITS}+g${SHA}"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Detected version: $VERSION"
