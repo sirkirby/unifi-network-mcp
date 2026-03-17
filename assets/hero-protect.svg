@@ -124,25 +124,19 @@
     <path d="M 670,350 C 700,380 750,430 820,470" stroke-width="1.2" opacity="0.2"/>
   </g>
 
-  <!-- Knot (from logo-protect.svg, scaled to ~100px) -->
-  <g transform="translate(590, 280)">
-    <!-- Upper strand -->
-    <path d="M 0,22 C 12,22 18,30 28,34 Q 50,42 72,34 C 82,30 88,22 100,22"
-          stroke="#8B5CF6" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <!-- Middle strand -->
-    <path d="M 0,40 C 14,40 18,52 28,52 C 36,52 40,44 50,40 C 60,36 64,28 72,28 C 84,28 88,40 100,40"
-          stroke="#8B5CF6" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <!-- Lower strand -->
-    <path d="M 0,58 C 12,58 18,50 28,46 Q 50,38 72,46 C 82,50 88,58 100,58"
-          stroke="#8B5CF6" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <!-- Over/under crossings -->
-    <path d="M 20,27 C 23,30 26,33 28,35" stroke="#8B5CF6" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <path d="M 80,53 C 77,50 75,48 73,46" stroke="#8B5CF6" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <path d="M 68,29 C 70,28 72,28 74,29" stroke="#8B5CF6" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <path d="M 26,51 C 28,52 30,52 32,51" stroke="#8B5CF6" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <!-- Shield icon inside knot -->
-    <path d="M 50,34 L 57,37 L 57,43 C 57,46 54,49 50,50 C 46,49 43,46 43,43 L 43,37 Z"
-          stroke="#8B5CF6" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.7"/>
+  <!-- Shield with camera lens icon -->
+  <g>
+    <!-- Shield shape -->
+    <path d="M 640,268 L 690,284 L 690,332 C 690,358 668,378 640,386 C 612,378 590,358 590,332 L 590,284 Z"
+          stroke="#8B5CF6" stroke-width="3" stroke-linejoin="round" fill="#8B5CF6" fill-opacity="0.12" opacity="0.8"/>
+    <!-- Camera lens outer ring -->
+    <circle cx="640" cy="322" r="24" stroke="#8B5CF6" stroke-width="2.5" fill="none" opacity="0.7"/>
+    <!-- Camera lens inner ring -->
+    <circle cx="640" cy="322" r="14" stroke="#8B5CF6" stroke-width="2" fill="none" opacity="0.5"/>
+    <!-- Camera lens center dot -->
+    <circle cx="640" cy="322" r="5" fill="#8B5CF6" opacity="0.6"/>
+    <!-- Lens reflection highlight -->
+    <circle cx="648" cy="314" r="3" fill="#8B5CF6" opacity="0.3"/>
   </g>
 
   <!-- Glow rings -->

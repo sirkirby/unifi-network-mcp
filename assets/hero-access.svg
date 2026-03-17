@@ -122,28 +122,18 @@
     <path d="M 670,350 C 700,380 750,430 820,470" stroke-width="1.2" opacity="0.2"/>
   </g>
 
-  <!-- Knot (from logo-access.svg, scaled to ~100px) -->
-  <g transform="translate(590, 280)">
-    <!-- Upper strand -->
-    <path d="M 0,22 C 12,22 18,30 28,34 Q 50,42 72,34 C 82,30 88,22 100,22"
-          stroke="#F59E0B" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <!-- Middle strand -->
-    <path d="M 0,40 C 14,40 18,52 28,52 C 36,52 40,44 50,40 C 60,36 64,28 72,28 C 84,28 88,40 100,40"
-          stroke="#F59E0B" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <!-- Lower strand -->
-    <path d="M 0,58 C 12,58 18,50 28,46 Q 50,38 72,46 C 82,50 88,58 100,58"
-          stroke="#F59E0B" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <!-- Over/under crossings -->
-    <path d="M 20,27 C 23,30 26,33 28,35" stroke="#F59E0B" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <path d="M 80,53 C 77,50 75,48 73,46" stroke="#F59E0B" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <path d="M 68,29 C 70,28 72,28 74,29" stroke="#F59E0B" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <path d="M 26,51 C 28,52 30,52 32,51" stroke="#F59E0B" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <!-- Lock icon inside knot -->
-    <rect x="46" y="41" width="8" height="6" rx="1"
-          stroke="#F59E0B" stroke-width="1" fill="none" opacity="0.7"/>
-    <path d="M 48,41 L 48,39 C 48,37 50,35.5 50,35.5 C 50,35.5 52,37 52,39 L 52,41"
-          stroke="#F59E0B" stroke-width="1" stroke-linecap="round" fill="none" opacity="0.7"/>
-    <circle cx="50" cy="44" r="0.8" fill="#F59E0B" opacity="0.7"/>
+  <!-- Padlock icon -->
+  <g>
+    <!-- Lock body (rounded rectangle) -->
+    <rect x="608" y="320" width="64" height="52" rx="8"
+          stroke="#F59E0B" stroke-width="3" fill="#F59E0B" fill-opacity="0.12" opacity="0.8"/>
+    <!-- Shackle (arc on top) -->
+    <path d="M 620,320 L 620,300 C 620,282 630,272 640,272 C 650,272 660,282 660,300 L 660,320"
+          stroke="#F59E0B" stroke-width="3.5" stroke-linecap="round" fill="none" opacity="0.7"/>
+    <!-- Keyhole circle -->
+    <circle cx="640" cy="342" r="8" fill="#F59E0B" opacity="0.6"/>
+    <!-- Keyhole slot -->
+    <rect x="637" y="346" width="6" height="12" rx="2" fill="#F59E0B" opacity="0.5"/>
   </g>
 
   <!-- Glow rings -->

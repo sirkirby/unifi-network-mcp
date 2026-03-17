@@ -114,26 +114,20 @@
     <path d="M 670,350 C 700,380 750,430 820,470" stroke-width="1.2" opacity="0.2"/>
   </g>
 
-  <g transform="translate(590, 280)">
-    <!-- Knot from logo-drive.svg -->
-    <path d="M 0,22 C 12,22 18,30 28,34 Q 50,42 72,34 C 82,30 88,22 100,22"
-          stroke="#00D4AA" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <path d="M 0,40 C 14,40 18,52 28,52 C 36,52 40,44 50,40 C 60,36 64,28 72,28 C 84,28 88,40 100,40"
-          stroke="#00D4AA" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <path d="M 0,58 C 12,58 18,50 28,46 Q 50,38 72,46 C 82,50 88,58 100,58"
-          stroke="#00D4AA" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <path d="M 20,27 C 23,30 26,33 28,35" stroke="#00D4AA" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <path d="M 80,53 C 77,50 75,48 73,46" stroke="#00D4AA" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <path d="M 68,29 C 70,28 72,28 74,29" stroke="#00D4AA" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <path d="M 26,51 C 28,52 30,52 32,51" stroke="#00D4AA" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <!-- Drive icon -->
-    <ellipse cx="50" cy="36" rx="5.5" ry="2" stroke="#00D4AA" stroke-width="1" fill="none" opacity="0.7"/>
-    <line x1="44.5" y1="36" x2="44.5" y2="40" stroke="#00D4AA" stroke-width="1" opacity="0.6"/>
-    <line x1="55.5" y1="36" x2="55.5" y2="40" stroke="#00D4AA" stroke-width="1" opacity="0.6"/>
-    <ellipse cx="50" cy="40" rx="5.5" ry="2" stroke="#00D4AA" stroke-width="1" fill="none" opacity="0.7"/>
-    <line x1="44.5" y1="40" x2="44.5" y2="44" stroke="#00D4AA" stroke-width="1" opacity="0.6"/>
-    <line x1="55.5" y1="40" x2="55.5" y2="44" stroke="#00D4AA" stroke-width="1" opacity="0.6"/>
-    <ellipse cx="50" cy="44" rx="5.5" ry="2" stroke="#00D4AA" stroke-width="1" fill="none" opacity="0.7"/>
+  <!-- Hard drive icon -->
+  <g>
+    <!-- Drive body (rounded rectangle) -->
+    <rect x="596" y="280" width="88" height="80" rx="10"
+          stroke="#00D4AA" stroke-width="3" fill="#00D4AA" fill-opacity="0.12" opacity="0.8"/>
+    <!-- Horizontal divider line -->
+    <line x1="596" y1="336" x2="684" y2="336" stroke="#00D4AA" stroke-width="2" opacity="0.5"/>
+    <!-- LED indicator dots (bottom section) -->
+    <circle cx="666" cy="350" r="4" fill="#00D4AA" opacity="0.7"/>
+    <circle cx="652" cy="350" r="4" fill="#00D4AA" opacity="0.45"/>
+    <!-- Drive platter lines (top section) -->
+    <line x1="616" y1="300" x2="664" y2="300" stroke="#00D4AA" stroke-width="2" stroke-linecap="round" opacity="0.35"/>
+    <line x1="616" y1="310" x2="664" y2="310" stroke="#00D4AA" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
+    <line x1="616" y1="320" x2="664" y2="320" stroke="#00D4AA" stroke-width="2" stroke-linecap="round" opacity="0.25"/>
   </g>
 
   <circle cx="640" cy="320" r="70" stroke="#00D4AA" stroke-width="0.8" fill="none" opacity="0.15"/>

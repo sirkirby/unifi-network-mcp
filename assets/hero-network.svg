@@ -131,29 +131,27 @@
     <path d="M 665,350 C 700,380 750,430 820,470" stroke-width="1.2" opacity="0.2"/>
   </g>
 
-  <!-- Knot (from logo-network.svg, scaled to ~100px) -->
-  <g transform="translate(590, 280)">
-    <!-- Upper strand -->
-    <path d="M 0,22 C 12,22 18,30 28,34 Q 50,42 72,34 C 82,30 88,22 100,22"
-          stroke="#006FFF" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <!-- Middle strand -->
-    <path d="M 0,40 C 14,40 18,52 28,52 C 36,52 40,44 50,40 C 60,36 64,28 72,28 C 84,28 88,40 100,40"
-          stroke="#006FFF" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <!-- Lower strand -->
-    <path d="M 0,58 C 12,58 18,50 28,46 Q 50,38 72,46 C 82,50 88,58 100,58"
-          stroke="#006FFF" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <!-- Over/under crossings -->
-    <path d="M 20,27 C 23,30 26,33 28,35" stroke="#006FFF" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <path d="M 80,53 C 77,50 75,48 73,46" stroke="#006FFF" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
-    <path d="M 68,29 C 70,28 72,28 74,29" stroke="#006FFF" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <path d="M 26,51 C 28,52 30,52 32,51" stroke="#006FFF" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.9"/>
-    <!-- Network topology triangle inside knot -->
-    <circle cx="50" cy="34" r="2.5" fill="#006FFF" opacity="0.7"/>
-    <circle cx="44" cy="44" r="2.5" fill="#006FFF" opacity="0.7"/>
-    <circle cx="56" cy="44" r="2.5" fill="#006FFF" opacity="0.7"/>
-    <line x1="50" y1="34" x2="44" y2="44" stroke="#006FFF" stroke-width="1" opacity="0.5"/>
-    <line x1="50" y1="34" x2="56" y2="44" stroke="#006FFF" stroke-width="1" opacity="0.5"/>
-    <line x1="44" y1="44" x2="56" y2="44" stroke="#006FFF" stroke-width="1" opacity="0.5"/>
+  <!-- Network topology icon (3 nodes in triangle, connected) -->
+  <g>
+    <!-- Connection lines between nodes -->
+    <line x1="640" y1="272" x2="588" y2="362" stroke="#006FFF" stroke-width="3" opacity="0.6"/>
+    <line x1="640" y1="272" x2="692" y2="362" stroke="#006FFF" stroke-width="3" opacity="0.6"/>
+    <line x1="588" y1="362" x2="692" y2="362" stroke="#006FFF" stroke-width="3" opacity="0.6"/>
+    <!-- Top node -->
+    <circle cx="640" cy="272" r="15" fill="#006FFF" opacity="0.35"/>
+    <circle cx="640" cy="272" r="8" fill="#006FFF" opacity="0.7"/>
+    <!-- Bottom-left node -->
+    <circle cx="588" cy="362" r="14" fill="#006FFF" opacity="0.3"/>
+    <circle cx="588" cy="362" r="7" fill="#006FFF" opacity="0.6"/>
+    <!-- Bottom-right node -->
+    <circle cx="692" cy="362" r="14" fill="#006FFF" opacity="0.3"/>
+    <circle cx="692" cy="362" r="7" fill="#006FFF" opacity="0.6"/>
+    <!-- Center hub dot -->
+    <circle cx="640" cy="332" r="5" fill="#006FFF" opacity="0.5"/>
+    <!-- Spokes to center -->
+    <line x1="640" y1="280" x2="640" y2="327" stroke="#006FFF" stroke-width="1.5" opacity="0.35"/>
+    <line x1="594" y1="357" x2="635" y2="334" stroke="#006FFF" stroke-width="1.5" opacity="0.35"/>
+    <line x1="686" y1="357" x2="645" y2="334" stroke="#006FFF" stroke-width="1.5" opacity="0.35"/>
   </g>
 
   <!-- Glow rings -->
