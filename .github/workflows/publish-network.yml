@@ -11,6 +11,8 @@ jobs:
   build-and-publish:
     name: Build and publish Python distributions to PyPI
     runs-on: ubuntu-latest
+    # Only publish for network server releases (network/v* or legacy v* tags)
+    if: startsWith(github.event.release.tag_name, 'network/v') || startsWith(github.event.release.tag_name, 'v')
     environment:
        name: pypi
        url: https://pypi.org/p/unifi-network-mcp # Link to the PyPI package page
