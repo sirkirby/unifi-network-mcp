@@ -2,6 +2,9 @@
 
 Provides methods to query and manage access credentials (NFC cards, PINs,
 mobile credentials) via the Access controller API.
+
+All methods use the proxy session path since credential management is
+not exposed by the py-unifi-access API client.
 """
 
 from __future__ import annotations
@@ -10,6 +13,7 @@ import logging
 from typing import Any, Dict, List
 
 from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
+from unifi_core.exceptions import UniFiConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -21,25 +25,112 @@ class CredentialManager:
         self._cm = connection_manager
 
     # ------------------------------------------------------------------
-    # Read-only methods (stubs)
+    # Read-only methods
     # ------------------------------------------------------------------
 
     async def list_credentials(self) -> List[Dict[str, Any]]:
         """Return all credentials as summary dicts."""
-        raise NotImplementedError("CredentialManager.list_credentials not yet implemented")
+        if not self._cm.has_proxy:
+            raise UniFiConnectionError("No proxy session available for list_credentials")
+        try:
+            data = await self._cm.proxy_request("GET", "credentials")
+            return data.get("data", data) if isinstance(data, dict) else data
+        except UniFiConnectionError:
+            raise
+        except Exception as e:
+            logger.error("Failed to list credentials: %s", e, exc_info=True)
+            raise
 
     async def get_credential(self, credential_id: str) -> Dict[str, Any]:
         """Return detailed information for a single credential."""
-        raise NotImplementedError("CredentialManager.get_credential not yet implemented")
+        if not credential_id:
+            raise ValueError("credential_id is required")
+        if not self._cm.has_proxy:
+            raise UniFiConnectionError("No proxy session available for get_credential")
+        try:
+            data = await self._cm.proxy_request("GET", f"credentials/{credential_id}")
+            return data.get("data", data) if isinstance(data, dict) else data
+        except (UniFiConnectionError, ValueError):
+            raise
+        except Exception as e:
+            logger.error("Failed to get credential %s: %s", credential_id, e, exc_info=True)
+            raise
 
     # ------------------------------------------------------------------
-    # Mutation methods (stubs)
+    # Mutation methods (preview/confirm pattern)
     # ------------------------------------------------------------------
 
-    async def create_credential(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new credential. Returns preview data."""
-        raise NotImplementedError("CredentialManager.create_credential not yet implemented")
+    async def create_credential(self, credential_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Preview a credential creation. Returns preview data for confirmation.
 
-    async def delete_credential(self, credential_id: str) -> Dict[str, Any]:
-        """Delete a credential. Returns preview data."""
-        raise NotImplementedError("CredentialManager.delete_credential not yet implemented")
+        Parameters
+        ----------
+        credential_type:
+            Type of credential (e.g., nfc, pin, mobile).
+        data:
+            Credential payload (user_id, token/pin/etc.).
+        """
+        if not credential_type:
+            raise ValueError("credential_type is required")
+        if not data:
+            raise ValueError("credential data must not be empty")
+
+        return {
+            "credential_type": credential_type,
+            "credential_data": data,
+            "proposed_changes": {
+                "action": "create",
+                "type": credential_type,
+                **data,
+            },
+        }
+
+    async def apply_create_credential(self, credential_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute the credential creation on the controller."""
+        if not self._cm.has_proxy:
+            raise UniFiConnectionError("No proxy session available for create_credential")
+        try:
+            payload = {"type": credential_type, **data}
+            result = await self._cm.proxy_request("POST", "credentials", json=payload)
+            return {
+                "action": "create",
+                "credential_type": credential_type,
+                "result": "success",
+                "data": result.get("data", result) if isinstance(result, dict) else result,
+            }
+        except UniFiConnectionError:
+            raise
+        except Exception as e:
+            logger.error("Failed to create credential: %s", e, exc_info=True)
+            raise
+
+    async def revoke_credential(self, credential_id: str) -> Dict[str, Any]:
+        """Preview a credential revocation. Returns preview data for confirmation."""
+        if not credential_id:
+            raise ValueError("credential_id is required")
+
+        current = await self.get_credential(credential_id)
+        return {
+            "credential_id": credential_id,
+            "current_state": current,
+            "proposed_changes": {
+                "action": "revoke",
+            },
+        }
+
+    async def apply_revoke_credential(self, credential_id: str) -> Dict[str, Any]:
+        """Execute the credential revocation on the controller."""
+        if not self._cm.has_proxy:
+            raise UniFiConnectionError("No proxy session available for revoke_credential")
+        try:
+            await self._cm.proxy_request("DELETE", f"credentials/{credential_id}")
+            return {
+                "credential_id": credential_id,
+                "action": "revoke",
+                "result": "success",
+            }
+        except UniFiConnectionError:
+            raise
+        except Exception as e:
+            logger.error("Failed to revoke credential %s: %s", credential_id, e, exc_info=True)
+            raise
