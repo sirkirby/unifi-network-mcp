@@ -1,12 +1,8 @@
 """Tests for EventBuffer ring buffer."""
 
 import time
-from unittest.mock import patch
-
-import pytest
 
 from unifi_protect_mcp.managers.event_manager import EventBuffer
-
 
 # ---------------------------------------------------------------------------
 # Construction

@@ -30,6 +30,7 @@ from unifi_protect_mcp.jobs import get_job_status, start_async_tool
 from unifi_protect_mcp.runtime import (
     config,
     connection_manager,
+    event_manager,
     server,
 )
 from unifi_protect_mcp.tool_index import register_tool, tool_index_handler
@@ -244,6 +245,24 @@ async def main_async():
         logger.error("Failed to connect to UniFi Protect. Tool functionality may be impaired.")
     else:
         logger.info("Global Protect connection initialized successfully from main_async.")
+
+        # Start the websocket event listener if enabled and connection succeeded
+        ws_enabled_raw = config.protect.events.get("websocket_enabled", True) if hasattr(config, "protect") else True
+        ws_enabled = parse_config_bool(ws_enabled_raw)
+        if ws_enabled:
+            try:
+                event_manager.set_server(server)
+                await event_manager.start_listening()
+                logger.info("Protect event websocket listener started.")
+            except Exception as ws_exc:
+                logger.error(
+                    "Failed to start event websocket listener: %s. "
+                    "Real-time events will be unavailable; REST queries still work.",
+                    ws_exc,
+                    exc_info=True,
+                )
+        else:
+            logger.info("Protect event websocket disabled via config.")
 
     # Register meta-tools first (always available regardless of mode)
     register_meta_tools(
