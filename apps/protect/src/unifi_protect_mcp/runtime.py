@@ -129,6 +129,7 @@ def _unifi_settings() -> Any:
 @lru_cache
 def get_connection_manager() -> ProtectConnectionManager:
     cfg = _unifi_settings()
+    api_key = getattr(cfg, "api_key", None) or os.environ.get("UNIFI_API_KEY")
     return ProtectConnectionManager(
         host=cfg.host,
         username=cfg.username,
@@ -136,6 +137,7 @@ def get_connection_manager() -> ProtectConnectionManager:
         port=cfg.port,
         site=cfg.site,
         verify_ssl=str(cfg.verify_ssl).lower() in ("true", "1", "yes"),
+        api_key=api_key if api_key else None,
     )
 
 

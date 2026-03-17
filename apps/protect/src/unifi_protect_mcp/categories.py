@@ -64,7 +64,7 @@ _MANIFEST_FALLBACK = Path("apps/protect/src/unifi_protect_mcp/tools_manifest.jso
 def _build_tool_module_map() -> Dict[str, str]:
     """Build tool-to-module mapping for the protect app."""
     manifest = _MANIFEST_PATH if _MANIFEST_PATH.exists() else _MANIFEST_FALLBACK
-    return build_tool_module_map("unifi_protect_mcp.tools", manifest_path=str(manifest))
+    return build_tool_module_map("unifi_protect_mcp.tools", manifest_path=str(manifest), tool_prefix="protect_")
 
 
 # Build the tool map at module load time

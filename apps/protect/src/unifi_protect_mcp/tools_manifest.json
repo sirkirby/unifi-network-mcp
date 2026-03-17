@@ -1,1 +1,53 @@
-{"count": 0, "tools": {}, "module_map": {}}
+{
+  "count": 4,
+  "generated_by": "scripts/generate_tool_manifest.py",
+  "module_map": {
+    "protect_get_firmware_status": "unifi_protect_mcp.tools.system",
+    "protect_get_health": "unifi_protect_mcp.tools.system",
+    "protect_get_system_info": "unifi_protect_mcp.tools.system",
+    "protect_list_viewers": "unifi_protect_mcp.tools.system"
+  },
+  "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
+  "tools": [
+    {
+      "description": "Returns firmware update availability for the NVR and all adopted devices (cameras, lights, sensors, viewers, chimes, bridges, doorlocks). Use to check whether any device needs a firmware update.",
+      "name": "protect_get_firmware_status",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns NVR health summary including CPU load and temperature, memory usage, and storage utilization. Use to diagnose performance issues or storage pressure.",
+      "name": "protect_get_health",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Returns NVR model, firmware version, uptime, storage usage, and connected device counts. Use for basic 'is the NVR healthy?' checks and capacity overview.",
+      "name": "protect_get_system_info",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Lists all connected Protect viewers (e.g., UP-Viewer, Viewport) with their connection state, firmware version, and assigned liveview.",
+      "name": "protect_list_viewers",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    }
+  ]
+}
