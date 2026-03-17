@@ -11,7 +11,6 @@ unifi-mcp/
     unifi-mcp-shared/     # Shared MCP server patterns
   docs/                   # Ecosystem-level docs and plans
   docker/                 # Docker compose for network server
-  .well-known/            # MCP identity file
 ```
 
 The workspace is managed by [uv](https://docs.astral.sh/uv/) with `pyproject.toml` at the root defining workspace members. Each app and package is an independent Python package with its own `pyproject.toml`.

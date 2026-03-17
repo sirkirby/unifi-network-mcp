@@ -354,7 +354,6 @@ logger.info("[diagnostics] Tool '%s' completed in %.2fs", name, duration)
 
 - Version is derived from git tags via `hatch-vcs` (e.g., `v0.4.0` -> `0.4.0`)
 - MUST NOT manually edit version in `pyproject.toml` (it uses `dynamic = ["version"]`)
-- `.well-known/mcp-server.json` MUST be updated to match the release version
 - `apps/network/src/unifi_network_mcp/tools_manifest.json` MUST be regenerated and committed before release
 
 ### 6.2 Manifest Ownership
@@ -496,7 +495,6 @@ make run-meta    # Meta-only mode
 | `pyproject.toml` | Workspace root config |
 | `uv.lock` | Single lockfile for all packages |
 | `env.example` | Environment variable template |
-| `.well-known/mcp-server.json` | MCP identity and capabilities |
 | `CONTRIBUTING.md` | Contributor workflow |
 
 ## Appendix B: Environment Variable Quick Reference
