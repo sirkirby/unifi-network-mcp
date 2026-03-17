@@ -126,10 +126,24 @@ build-test: manifest
 
 # Docker
 docker:
-	@VERSION=$$(git -C ../.. describe --tags --match 'network/v*' --always 2>/dev/null || git -C ../.. describe --tags --match 'v*' --always 2>/dev/null || echo '0.0.0'); \
-	VERSION=$$(echo "$$VERSION" | sed 's|^network/||; s/^v//'); \
+	@if git -C ../.. describe --tags --match 'network/v*' HEAD >/dev/null 2>&1; then \
+		RAW=$$(git -C ../.. describe --tags --match 'network/v*' HEAD); \
+		BASE=$$(echo "$$RAW" | sed 's|^network/v||; s/-.*//'); \
+	elif git -C ../.. describe --tags --match 'v*' HEAD >/dev/null 2>&1; then \
+		RAW=$$(git -C ../.. describe --tags --match 'v*' HEAD); \
+		BASE=$$(echo "$$RAW" | sed 's/^v//; s/-.*//'); \
+	else \
+		RAW=""; BASE="0.0.0"; \
+	fi; \
+	if [ -n "$$RAW" ] && ! echo "$$RAW" | grep -q '-'; then \
+		VERSION="$$BASE"; \
+	else \
+		COMMITS=$$(git -C ../.. rev-list --count HEAD); \
+		SHA=$$(git -C ../.. rev-parse --short HEAD); \
+		VERSION="$${BASE}.dev$${COMMITS}+g$${SHA}"; \
+	fi; \
 	echo "Building Docker image with version: $$VERSION"; \
-	docker build --build-arg VERSION=$$VERSION -f Dockerfile ../..
+	docker build --build-arg VERSION=$$VERSION -t unifi-network-mcp:latest -f Dockerfile ../..
 
 docker-run:
 	docker run --rm \
