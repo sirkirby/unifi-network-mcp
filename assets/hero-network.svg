@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640">
+  <defs>
+    <radialGradient id="glow" cx="640" cy="320" r="280" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#006FFF" stop-opacity="0.25"/>
+      <stop offset="50%" stop-color="#006FFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#006FFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- ============================================ -->
+  <!-- Layer 1: Background grid (blue, faint)       -->
+  <!-- ============================================ -->
+  <g stroke="#006FFF" stroke-width="0.5" opacity="0.05">
+    <line x1="80" y1="0" x2="80" y2="640"/>
+    <line x1="160" y1="0" x2="160" y2="640"/>
+    <line x1="240" y1="0" x2="240" y2="640"/>
+    <line x1="320" y1="0" x2="320" y2="640"/>
+    <line x1="400" y1="0" x2="400" y2="640"/>
+    <line x1="480" y1="0" x2="480" y2="640"/>
+    <line x1="560" y1="0" x2="560" y2="640"/>
+    <line x1="640" y1="0" x2="640" y2="640"/>
+    <line x1="720" y1="0" x2="720" y2="640"/>
+    <line x1="800" y1="0" x2="800" y2="640"/>
+    <line x1="880" y1="0" x2="880" y2="640"/>
+    <line x1="960" y1="0" x2="960" y2="640"/>
+    <line x1="1040" y1="0" x2="1040" y2="640"/>
+    <line x1="1120" y1="0" x2="1120" y2="640"/>
+    <line x1="1200" y1="0" x2="1200" y2="640"/>
+    <line x1="0" y1="80" x2="1280" y2="80"/>
+    <line x1="0" y1="160" x2="1280" y2="160"/>
+    <line x1="0" y1="240" x2="1280" y2="240"/>
+    <line x1="0" y1="320" x2="1280" y2="320"/>
+    <line x1="0" y1="400" x2="1280" y2="400"/>
+    <line x1="0" y1="480" x2="1280" y2="480"/>
+    <line x1="0" y1="560" x2="1280" y2="560"/>
+  </g>
+
+  <!-- ============================================ -->
+  <!-- Layer 2: Dense network topology mesh (left)  -->
+  <!-- ============================================ -->
+  <g>
+    <!-- Connection lines (dense mesh topology) -->
+    <g stroke="#006FFF" fill="none">
+      <!-- Top cluster -->
+      <line x1="60" y1="100" x2="140" y2="120" stroke-width="1" opacity="0.25"/>
+      <line x1="140" y1="120" x2="240" y2="90" stroke-width="1" opacity="0.3"/>
+      <line x1="240" y1="90" x2="320" y2="140" stroke-width="1.2" opacity="0.3"/>
+      <line x1="140" y1="120" x2="200" y2="180" stroke-width="1" opacity="0.25"/>
+      <line x1="60" y1="100" x2="80" y2="200" stroke-width="1" opacity="0.2"/>
+      <line x1="240" y1="90" x2="340" y2="60" stroke-width="1" opacity="0.2"/>
+      <line x1="320" y1="140" x2="400" y2="160" stroke-width="1.2" opacity="0.3"/>
+      <!-- Middle cluster -->
+      <line x1="80" y1="200" x2="160" y2="240" stroke-width="1" opacity="0.25"/>
+      <line x1="200" y1="180" x2="160" y2="240" stroke-width="1" opacity="0.25"/>
+      <line x1="200" y1="180" x2="300" y2="200" stroke-width="1.2" opacity="0.3"/>
+      <line x1="160" y1="240" x2="280" y2="260" stroke-width="1.2" opacity="0.3"/>
+      <line x1="300" y1="200" x2="380" y2="240" stroke-width="1.2" opacity="0.3"/>
+      <line x1="280" y1="260" x2="380" y2="240" stroke-width="1" opacity="0.25"/>
+      <line x1="300" y1="200" x2="320" y2="140" stroke-width="1" opacity="0.25"/>
+      <line x1="380" y1="240" x2="420" y2="300" stroke-width="1.5" opacity="0.35"/>
+      <!-- Center-left convergence -->
+      <line x1="280" y1="260" x2="340" y2="320" stroke-width="1.2" opacity="0.3"/>
+      <line x1="160" y1="240" x2="200" y2="340" stroke-width="1" opacity="0.2"/>
+      <line x1="340" y1="320" x2="420" y2="300" stroke-width="1.5" opacity="0.35"/>
+      <line x1="200" y1="340" x2="340" y2="320" stroke-width="1.2" opacity="0.3"/>
+      <!-- Lower cluster -->
+      <line x1="80" y1="200" x2="100" y2="360" stroke-width="1" opacity="0.2"/>
+      <line x1="200" y1="340" x2="140" y2="420" stroke-width="1" opacity="0.2"/>
+      <line x1="100" y1="360" x2="200" y2="340" stroke-width="1" opacity="0.25"/>
+      <line x1="140" y1="420" x2="260" y2="440" stroke-width="1" opacity="0.25"/>
+      <line x1="340" y1="320" x2="360" y2="420" stroke-width="1.2" opacity="0.3"/>
+      <line x1="260" y1="440" x2="360" y2="420" stroke-width="1.2" opacity="0.3"/>
+      <line x1="360" y1="420" x2="440" y2="380" stroke-width="1.2" opacity="0.3"/>
+      <!-- Bottom cluster -->
+      <line x1="100" y1="360" x2="80" y2="480" stroke-width="1" opacity="0.15"/>
+      <line x1="140" y1="420" x2="120" y2="520" stroke-width="1" opacity="0.15"/>
+      <line x1="260" y1="440" x2="300" y2="520" stroke-width="1" opacity="0.2"/>
+      <line x1="80" y1="480" x2="120" y2="520" stroke-width="1" opacity="0.15"/>
+      <line x1="120" y1="520" x2="300" y2="520" stroke-width="1" opacity="0.2"/>
+      <line x1="300" y1="520" x2="360" y2="420" stroke-width="1" opacity="0.2"/>
+      <!-- Lines extending toward center -->
+      <line x1="420" y1="300" x2="500" y2="310" stroke-width="1.5" opacity="0.35"/>
+      <line x1="400" y1="160" x2="480" y2="240" stroke-width="1.2" opacity="0.3"/>
+      <line x1="440" y1="380" x2="500" y2="360" stroke-width="1.2" opacity="0.3"/>
+    </g>
+    <!-- Nodes -->
+    <g fill="#006FFF">
+      <circle cx="60" cy="100" r="5" opacity="0.35"/>
+      <circle cx="140" cy="120" r="5" opacity="0.3"/>
+      <circle cx="240" cy="90" r="4" opacity="0.25"/>
+      <rect x="336" y="56" width="8" height="8" opacity="0.2"/>
+      <circle cx="320" cy="140" r="5" opacity="0.3"/>
+      <circle cx="400" cy="160" r="5" opacity="0.3"/>
+      <rect x="76" y="196" width="8" height="8" opacity="0.3"/>
+      <circle cx="200" cy="180" r="5" opacity="0.3"/>
+      <circle cx="160" cy="240" r="6" opacity="0.35"/>
+      <circle cx="300" cy="200" r="5" opacity="0.3"/>
+      <rect x="276" y="256" width="8" height="8" opacity="0.3"/>
+      <circle cx="380" cy="240" r="6" opacity="0.35"/>
+      <circle cx="420" cy="300" r="7" opacity="0.4"/>
+      <circle cx="340" cy="320" r="6" opacity="0.35"/>
+      <circle cx="200" cy="340" r="5" opacity="0.25"/>
+      <circle cx="100" cy="360" r="4" opacity="0.2"/>
+      <circle cx="140" cy="420" r="5" opacity="0.25"/>
+      <rect x="256" y="436" width="8" height="8" opacity="0.25"/>
+      <circle cx="360" cy="420" r="5" opacity="0.3"/>
+      <circle cx="440" cy="380" r="5" opacity="0.3"/>
+      <circle cx="80" cy="480" r="4" opacity="0.15"/>
+      <circle cx="120" cy="520" r="4" opacity="0.15"/>
+      <circle cx="300" cy="520" r="4" opacity="0.2"/>
+    </g>
+  </g>
+
+  <!-- ============================================ -->
+  <!-- Layer 3: Center convergence + knot           -->
+  <!-- ============================================ -->
+  <circle cx="640" cy="320" r="280" fill="url(#glow)"/>
+
+  <!-- Transition lines -->
+  <g fill="none" stroke="#006FFF">
+    <path d="M 480,240 C 530,250 580,280 610,300" stroke-width="1.5" opacity="0.25"/>
+    <path d="M 500,310 C 540,315 580,318 610,320" stroke-width="2" opacity="0.35"/>
+    <path d="M 500,360 C 540,355 580,340 610,335" stroke-width="1.5" opacity="0.3"/>
+    <path d="M 480,190 C 530,210 580,260 610,290" stroke-width="1.2" opacity="0.2"/>
+    <path d="M 480,420 C 530,400 580,360 610,340" stroke-width="1.2" opacity="0.2"/>
+    <!-- Lines emerging toward right -->
+    <path d="M 670,320 C 710,318 760,315 810,310" stroke-width="2" opacity="0.35"/>
+    <path d="M 670,305 C 720,290 770,260 830,240" stroke-width="1.5" opacity="0.25"/>
+    <path d="M 670,335 C 720,350 770,380 830,400" stroke-width="1.5" opacity="0.25"/>
+    <path d="M 665,290 C 700,260 750,220 820,180" stroke-width="1.2" opacity="0.2"/>
+    <path d="M 665,350 C 700,380 750,430 820,470" stroke-width="1.2" opacity="0.2"/>
+  </g>
+
+  <!-- Network topology icon (3 nodes in triangle, connected) -->
+  <g>
+    <!-- Connection lines between nodes -->
+    <line x1="640" y1="272" x2="588" y2="362" stroke="#006FFF" stroke-width="3" opacity="0.6"/>
+    <line x1="640" y1="272" x2="692" y2="362" stroke="#006FFF" stroke-width="3" opacity="0.6"/>
+    <line x1="588" y1="362" x2="692" y2="362" stroke="#006FFF" stroke-width="3" opacity="0.6"/>
+    <!-- Top node -->
+    <circle cx="640" cy="272" r="15" fill="#006FFF" opacity="0.35"/>
+    <circle cx="640" cy="272" r="8" fill="#006FFF" opacity="0.7"/>
+    <!-- Bottom-left node -->
+    <circle cx="588" cy="362" r="14" fill="#006FFF" opacity="0.3"/>
+    <circle cx="588" cy="362" r="7" fill="#006FFF" opacity="0.6"/>
+    <!-- Bottom-right node -->
+    <circle cx="692" cy="362" r="14" fill="#006FFF" opacity="0.3"/>
+    <circle cx="692" cy="362" r="7" fill="#006FFF" opacity="0.6"/>
+    <!-- Center hub dot -->
+    <circle cx="640" cy="332" r="5" fill="#006FFF" opacity="0.5"/>
+    <!-- Spokes to center -->
+    <line x1="640" y1="280" x2="640" y2="327" stroke="#006FFF" stroke-width="1.5" opacity="0.35"/>
+    <line x1="594" y1="357" x2="635" y2="334" stroke="#006FFF" stroke-width="1.5" opacity="0.35"/>
+    <line x1="686" y1="357" x2="645" y2="334" stroke="#006FFF" stroke-width="1.5" opacity="0.35"/>
+  </g>
+
+  <!-- Glow rings -->
+  <circle cx="640" cy="320" r="70" stroke="#006FFF" stroke-width="0.8" fill="none" opacity="0.15"/>
+  <circle cx="640" cy="320" r="95" stroke="#006FFF" stroke-width="0.5" fill="none" opacity="0.08"/>
+
+  <!-- ============================================ -->
+  <!-- Layer 4: Data streams / traffic flow (right) -->
+  <!-- ============================================ -->
+  <g fill="none" stroke="#006FFF">
+    <!-- Flowing data streams -->
+    <path d="M 880,180 C 920,170 980,190 1020,160 C 1060,130 1100,150 1160,140 C 1200,134 1240,148 1270,138"
+          stroke-width="1.2" opacity="0.2"/>
+    <path d="M 830,240 C 880,230 930,260 980,240 C 1040,216 1080,250 1140,230 C 1180,218 1230,240 1280,225"
+          stroke-width="1.5" opacity="0.25"/>
+    <path d="M 810,310 C 870,305 920,320 970,310 C 1030,298 1080,325 1130,315 C 1180,305 1220,320 1280,312"
+          stroke-width="2" opacity="0.3"/>
+    <path d="M 830,400 C 880,410 930,390 980,405 C 1040,422 1080,395 1140,410 C 1190,420 1230,400 1280,408"
+          stroke-width="1.5" opacity="0.25"/>
+    <path d="M 880,460 C 930,475 980,450 1030,470 C 1080,490 1130,460 1180,475 C 1220,486 1250,470 1280,478"
+          stroke-width="1.2" opacity="0.2"/>
+    <path d="M 920,530 C 970,520 1020,540 1070,525 C 1120,510 1170,535 1220,520 C 1250,512 1270,525 1280,520"
+          stroke-width="1" opacity="0.15"/>
+    <!-- Packet-like dashes along streams -->
+    <path d="M 850,270 C 910,280 960,255 1010,275 C 1060,295 1110,265 1160,280"
+          stroke-width="1" stroke-dasharray="8 12" opacity="0.18"/>
+    <path d="M 850,370 C 910,360 960,380 1010,365 C 1060,350 1110,375 1160,360"
+          stroke-width="1" stroke-dasharray="8 12" opacity="0.18"/>
+    <path d="M 900,120 C 950,140 1000,115 1060,130 C 1120,145 1180,120 1240,135"
+          stroke-width="1" opacity="0.12"/>
+    <path d="M 900,560 C 960,545 1020,565 1080,550 C 1140,535 1200,555 1260,545"
+          stroke-width="1" opacity="0.1"/>
+    <!-- Routing arrows (small chevrons along paths) -->
+    <path d="M 940,200 C 990,215 1040,195 1100,210" stroke-width="0.8" opacity="0.12"/>
+    <path d="M 940,440 C 990,425 1040,445 1100,430" stroke-width="0.8" opacity="0.12"/>
+  </g>
+</svg>

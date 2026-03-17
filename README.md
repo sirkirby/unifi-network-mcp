@@ -1,6 +1,10 @@
 # UniFi MCP
 
-MCP servers that expose UniFi controller functionality as structured tools for LLMs, agents, and automation platforms.
+<p align="center">
+  <img src="docs/assets/hero.svg" alt="UniFi MCP — AI-Powered UniFi Management" width="720">
+</p>
+
+Leverage agents and agentic AI workflows to manage your UniFi deployment.
 
 [![PyPI - Network](https://img.shields.io/pypi/v/unifi-network-mcp)](https://pypi.org/project/unifi-network-mcp/)
 [![PyPI - Protect](https://img.shields.io/pypi/v/unifi-protect-mcp)](https://pypi.org/project/unifi-protect-mcp/)

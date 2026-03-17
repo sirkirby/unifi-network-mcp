@@ -7,6 +7,10 @@ on:
     types: [ opened, synchronize, reopened ]
     branches: [ main, develop ]
 
+env:
+  # Fallback for branches without a network/v* tag in ancestry — hatch-vcs needs this
+  SETUPTOOLS_SCM_PRETEND_VERSION: "0.0.0.dev0"
+
 jobs:
   test:
     name: Test on Python ${{ matrix.python-version }}
