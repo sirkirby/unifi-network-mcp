@@ -146,11 +146,7 @@ docker:
 	docker build --build-arg VERSION=$$VERSION -t unifi-network-mcp:latest -f Dockerfile ../..
 
 docker-run:
-	docker run --rm \
-		-e UNIFI_HOST=$${UNIFI_HOST} \
-		-e UNIFI_USERNAME=$${UNIFI_USERNAME} \
-		-e UNIFI_PASSWORD=$${UNIFI_PASSWORD} \
-		unifi-network-mcp:latest
+	docker run --rm --env-file ../../.env unifi-network-mcp:latest
 
 # Cleanup
 clean:
