@@ -7,6 +7,10 @@ on:
     types: [ opened, synchronize, reopened ]
     branches: [ main, develop ]
 
+env:
+  # Needed until first protect/v* tag exists — hatch-vcs can't resolve version without it
+  SETUPTOOLS_SCM_PRETEND_VERSION: "0.0.0.dev0"
+
 jobs:
   test:
     name: Test on Python ${{ matrix.python-version }}
@@ -32,8 +36,6 @@ jobs:
         enable-cache: true
 
     - name: Install dependencies
-      env:
-        SETUPTOOLS_SCM_PRETEND_VERSION: "0.0.0.dev0"
       run: |
         uv sync
 
