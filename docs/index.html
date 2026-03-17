@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UniFi MCP — AI-Powered UniFi Management</title>
+  <meta name="description" content="MCP servers that give AI agents direct access to your UniFi infrastructure. 125+ tools across Network, Protect, Access, and Drive.">
+  <meta name="theme-color" content="#0a0e1a">
+  <meta property="og:title" content="UniFi MCP — AI-Powered UniFi Management">
+  <meta property="og:description" content="MCP servers that give AI agents direct access to your UniFi infrastructure. 125+ tools across Network, Protect, Access, and Drive.">
+  <meta property="og:url" content="https://unifimcp.com">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="UniFi MCP — AI-Powered UniFi Management">
+  <meta name="twitter:description" content="MCP servers that give AI agents direct access to your UniFi infrastructure.">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <style>
+    /* ===== Custom Properties ===== */
+    :root {
+      --blue: #006FFF;
+      --blue-text: #3388FF;
+      --teal: #00D4AA;
+      --bg-deep: #0a0e1a;
+      --bg-card: #111827;
+      --bg-card-hover: #1a2332;
+      --text: #e2e8f0;
+      --text-muted: #9ca3af;
+      --border: #1e293b;
+      --network: #006FFF;
+      --protect: #8B5CF6;
+      --access: #F59E0B;
+      --drive: #00D4AA;
+    }
+
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.6;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    a {
+      color: var(--blue-text);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* ===== Skip Link ===== */
+    .skip-link {
+      position: fixed;
+      top: -100%;
+      left: 16px;
+      z-index: 9999;
+      background: var(--blue);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: top 0.2s;
+    }
+
+    .skip-link:focus {
+      top: 16px;
+      text-decoration: none;
+    }
+
+    /* ===== Reduced Motion ===== */
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *, *::before, *::after {
+        transition-duration: 0s !important;
+        animation-duration: 0s !important;
+      }
+    }
+
+    /* ===== Nav ===== */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(10, 14, 26, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .nav-brand:hover {
+      text-decoration: none;
+    }
+
+    .nav-brand img {
+      width: 32px;
+      height: 32px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-github {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      color: var(--text);
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .nav-github:hover {
+      border-color: var(--text-muted);
+      background: var(--bg-card);
+      text-decoration: none;
+    }
+
+    .nav-github svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--text);
+    }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+    }
+
+    .hamburger svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--text);
+    }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 64px;
+      left: 0;
+      right: 0;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      z-index: 999;
+    }
+
+    .mobile-menu.open {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .mobile-menu a {
+      font-size: 16px;
+      color: var(--text-muted);
+      padding: 4px 0;
+    }
+
+    .mobile-menu a:hover {
+      color: var(--text);
+    }
+
+    /* ===== Section Scroll Offset ===== */
+    section {
+      scroll-margin-top: 72px;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      text-align: center;
+      padding: 120px 24px 64px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .hero-img {
+      max-width: 960px;
+      margin: 0 auto 40px;
+      border-radius: 12px;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      background: linear-gradient(135deg, var(--blue), var(--teal));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 640px;
+      margin: 0 auto 32px;
+      line-height: 1.7;
+    }
+
+    .hero-ctas {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      padding: 12px 28px;
+      background: var(--blue);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      transition: background 0.2s, transform 0.1s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      background: #0062e6;
+      text-decoration: none;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .btn-outline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 28px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .btn-outline:hover {
+      border-color: var(--text-muted);
+      background: var(--bg-card);
+      text-decoration: none;
+    }
+
+    .hero-badge {
+      margin-top: 8px;
+    }
+
+    .hero-badge img {
+      display: inline-block;
+      height: 24px;
+    }
+
+    /* ===== Server Cards ===== */
+    .servers {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 64px 24px;
+    }
+
+    .servers h2 {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .servers > p {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 16px;
+      margin-bottom: 40px;
+    }
+
+    .server-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+
+    .server-card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 24px;
+      border-top: 3px solid var(--border);
+      transition: background 0.2s;
+    }
+
+    .server-card:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .server-card--network {
+      border-top-color: var(--network);
+    }
+
+    .server-card--protect {
+      border-top-color: var(--protect);
+    }
+
+    .server-card--access {
+      border-top-color: var(--access);
+    }
+
+    .server-card--drive {
+      border-top-color: var(--drive);
+    }
+
+    .server-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .server-card-icon {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+    }
+
+    .server-card-header h3 {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .server-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .badge-stable {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .badge-beta {
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+    }
+
+    .badge-planned {
+      background: rgba(156, 163, 175, 0.15);
+      color: #9ca3af;
+    }
+
+    .server-card-tools {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .server-card p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    .server-card-link {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* ===== Install Tabs ===== */
+    .install {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 64px 24px;
+    }
+
+    .install h2 {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .install > p {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 16px;
+      margin-bottom: 32px;
+    }
+
+    .tab-container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      gap: 0;
+    }
+
+    .tab-bar button {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      font-family: inherit;
+    }
+
+    .tab-bar button:hover {
+      color: var(--text);
+    }
+
+    .tab-bar button[aria-selected="true"] {
+      color: var(--blue-text);
+      border-bottom-color: var(--blue);
+    }
+
+    .tab-panel {
+      display: none;
+      background: var(--bg-card);
+      border-radius: 0 0 12px 12px;
+      padding: 24px;
+      position: relative;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: var(--bg-deep);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .copy-btn:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+
+    .tab-panel pre {
+      margin: 0;
+      overflow-x: auto;
+    }
+
+    .tab-panel code {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+
+    .tab-panel .comment {
+      color: var(--text-muted);
+    }
+
+    /* ===== Features ===== */
+    .features {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 64px 24px;
+    }
+
+    .features h2 {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .features > p {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 16px;
+      margin-bottom: 40px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+    }
+
+    .feature {
+      padding: 4px 0;
+    }
+
+    .feature-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .feature-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .feature-dot--blue { background: var(--blue); }
+    .feature-dot--teal { background: var(--teal); }
+    .feature-dot--purple { background: var(--protect); }
+    .feature-dot--amber { background: var(--access); }
+
+    .feature h3 {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .feature p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.65;
+    }
+
+    /* ===== Footer ===== */
+    .footer {
+      border-top: 1px solid var(--border);
+      margin-top: 48px;
+      padding: 48px 24px 24px;
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+
+    .footer-grid h4 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+
+    .footer-grid ul {
+      list-style: none;
+    }
+
+    .footer-grid li {
+      margin-bottom: 8px;
+    }
+
+    .footer-grid a {
+      font-size: 14px;
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+
+    .footer-grid a:hover {
+      color: var(--blue-text);
+    }
+
+    .footer-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .footer-bottom a {
+      color: var(--text-muted);
+    }
+
+    .footer-bottom a:hover {
+      color: var(--blue-text);
+    }
+
+    /* ===== Focus Styles ===== */
+    a:focus-visible,
+    button:focus-visible {
+      outline: 2px solid var(--blue-text);
+      outline-offset: 2px;
+    }
+
+    /* ===== Responsive: 1024px ===== */
+    @media (max-width: 1024px) {
+      .server-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* ===== Responsive: 768px ===== */
+    @media (max-width: 768px) {
+      .server-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      .hamburger {
+        display: block;
+      }
+
+      .hero h1 {
+        font-size: 32px;
+      }
+
+      .hero p {
+        font-size: 16px;
+      }
+
+      .footer-bottom {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Skip Link -->
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  <!-- Nav -->
+  <nav class="nav" aria-label="Primary">
+    <div class="nav-inner">
+      <a href="/" class="nav-brand" aria-label="UniFi MCP home">
+        <img src="assets/logo-mark.svg" alt="" width="32" height="32">
+        <span>UniFi MCP</span>
+      </a>
+      <div class="nav-links">
+        <a href="#servers">Servers</a>
+        <a href="#install">Install</a>
+        <a href="#features">Features</a>
+        <a href="https://github.com/sirkirby/unifi-mcp/tree/main/docs">Docs</a>
+        <a href="https://github.com/sirkirby/unifi-mcp" class="nav-github" aria-label="View on GitHub">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </div>
+      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false" onclick="toggleMobileMenu()">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" id="mobile-menu" aria-label="Mobile navigation">
+    <a href="#servers" onclick="closeMobileMenu()">Servers</a>
+    <a href="#install" onclick="closeMobileMenu()">Install</a>
+    <a href="#features" onclick="closeMobileMenu()">Features</a>
+    <a href="https://github.com/sirkirby/unifi-mcp/tree/main/docs" onclick="closeMobileMenu()">Docs</a>
+    <a href="https://github.com/sirkirby/unifi-mcp" onclick="closeMobileMenu()">GitHub</a>
+  </div>
+
+  <!-- Main Content -->
+  <main id="main">
+
+    <!-- Hero -->
+    <section class="hero">
+      <img src="assets/hero.svg" alt="UniFi MCP — network infrastructure flowing through a protocol bridge to AI agents" class="hero-img" width="1280" height="640">
+      <h1>AI-Powered UniFi Management</h1>
+      <p>MCP servers that give AI agents direct access to your UniFi infrastructure. Query, analyze, and manage your network — safely and intelligently.</p>
+      <div class="hero-ctas">
+        <a href="#install" class="btn-primary">Get Started</a>
+        <a href="https://github.com/sirkirby/unifi-mcp" class="btn-outline">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+      <div class="hero-badge">
+        <a href="https://github.com/sirkirby/unifi-mcp" aria-label="GitHub stars">
+          <img src="https://img.shields.io/github/stars/sirkirby/unifi-mcp?style=flat&color=006FFF&labelColor=111827" alt="GitHub stars" width="90" height="24">
+        </a>
+      </div>
+    </section>
+
+    <!-- Server Cards -->
+    <section class="servers" id="servers">
+      <h2>Servers</h2>
+      <p>One monorepo, multiple MCP servers — each tailored to a UniFi application.</p>
+      <div class="server-grid">
+
+        <!-- Network -->
+        <div class="server-card server-card--network">
+          <div class="server-card-header">
+            <svg class="server-card-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+              <circle cx="20" cy="6" r="4" fill="var(--network)" opacity="0.9"/>
+              <circle cx="8" cy="22" r="3.5" fill="var(--network)" opacity="0.7"/>
+              <circle cx="32" cy="22" r="3.5" fill="var(--network)" opacity="0.7"/>
+              <circle cx="8" cy="36" r="3" fill="var(--network)" opacity="0.5"/>
+              <circle cx="20" cy="36" r="3" fill="var(--network)" opacity="0.5"/>
+              <circle cx="32" cy="36" r="3" fill="var(--network)" opacity="0.5"/>
+              <line x1="20" y1="10" x2="8" y2="18.5" stroke="var(--network)" stroke-width="1.5" opacity="0.5"/>
+              <line x1="20" y1="10" x2="32" y2="18.5" stroke="var(--network)" stroke-width="1.5" opacity="0.5"/>
+              <line x1="8" y1="25.5" x2="8" y2="33" stroke="var(--network)" stroke-width="1.5" opacity="0.4"/>
+              <line x1="8" y1="25.5" x2="20" y2="33" stroke="var(--network)" stroke-width="1.5" opacity="0.4"/>
+              <line x1="32" y1="25.5" x2="32" y2="33" stroke="var(--network)" stroke-width="1.5" opacity="0.4"/>
+            </svg>
+            <h3>Network</h3>
+          </div>
+          <div class="server-card-meta">
+            <span class="badge badge-stable">Stable</span>
+            <span class="server-card-tools">91 tools</span>
+          </div>
+          <p>Full UniFi Network controller coverage. Devices, clients, firewall policies, WLANs, port forwarding, VLANs, DPI stats, and more.</p>
+          <a href="https://github.com/sirkirby/unifi-mcp/tree/main/apps/network" class="server-card-link">Explore Network &rarr;</a>
+        </div>
+
+        <!-- Protect -->
+        <div class="server-card server-card--protect">
+          <div class="server-card-header">
+            <svg class="server-card-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+              <path d="M20 4 L34 12 L34 24 C34 32 20 38 20 38 C20 38 6 32 6 24 L6 12 Z" stroke="var(--protect)" stroke-width="2" fill="var(--protect)" fill-opacity="0.1"/>
+              <path d="M14 20 L18 24 L26 16" stroke="var(--protect)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3>Protect</h3>
+          </div>
+          <div class="server-card-meta">
+            <span class="badge badge-beta">Beta</span>
+            <span class="server-card-tools">34 tools</span>
+          </div>
+          <p>UniFi Protect camera management. Live snapshots, event timelines, motion detection, smart alerts, and recording access.</p>
+          <a href="https://github.com/sirkirby/unifi-mcp/tree/main/apps/protect" class="server-card-link">Explore Protect &rarr;</a>
+        </div>
+
+        <!-- Access -->
+        <div class="server-card server-card--access">
+          <div class="server-card-header">
+            <svg class="server-card-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+              <rect x="10" y="6" width="20" height="28" rx="3" stroke="var(--access)" stroke-width="2" fill="var(--access)" fill-opacity="0.1"/>
+              <circle cx="20" cy="20" r="5" stroke="var(--access)" stroke-width="2"/>
+              <circle cx="20" cy="20" r="1.5" fill="var(--access)"/>
+              <rect x="28" y="17" width="6" height="6" rx="1" fill="var(--access)" opacity="0.5"/>
+            </svg>
+            <h3>Access</h3>
+          </div>
+          <div class="server-card-meta">
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p>Door access control, visitor management, and credential provisioning for UniFi Access hubs, locks, and readers.</p>
+        </div>
+
+        <!-- Drive -->
+        <div class="server-card server-card--drive">
+          <div class="server-card-header">
+            <svg class="server-card-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+              <rect x="6" y="10" width="28" height="20" rx="3" stroke="var(--drive)" stroke-width="2" fill="var(--drive)" fill-opacity="0.1"/>
+              <circle cx="30" cy="25" r="2" fill="var(--drive)" opacity="0.7"/>
+              <circle cx="24" cy="25" r="2" fill="var(--drive)" opacity="0.5"/>
+              <line x1="10" y1="16" x2="22" y2="16" stroke="var(--drive)" stroke-width="1.5" opacity="0.5"/>
+              <line x1="10" y1="20" x2="18" y2="20" stroke="var(--drive)" stroke-width="1.5" opacity="0.4"/>
+            </svg>
+            <h3>Drive</h3>
+          </div>
+          <div class="server-card-meta">
+            <span class="badge badge-planned">Aspirational</span>
+          </div>
+          <p>Network-attached storage management for UniFi Drive. File operations, storage monitoring, and backup automation.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Quick Install -->
+    <section class="install" id="install">
+      <h2>Quick Install</h2>
+      <p>Get up and running in under a minute with your preferred method.</p>
+      <div class="tab-container">
+        <div class="tab-bar" role="tablist" aria-label="Installation methods">
+          <button role="tab" id="tab-uvx" aria-selected="true" aria-controls="panel-uvx" tabindex="0" onclick="switchTab('uvx')">uvx</button>
+          <button role="tab" id="tab-docker" aria-selected="false" aria-controls="panel-docker" tabindex="-1" onclick="switchTab('docker')">Docker</button>
+          <button role="tab" id="tab-claude" aria-selected="false" aria-controls="panel-claude" tabindex="-1" onclick="switchTab('claude')">Claude Desktop</button>
+        </div>
+        <div role="tabpanel" id="panel-uvx" class="tab-panel active" aria-labelledby="tab-uvx">
+          <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
+          <pre><code><span class="comment"># Network server</span>
+uvx unifi-network-mcp
+
+<span class="comment"># Protect server</span>
+uvx unifi-protect-mcp</code></pre>
+        </div>
+        <div role="tabpanel" id="panel-docker" class="tab-panel" aria-labelledby="tab-docker" hidden>
+          <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
+          <pre><code>docker run -i --rm \
+  -e UNIFI_NETWORK_HOST=192.168.1.1 \
+  -e UNIFI_NETWORK_USERNAME=admin \
+  -e UNIFI_NETWORK_PASSWORD=your-password \
+  ghcr.io/sirkirby/unifi-network-mcp:latest</code></pre>
+        </div>
+        <div role="tabpanel" id="panel-claude" class="tab-panel" aria-labelledby="tab-claude" hidden>
+          <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
+          <pre><code>{
+  "mcpServers": {
+    "unifi-network": {
+      "command": "uvx",
+      "args": ["unifi-network-mcp"],
+      "env": {
+        "UNIFI_NETWORK_HOST": "192.168.1.1",
+        "UNIFI_NETWORK_USERNAME": "admin",
+        "UNIFI_NETWORK_PASSWORD": "your-password"
+      }
+    }
+  }
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+      <h2>Why UniFi MCP?</h2>
+      <p>Built for AI agents. Designed for safety. Optimized for LLM efficiency.</p>
+      <div class="features-grid">
+
+        <div class="feature">
+          <div class="feature-header">
+            <span class="feature-dot feature-dot--blue"></span>
+            <h3>125+ Tools</h3>
+          </div>
+          <p>Comprehensive coverage across Network and Protect controllers. Devices, clients, firewall, cameras, events, and more.</p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-header">
+            <span class="feature-dot feature-dot--teal"></span>
+            <h3>Safe by Default</h3>
+          </div>
+          <p>Read-only by default. Mutations require explicit opt-in and a preview-then-confirm flow before any changes hit your controller.</p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-header">
+            <span class="feature-dot feature-dot--purple"></span>
+            <h3>Context Optimized</h3>
+          </div>
+          <p>Lazy tool loading uses ~200 tokens vs ~5,000 for eager mode. Built for LLM efficiency from the ground up.</p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-header">
+            <span class="feature-dot feature-dot--amber"></span>
+            <h3>Multi-Transport</h3>
+          </div>
+          <p>stdio, Streamable HTTP, and SSE. Run locally with Claude Desktop or expose remotely for automation platforms.</p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-header">
+            <span class="feature-dot feature-dot--blue"></span>
+            <h3>Docker Ready</h3>
+          </div>
+          <p>Pre-built containers for both servers with a docker-compose file included. Deploy in minutes.</p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-header">
+            <span class="feature-dot feature-dot--teal"></span>
+            <h3>Open Source</h3>
+          </div>
+          <p>MIT licensed and community-driven. Contributions welcome — from new tools to entire server implementations.</p>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div>
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/sirkirby/unifi-mcp">GitHub Repository</a></li>
+            <li><a href="https://github.com/sirkirby/unifi-mcp/tree/main/docs">Documentation</a></li>
+            <li><a href="https://github.com/sirkirby/unifi-mcp/blob/main/CONTRIBUTING.md">Contributing</a></li>
+            <li><a href="https://github.com/sirkirby/unifi-mcp/blob/main/LICENSE">MIT License</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="https://pypi.org/project/unifi-network-mcp/">Network on PyPI</a></li>
+            <li><a href="https://pypi.org/project/unifi-protect-mcp/">Protect on PyPI</a></li>
+            <li><a href="https://github.com/sirkirby/unifi-mcp/blob/main/docker-compose.yml">Docker Setup</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Community</h4>
+          <ul>
+            <li><a href="https://github.com/sirkirby/unifi-mcp/issues">Issues</a></li>
+            <li><a href="https://github.com/sirkirby/unifi-mcp/discussions">Discussions</a></li>
+            <li><a href="https://buymeacoffee.com/sirkirby">Buy Me a Coffee</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>Built with <a href="https://claude.ai/claude-code">Claude Code</a></span>
+        <span>MIT License &copy; 2025-2026</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /* ===== Tab Switching ===== */
+    function switchTab(id) {
+      var tabs = document.querySelectorAll('.tab-bar [role="tab"]');
+      var panels = document.querySelectorAll('.tab-panel');
+
+      tabs.forEach(function(tab) {
+        var isSelected = tab.id === 'tab-' + id;
+        tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        tab.setAttribute('tabindex', isSelected ? '0' : '-1');
+      });
+
+      panels.forEach(function(panel) {
+        var isActive = panel.id === 'panel-' + id;
+        panel.classList.toggle('active', isActive);
+        if (isActive) {
+          panel.removeAttribute('hidden');
+        } else {
+          panel.setAttribute('hidden', '');
+        }
+      });
+    }
+
+    /* ===== Arrow Key Navigation ===== */
+    document.querySelector('.tab-bar').addEventListener('keydown', function(e) {
+      var tabs = Array.from(this.querySelectorAll('[role="tab"]'));
+      var currentIndex = tabs.indexOf(document.activeElement);
+
+      if (currentIndex === -1) return;
+
+      var newIndex;
+      if (e.key === 'ArrowRight') {
+        newIndex = (currentIndex + 1) % tabs.length;
+      } else if (e.key === 'ArrowLeft') {
+        newIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      } else {
+        return;
+      }
+
+      e.preventDefault();
+      tabs[newIndex].focus();
+      var tabId = tabs[newIndex].id.replace('tab-', '');
+      switchTab(tabId);
+    });
+
+    /* ===== Copy to Clipboard ===== */
+    function copyCode(btn) {
+      var panel = btn.closest('.tab-panel');
+      var code = panel.querySelector('code').textContent;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(function() {
+          showCopied(btn);
+        }).catch(function() {
+          fallbackCopy(code, btn);
+        });
+      } else {
+        fallbackCopy(code, btn);
+      }
+    }
+
+    function fallbackCopy(text, btn) {
+      var textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showCopied(btn);
+      } catch (e) {
+        // Silently fail
+      }
+      document.body.removeChild(textarea);
+    }
+
+    function showCopied(btn) {
+      var original = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(function() {
+        btn.textContent = original;
+      }, 2000);
+    }
+
+    /* ===== Mobile Menu Toggle ===== */
+    function toggleMobileMenu() {
+      var menu = document.getElementById('mobile-menu');
+      var hamburger = document.querySelector('.hamburger');
+      var isOpen = menu.classList.toggle('open');
+      hamburger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+
+    function closeMobileMenu() {
+      var menu = document.getElementById('mobile-menu');
+      var hamburger = document.querySelector('.hamburger');
+      menu.classList.remove('open');
+      hamburger.setAttribute('aria-expanded', 'false');
+    }
+  </script>
+
+</body>
+</html>
