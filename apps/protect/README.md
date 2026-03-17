@@ -1,7 +1,7 @@
 # UniFi Protect MCP Server
 
 <p align="center">
-  <img src="../../assets/hero-protect.svg" alt="UniFi Protect MCP Server" width="800">
+  <img src="../../assets/hero-protect.svg" alt="UniFi Protect MCP Server" width="720">
 </p>
 
 MCP server exposing UniFi Protect tools for LLMs, agents, and automation platforms. Query cameras, events, smart detections, recordings, lights, sensors, and chimes -- with safe-by-default permissions and preview-before-confirm for all mutations.

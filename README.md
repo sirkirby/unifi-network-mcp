@@ -1,7 +1,7 @@
 # UniFi MCP
 
 <p align="center">
-  <img src="docs/assets/hero.svg" alt="UniFi MCP — AI-Powered UniFi Management" width="800">
+  <img src="docs/assets/hero.svg" alt="UniFi MCP — AI-Powered UniFi Management" width="720">
 </p>
 
 MCP servers that expose UniFi controller functionality as structured tools for LLMs, agents, and automation platforms.

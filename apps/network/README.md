@@ -1,7 +1,7 @@
 # UniFi Network MCP Server
 
 <p align="center">
-  <img src="../../assets/hero-network.svg" alt="UniFi Network MCP Server" width="800">
+  <img src="../../assets/hero-network.svg" alt="UniFi Network MCP Server" width="720">
 </p>
 
 MCP server exposing 91 UniFi Network Controller tools for LLMs, agents, and automation platforms. Query clients, devices, firewall rules, VLANs, VPNs, stats, and more — with safe-by-default permissions and preview-before-confirm for all mutations.
