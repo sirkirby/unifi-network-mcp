@@ -4,6 +4,7 @@ requires-python = ">=3.13"
 
 [manifest]
 members = [
+    "unifi-access-mcp",
     "unifi-core",
     "unifi-mcp",
     "unifi-mcp-shared",
@@ -942,6 +943,19 @@ wheels = [
 ]
 
 [[package]]
+name = "py-unifi-access"
+version = "1.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d5/84/80f2533abb28c03237f104dceb6d2be3e49234a7f0fc23b884945a8a0e01/py_unifi_access-1.1.1.tar.gz", hash = "sha256:007d9f22d0ea3312aa575187decad9e323421f2d6007b8bed2a2b7fdb1106add", size = 27560 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/a4/2e7739f5eb6ae70ea9f413577a3a413c1179bf12311f12085d28e4d88fa9/py_unifi_access-1.1.1-py3-none-any.whl", hash = "sha256:68aae2bca73cf35a516ab708e40974f7a6c6347974bbef0936c26808c0cb1c35", size = 19750 },
+]
+
+[[package]]
 name = "pycparser"
 version = "2.23"
 source = { registry = "https://pypi.org/simple" }
@@ -1521,6 +1535,54 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/db/44/0549d7b6e835150086afd9ebc0e0175f8460e2cf1812a05ec8b177248b1f/uiprotect-10.2.2.tar.gz", hash = "sha256:205c6d69026576f8a25facddd15e08efb5f63c6b47e405cf05d44715f58cfa60", size = 124309 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9c/0f/06403aff843c776124de94e0927e7d3244ab6a3bc520a4c74e3a3fac42bf/uiprotect-10.2.2-py3-none-any.whl", hash = "sha256:e93366d02539140a740a01f8c2f6e6a9e26df84636296b053ae9c05b755ead80", size = 138049 },
+]
+
+[[package]]
+name = "unifi-access-mcp"
+source = { editable = "apps/access" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "jsonschema" },
+    { name = "mcp", extra = ["cli"] },
+    { name = "omegaconf" },
+    { name = "py-unifi-access" },
+    { name = "python-dotenv" },
+    { name = "pyyaml" },
+    { name = "typing-extensions" },
+    { name = "unifi-core" },
+    { name = "unifi-mcp-shared" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "aioresponses" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiohttp", specifier = ">=3.8.5" },
+    { name = "jsonschema", specifier = ">=4.17.0" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.26.0,<2" },
+    { name = "omegaconf", specifier = ">=2.3.0" },
+    { name = "py-unifi-access", specifier = ">=1.1.1" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "typing-extensions", specifier = ">=4.4.0" },
+    { name = "unifi-core", editable = "packages/unifi-core" },
+    { name = "unifi-mcp-shared", editable = "packages/unifi-mcp-shared" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "aioresponses", specifier = ">=0.7.0" },
+    { name = "pytest", specifier = ">=7.0.0" },
+    { name = "pytest-asyncio", specifier = ">=0.21.0" },
+    { name = "pytest-cov", specifier = ">=4.0.0" },
+    { name = "ruff", specifier = ">=0.8.0" },
 ]
 
 [[package]]

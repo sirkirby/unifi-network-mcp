@@ -1,0 +1,7 @@
+{
+  "count": 0,
+  "generated_by": "scripts/generate_tool_manifest.py",
+  "module_map": {},
+  "note": "Placeholder manifest. Run 'make manifest' to generate with full schemas.",
+  "tools": []
+}

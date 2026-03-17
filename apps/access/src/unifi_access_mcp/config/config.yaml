@@ -1,0 +1,95 @@
+unifi:
+  host: ${oc.env:UNIFI_ACCESS_HOST,""}
+  username: ${oc.env:UNIFI_ACCESS_USERNAME,""}
+  password: ${oc.env:UNIFI_ACCESS_PASSWORD,""}
+  port: ${oc.env:UNIFI_ACCESS_PORT,443}
+  site: ${oc.env:UNIFI_ACCESS_SITE,default}
+  verify_ssl: ${oc.env:UNIFI_ACCESS_VERIFY_SSL,false}
+  api_key: ${oc.env:UNIFI_ACCESS_API_KEY,""}
+
+server:
+  host: ${oc.env:UNIFI_MCP_HOST,0.0.0.0}
+  port: ${oc.env:UNIFI_MCP_PORT,3002}
+  log_level: INFO
+
+  # Tool registration mode
+  # Options: eager, lazy, meta_only
+  # - eager: Register all tools immediately - Best for dev console, automation
+  # - lazy: Register meta-tools, load others on-demand - RECOMMENDED for LLMs
+  # - meta_only: Register only meta-tools, manual discovery - Maximum context savings
+  tool_registration_mode: ${oc.env:UNIFI_TOOL_REGISTRATION_MODE,lazy}
+
+  # Tool filtering (optional, for eager mode)
+  # Use these to limit which tools are registered for automation workflows
+  #
+  # enabled_categories: Only load tools from these categories (module names in src/tools/)
+  #   Valid values:
+  #     - doors        # Door listing, lock/unlock
+  #     - policies     # Access policies and schedules
+  #     - credentials  # NFC cards, PINs, mobile credentials
+  #     - visitors     # Visitor management
+  #     - events       # Access events and logs
+  #     - devices      # Access hubs, readers, relays
+  #     - system       # System info, health
+  #   Example: "doors,events,system" or ["doors", "events", "system"]
+  #
+  # enabled_tools: Only register these specific tools (use with enabled_categories or alone)
+  #   Example: "access_list_doors,access_get_events" or ["access_list_doors", "access_get_events"]
+  #
+  # Note: Tools may also be filtered by the permissions section below (e.g., update: false)
+  # If neither is set, all tools are registered (default behavior)
+  enabled_categories: ${oc.env:UNIFI_ENABLED_CATEGORIES,null}
+  enabled_tools: ${oc.env:UNIFI_ENABLED_TOOLS,null}
+
+  http:
+    enabled: ${oc.env:UNIFI_MCP_HTTP_ENABLED,false}
+    force: ${oc.env:UNIFI_MCP_HTTP_FORCE,false}
+    transport: ${oc.env:UNIFI_MCP_HTTP_TRANSPORT,streamable-http}
+  diagnostics:
+    enabled: ${oc.env:UNIFI_MCP_DIAGNOSTICS,false}
+    log_tool_args: ${oc.env:UNIFI_MCP_DIAG_LOG_TOOL_ARGS,true}
+    log_tool_result: ${oc.env:UNIFI_MCP_DIAG_LOG_TOOL_RESULT,true}
+    max_payload_chars: ${oc.env:UNIFI_MCP_DIAG_MAX_PAYLOAD,2000}
+
+access:
+  api_port: ${oc.env:UNIFI_ACCESS_API_PORT,12445}
+  events:
+    buffer_size: ${oc.env:ACCESS_EVENT_BUFFER_SIZE,100}
+    buffer_ttl_seconds: ${oc.env:ACCESS_EVENT_BUFFER_TTL,300}
+    websocket_enabled: ${oc.env:ACCESS_WEBSOCKET_ENABLED,true}
+
+permissions:
+
+  default:
+    read: true
+    create: false
+    update: false
+    delete: false
+
+  doors:
+    read: true
+    update: false
+
+  policies:
+    read: true
+    update: false
+
+  credentials:
+    read: true
+    create: false
+    delete: false
+
+  visitors:
+    read: true
+    create: false
+    delete: false
+
+  events:
+    read: true
+
+  devices:
+    read: true
+    update: false
+
+  system:
+    read: true
