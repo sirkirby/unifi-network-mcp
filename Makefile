@@ -27,18 +27,22 @@ shared-test:
 test: core-test shared-test
 	$(MAKE) -C apps/network test
 	$(MAKE) -C apps/protect test
+	$(MAKE) -C apps/access test
 
 lint:
 	$(MAKE) -C apps/network lint
 	$(MAKE) -C apps/protect lint
+	$(MAKE) -C apps/access lint
 
 format:
 	$(MAKE) -C apps/network format
 	$(MAKE) -C apps/protect format
+	$(MAKE) -C apps/access format
 
 manifest:
 	$(MAKE) -C apps/network manifest
 	$(MAKE) -C apps/protect manifest
+	$(MAKE) -C apps/access manifest
 
 pre-commit: format lint test
 
