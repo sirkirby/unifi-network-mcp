@@ -1,0 +1,419 @@
+# ruff: noqa: E402
+"""Main entry-point for the UniFi-Protect MCP server.
+
+Responsibilities:
+- configure permissions wrappers
+- initialise UniFi Protect connection
+- start FastMCP (stdio)
+"""
+
+import asyncio
+import logging
+import os
+import sys
+import traceback
+from typing import Union
+
+import uvicorn.config
+
+from unifi_mcp_shared.meta_tools import register_load_tools, register_meta_tools
+from unifi_mcp_shared.permissions import PermissionChecker
+from unifi_mcp_shared.tool_loader import auto_load_tools
+from unifi_protect_mcp.bootstrap import (
+    UNIFI_TOOL_REGISTRATION_MODE,
+    logger,
+)  # ensures logging/env setup early
+from unifi_protect_mcp.categories import PROTECT_CATEGORY_MAP, TOOL_MODULE_MAP, setup_lazy_loading
+from unifi_protect_mcp.jobs import get_job_status, start_async_tool
+
+# Shared singletons
+from unifi_protect_mcp.runtime import (
+    config,
+    connection_manager,
+    server,
+)
+from unifi_protect_mcp.tool_index import register_tool, tool_index_handler
+from unifi_protect_mcp.utils.config_helpers import parse_config_bool
+from unifi_protect_mcp.utils.diagnostics import diagnostics_enabled, wrap_tool
+
+# Use the original FastMCP tool decorator (saved in runtime.py before wrapping)
+_original_tool_decorator = getattr(server, "_original_tool", server.tool)
+
+# Shared permission checker instance for the permissioned_tool decorator
+permission_checker = PermissionChecker(category_map=PROTECT_CATEGORY_MAP, permissions=config.permissions)
+
+
+def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
+    """Decorator that only registers the tool if permission allows."""
+
+    tool_name = d_kwargs.get("name") if d_kwargs.get("name") else (d_args[0] if d_args else None)
+
+    category = d_kwargs.pop("permission_category", None)
+    action = d_kwargs.pop("permission_action", None)
+    auth_method = d_kwargs.pop("auth", None)  # "local_only", "api_key_only", "either" -- metadata for future routing
+
+    # Default to local_only when auth is not specified (backward compatible)
+    resolved_auth = auth_method if auth_method else "local_only"
+
+    def decorator(func):
+        """Inner decorator actually registering the tool if allowed."""
+        nonlocal category, action, tool_name
+
+        # Extract tool metadata for registry (before permission check)
+        # Use the provided name or fall back to function name
+        if not tool_name:
+            tool_name = getattr(func, "__name__", "<unknown>")
+
+        description = d_kwargs.get("description", "")
+        input_schema = d_kwargs.get("input_schema")
+        output_schema = d_kwargs.get("output_schema")
+
+        # If no explicit input_schema, try to infer from function annotations
+        if input_schema is None:
+            try:
+                import inspect
+
+                sig = inspect.signature(func)
+                properties = {}
+                required = []
+
+                for param_name, param in sig.parameters.items():
+                    # Skip 'self', 'cls', and kwargs/args
+                    if param_name in ("self", "cls") or param.kind in (
+                        inspect.Parameter.VAR_POSITIONAL,
+                        inspect.Parameter.VAR_KEYWORD,
+                    ):
+                        continue
+
+                    # Extract type hint
+                    param_type = "string"  # default
+                    if param.annotation != inspect.Parameter.empty:
+                        ann = param.annotation
+                        import types
+                        from typing import get_args, get_origin
+
+                        # Unwrap Optional / X | None unions to their core type
+                        if isinstance(ann, types.UnionType) or get_origin(ann) is Union:
+                            args = get_args(ann)
+                            non_none = [a for a in args if a is not types.NoneType]
+                            if non_none:
+                                ann = non_none[0]
+
+                        origin = get_origin(ann)
+                        # Basic type mapping (check origin first for generics)
+                        if origin is dict or ann in (dict, "dict"):
+                            param_type = "object"
+                        elif origin is list or ann in (list, "list"):
+                            param_type = "array"
+                        elif ann in (int, "int"):
+                            param_type = "integer"
+                        elif ann in (bool, "bool"):
+                            param_type = "boolean"
+                        elif ann in (float, "float"):
+                            param_type = "number"
+
+                    properties[param_name] = {"type": param_type}
+
+                    # If no default value, mark as required
+                    if param.default == inspect.Parameter.empty:
+                        required.append(param_name)
+
+                input_schema = {
+                    "type": "object",
+                    "properties": properties,
+                }
+                if required:
+                    input_schema["required"] = required
+
+            except Exception as exc:
+                logger.debug(f"Could not infer input schema for {tool_name}: {exc}")
+                input_schema = {"type": "object", "properties": {}}
+
+        # Fast path: no permissions requested, just register.
+        if not category or not action:
+            # Register in tool index
+            register_tool(
+                name=tool_name,
+                description=description,
+                input_schema=input_schema,
+                output_schema=output_schema,
+                auth_method=resolved_auth,
+            )
+            return _original_tool_decorator(*d_args, **d_kwargs)(func)
+
+        # ALWAYS register in tool index (for discovery via protect_tool_index)
+        # This ensures manifest generation includes ALL tools regardless of permissions
+        register_tool(
+            name=tool_name,
+            description=description,
+            input_schema=input_schema,
+            output_schema=output_schema,
+            auth_method=resolved_auth,
+        )
+
+        # Check permissions for MCP server registration
+        try:
+            allowed = permission_checker.check(category, action)
+        except Exception as exc:  # mis-config should not crash server
+            logger.error("Permission check failed for tool %s: %s", tool_name, exc)
+            allowed = False
+
+        if allowed:
+            # Permission granted - register with MCP server
+            wrapped = (
+                wrap_tool(func, tool_name or getattr(func, "__name__", "<tool>")) if diagnostics_enabled() else func
+            )
+            return _original_tool_decorator(*d_args, **d_kwargs)(wrapped)
+
+        # Permission denied - tool is in index but not callable via MCP
+        logger.info(
+            "[permissions] Skipping MCP registration of tool '%s' (category=%s, action=%s)",
+            tool_name,
+            category,
+            action,
+        )
+        # Return original function (unregistered with MCP) for import side-effects/testing
+        return func
+
+    return decorator
+
+
+server.tool = permissioned_tool  # type: ignore
+
+# Log server version and capabilities
+try:
+    import mcp
+
+    logger.info(f"MCP Python SDK version: {getattr(mcp, '__version__', 'unknown')}")
+    logger.info(f"Server methods: {dir(server)}")
+    logger.info(f"Server tool methods: {[m for m in dir(server) if 'tool' in m.lower()]}")
+except Exception as e:
+    logger.error(f"Error inspecting server: {e}")
+
+# Config is loaded globally via bootstrap helper
+logger.info("Loaded configuration globally.")
+
+# --- Global Connection and Managers ---
+# ConnectionManager is instantiated globally by unifi_protect_mcp.runtime import
+logger.info("Using global ProtectConnectionManager instance.")
+
+# Other Managers are instantiated globally by unifi_protect_mcp.runtime import
+logger.info("Using global Manager instances.")
+
+# Dynamic tool loader helper already imported above
+
+
+async def main_async():
+    """Main asynchronous function to setup and run the server."""
+
+    # --- Add asyncio global exception handler ---
+    loop = asyncio.get_event_loop()
+
+    def handle_asyncio_exception(loop, context):
+        exc = context.get("exception", context["message"])
+        log_message = f"Global asyncio exception handler caught: {exc}"
+        if "future" in context and context["future"]:
+            log_message += f"\nFuture: {context['future']}"
+        if "handle" in context and context["handle"]:
+            log_message += f"\nHandle: {context['handle']}"
+        logger.error(log_message)
+        if context.get("exception"):
+            orig_traceback = "".join(
+                traceback.format_exception(
+                    type(context["exception"]),
+                    context["exception"],
+                    context["exception"].__traceback__,
+                )
+            )
+            logger.error(f"Original traceback for global asyncio exception:\n{orig_traceback}")
+
+    loop.set_exception_handler(handle_asyncio_exception)
+    logger.info("Global asyncio exception handler set.")
+    # --- End asyncio global exception handler ---
+
+    # Config is now loaded globally (from unifi_protect_mcp.runtime -> unifi_protect_mcp.bootstrap)
+    log_level = config.server.get("log_level", "INFO").upper()
+    # Ensure logging is configured (might be redundant if already set by bootstrap)
+    # but this ensures the level is applied if changed post-bootstrap.
+    logging.basicConfig(level=getattr(logging, log_level, logging.INFO), force=True)  # Use default format
+    logger.info(f"Log level set to {log_level} in main_async.")
+
+    # Initialize the global Protect connection
+    logger.info("Initializing global Protect connection from main_async...")
+    if not await connection_manager.initialize():
+        logger.error("Failed to connect to UniFi Protect. Tool functionality may be impaired.")
+    else:
+        logger.info("Global Protect connection initialized successfully from main_async.")
+
+    # Register meta-tools first (always available regardless of mode)
+    register_meta_tools(
+        server=server,
+        tool_decorator=_original_tool_decorator,
+        tool_index_handler=tool_index_handler,
+        start_async_tool=start_async_tool,
+        get_job_status=get_job_status,
+        register_tool=register_tool,
+    )
+
+    # Load full tool set based on registration mode
+    if UNIFI_TOOL_REGISTRATION_MODE == "meta_only":
+        logger.info("Tool registration mode: meta_only")
+        logger.info("   Meta-tools: protect_tool_index, protect_execute, protect_batch, protect_batch_status")
+        logger.info("   Use protect_execute to run any tool discovered via protect_tool_index")
+        logger.info("   To load all tools directly: set UNIFI_TOOL_REGISTRATION_MODE=eager")
+
+        # Setup lazy loading interceptor so protect_execute/protect_batch can load tools on demand
+        setup_lazy_loading(server, _original_tool_decorator)
+
+        logger.info(f"   On-demand loader ready - {len(TOOL_MODULE_MAP)} tools available via protect_execute")
+    elif UNIFI_TOOL_REGISTRATION_MODE == "lazy":
+        logger.info("Tool registration mode: lazy")
+        logger.info(
+            "   Meta-tools: protect_tool_index, protect_execute, protect_batch, "
+            "protect_batch_status, protect_load_tools"
+        )
+        logger.info("   Use protect_execute to run any tool - works with all clients")
+
+        # Setup lazy loading interceptor
+        lazy_loader = setup_lazy_loading(server, _original_tool_decorator)
+
+        # Register protect_load_tools meta-tool (requires lazy_loader)
+        register_load_tools(
+            server=server,
+            tool_decorator=_original_tool_decorator,
+            lazy_loader=lazy_loader,
+            register_tool=register_tool,
+            tool_module_map=TOOL_MODULE_MAP,
+        )
+
+        logger.info(f"   Lazy loader ready - {len(TOOL_MODULE_MAP)} tools available on-demand")
+    else:  # eager (default)
+        logger.info("Tool registration mode: eager")
+
+        # Check for tool filtering config
+        enabled_categories = config.server.get("enabled_categories")
+        enabled_tools = config.server.get("enabled_tools")
+
+        # Parse from comma-separated string if from env var
+        if isinstance(enabled_categories, str) and enabled_categories not in ("null", ""):
+            enabled_categories = [c.strip() for c in enabled_categories.split(",")]
+        elif enabled_categories in (None, "null", ""):
+            enabled_categories = None
+
+        if isinstance(enabled_tools, str) and enabled_tools not in ("null", ""):
+            enabled_tools = [t.strip() for t in enabled_tools.split(",")]
+        elif enabled_tools in (None, "null", ""):
+            enabled_tools = None
+
+        if enabled_categories:
+            logger.info(f"   Filtering by categories: {enabled_categories}")
+        elif enabled_tools:
+            logger.info(f"   Filtering to {len(enabled_tools)} specific tools")
+        else:
+            logger.info("   All tools registered (no filtering)")
+
+        auto_load_tools(
+            base_package="unifi_protect_mcp.tools",
+            enabled_categories=enabled_categories,
+            enabled_tools=enabled_tools,
+            server=server,
+        )
+
+    # List all registered tools for debugging
+    try:
+        tools = await server.list_tools()
+        logger.info(f"Registered tools in main_async: {[tool.name for tool in tools]}")
+    except Exception as e:
+        logger.error(f"Error listing tools in main_async: {e}")
+
+    # Run stdio always; optionally run HTTP based on config flag
+    host = config.server.get("host", "0.0.0.0")
+    port = int(config.server.get("port", 3001))
+    http_cfg = config.server.get("http", {})
+    http_enabled = parse_config_bool(http_cfg.get("enabled", False))
+
+    # Validate HTTP transport selection
+    http_transport = http_cfg.get("transport", "streamable-http")
+    if isinstance(http_transport, str):
+        http_transport = http_transport.lower()
+    VALID_HTTP_TRANSPORTS = {"streamable-http", "sse"}
+    if http_transport not in VALID_HTTP_TRANSPORTS:
+        logger.warning(
+            "Invalid UNIFI_MCP_HTTP_TRANSPORT: '%s'. Defaulting to 'streamable-http'.",
+            http_transport,
+        )
+        http_transport = "streamable-http"
+
+    transport_label = "Streamable HTTP" if http_transport == "streamable-http" else "HTTP SSE"
+
+    # Only the main container process (PID 1) should bind the HTTP port,
+    # unless http.force=true is set in config (for local development/testing).
+    force_http = parse_config_bool(http_cfg.get("force", False))
+    is_main_container_process = os.getpid() == 1
+    if http_enabled and not is_main_container_process and not force_http:
+        logger.info(
+            "%s enabled in config but skipped in exec session (PID %s != 1). "
+            "Set UNIFI_MCP_HTTP_FORCE=true to override.",
+            transport_label,
+            os.getpid(),
+        )
+        http_enabled = False
+
+    async def run_stdio():
+        logger.info("Starting FastMCP stdio server ...")
+        await server.run_stdio_async()
+
+    tasks = [run_stdio()]
+    if http_enabled:
+
+        async def run_http():
+            try:
+                logger.info(f"Starting FastMCP {transport_label} server on {host}:{port} ...")
+                server.settings.host = host
+                server.settings.port = port
+
+                # Redirect uvicorn access logs to stderr to prevent stdout conflicts
+                # when running alongside stdio transport (stdout is used for JSON-RPC)
+                uvicorn.config.LOGGING_CONFIG["handlers"]["access"]["stream"] = "ext://sys.stderr"
+
+                if http_transport == "streamable-http":
+                    await server.run_streamable_http_async()
+                else:
+                    await server.run_sse_async()
+                logger.info(f"{transport_label} server exited.")
+            except Exception as http_e:
+                logger.error(f"FastMCP {transport_label} server failed to start: {http_e}")
+                logger.error(traceback.format_exc())
+
+        tasks.append(run_http())
+
+    try:
+        await asyncio.gather(*tasks)
+        logger.info("FastMCP servers exited.")
+    except Exception as e:
+        logger.error(f"Error running FastMCP servers from main_async: {e}")
+        logger.error(traceback.format_exc())
+        raise
+
+
+def main():
+    """Synchronous entry point."""
+    logger.debug("Starting main()")  # This uses the logger from bootstrap via global scope
+    try:
+        asyncio.run(main_async())
+    except KeyboardInterrupt:
+        logger.info("Server stopped by user (KeyboardInterrupt).")
+    except Exception as e:
+        logger.exception("Unhandled exception during server run (from asyncio.run): %s", e)
+    finally:
+        logger.info("Server process exiting.")
+
+
+# Ensure other modules can `import unifi_protect_mcp.main` even when this file is executed as __main__
+# --- This block might not be strictly necessary depending on imports, but harmless ---
+if "unifi_protect_mcp.main" not in sys.modules:
+    sys.modules["unifi_protect_mcp.main"] = sys.modules[__name__]
+# --- End potentially unnecessary block ---
+
+if __name__ == "__main__":
+    main()

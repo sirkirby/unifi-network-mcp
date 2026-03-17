@@ -1,4 +1,7 @@
-.PHONY: help test lint format pre-commit core-test shared-test network-test network-lint network-format network-manifest
+.PHONY: help test lint format pre-commit \
+       core-test shared-test \
+       network-test network-lint network-format network-manifest \
+       protect-test protect-lint protect-format protect-manifest
 
 help:
 	@echo "UniFi MCP Ecosystem — Top-Level Commands"
@@ -11,6 +14,10 @@ help:
 	@echo "  make network-test      Run network server tests"
 	@echo "  make network-lint      Lint network server"
 	@echo "  make network-manifest  Regenerate network tools manifest"
+	@echo "  make protect-test      Run protect server tests"
+	@echo "  make protect-lint      Lint protect server"
+	@echo "  make protect-format    Format protect server"
+	@echo "  make protect-manifest  Regenerate protect tools manifest"
 
 core-test:
 	uv run --package unifi-core pytest packages/unifi-core/tests -v
@@ -30,10 +37,22 @@ network-format:
 network-manifest:
 	$(MAKE) -C apps/network manifest
 
-test: core-test shared-test network-test
+protect-test:
+	$(MAKE) -C apps/protect test
 
-lint: network-lint
+protect-lint:
+	$(MAKE) -C apps/protect lint
 
-format: network-format
+protect-format:
+	$(MAKE) -C apps/protect format
+
+protect-manifest:
+	$(MAKE) -C apps/protect manifest
+
+test: core-test shared-test network-test protect-test
+
+lint: network-lint protect-lint
+
+format: network-format protect-format
 
 pre-commit: format lint test
