@@ -2,7 +2,7 @@
 name = "unifi-network-mcp"
 dynamic = ["version"]
 description = "Unifi Network MCP Server"
-readme = "../../README.md"
+readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "unifi-mcp-shared",
@@ -36,15 +36,10 @@ version-file = "src/unifi_network_mcp/_version.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/unifi_network_mcp"]
 
-[tool.hatch.build.targets.wheel.shared-data]
-"../../.well-known" = "share/unifi-network-mcp/.well-known"
-
 [tool.hatch.build.targets.sdist]
 include = [
     "/src/unifi_network_mcp",
-    "/../../.well-known",
-    "/../../README.md",
-    "/../../LICENSE",
+    "/README.md",
 ]
 
 # Ensure config files and tool manifest are included in the package
