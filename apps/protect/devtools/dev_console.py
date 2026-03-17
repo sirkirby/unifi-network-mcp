@@ -373,7 +373,7 @@ async def main_async() -> None:
                 print("Out of range.")
     finally:
         # Clean up the connection manager to avoid unclosed session warnings
-        await connection_manager.cleanup()
+        await connection_manager.close()
 
 
 def main() -> None:
