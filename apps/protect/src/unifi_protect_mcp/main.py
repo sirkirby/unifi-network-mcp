@@ -264,6 +264,17 @@ async def main_async():
         else:
             logger.info("Protect event websocket disabled via config.")
 
+    # ---- Register MCP resources ----
+    # Resources are registered by importing their modules (decorator-based).
+    # Import here so they are available regardless of tool registration mode.
+    try:
+        import unifi_protect_mcp.resources.events  # noqa: F401
+        import unifi_protect_mcp.resources.snapshots  # noqa: F401
+
+        logger.info("MCP resources registered (events, snapshots).")
+    except Exception as res_exc:
+        logger.error("Failed to register MCP resources: %s", res_exc, exc_info=True)
+
     # Register meta-tools first (always available regardless of mode)
     register_meta_tools(
         server=server,
