@@ -6,9 +6,10 @@ including managing VPN clients and servers.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_network_mcp.categories import parse_permission
 from unifi_network_mcp.runtime import config, server, vpn_manager
@@ -44,7 +45,11 @@ async def list_vpn_clients() -> Dict[str, Any]:
     description="Get details for a specific VPN client by ID.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_vpn_client_details(client_id: str) -> Dict[str, Any]:
+async def get_vpn_client_details(
+    client_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the VPN client (from unifi_list_vpn_clients)")
+    ],
+) -> Dict[str, Any]:
     """Implementation for getting VPN client details."""
     if not parse_permission(config.permissions, "vpn_client", "read"):
         logger.warning(f"Permission denied for getting VPN client details ({client_id}).")
@@ -75,7 +80,12 @@ async def get_vpn_client_details(client_id: str) -> Dict[str, Any]:
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def update_vpn_client_state(client_id: str, enabled: bool) -> Dict[str, Any]:
+async def update_vpn_client_state(
+    client_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the VPN client to update (from unifi_list_vpn_clients)")
+    ],
+    enabled: Annotated[bool, Field(description="Set to true to enable the VPN client, false to disable it")],
+) -> Dict[str, Any]:
     """Implementation for updating VPN client state."""
     if not parse_permission(config.permissions, "vpn_client", "update"):
         logger.warning(f"Permission denied for updating VPN client state ({client_id}).")
@@ -133,7 +143,11 @@ async def list_vpn_servers() -> Dict[str, Any]:
     description="Get details for a specific VPN server by ID.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_vpn_server_details(server_id: str) -> Dict[str, Any]:
+async def get_vpn_server_details(
+    server_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the VPN server (from unifi_list_vpn_servers)")
+    ],
+) -> Dict[str, Any]:
     """Implementation for getting VPN server details."""
     if not parse_permission(config.permissions, "vpn_server", "read"):
         logger.warning(f"Permission denied for getting VPN server details ({server_id}).")
@@ -164,7 +178,12 @@ async def get_vpn_server_details(server_id: str) -> Dict[str, Any]:
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def update_vpn_server_state(server_id: str, enabled: bool) -> Dict[str, Any]:
+async def update_vpn_server_state(
+    server_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the VPN server to update (from unifi_list_vpn_servers)")
+    ],
+    enabled: Annotated[bool, Field(description="Set to true to enable the VPN server, false to disable it")],
+) -> Dict[str, Any]:
     """Implementation for updating VPN server state."""
     if not parse_permission(config.permissions, "vpn_server", "update"):
         logger.warning(f"Permission denied for updating VPN server state ({server_id}).")

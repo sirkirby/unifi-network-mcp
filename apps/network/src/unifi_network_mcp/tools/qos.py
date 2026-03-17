@@ -4,9 +4,10 @@ QoS tools for Unifi Network MCP server.
 
 import json
 import logging
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.categories import parse_permission
@@ -82,7 +83,9 @@ async def list_qos_rules() -> Dict[str, Any]:
     description="Get details for a specific QoS rule by ID.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_qos_rule_details(rule_id: str) -> Dict[str, Any]:
+async def get_qos_rule_details(
+    rule_id: Annotated[str, Field(description="Unique identifier (_id) of the QoS rule (from unifi_list_qos_rules)")],
+) -> Dict[str, Any]:
     """Gets the detailed configuration of a specific QoS rule by its ID.
 
     Args:
@@ -148,7 +151,15 @@ async def get_qos_rule_details(rule_id: str) -> Dict[str, Any]:
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
-async def toggle_qos_rule_enabled(rule_id: str, confirm: bool = False) -> Dict[str, Any]:  # Removed 'enabled' param
+async def toggle_qos_rule_enabled(
+    rule_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the QoS rule to toggle (from unifi_list_qos_rules)")
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the toggle. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Enables or disables a specific QoS rule. Requires confirmation.
 
     Args:
@@ -247,7 +258,21 @@ async def toggle_qos_rule_enabled(rule_id: str, confirm: bool = False) -> Dict[s
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def update_qos_rule(rule_id: str, update_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
+async def update_qos_rule(
+    rule_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the QoS rule to update (from unifi_list_qos_rules)")
+    ],
+    update_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Dictionary of fields to update. Allowed keys: name, interface ('WAN'/'LAN'), direction ('upload'/'download'), bandwidth_limit_kbps (int), target_ip_address (IP), target_subnet (CIDR), dscp_value (0-63), enabled (bool)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the update. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Updates specific fields of an existing Quality of Service (QoS) rule.
 
     Allows modifying properties like name, bandwidth limits, targeting, DSCP values, etc.
@@ -359,8 +384,16 @@ async def update_qos_rule(rule_id: str, update_data: Dict[str, Any], confirm: bo
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_qos_rule(
-    qos_data: Dict[str, Any],
-    confirm: bool = False,
+    qos_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="QoS rule configuration dict. Required: name (str), interface ('WAN'/'LAN'), direction ('upload'/'download'), bandwidth_limit_kbps (int). Optional: target_ip_address (IP), target_subnet (CIDR), dscp_value (0-63), enabled (bool, default true)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the rule. When false (default), validates and returns a preview"),
+    ] = False,
 ) -> Dict[str, Any]:
     """Creates a new Quality of Service (QoS) rule with schema validation. Requires confirmation.
 
@@ -460,7 +493,18 @@ async def create_qos_rule(
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
-async def create_simple_qos_rule(rule: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
+async def create_simple_qos_rule(
+    rule: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Simplified QoS rule dict. Required: name (str), interface ('wan'/'lan'), direction ('upload'/'download'), limit_kbps (int). Optional: enabled (bool, default true), dscp_value (int 0-63), target (dict with type='ip'/'subnet' and value, e.g. {'type': 'ip', 'value': '192.168.1.50'})"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the rule. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Create a QoS rule with a compact schema and optional preview.
 
     High-level schema (validated internally):

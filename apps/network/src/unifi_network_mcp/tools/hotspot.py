@@ -5,9 +5,10 @@ This module provides MCP tools to manage hotspot vouchers on a UniFi Network Con
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import create_preview, preview_response, should_auto_confirm
 from unifi_network_mcp.runtime import server
@@ -80,7 +81,9 @@ async def list_vouchers() -> Dict[str, Any]:
     description="Get detailed information about a specific voucher by its ID",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_voucher_details(voucher_id: str) -> Dict[str, Any]:
+async def get_voucher_details(
+    voucher_id: Annotated[str, Field(description="Unique identifier (_id) of the voucher (from unifi_list_vouchers)")],
+) -> Dict[str, Any]:
     """Get details for a specific voucher."""
     try:
         hotspot_manager = _get_hotspot_manager()
@@ -115,14 +118,32 @@ Vouchers can have:
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_voucher(
-    expire_minutes: int = 1440,
-    count: int = 1,
-    quota: int = 1,
-    note: Optional[str] = None,
-    up_limit_kbps: Optional[int] = None,
-    down_limit_kbps: Optional[int] = None,
-    bytes_limit_mb: Optional[int] = None,
-    confirm: bool = False,
+    expire_minutes: Annotated[
+        int,
+        Field(description="Duration in minutes the voucher is valid after activation (default 1440 = 24 hours)"),
+    ] = 1440,
+    count: Annotated[int, Field(description="Number of vouchers to create in this batch (1-10000, default 1)")] = 1,
+    quota: Annotated[
+        int,
+        Field(description="Usage limit per voucher: 1 = single-use (default), 0 = unlimited uses, N = N-times usable"),
+    ] = 1,
+    note: Annotated[
+        Optional[str], Field(description="Optional note/label for the voucher batch (e.g., 'Conference guests')")
+    ] = None,
+    up_limit_kbps: Annotated[
+        Optional[int], Field(description="Upload speed limit in Kbps (e.g., 5000 for 5 Mbps). Omit for unlimited")
+    ] = None,
+    down_limit_kbps: Annotated[
+        Optional[int],
+        Field(description="Download speed limit in Kbps (e.g., 10000 for 10 Mbps). Omit for unlimited"),
+    ] = None,
+    bytes_limit_mb: Annotated[
+        Optional[int], Field(description="Total data transfer limit in MB. Omit for unlimited")
+    ] = None,
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the voucher(s). When false (default), returns a preview"),
+    ] = False,
 ) -> Dict[str, Any]:
     """Create one or more hotspot vouchers."""
     if expire_minutes < 1:
@@ -185,7 +206,16 @@ async def create_voucher(
     permission_action="delete",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
 )
-async def revoke_voucher(voucher_id: str, confirm: bool = False) -> Dict[str, Any]:
+async def revoke_voucher(
+    voucher_id: Annotated[
+        str,
+        Field(description="Unique identifier (_id) of the voucher to revoke (from unifi_list_vouchers)"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, revokes the voucher. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
     """Revoke a hotspot voucher."""
 
     try:

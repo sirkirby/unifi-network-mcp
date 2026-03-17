@@ -5,9 +5,10 @@ This module provides MCP tools to interact with a Unifi Network Controller's sys
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
@@ -123,9 +124,15 @@ async def get_snmp_settings() -> Dict[str, Any]:
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_snmp_settings(
-    enabled: bool,
-    community: Optional[str] = None,
-    confirm: bool = False,
+    enabled: Annotated[bool, Field(description="Set to true to enable SNMP on the site, false to disable it")],
+    community: Annotated[
+        Optional[str],
+        Field(description="SNMP community string (e.g., 'public'). Omit to keep the current value"),
+    ] = None,
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the changes. When false (default), returns a preview of the changes"),
+    ] = False,
 ) -> Dict[str, Any]:
     """Implementation for updating SNMP settings.
 

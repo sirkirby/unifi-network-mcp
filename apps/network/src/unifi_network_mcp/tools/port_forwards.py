@@ -4,9 +4,10 @@ Port forward tools for Unifi Network MCP server.
 
 import json
 import logging
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.categories import parse_permission
@@ -92,8 +93,10 @@ async def list_port_forwards() -> Dict[str, Any]:  # Removed context, adjusted r
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_port_forward(
-    port_forward_id: str,
-) -> Dict[str, Any]:  # Removed context, added param type hint
+    port_forward_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the port forwarding rule (from unifi_list_port_forwards)")
+    ],
+) -> Dict[str, Any]:
     """Get detailed information about a specific port forwarding rule by its ID.
 
     Args:
@@ -162,8 +165,17 @@ async def get_port_forward(
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def toggle_port_forward(
-    port_forward_id: str, confirm: bool = False
-) -> Dict[str, Any]:  # Added confirm param, removed context
+    port_forward_id: Annotated[
+        str,
+        Field(
+            description="Unique identifier (_id) of the port forwarding rule to toggle (from unifi_list_port_forwards)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the toggle. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Enables or disables a specific port forwarding rule. Requires confirmation.
 
     Args:
@@ -273,7 +285,14 @@ async def toggle_port_forward(
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
-async def create_port_forward(port_forward_data: Dict[str, Any]) -> Dict[str, Any]:
+async def create_port_forward(
+    port_forward_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Port forward configuration dict. Required: name (str), dst_port (external port, e.g. '80' or '10000-10010'), fwd_port (internal port), fwd_ip (internal IP, e.g. '192.168.1.100'). Optional: protocol ('tcp'/'udp'/'tcp_udp', default 'tcp_udp'), enabled (bool, default true), src_ip (source IP/CIDR), log (bool)"
+        ),
+    ],
+) -> Dict[str, Any]:
     """Create a new port forwarding rule with comprehensive validation.
 
     Required parameters in port_forward_data:
@@ -387,7 +406,22 @@ async def create_port_forward(port_forward_data: Dict[str, Any]) -> Dict[str, An
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_port_forward(
-    port_forward_id: str, update_data: Dict[str, Any], confirm: bool = False
+    port_forward_id: Annotated[
+        str,
+        Field(
+            description="Unique identifier (_id) of the port forwarding rule to update (from unifi_list_port_forwards)"
+        ),
+    ],
+    update_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Dictionary of fields to update. Allowed keys: name, dst_port (external port), fwd_port (internal port), fwd_ip (internal IP), protocol ('tcp'/'udp'/'tcp_udp'), enabled (bool), src_ip (source IP/CIDR, empty string to remove), log (bool)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the update. When false (default), returns a preview of the changes"),
+    ] = False,
 ) -> Dict[str, Any]:
     """Updates specific fields of an existing port forwarding rule.
 
@@ -549,7 +583,18 @@ async def update_port_forward(
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
-async def create_simple_port_forward(rule: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
+async def create_simple_port_forward(
+    rule: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Simplified port forward dict. Required: name (str), ext_port (external port, e.g. '8443'), to_ip (internal IP, e.g. '192.168.1.10'). Optional: int_port (internal port, defaults to ext_port), protocol ('tcp'/'udp'/'both', default 'both'), enabled (bool, default true)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the rule. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Create port forward with compact input.
 
     Schema (validated internally):

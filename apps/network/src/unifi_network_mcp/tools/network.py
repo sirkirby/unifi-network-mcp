@@ -7,9 +7,10 @@ including managing LAN networks and WLANs.
 
 import json
 import logging
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
@@ -116,7 +117,9 @@ async def list_networks() -> Dict[str, Any]:
     description="Get details for a specific network by ID.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_network_details(network_id: str) -> Dict[str, Any]:
+async def get_network_details(
+    network_id: Annotated[str, Field(description="Unique identifier (_id) of the network (from unifi_list_networks)")],
+) -> Dict[str, Any]:
     """Gets the detailed configuration of a specific network by its ID.
 
     Args:
@@ -185,7 +188,21 @@ async def get_network_details(network_id: str) -> Dict[str, Any]:
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def update_network(network_id: str, update_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
+async def update_network(
+    network_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the network to update (from unifi_list_networks)")
+    ],
+    update_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Dictionary of fields to update. Allowed keys: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), vlan (1-4094), ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), enabled (bool), network_isolation_enabled (bool, corporate networks only)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the update. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Updates specific fields of an existing network.
 
     Allows modifying properties like name, purpose, VLAN settings, DHCP settings, etc.
@@ -309,7 +326,18 @@ async def update_network(network_id: str, update_data: Dict[str, Any], confirm: 
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
-async def create_network(network_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
+async def create_network(
+    network_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Network configuration dict. Required: name (str), purpose (str: 'corporate', 'guest', 'wan', 'vlan-only', 'vpn-client', 'vpn-server'). Required if purpose != 'vlan-only': ip_subnet (CIDR, e.g. '192.168.1.0/24'). Required if purpose == 'vlan-only': vlan (int 1-4094). Optional: vlan_enabled, vlan, dhcp_enabled, dhcp_start, dhcp_stop, enabled, network_isolation_enabled"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the network. When false (default), validates and returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
     """Create a new network (LAN/VLAN) with comprehensive validation.
 
     Args:
@@ -552,7 +580,9 @@ async def list_wlans() -> Dict[str, Any]:
     description="Get details for a specific WLAN by ID.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_wlan_details(wlan_id: str) -> Dict[str, Any]:
+async def get_wlan_details(
+    wlan_id: Annotated[str, Field(description="Unique identifier (_id) of the WLAN/SSID (from unifi_list_wlans)")],
+) -> Dict[str, Any]:
     """Gets the detailed configuration of a specific WLAN (SSID) by its ID.
 
     Args:
@@ -614,7 +644,19 @@ async def get_wlan_details(wlan_id: str) -> Dict[str, Any]:
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def update_wlan(wlan_id: str, update_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
+async def update_wlan(
+    wlan_id: Annotated[str, Field(description="Unique identifier (_id) of the WLAN to update (from unifi_list_wlans)")],
+    update_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Dictionary of fields to update. Allowed keys: name (SSID), security ('open'/'wpapsk'/'wpa2-psk'), x_passphrase (password), enabled (bool), hide_ssid (bool), guest_policy (bool), usergroup_id (str), networkconf_id (network ID to associate)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the update. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Updates specific fields of an existing WLAN (Wireless SSID).
 
     Allows modifying properties like SSID name, security settings, password,
@@ -726,7 +768,18 @@ async def update_wlan(wlan_id: str, update_data: Dict[str, Any], confirm: bool =
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
-async def create_wlan(wlan_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
+async def create_wlan(
+    wlan_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="WLAN configuration dict. Required: name (SSID string), security ('open'/'wpa-psk'/'wpa2-psk'). Required if security != 'open': x_passphrase (password). Optional: enabled (bool, default true), hide_ssid (bool), guest_policy (bool), usergroup_id, networkconf_id (network to associate)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the WLAN. When false (default), validates and returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
     """Create a new WLAN (SSID) with comprehensive validation.
 
     Args:

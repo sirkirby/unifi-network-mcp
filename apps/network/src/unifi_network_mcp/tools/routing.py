@@ -6,9 +6,10 @@ This module provides MCP tools to manage static routes on a UniFi Network Contro
 
 import logging
 import re
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, update_preview
 from unifi_network_mcp.categories import parse_permission
@@ -122,7 +123,9 @@ async def list_active_routes() -> Dict[str, Any]:
     description="Get detailed information about a specific static route by its ID",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_route_details(route_id: str) -> Dict[str, Any]:
+async def get_route_details(
+    route_id: Annotated[str, Field(description="Unique identifier (_id) of the static route (from unifi_list_routes)")],
+) -> Dict[str, Any]:
     """Get details for a specific route."""
     try:
         routing_manager = _get_routing_manager()
@@ -154,12 +157,19 @@ next-hop IP address (e.g., "192.168.1.1").""",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_route(
-    name: str,
-    network: str,
-    nexthop: str,
-    distance: int = 1,
-    enabled: bool = True,
-    confirm: bool = False,
+    name: Annotated[str, Field(description="Descriptive name for the static route (e.g., 'Office subnet via VPN')")],
+    network: Annotated[
+        str, Field(description="Destination network in CIDR notation (e.g., '10.0.0.0/24', '172.16.0.0/16')")
+    ],
+    nexthop: Annotated[str, Field(description="Next-hop gateway IP address (e.g., '192.168.1.1')")],
+    distance: Annotated[
+        int, Field(description="Administrative distance / route metric (1-255, default 1, lower = preferred)")
+    ] = 1,
+    enabled: Annotated[bool, Field(description="Whether the route is active (default true)")] = True,
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the route. When false (default), returns a preview of the changes"),
+    ] = False,
 ) -> Dict[str, Any]:
     """Create a new static route."""
     if not parse_permission(config.permissions, "route", "create"):
@@ -230,13 +240,24 @@ Can modify name, destination network, next-hop, distance, or enabled status.""",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_route(
-    route_id: str,
-    name: Optional[str] = None,
-    network: Optional[str] = None,
-    nexthop: Optional[str] = None,
-    distance: Optional[int] = None,
-    enabled: Optional[bool] = None,
-    confirm: bool = False,
+    route_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the static route to update (from unifi_list_routes)")
+    ],
+    name: Annotated[Optional[str], Field(description="New descriptive name for the route")] = None,
+    network: Annotated[
+        Optional[str], Field(description="New destination network in CIDR notation (e.g., '10.0.0.0/24')")
+    ] = None,
+    nexthop: Annotated[
+        Optional[str], Field(description="New next-hop gateway IP address (e.g., '192.168.1.1')")
+    ] = None,
+    distance: Annotated[
+        Optional[int], Field(description="New administrative distance (1-255, lower = preferred)")
+    ] = None,
+    enabled: Annotated[Optional[bool], Field(description="New enabled state (true/false)")] = None,
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the update. When false (default), returns a preview of the changes"),
+    ] = False,
 ) -> Dict[str, Any]:
     """Update an existing static route."""
     if not parse_permission(config.permissions, "route", "update"):

@@ -4,9 +4,10 @@ Firewall policy tools for Unifi Network MCP server.
 
 import json
 import logging
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.categories import parse_permission
@@ -21,7 +22,14 @@ logger = logging.getLogger(__name__)
     description="List firewall policies configured on the Unifi Network controller.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def list_firewall_policies(include_predefined: bool = False) -> Dict[str, Any]:
+async def list_firewall_policies(
+    include_predefined: Annotated[
+        bool,
+        Field(
+            description="When true, includes predefined system policies in results. Default false (user-defined only)"
+        ),
+    ] = False,
+) -> Dict[str, Any]:
     """
     Lists firewall policies for the current UniFi site.
 
@@ -100,7 +108,12 @@ async def list_firewall_policies(include_predefined: bool = False) -> Dict[str, 
     description="Get detailed configuration for a specific firewall policy by ID.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_firewall_policy_details(policy_id: str) -> Dict[str, Any]:
+async def get_firewall_policy_details(
+    policy_id: Annotated[
+        str,
+        Field(description="Unique identifier (_id) of the firewall policy (from unifi_list_firewall_policies)"),
+    ],
+) -> Dict[str, Any]:
     """
     Gets the detailed configuration of a specific firewall policy by its ID.
 
@@ -173,7 +186,18 @@ async def get_firewall_policy_details(policy_id: str) -> Dict[str, Any]:
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
-async def toggle_firewall_policy(policy_id: str, confirm: bool = False) -> Dict[str, Any]:
+async def toggle_firewall_policy(
+    policy_id: Annotated[
+        str,
+        Field(
+            description="Unique identifier (_id) of the firewall policy to toggle (from unifi_list_firewall_policies)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the toggle. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """
     Enables or disables a specific firewall policy. Requires confirmation.
 
@@ -274,7 +298,18 @@ async def toggle_firewall_policy(policy_id: str, confirm: bool = False) -> Dict[
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
-async def create_firewall_policy(policy_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
+async def create_firewall_policy(
+    policy_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Firewall policy configuration dict. Required keys: name (str), ruleset (str, e.g. 'WAN_IN', 'LAN_OUT'), action (str: 'accept', 'drop', 'reject'), index (int: rule priority). Optional: enabled, description, protocol, connection_states, source, destination, logging"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the policy. When false (default), validates and returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
     """
     Creates a new firewall policy based on the provided configuration data.
     This tool performs validation on the input data against the expected UniFi API schema.
@@ -436,7 +471,24 @@ async def create_firewall_policy(policy_data: Dict[str, Any], confirm: bool = Fa
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
-async def update_firewall_policy(policy_id: str, update_data: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
+async def update_firewall_policy(
+    policy_id: Annotated[
+        str,
+        Field(
+            description="Unique identifier (_id) of the firewall policy to update (from unifi_list_firewall_policies)"
+        ),
+    ],
+    update_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Dictionary of fields to update. Allowed keys: name, ruleset, action ('accept'/'drop'/'reject'), rule_index, protocol, src_address, dst_address, src_port, dst_port, enabled, description, state_new, state_established, state_related, state_invalid, logging"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the update. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """
     Updates specific fields of an existing firewall policy. Requires confirmation.
 
@@ -584,7 +636,18 @@ async def update_firewall_policy(policy_id: str, update_data: Dict[str, Any], co
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
-async def create_simple_firewall_policy(policy: Dict[str, Any], confirm: bool = False) -> Dict[str, Any]:
+async def create_simple_firewall_policy(
+    policy: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Simplified firewall policy dict. Required: name (str), ruleset (str: 'LAN_OUT', 'WAN_IN', etc.), action (str: 'drop', 'accept', 'reject'), src (dict with type+value), dst (dict with type+value). src/dst type options: 'zone' (value: 'wan'/'lan'), 'network' (value: network name/ID), 'client_mac' (value: MAC address), 'ip_group' (value: group ID). Optional: protocol, index, enabled, log"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the policy. When false (default), validates and returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
     """Create a firewall rule with a compact schema and optional preview.
 
     High-level schema (validated internally):

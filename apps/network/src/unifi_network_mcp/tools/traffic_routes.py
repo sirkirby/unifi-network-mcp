@@ -6,9 +6,10 @@ on a UniFi Network Controller using the V2 API.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import should_auto_confirm, toggle_preview, update_preview
 from unifi_network_mcp.categories import parse_permission
@@ -80,7 +81,12 @@ async def list_traffic_routes() -> Dict[str, Any]:
     description="Get detailed information for a specific traffic route by ID.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def get_traffic_route_details(route_id: str) -> Dict[str, Any]:
+async def get_traffic_route_details(
+    route_id: Annotated[
+        str,
+        Field(description="Unique identifier (_id) of the traffic route (from unifi_list_traffic_routes)"),
+    ],
+) -> Dict[str, Any]:
     """Get details for a specific traffic route."""
     try:
         traffic_route_manager = _get_traffic_route_manager()
@@ -114,10 +120,21 @@ At least one parameter must be provided.""",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_traffic_route(
-    route_id: str,
-    enabled: bool | None = None,
-    kill_switch_enabled: bool | None = None,
-    confirm: bool = False,
+    route_id: Annotated[
+        str,
+        Field(description="Unique identifier (_id) of the traffic route to update (from unifi_list_traffic_routes)"),
+    ],
+    enabled: Annotated[Optional[bool], Field(description="Enable (true) or disable (false) the traffic route")] = None,
+    kill_switch_enabled: Annotated[
+        Optional[bool],
+        Field(
+            description="Enable (true) or disable (false) the kill switch, which blocks traffic if the VPN goes down"
+        ),
+    ] = None,
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the update. When false (default), returns a preview of the changes"),
+    ] = False,
 ) -> Dict[str, Any]:
     """Update a traffic route's settings."""
     if enabled is None and kill_switch_enabled is None:
@@ -197,7 +214,16 @@ async def update_traffic_route(
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
-async def toggle_traffic_route(route_id: str, confirm: bool = False) -> Dict[str, Any]:
+async def toggle_traffic_route(
+    route_id: Annotated[
+        str,
+        Field(description="Unique identifier (_id) of the traffic route to toggle (from unifi_list_traffic_routes)"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the toggle. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
     """Toggle a traffic route's enabled state."""
     if not parse_permission(config.permissions, "traffic_route", "update"):
         logger.warning(f"Permission denied for toggling traffic route ({route_id}).")
