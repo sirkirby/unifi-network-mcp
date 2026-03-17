@@ -113,10 +113,35 @@ AccessConnectionManager
 
 1. If API key configured → try `py-unifi-access` authenticate on port 12445
 2. If that succeeds → `_api_client` available as primary path
-3. If that fails or no API key → log warning
+3. If that fails or no API key → log warning (not fatal)
 4. If local credentials configured → establish proxy session via `/api/auth/login`
-5. Proxy session maintained with cookie + CSRF token, reconnect on expiration
+5. Proxy session maintained with cookie + CSRF token (details below)
 6. Both paths can coexist — tools route based on `auth=` annotation
+7. If neither path succeeds → fail with clear error listing what was tried
+
+**Startup flexibility:** At least one auth path must succeed. API-key-only (no username/password) is allowed if `py-unifi-access` auth works. Local-only (no API key) is allowed and is the expected common case given the current auth status. Both configured is ideal.
+
+### Proxy Session Lifecycle
+
+The proxy session reuses the same auth flow as the Network server (`/api/auth/login` → cookie + CSRF):
+
+- **Login:** POST `/api/auth/login` with `{"username": "...", "password": "..."}` → response includes `Set-Cookie: TOKEN=<jwt>` and `x-updated-csrf-token` header
+- **CSRF token:** Extracted from `x-updated-csrf-token` response header on login. Included as `X-CSRF-Token` header on all subsequent requests.
+- **Session expiration:** Detected by 401 response on any request. On 401, re-login automatically (one retry), then re-execute the failed request.
+- **Concurrent safety:** Use `asyncio.Lock` around the re-login flow to prevent multiple simultaneous re-authentications.
+- **Cookie jar:** `aiohttp.CookieJar(unsafe=True)` on the session, same as Network.
+
+### Auth Fallback Behavior for `either` Tools
+
+For tools marked `auth="either"`: if the API key client is configured and available, use it. If not configured or unavailable, use the proxy session. There is NO automatic per-request fallback from API key to proxy on 401 — the path is chosen at startup based on what's available. This avoids silent fallback confusion (consistent with Phase 1 spec: "no silent fallback").
+
+### Contingency: API Key Auth Never Works
+
+If `py-unifi-access` authentication cannot be made to work on the user's firmware:
+- All tools operate via proxy session (`local_only` mode effectively)
+- `auth="either"` annotations remain as forward-looking metadata
+- WebSocket events may not be available (depends on whether proxy path supports WebSocket). If not, event tools fall back to REST polling via `/proxy/access/api/v2/` endpoints.
+- Ship as proxy-only. This is still a fully functional server — same as how Network works without API key support today.
 
 ### Per-Tool Auth Routing
 
@@ -342,7 +367,7 @@ Each PR leaves tests green. No release until all 8 PRs land.
 | PR | Scope | Risk |
 |----|-------|------|
 | **1** | App scaffold (directories, config, stubs) | Low |
-| **2** | Connection manager (dual path) + system tools | **Medium-high** — auth debugging against live instance |
+| **2** | Connection manager (dual path) + system tools | **High** — novel dual-path auth, debugging against live instance |
 | **3** | Door tools (list, get, unlock, lock, status, groups) | Medium |
 | **4** | Event tools + WebSocket buffer + MCP resource | Medium (proven pattern) |
 | **5** | Policy + credential + visitor tools | Low-medium |
@@ -389,7 +414,12 @@ Return 401 (exist, need auth) not 404:
 
 ### Implementation Notes
 
-- `access_unlock_door` is the highest-risk tool — physical real-world action. Confirm pattern required, destructiveHint=true.
-- If `py-unifi-access` WebSocket fails (auth issue), event tools fall back to REST API polling via proxy session.
+- **`access_unlock_door`** is the highest-risk tool — physical real-world action. Confirm pattern required, `destructiveHint=true`. The `update` action type is used (consistent with Protect's `reboot_camera`) since Access doesn't have a separate `control` action in the permission system. The mutation is gated by `UNIFI_PERMISSIONS_DOORS_UPDATE=true`.
+- If `py-unifi-access` WebSocket fails (auth issue), event tools fall back to REST API polling via proxy session. If WebSocket is unavailable, the event buffer stays empty and `access_recent_events` returns an empty list with a clear message.
 - Parameter descriptions (`Annotated[..., Field(description=...)]`) on all tools from day one — learned from Phase 2.
 - Same `SETUPTOOLS_SCM_PRETEND_VERSION` workaround in CI until first `access/v*` tag exists.
+- **Missing from file tree but needed:** `utils/diagnostics.py`, `utils/config_helpers.py`, `validator_registry.py`, `jobs.py` — same modules as Protect. Create during scaffold (PR 1).
+- **Config `server:` section** not shown in spec but identical to Protect's (host, port, log_level, tool_registration_mode, http, diagnostics). Copy from Protect's `config.yaml`.
+- **`access.api_port` config** (12445) is a new pattern — flows into `AccessConnectionManager.__init__` as the port for `py-unifi-access`. The `unifi.port` (443) is for the proxy session.
+- **No MCP image/media resources** for Access — only `resources/events.py`. Access is physical access control, not video.
+- **Root `.env.example`**: Add `UNIFI_ACCESS_*` variables. Also add `UNIFI_PROTECT_*` if missing (Phase 2 debt).
