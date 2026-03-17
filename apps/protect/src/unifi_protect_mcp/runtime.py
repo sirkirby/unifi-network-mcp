@@ -148,7 +148,13 @@ def get_camera_manager() -> CameraManager:
 
 @lru_cache
 def get_event_manager() -> EventManager:
-    return EventManager(get_connection_manager())
+    cfg = get_config()
+    events_cfg: dict = {}
+    try:
+        events_cfg = dict(cfg.protect.events) if hasattr(cfg, "protect") and hasattr(cfg.protect, "events") else {}
+    except Exception:
+        pass
+    return EventManager(get_connection_manager(), config=events_cfg)
 
 
 @lru_cache
