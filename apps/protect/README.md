@@ -1,6 +1,6 @@
 # UniFi Protect MCP Server
 
-MCP server exposing 34 UniFi Protect tools for LLMs, agents, and automation platforms. Query cameras, events, smart detections, recordings, lights, sensors, and chimes -- with safe-by-default permissions and preview-before-confirm for all mutations.
+MCP server exposing UniFi Protect tools for LLMs, agents, and automation platforms. Query cameras, events, smart detections, recordings, lights, sensors, and chimes -- with safe-by-default permissions and preview-before-confirm for all mutations.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/downloads/)
@@ -25,13 +25,17 @@ cd unifi-mcp && uv sync
 Set these environment variables (or create a `.env` file):
 
 ```bash
-UNIFI_HOST=192.168.1.1      # Controller IP or hostname
-UNIFI_USERNAME=admin         # Local admin username
-UNIFI_PASSWORD=your-password # Admin password
+# Server-specific variables (recommended)
+UNIFI_PROTECT_HOST=192.168.1.1      # Controller IP or hostname
+UNIFI_PROTECT_USERNAME=admin         # Local admin username
+UNIFI_PROTECT_PASSWORD=your-password # Admin password
 # Optional:
-# UNIFI_PORT=443             # Controller HTTPS port
-# UNIFI_VERIFY_SSL=false     # SSL certificate verification
+# UNIFI_PROTECT_API_KEY=             # Official UniFi API key (dual auth)
+# UNIFI_PROTECT_PORT=443             # Controller HTTPS port
+# UNIFI_PROTECT_VERIFY_SSL=false     # SSL certificate verification
 ```
+
+**Fallback:** The shared `UNIFI_*` variables (e.g., `UNIFI_HOST`) also work. The server checks for `UNIFI_PROTECT_*` first and falls back to `UNIFI_*` if the server-specific variable is not set. For single-controller setups, the shared variables are all you need.
 
 ## Run
 
@@ -41,9 +45,9 @@ unifi-protect-mcp
 
 # Docker
 docker run -i --rm \
-  -e UNIFI_HOST=192.168.1.1 \
-  -e UNIFI_USERNAME=admin \
-  -e UNIFI_PASSWORD=secret \
+  -e UNIFI_PROTECT_HOST=192.168.1.1 \
+  -e UNIFI_PROTECT_USERNAME=admin \
+  -e UNIFI_PROTECT_PASSWORD=secret \
   ghcr.io/sirkirby/unifi-protect-mcp:latest
 ```
 
@@ -58,9 +62,9 @@ Add to `claude_desktop_config.json`:
       "command": "uvx",
       "args": ["unifi-protect-mcp"],
       "env": {
-        "UNIFI_HOST": "192.168.1.1",
-        "UNIFI_USERNAME": "admin",
-        "UNIFI_PASSWORD": "your-password"
+        "UNIFI_PROTECT_HOST": "192.168.1.1",
+        "UNIFI_PROTECT_USERNAME": "admin",
+        "UNIFI_PROTECT_PASSWORD": "your-password"
       }
     }
   }

@@ -8,15 +8,18 @@ The UniFi Protect MCP server merges settings from three sources (highest priorit
 
 ## Essential Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `UNIFI_HOST` | Yes | -- | Controller IP or hostname |
-| `UNIFI_USERNAME` | Yes | -- | Local admin username |
-| `UNIFI_PASSWORD` | Yes | -- | Admin password |
-| `UNIFI_PORT` | No | `443` | Controller HTTPS port |
-| `UNIFI_SITE` | No | `default` | UniFi site name |
-| `UNIFI_VERIFY_SSL` | No | `false` | SSL certificate verification |
-| `UNIFI_API_KEY` | No | `""` | Official UniFi API key (dual auth) |
+The Protect server supports server-specific environment variables with the `UNIFI_PROTECT_` prefix. These take priority over the shared `UNIFI_*` variables, which serve as a fallback. For single-controller setups, the shared variables are all you need.
+
+| Server-specific variable | Shared fallback | Required | Default | Description |
+|--------------------------|-----------------|----------|---------|-------------|
+| `UNIFI_PROTECT_HOST` | `UNIFI_HOST` | Yes | -- | Controller IP or hostname |
+| `UNIFI_PROTECT_USERNAME` | `UNIFI_USERNAME` | Yes | -- | Local admin username |
+| `UNIFI_PROTECT_PASSWORD` | `UNIFI_PASSWORD` | Yes | -- | Admin password |
+| `UNIFI_PROTECT_PORT` | `UNIFI_PORT` | No | `443` | Controller HTTPS port |
+| `UNIFI_PROTECT_VERIFY_SSL` | `UNIFI_VERIFY_SSL` | No | `false` | SSL certificate verification |
+| `UNIFI_PROTECT_API_KEY` | `UNIFI_API_KEY` | No | `""` | Official UniFi API key (dual auth) |
+
+**Resolution order:** `UNIFI_PROTECT_*` > `UNIFI_*` > YAML config > hardcoded default.
 
 ## Server Settings
 

@@ -499,15 +499,31 @@ make run-meta    # Meta-only mode
 
 ## Appendix B: Environment Variable Quick Reference
 
+### Server-specific prefix pattern
+
+Each server supports its own prefixed variables that take priority over the shared `UNIFI_*` fallback:
+
+- **Network server:** `UNIFI_NETWORK_*` > `UNIFI_*`
+- **Protect server:** `UNIFI_PROTECT_*` > `UNIFI_*`
+
+For single-controller setups, the shared `UNIFI_*` variables are all you need.
+
+### Connection variables
+
+| Shared (fallback) | Network server | Protect server | Default | Purpose |
+|--------------------|----------------|----------------|---------|---------|
+| `UNIFI_HOST` | `UNIFI_NETWORK_HOST` | `UNIFI_PROTECT_HOST` | (required) | Controller IP/hostname |
+| `UNIFI_USERNAME` | `UNIFI_NETWORK_USERNAME` | `UNIFI_PROTECT_USERNAME` | (required*) | Admin username (*required for local auth) |
+| `UNIFI_PASSWORD` | `UNIFI_NETWORK_PASSWORD` | `UNIFI_PROTECT_PASSWORD` | (required*) | Admin password (*required for local auth) |
+| `UNIFI_API_KEY` | `UNIFI_NETWORK_API_KEY` | `UNIFI_PROTECT_API_KEY` | (optional) | API key for UniFi OS API key auth |
+| `UNIFI_PORT` | `UNIFI_NETWORK_PORT` | `UNIFI_PROTECT_PORT` | 443 | Controller HTTPS port |
+| `UNIFI_SITE` | `UNIFI_NETWORK_SITE` | — | default | UniFi site name |
+| `UNIFI_VERIFY_SSL` | `UNIFI_NETWORK_VERIFY_SSL` | `UNIFI_PROTECT_VERIFY_SSL` | false | SSL certificate verification |
+
+### Server and transport settings (shared)
+
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `UNIFI_HOST` | (required) | Controller IP/hostname |
-| `UNIFI_USERNAME` | (required*) | Admin username (*required for local auth) |
-| `UNIFI_PASSWORD` | (required*) | Admin password (*required for local auth) |
-| `UNIFI_API_KEY` | (optional) | API key for UniFi OS API key auth (alternative to username/password) |
-| `UNIFI_PORT` | 443 | Controller HTTPS port |
-| `UNIFI_SITE` | default | UniFi site name |
-| `UNIFI_VERIFY_SSL` | false | SSL certificate verification |
 | `UNIFI_CONTROLLER_TYPE` | auto | Controller type detection (auto/proxy/direct) |
 | `UNIFI_TOOL_REGISTRATION_MODE` | lazy | Tool loading mode (lazy/eager/meta_only) |
 | `UNIFI_MCP_HTTP_ENABLED` | false | Enable HTTP transport |

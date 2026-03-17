@@ -2,7 +2,8 @@
 
 MCP servers that expose UniFi controller functionality as structured tools for LLMs, agents, and automation platforms.
 
-[![PyPI](https://img.shields.io/pypi/v/unifi-network-mcp)](https://pypi.org/project/unifi-network-mcp/)
+[![PyPI - Network](https://img.shields.io/pypi/v/unifi-network-mcp)](https://pypi.org/project/unifi-network-mcp/)
+[![PyPI - Protect](https://img.shields.io/pypi/v/unifi-protect-mcp)](https://pypi.org/project/unifi-protect-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/downloads/)
 
@@ -11,7 +12,7 @@ MCP servers that expose UniFi controller functionality as structured tools for L
 | Server | Status | Tools | Package |
 |--------|--------|-------|---------|
 | [Network](apps/network/) | Stable | 91 | [`unifi-network-mcp`](https://pypi.org/project/unifi-network-mcp/) |
-| [Protect](apps/protect/) | Beta | 34 | `unifi-protect-mcp` |
+| [Protect](apps/protect/) | Beta | 34 | [`unifi-protect-mcp`](https://pypi.org/project/unifi-protect-mcp/) |
 | Access | Planned | — | — |
 
 ## What is this?
@@ -39,23 +40,26 @@ For Claude Desktop, add to your `claude_desktop_config.json`:
       "command": "uvx",
       "args": ["unifi-network-mcp"],
       "env": {
-        "UNIFI_HOST": "192.168.1.1",
-        "UNIFI_USERNAME": "admin",
-        "UNIFI_PASSWORD": "your-password"
+        // Server-specific vars take priority; UNIFI_* is the fallback
+        "UNIFI_NETWORK_HOST": "192.168.1.1",
+        "UNIFI_NETWORK_USERNAME": "admin",
+        "UNIFI_NETWORK_PASSWORD": "your-password"
       }
     },
     "unifi-protect": {
       "command": "uvx",
       "args": ["unifi-protect-mcp"],
       "env": {
-        "UNIFI_HOST": "192.168.1.1",
-        "UNIFI_USERNAME": "admin",
-        "UNIFI_PASSWORD": "your-password"
+        "UNIFI_PROTECT_HOST": "192.168.1.1",
+        "UNIFI_PROTECT_USERNAME": "admin",
+        "UNIFI_PROTECT_PASSWORD": "your-password"
       }
     }
   }
 }
 ```
+
+> **Tip:** If both servers connect to the same controller, you can use the shared `UNIFI_HOST` / `UNIFI_USERNAME` / `UNIFI_PASSWORD` variables instead of repeating them per server.
 
 ## Configuration
 
@@ -68,7 +72,22 @@ Set these environment variables (or use a `.env` file):
 | `UNIFI_PASSWORD` | Yes | Admin password |
 | `UNIFI_API_KEY` | No | Official UniFi API key (dual auth) |
 
-For the full configuration reference including permissions, transports, and advanced options, see the [Network server docs](apps/network/docs/configuration.md).
+### Multi-controller setups
+
+Each server supports its own prefixed environment variables that take priority over the shared `UNIFI_*` variables. This lets you point the Network and Protect servers at different controllers (or different credentials) while keeping a single `.env` file:
+
+| Shared (fallback) | Network server | Protect server |
+|--------------------|----------------|----------------|
+| `UNIFI_HOST` | `UNIFI_NETWORK_HOST` | `UNIFI_PROTECT_HOST` |
+| `UNIFI_USERNAME` | `UNIFI_NETWORK_USERNAME` | `UNIFI_PROTECT_USERNAME` |
+| `UNIFI_PASSWORD` | `UNIFI_NETWORK_PASSWORD` | `UNIFI_PROTECT_PASSWORD` |
+| `UNIFI_PORT` | `UNIFI_NETWORK_PORT` | `UNIFI_PROTECT_PORT` |
+| `UNIFI_VERIFY_SSL` | `UNIFI_NETWORK_VERIFY_SSL` | `UNIFI_PROTECT_VERIFY_SSL` |
+| `UNIFI_API_KEY` | `UNIFI_NETWORK_API_KEY` | `UNIFI_PROTECT_API_KEY` |
+
+**Single controller?** Just set the shared `UNIFI_*` variables -- both servers will use them. Server-specific variables are only needed when the servers talk to different controllers or use different credentials.
+
+For the full configuration reference including permissions, transports, and advanced options, see the [Network server docs](apps/network/docs/configuration.md) or [Protect server docs](apps/protect/docs/configuration.md).
 
 ## Architecture
 
