@@ -6,9 +6,10 @@ UniFi Viewport devices.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Annotated, Any, Dict, List
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_protect_mcp.runtime import liveview_manager, server
 
@@ -59,9 +60,19 @@ async def protect_list_liveviews() -> Dict[str, Any]:
     permission_action="create",
 )
 async def protect_create_liveview(
-    name: str,
-    camera_ids: List[str],
-    confirm: bool = False,
+    name: Annotated[str, Field(description="Display name for the new liveview (e.g., 'Front Yard Cameras')")],
+    camera_ids: Annotated[
+        List[str],
+        Field(
+            description="List of camera UUIDs to include in the liveview (from protect_list_cameras). At least one required."
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, attempts to create the liveview. When false (default), returns a validation preview. Note: creation is not supported via the API."
+        ),
+    ] = False,
 ) -> Dict[str, Any]:
     """Create a liveview (validation only -- API limitation)."""
     logger.info("protect_create_liveview called (name=%s, cameras=%d)", name, len(camera_ids))
@@ -94,8 +105,13 @@ async def protect_create_liveview(
     permission_action="delete",
 )
 async def protect_delete_liveview(
-    liveview_id: str,
-    confirm: bool = False,
+    liveview_id: Annotated[str, Field(description="Liveview UUID (from protect_list_liveviews)")],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, attempts the deletion. When false (default), returns liveview info. Note: deletion is not supported via the API."
+        ),
+    ] = False,
 ) -> Dict[str, Any]:
     """Delete a liveview (not supported via API)."""
     logger.info("protect_delete_liveview called for %s (confirm=%s)", liveview_id, confirm)

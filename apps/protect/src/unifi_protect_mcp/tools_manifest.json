@@ -46,9 +46,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, marks the event as acknowledged. When false (default), returns a preview of the changes.",
               "type": "boolean"
             },
             "event_id": {
+              "description": "Event UUID to acknowledge (from protect_list_events or protect_recent_events)",
               "type": "string"
             }
           },
@@ -66,12 +68,15 @@
         "input": {
           "properties": {
             "camera_ids": {
+              "description": "List of camera UUIDs to include in the liveview (from protect_list_cameras). At least one required.",
               "type": "array"
             },
             "confirm": {
+              "description": "When true, attempts to create the liveview. When false (default), returns a validation preview. Note: creation is not supported via the API.",
               "type": "boolean"
             },
             "name": {
+              "description": "Display name for the new liveview (e.g., 'Front Yard Cameras')",
               "type": "string"
             }
           },
@@ -90,9 +95,11 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, attempts the deletion. When false (default), returns liveview info. Note: deletion is not supported via the API.",
               "type": "boolean"
             },
             "liveview_id": {
+              "description": "Liveview UUID (from protect_list_liveviews)",
               "type": "string"
             }
           },
@@ -110,15 +117,19 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras) to delete recordings for.",
               "type": "string"
             },
             "confirm": {
+              "description": "When true, attempts the deletion. When false (default), returns a preview. Note: deletion is not supported by the API regardless.",
               "type": "boolean"
             },
             "end": {
+              "description": "End of the deletion range as ISO 8601 timestamp (e.g., 2026-03-16T12:00:00Z).",
               "type": "string"
             },
             "start": {
+              "description": "Start of the deletion range as ISO 8601 timestamp (e.g., 2026-03-16T00:00:00Z).",
               "type": "string"
             }
           },
@@ -138,18 +149,23 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras) to export footage from.",
               "type": "string"
             },
             "channel_index": {
+              "description": "Video channel index: 0 = high quality (default), 1 = medium, 2 = low.",
               "type": "integer"
             },
             "end": {
+              "description": "Clip end time as ISO 8601 timestamp (e.g., 2026-03-16T12:30:00Z). Maximum 2 hours after start.",
               "type": "string"
             },
             "fps": {
+              "description": "Frames per second for timelapse export. Common values: 4 (60x speed), 8 (120x), 20 (300x), 40 (600x). Omit for normal speed.",
               "type": "integer"
             },
             "start": {
+              "description": "Clip start time as ISO 8601 timestamp (e.g., 2026-03-16T12:00:00Z).",
               "type": "string"
             }
           },
@@ -169,6 +185,7 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
               "type": "string"
             }
           },
@@ -186,6 +203,7 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
               "type": "string"
             }
           },
@@ -203,6 +221,7 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
               "type": "string"
             }
           },
@@ -220,6 +239,7 @@
         "input": {
           "properties": {
             "event_id": {
+              "description": "Event UUID (from protect_list_events or protect_recent_events)",
               "type": "string"
             }
           },
@@ -237,12 +257,15 @@
         "input": {
           "properties": {
             "event_id": {
+              "description": "Event UUID (from protect_list_events or protect_recent_events)",
               "type": "string"
             },
             "height": {
+              "description": "Resize the thumbnail to this height in pixels. Aspect ratio is preserved if only width or height is set.",
               "type": "integer"
             },
             "width": {
+              "description": "Resize the thumbnail to this width in pixels. Aspect ratio is preserved if only width or height is set.",
               "type": "integer"
             }
           },
@@ -280,6 +303,7 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras) to check. Omit to get recording status for all cameras.",
               "type": "string"
             }
           },
@@ -294,15 +318,19 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
               "type": "string"
             },
             "height": {
+              "description": "Resize the snapshot to this height in pixels. Aspect ratio is preserved if only width or height is set.",
               "type": "integer"
             },
             "include_image": {
+              "description": "When true, returns base64-encoded JPEG image data in the response. When false (default), returns a resource URI.",
               "type": "boolean"
             },
             "width": {
+              "description": "Resize the snapshot to this width in pixels. Aspect ratio is preserved if only width or height is set.",
               "type": "integer"
             }
           },
@@ -350,18 +378,23 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Filter events to a specific camera by its UUID (from protect_list_cameras). Omit to include all cameras.",
               "type": "string"
             },
             "end": {
+              "description": "End time as ISO 8601 timestamp (e.g., 2026-03-17T23:59:59Z). Defaults to now.",
               "type": "string"
             },
             "event_type": {
+              "description": "Filter by event type: motion, smartDetectZone, ring, sensorMotion, sensorContact, sensorDoorbell.",
               "type": "string"
             },
             "limit": {
+              "description": "Maximum number of events to return (default 30).",
               "type": "integer"
             },
             "start": {
+              "description": "Start time as ISO 8601 timestamp (e.g., 2026-03-17T00:00:00Z). Defaults to 24 hours ago.",
               "type": "string"
             }
           },
@@ -396,12 +429,15 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras) to query recordings for.",
               "type": "string"
             },
             "end": {
+              "description": "End of the time range as ISO 8601 timestamp (e.g., 2026-03-17T00:00:00Z). Defaults to now.",
               "type": "string"
             },
             "start": {
+              "description": "Start of the time range as ISO 8601 timestamp (e.g., 2026-03-16T00:00:00Z). Defaults to 24 hours ago.",
               "type": "string"
             }
           },
@@ -429,21 +465,27 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Filter detections to a specific camera by its UUID (from protect_list_cameras). Omit to include all cameras.",
               "type": "string"
             },
             "detection_type": {
+              "description": "Filter by smart detection type: person, vehicle, animal, package, face, licensePlate.",
               "type": "string"
             },
             "end": {
+              "description": "End time as ISO 8601 timestamp (e.g., 2026-03-17T23:59:59Z). Defaults to now.",
               "type": "string"
             },
             "limit": {
+              "description": "Maximum number of smart detection events to return (default 30).",
               "type": "integer"
             },
             "min_confidence": {
+              "description": "Minimum confidence score (0-100) to include. Overrides the server default (50). Higher values return fewer, more certain detections.",
               "type": "integer"
             },
             "start": {
+              "description": "Start time as ISO 8601 timestamp (e.g., 2026-03-17T00:00:00Z). Defaults to 24 hours ago.",
               "type": "string"
             }
           },
@@ -468,15 +510,19 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID of a PTZ-capable camera (from protect_list_cameras)",
               "type": "string"
             },
             "pan": {
+              "description": "Pan position in degrees. Note: not currently supported via the API; use protect_ptz_preset for pan control.",
               "type": "number"
             },
             "tilt": {
+              "description": "Tilt position in degrees. Note: not currently supported via the API; use protect_ptz_preset for tilt control.",
               "type": "number"
             },
             "zoom": {
+              "description": "Zoom level (0 = wide, higher values = more zoom). The maximum depends on the camera model.",
               "type": "integer"
             }
           },
@@ -494,9 +540,11 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID of a PTZ-capable camera (from protect_list_cameras)",
               "type": "string"
             },
             "preset_slot": {
+              "description": "Preset slot number to move the camera to. Available slots can be seen in the camera's PTZ preset list.",
               "type": "integer"
             }
           },
@@ -515,9 +563,11 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
               "type": "string"
             },
             "confirm": {
+              "description": "When true, executes the reboot. When false (default), returns a preview showing camera state and warnings.",
               "type": "boolean"
             }
           },
@@ -535,15 +585,19 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Filter events to a specific camera by its UUID (from protect_list_cameras). Omit to include all cameras.",
               "type": "string"
             },
             "event_type": {
+              "description": "Filter by event type: motion, smartDetectZone, ring, sensorMotion, sensorContact, sensorDoorbell.",
               "type": "string"
             },
             "limit": {
+              "description": "Maximum number of events to return from the buffer. Omit to return all buffered events.",
               "type": "integer"
             },
             "min_confidence": {
+              "description": "Minimum confidence score (0-100) to include. Only applies to smart detection events.",
               "type": "integer"
             }
           },
@@ -568,12 +622,15 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
               "type": "string"
             },
             "confirm": {
+              "description": "When true, executes the mutation. When false (default), returns a preview of the changes.",
               "type": "boolean"
             },
             "enabled": {
+              "description": "When true, enables recording (mode set to 'always'). When false, disables recording (mode set to 'never').",
               "type": "boolean"
             }
           },
@@ -592,12 +649,15 @@
         "input": {
           "properties": {
             "chime_id": {
+              "description": "Chime device UUID (from protect_list_chimes)",
               "type": "string"
             },
             "repeat_times": {
+              "description": "Override repeat count for this playback only (1-6). Omit to use the chime's configured repeat setting.",
               "type": "integer"
             },
             "volume": {
+              "description": "Override speaker volume for this playback only (0-100). Omit to use the chime's configured volume.",
               "type": "integer"
             }
           },
@@ -615,12 +675,15 @@
         "input": {
           "properties": {
             "camera_id": {
+              "description": "Camera UUID (from protect_list_cameras)",
               "type": "string"
             },
             "confirm": {
+              "description": "When true, executes the mutation. When false (default), returns a preview of the changes.",
               "type": "boolean"
             },
             "settings": {
+              "description": "Dictionary of settings to update. Supported keys: ir_led_mode (auto, on, autoFilterOnly), hdr_mode (true/false), mic_enabled (true/false), mic_volume (0-100), status_light_on (true/false), speaker_volume (0-100), name (string), motion_detection (true/false).",
               "type": "object"
             }
           },
@@ -639,12 +702,15 @@
         "input": {
           "properties": {
             "chime_id": {
+              "description": "Chime device UUID (from protect_list_chimes)",
               "type": "string"
             },
             "confirm": {
+              "description": "When true, executes the mutation. When false (default), returns a preview of the changes.",
               "type": "boolean"
             },
             "settings": {
+              "description": "Dictionary of settings to update. Supported keys: volume (0-100 - speaker volume), repeat_times (1-6 - number of times to repeat the chime tone), name (string - device display name).",
               "type": "object"
             }
           },
@@ -663,12 +729,15 @@
         "input": {
           "properties": {
             "confirm": {
+              "description": "When true, executes the mutation. When false (default), returns a preview of the changes.",
               "type": "boolean"
             },
             "light_id": {
+              "description": "Light device UUID (from protect_list_lights)",
               "type": "string"
             },
             "settings": {
+              "description": "Dictionary of settings to update. Supported keys: light_on (true/false - turn light on or off), led_level (1-6 - brightness level), sensitivity (0-100 - PIR motion sensitivity), duration_seconds (15-900 - how long light stays on after motion), status_light (true/false - status indicator LED), name (string - device display name).",
               "type": "object"
             }
           },

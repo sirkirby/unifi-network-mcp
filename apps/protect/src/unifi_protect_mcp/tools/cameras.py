@@ -6,9 +6,10 @@ snapshots, stream URLs, settings, recording, PTZ control, and reboots.
 
 import base64
 import logging
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import preview_response, should_auto_confirm
 from unifi_protect_mcp.runtime import camera_manager, server
@@ -49,7 +50,9 @@ async def protect_list_cameras() -> Dict[str, Any]:
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def protect_get_camera(camera_id: str) -> Dict[str, Any]:
+async def protect_get_camera(
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+) -> Dict[str, Any]:
     """Get detailed camera information by ID."""
     logger.info("protect_get_camera tool called for %s", camera_id)
     try:
@@ -72,10 +75,25 @@ async def protect_get_camera(camera_id: str) -> Dict[str, Any]:
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def protect_get_snapshot(
-    camera_id: str,
-    include_image: bool = False,
-    width: Optional[int] = None,
-    height: Optional[int] = None,
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+    include_image: Annotated[
+        bool,
+        Field(
+            description="When true, returns base64-encoded JPEG image data in the response. When false (default), returns a resource URI."
+        ),
+    ] = False,
+    width: Annotated[
+        Optional[int],
+        Field(
+            description="Resize the snapshot to this width in pixels. Aspect ratio is preserved if only width or height is set."
+        ),
+    ] = None,
+    height: Annotated[
+        Optional[int],
+        Field(
+            description="Resize the snapshot to this height in pixels. Aspect ratio is preserved if only width or height is set."
+        ),
+    ] = None,
 ) -> Dict[str, Any]:
     """Get a snapshot from a camera."""
     logger.info("protect_get_snapshot tool called for %s (include_image=%s)", camera_id, include_image)
@@ -113,7 +131,9 @@ async def protect_get_snapshot(
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def protect_get_camera_streams(camera_id: str) -> Dict[str, Any]:
+async def protect_get_camera_streams(
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+) -> Dict[str, Any]:
     """Get stream URLs for a camera."""
     logger.info("protect_get_camera_streams tool called for %s", camera_id)
     try:
@@ -136,7 +156,9 @@ async def protect_get_camera_streams(camera_id: str) -> Dict[str, Any]:
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def protect_get_camera_analytics(camera_id: str) -> Dict[str, Any]:
+async def protect_get_camera_analytics(
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+) -> Dict[str, Any]:
     """Get motion/smart detection analytics for a camera."""
     logger.info("protect_get_camera_analytics tool called for %s", camera_id)
     try:
@@ -167,9 +189,23 @@ async def protect_get_camera_analytics(camera_id: str) -> Dict[str, Any]:
     permission_action="update",
 )
 async def protect_update_camera_settings(
-    camera_id: str,
-    settings: dict,
-    confirm: bool = False,
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+    settings: Annotated[
+        dict,
+        Field(
+            description=(
+                "Dictionary of settings to update. Supported keys: "
+                "ir_led_mode (auto, on, autoFilterOnly), hdr_mode (true/false), "
+                "mic_enabled (true/false), mic_volume (0-100), "
+                "status_light_on (true/false), speaker_volume (0-100), "
+                "name (string), motion_detection (true/false)."
+            )
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the mutation. When false (default), returns a preview of the changes."),
+    ] = False,
 ) -> Dict[str, Any]:
     """Update camera settings with preview/confirm."""
     logger.info("protect_update_camera_settings tool called for %s (confirm=%s)", camera_id, confirm)
@@ -210,9 +246,17 @@ async def protect_update_camera_settings(
     permission_action="update",
 )
 async def protect_toggle_recording(
-    camera_id: str,
-    enabled: bool,
-    confirm: bool = False,
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+    enabled: Annotated[
+        bool,
+        Field(
+            description="When true, enables recording (mode set to 'always'). When false, disables recording (mode set to 'never')."
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the mutation. When false (default), returns a preview of the changes."),
+    ] = False,
 ) -> Dict[str, Any]:
     """Toggle camera recording on/off with preview/confirm."""
     logger.info("protect_toggle_recording tool called for %s (enabled=%s, confirm=%s)", camera_id, enabled, confirm)
@@ -256,10 +300,23 @@ async def protect_toggle_recording(
     permission_action="update",
 )
 async def protect_ptz_move(
-    camera_id: str,
-    pan: Optional[float] = None,
-    tilt: Optional[float] = None,
-    zoom: Optional[int] = None,
+    camera_id: Annotated[str, Field(description="Camera UUID of a PTZ-capable camera (from protect_list_cameras)")],
+    pan: Annotated[
+        Optional[float],
+        Field(
+            description="Pan position in degrees. Note: not currently supported via the API; use protect_ptz_preset for pan control."
+        ),
+    ] = None,
+    tilt: Annotated[
+        Optional[float],
+        Field(
+            description="Tilt position in degrees. Note: not currently supported via the API; use protect_ptz_preset for tilt control."
+        ),
+    ] = None,
+    zoom: Annotated[
+        Optional[int],
+        Field(description="Zoom level (0 = wide, higher values = more zoom). The maximum depends on the camera model."),
+    ] = None,
 ) -> Dict[str, Any]:
     """Adjust PTZ camera position (zoom only; pan/tilt via presets)."""
     logger.info("protect_ptz_move tool called for %s (pan=%s, tilt=%s, zoom=%s)", camera_id, pan, tilt, zoom)
@@ -284,8 +341,13 @@ async def protect_ptz_move(
     permission_action="update",
 )
 async def protect_ptz_preset(
-    camera_id: str,
-    preset_slot: int,
+    camera_id: Annotated[str, Field(description="Camera UUID of a PTZ-capable camera (from protect_list_cameras)")],
+    preset_slot: Annotated[
+        int,
+        Field(
+            description="Preset slot number to move the camera to. Available slots can be seen in the camera's PTZ preset list."
+        ),
+    ],
 ) -> Dict[str, Any]:
     """Move PTZ camera to a preset position."""
     logger.info("protect_ptz_preset tool called for %s (slot=%s)", camera_id, preset_slot)
@@ -310,8 +372,13 @@ async def protect_ptz_preset(
     permission_action="update",
 )
 async def protect_reboot_camera(
-    camera_id: str,
-    confirm: bool = False,
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras)")],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, executes the reboot. When false (default), returns a preview showing camera state and warnings."
+        ),
+    ] = False,
 ) -> Dict[str, Any]:
     """Reboot a camera with preview/confirm."""
     logger.info("protect_reboot_camera tool called for %s (confirm=%s)", camera_id, confirm)

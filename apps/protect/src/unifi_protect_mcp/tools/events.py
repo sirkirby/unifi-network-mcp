@@ -6,9 +6,10 @@ events from the websocket buffer (in-memory), and managing event state.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import preview_response, should_auto_confirm
 from unifi_protect_mcp.runtime import event_manager, server
@@ -51,11 +52,30 @@ def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def protect_list_events(
-    start: Optional[str] = None,
-    end: Optional[str] = None,
-    event_type: Optional[str] = None,
-    camera_id: Optional[str] = None,
-    limit: int = 30,
+    start: Annotated[
+        Optional[str],
+        Field(description="Start time as ISO 8601 timestamp (e.g., 2026-03-17T00:00:00Z). Defaults to 24 hours ago."),
+    ] = None,
+    end: Annotated[
+        Optional[str],
+        Field(description="End time as ISO 8601 timestamp (e.g., 2026-03-17T23:59:59Z). Defaults to now."),
+    ] = None,
+    event_type: Annotated[
+        Optional[str],
+        Field(
+            description="Filter by event type: motion, smartDetectZone, ring, sensorMotion, sensorContact, sensorDoorbell."
+        ),
+    ] = None,
+    camera_id: Annotated[
+        Optional[str],
+        Field(
+            description="Filter events to a specific camera by its UUID (from protect_list_cameras). Omit to include all cameras."
+        ),
+    ] = None,
+    limit: Annotated[
+        int,
+        Field(description="Maximum number of events to return (default 30)."),
+    ] = 30,
 ) -> Dict[str, Any]:
     """List events from the NVR."""
     logger.info("protect_list_events called (type=%s, camera=%s, limit=%s)", event_type, camera_id, limit)
@@ -81,7 +101,9 @@ async def protect_list_events(
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def protect_get_event(event_id: str) -> Dict[str, Any]:
+async def protect_get_event(
+    event_id: Annotated[str, Field(description="Event UUID (from protect_list_events or protect_recent_events)")],
+) -> Dict[str, Any]:
     """Get a single event by ID."""
     logger.info("protect_get_event called for %s", event_id)
     try:
@@ -104,9 +126,19 @@ async def protect_get_event(event_id: str) -> Dict[str, Any]:
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def protect_get_event_thumbnail(
-    event_id: str,
-    width: Optional[int] = None,
-    height: Optional[int] = None,
+    event_id: Annotated[str, Field(description="Event UUID (from protect_list_events or protect_recent_events)")],
+    width: Annotated[
+        Optional[int],
+        Field(
+            description="Resize the thumbnail to this width in pixels. Aspect ratio is preserved if only width or height is set."
+        ),
+    ] = None,
+    height: Annotated[
+        Optional[int],
+        Field(
+            description="Resize the thumbnail to this height in pixels. Aspect ratio is preserved if only width or height is set."
+        ),
+    ] = None,
 ) -> Dict[str, Any]:
     """Get event thumbnail."""
     logger.info("protect_get_event_thumbnail called for %s", event_id)
@@ -131,12 +163,34 @@ async def protect_get_event_thumbnail(
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def protect_list_smart_detections(
-    start: Optional[str] = None,
-    end: Optional[str] = None,
-    camera_id: Optional[str] = None,
-    detection_type: Optional[str] = None,
-    min_confidence: Optional[int] = None,
-    limit: int = 30,
+    start: Annotated[
+        Optional[str],
+        Field(description="Start time as ISO 8601 timestamp (e.g., 2026-03-17T00:00:00Z). Defaults to 24 hours ago."),
+    ] = None,
+    end: Annotated[
+        Optional[str],
+        Field(description="End time as ISO 8601 timestamp (e.g., 2026-03-17T23:59:59Z). Defaults to now."),
+    ] = None,
+    camera_id: Annotated[
+        Optional[str],
+        Field(
+            description="Filter detections to a specific camera by its UUID (from protect_list_cameras). Omit to include all cameras."
+        ),
+    ] = None,
+    detection_type: Annotated[
+        Optional[str],
+        Field(description="Filter by smart detection type: person, vehicle, animal, package, face, licensePlate."),
+    ] = None,
+    min_confidence: Annotated[
+        Optional[int],
+        Field(
+            description="Minimum confidence score (0-100) to include. Overrides the server default (50). Higher values return fewer, more certain detections."
+        ),
+    ] = None,
+    limit: Annotated[
+        int,
+        Field(description="Maximum number of smart detection events to return (default 30)."),
+    ] = 30,
 ) -> Dict[str, Any]:
     """List smart detection events."""
     logger.info(
@@ -172,10 +226,26 @@ async def protect_list_smart_detections(
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def protect_recent_events(
-    event_type: Optional[str] = None,
-    camera_id: Optional[str] = None,
-    min_confidence: Optional[int] = None,
-    limit: Optional[int] = None,
+    event_type: Annotated[
+        Optional[str],
+        Field(
+            description="Filter by event type: motion, smartDetectZone, ring, sensorMotion, sensorContact, sensorDoorbell."
+        ),
+    ] = None,
+    camera_id: Annotated[
+        Optional[str],
+        Field(
+            description="Filter events to a specific camera by its UUID (from protect_list_cameras). Omit to include all cameras."
+        ),
+    ] = None,
+    min_confidence: Annotated[
+        Optional[int],
+        Field(description="Minimum confidence score (0-100) to include. Only applies to smart detection events."),
+    ] = None,
+    limit: Annotated[
+        Optional[int],
+        Field(description="Maximum number of events to return from the buffer. Omit to return all buffered events."),
+    ] = None,
 ) -> Dict[str, Any]:
     """Get recent events from the websocket buffer."""
     logger.info("protect_recent_events called (type=%s, camera=%s)", event_type, camera_id)
@@ -249,8 +319,15 @@ async def protect_subscribe_events() -> Dict[str, Any]:
     permission_action="update",
 )
 async def protect_acknowledge_event(
-    event_id: str,
-    confirm: bool = False,
+    event_id: Annotated[
+        str, Field(description="Event UUID to acknowledge (from protect_list_events or protect_recent_events)")
+    ],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, marks the event as acknowledged. When false (default), returns a preview of the changes."
+        ),
+    ] = False,
 ) -> Dict[str, Any]:
     """Acknowledge an event with preview/confirm."""
     logger.info("protect_acknowledge_event called for %s (confirm=%s)", event_id, confirm)

@@ -12,7 +12,7 @@ import logging
 import os
 import sys
 import traceback
-from typing import Union
+from typing import Any, Union
 
 import uvicorn.config
 
@@ -73,6 +73,8 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
         if input_schema is None:
             try:
                 import inspect
+                import types
+                from typing import Annotated, get_args, get_origin
 
                 sig = inspect.signature(func)
                 properties = {}
@@ -86,12 +88,22 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
                     ):
                         continue
 
-                    # Extract type hint
+                    # Extract type hint and optional Field description
                     param_type = "string"  # default
+                    param_description = None
+
                     if param.annotation != inspect.Parameter.empty:
                         ann = param.annotation
-                        import types
-                        from typing import get_args, get_origin
+
+                        # Unwrap Annotated[T, Field(...)] to extract description and core type
+                        if get_origin(ann) is Annotated:
+                            annotated_args = get_args(ann)
+                            # First arg is the actual type, rest are metadata
+                            ann = annotated_args[0] if annotated_args else ann
+                            for metadata in annotated_args[1:]:
+                                if hasattr(metadata, "description") and metadata.description:
+                                    param_description = metadata.description
+                                    break
 
                         # Unwrap Optional / X | None unions to their core type
                         if isinstance(ann, types.UnionType) or get_origin(ann) is Union:
@@ -113,7 +125,10 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
                         elif ann in (float, "float"):
                             param_type = "number"
 
-                    properties[param_name] = {"type": param_type}
+                    prop: dict[str, Any] = {"type": param_type}
+                    if param_description:
+                        prop["description"] = param_description
+                    properties[param_name] = prop
 
                     # If no default value, mark as required
                     if param.default == inspect.Parameter.empty:

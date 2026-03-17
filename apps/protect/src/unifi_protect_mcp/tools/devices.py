@@ -5,9 +5,10 @@ device types supported by the Protect ecosystem.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_mcp_shared.confirmation import preview_response, should_auto_confirm
 from unifi_protect_mcp.runtime import chime_manager, light_manager, sensor_manager, server
@@ -53,9 +54,25 @@ async def protect_list_lights() -> Dict[str, Any]:
     permission_action="update",
 )
 async def protect_update_light(
-    light_id: str,
-    settings: dict,
-    confirm: bool = False,
+    light_id: Annotated[str, Field(description="Light device UUID (from protect_list_lights)")],
+    settings: Annotated[
+        dict,
+        Field(
+            description=(
+                "Dictionary of settings to update. Supported keys: "
+                "light_on (true/false - turn light on or off), "
+                "led_level (1-6 - brightness level), "
+                "sensitivity (0-100 - PIR motion sensitivity), "
+                "duration_seconds (15-900 - how long light stays on after motion), "
+                "status_light (true/false - status indicator LED), "
+                "name (string - device display name)."
+            )
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the mutation. When false (default), returns a preview of the changes."),
+    ] = False,
 ) -> Dict[str, Any]:
     """Update light settings with preview/confirm."""
     logger.info("protect_update_light tool called for %s (confirm=%s)", light_id, confirm)
@@ -148,9 +165,22 @@ async def protect_list_chimes() -> Dict[str, Any]:
     permission_action="update",
 )
 async def protect_update_chime(
-    chime_id: str,
-    settings: dict,
-    confirm: bool = False,
+    chime_id: Annotated[str, Field(description="Chime device UUID (from protect_list_chimes)")],
+    settings: Annotated[
+        dict,
+        Field(
+            description=(
+                "Dictionary of settings to update. Supported keys: "
+                "volume (0-100 - speaker volume), "
+                "repeat_times (1-6 - number of times to repeat the chime tone), "
+                "name (string - device display name)."
+            )
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the mutation. When false (default), returns a preview of the changes."),
+    ] = False,
 ) -> Dict[str, Any]:
     """Update chime settings with preview/confirm."""
     logger.info("protect_update_chime tool called for %s (confirm=%s)", chime_id, confirm)
@@ -192,9 +222,19 @@ async def protect_update_chime(
     permission_action="update",
 )
 async def protect_trigger_chime(
-    chime_id: str,
-    volume: Optional[int] = None,
-    repeat_times: Optional[int] = None,
+    chime_id: Annotated[str, Field(description="Chime device UUID (from protect_list_chimes)")],
+    volume: Annotated[
+        Optional[int],
+        Field(
+            description="Override speaker volume for this playback only (0-100). Omit to use the chime's configured volume."
+        ),
+    ] = None,
+    repeat_times: Annotated[
+        Optional[int],
+        Field(
+            description="Override repeat count for this playback only (1-6). Omit to use the chime's configured repeat setting."
+        ),
+    ] = None,
 ) -> Dict[str, Any]:
     """Trigger a chime to play its tone."""
     logger.info("protect_trigger_chime tool called for %s (volume=%s, repeat=%s)", chime_id, volume, repeat_times)

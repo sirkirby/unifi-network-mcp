@@ -6,9 +6,10 @@ and exporting video clips from cameras.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from unifi_protect_mcp.runtime import recording_manager, server
 
@@ -49,7 +50,12 @@ def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def protect_get_recording_status(
-    camera_id: Optional[str] = None,
+    camera_id: Annotated[
+        Optional[str],
+        Field(
+            description="Camera UUID (from protect_list_cameras) to check. Omit to get recording status for all cameras."
+        ),
+    ] = None,
 ) -> Dict[str, Any]:
     """Get recording status for one or all cameras."""
     logger.info("protect_get_recording_status called (camera_id=%s)", camera_id)
@@ -75,9 +81,17 @@ async def protect_get_recording_status(
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def protect_list_recordings(
-    camera_id: str,
-    start: Optional[str] = None,
-    end: Optional[str] = None,
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras) to query recordings for.")],
+    start: Annotated[
+        Optional[str],
+        Field(
+            description="Start of the time range as ISO 8601 timestamp (e.g., 2026-03-16T00:00:00Z). Defaults to 24 hours ago."
+        ),
+    ] = None,
+    end: Annotated[
+        Optional[str],
+        Field(description="End of the time range as ISO 8601 timestamp (e.g., 2026-03-17T00:00:00Z). Defaults to now."),
+    ] = None,
 ) -> Dict[str, Any]:
     """List recording availability for a camera."""
     logger.info("protect_list_recordings called (camera=%s, start=%s, end=%s)", camera_id, start, end)
@@ -107,11 +121,24 @@ async def protect_list_recordings(
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def protect_export_clip(
-    camera_id: str,
-    start: str,
-    end: str,
-    channel_index: int = 0,
-    fps: Optional[int] = None,
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras) to export footage from.")],
+    start: Annotated[str, Field(description="Clip start time as ISO 8601 timestamp (e.g., 2026-03-16T12:00:00Z).")],
+    end: Annotated[
+        str,
+        Field(
+            description="Clip end time as ISO 8601 timestamp (e.g., 2026-03-16T12:30:00Z). Maximum 2 hours after start."
+        ),
+    ],
+    channel_index: Annotated[
+        int,
+        Field(description="Video channel index: 0 = high quality (default), 1 = medium, 2 = low."),
+    ] = 0,
+    fps: Annotated[
+        Optional[int],
+        Field(
+            description="Frames per second for timelapse export. Common values: 4 (60x speed), 8 (120x), 20 (300x), 40 (600x). Omit for normal speed."
+        ),
+    ] = None,
 ) -> Dict[str, Any]:
     """Export a video clip from a camera."""
     logger.info("protect_export_clip called (camera=%s, start=%s, end=%s, fps=%s)", camera_id, start, end, fps)
@@ -154,10 +181,19 @@ async def protect_export_clip(
     permission_action="delete",
 )
 async def protect_delete_recording(
-    camera_id: str,
-    start: str,
-    end: str,
-    confirm: bool = False,
+    camera_id: Annotated[str, Field(description="Camera UUID (from protect_list_cameras) to delete recordings for.")],
+    start: Annotated[
+        str, Field(description="Start of the deletion range as ISO 8601 timestamp (e.g., 2026-03-16T00:00:00Z).")
+    ],
+    end: Annotated[
+        str, Field(description="End of the deletion range as ISO 8601 timestamp (e.g., 2026-03-16T12:00:00Z).")
+    ],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, attempts the deletion. When false (default), returns a preview. Note: deletion is not supported by the API regardless."
+        ),
+    ] = False,
 ) -> Dict[str, Any]:
     """Delete recording for a camera (not supported by API)."""
     logger.info(
