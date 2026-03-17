@@ -79,12 +79,8 @@ jobs:
             type=ref,event=branch
             # Tag with PR number (e.g., pr-2)
             type=ref,event=pr
-            # Tag with semver - v1.2.3 -> 1.2.3
-            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            # Tag with major.minor - v1.2.3 -> 1.2
-            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            # Tag with major - v1.2.3 -> 1
-            type=semver,pattern={{major}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            # Tag with version from git (e.g., 0.7.0) for tag pushes
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
             # Tag with git sha
             type=sha,format=short
 
