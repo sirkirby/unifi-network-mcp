@@ -1624,8 +1624,10 @@ name = "unifi-mcp-shared"
 version = "0.1.0"
 source = { editable = "packages/unifi-mcp-shared" }
 dependencies = [
+    { name = "jsonschema" },
     { name = "mcp", extra = ["cli"] },
     { name = "omegaconf" },
+    { name = "python-dotenv" },
     { name = "pyyaml" },
 ]
 
@@ -1637,8 +1639,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "jsonschema", specifier = ">=4.0.0" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.26.0,<2" },
     { name = "omegaconf", specifier = ">=2.3.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
 

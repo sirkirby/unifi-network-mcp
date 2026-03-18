@@ -221,6 +221,8 @@ async def main_async() -> None:
             start_async_tool=start_async_tool,
             get_job_status=get_job_status,
             register_tool=register_tool,
+            prefix="access",
+            server_label="UniFi Access",
         )
 
         if not await _ensure_connected(connection_manager):

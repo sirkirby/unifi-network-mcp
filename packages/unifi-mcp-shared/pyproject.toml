@@ -7,6 +7,8 @@ dependencies = [
     "mcp[cli]>=1.26.0,<2",
     "omegaconf>=2.3.0",
     "pyyaml>=6.0",
+    "jsonschema>=4.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [dependency-groups]

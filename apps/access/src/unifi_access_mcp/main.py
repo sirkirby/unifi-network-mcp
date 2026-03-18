@@ -8,12 +8,9 @@ Responsibilities:
 """
 
 import asyncio
-import inspect
 import logging
 import os
 import sys
-import types
-from typing import Annotated, Any, Union, get_args, get_origin
 
 import uvicorn.config
 
@@ -45,150 +42,16 @@ _original_tool_decorator = getattr(server, "_original_tool", server.tool)
 permission_checker = PermissionChecker(category_map=ACCESS_CATEGORY_MAP, permissions=config.permissions)
 
 
-def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
-    """Decorator that only registers the tool if permission allows."""
+from unifi_mcp_shared.permissioned_tool import create_permissioned_tool
 
-    tool_name = d_kwargs.get("name") if d_kwargs.get("name") else (d_args[0] if d_args else None)
-
-    category = d_kwargs.pop("permission_category", None)
-    action = d_kwargs.pop("permission_action", None)
-    auth_method = d_kwargs.pop("auth", None)  # "local_only", "api_key_only", "either" -- metadata for future routing
-
-    # Default to local_only when auth is not specified (backward compatible)
-    resolved_auth = auth_method if auth_method else "local_only"
-
-    def decorator(func):
-        """Inner decorator actually registering the tool if allowed."""
-        nonlocal category, action, tool_name
-
-        # Extract tool metadata for registry (before permission check)
-        # Use the provided name or fall back to function name
-        if not tool_name:
-            tool_name = getattr(func, "__name__", "<unknown>")
-
-        description = d_kwargs.get("description", "")
-        input_schema = d_kwargs.get("input_schema")
-        output_schema = d_kwargs.get("output_schema")
-
-        # If no explicit input_schema, try to infer from function annotations
-        if input_schema is None:
-            try:
-                sig = inspect.signature(func)
-                properties = {}
-                required = []
-
-                for param_name, param in sig.parameters.items():
-                    # Skip 'self', 'cls', and kwargs/args
-                    if param_name in ("self", "cls") or param.kind in (
-                        inspect.Parameter.VAR_POSITIONAL,
-                        inspect.Parameter.VAR_KEYWORD,
-                    ):
-                        continue
-
-                    # Extract type hint and optional Field description
-                    param_type = "string"  # default
-                    param_description = None
-
-                    if param.annotation != inspect.Parameter.empty:
-                        ann = param.annotation
-
-                        # Unwrap Annotated[T, Field(...)] to extract description and core type
-                        if get_origin(ann) is Annotated:
-                            annotated_args = get_args(ann)
-                            # First arg is the actual type, rest are metadata
-                            ann = annotated_args[0] if annotated_args else ann
-                            for metadata in annotated_args[1:]:
-                                if hasattr(metadata, "description") and metadata.description:
-                                    param_description = metadata.description
-                                    break
-
-                        # Unwrap Optional / X | None unions to their core type
-                        if isinstance(ann, types.UnionType) or get_origin(ann) is Union:
-                            args = get_args(ann)
-                            non_none = [a for a in args if a is not types.NoneType]
-                            if non_none:
-                                ann = non_none[0]
-
-                        origin = get_origin(ann)
-                        # Basic type mapping (check origin first for generics)
-                        if origin is dict or ann in (dict, "dict"):
-                            param_type = "object"
-                        elif origin is list or ann in (list, "list"):
-                            param_type = "array"
-                        elif ann in (int, "int"):
-                            param_type = "integer"
-                        elif ann in (bool, "bool"):
-                            param_type = "boolean"
-                        elif ann in (float, "float"):
-                            param_type = "number"
-
-                    prop: dict[str, Any] = {"type": param_type}
-                    if param_description:
-                        prop["description"] = param_description
-                    properties[param_name] = prop
-
-                    # If no default value, mark as required
-                    if param.default == inspect.Parameter.empty:
-                        required.append(param_name)
-
-                input_schema = {
-                    "type": "object",
-                    "properties": properties,
-                }
-                if required:
-                    input_schema["required"] = required
-
-            except Exception as exc:
-                logger.debug("Could not infer input schema for %s: %s", tool_name, exc)
-                input_schema = {"type": "object", "properties": {}}
-
-        # Fast path: no permissions requested, just register.
-        if not category or not action:
-            # Register in tool index
-            register_tool(
-                name=tool_name,
-                description=description,
-                input_schema=input_schema,
-                output_schema=output_schema,
-                auth_method=resolved_auth,
-            )
-            return _original_tool_decorator(*d_args, **d_kwargs)(func)
-
-        # ALWAYS register in tool index (for discovery via access_tool_index)
-        # This ensures manifest generation includes ALL tools regardless of permissions
-        register_tool(
-            name=tool_name,
-            description=description,
-            input_schema=input_schema,
-            output_schema=output_schema,
-            auth_method=resolved_auth,
-        )
-
-        # Check permissions for MCP server registration
-        try:
-            allowed = permission_checker.check(category, action)
-        except Exception as exc:  # mis-config should not crash server
-            logger.error("Permission check failed for tool %s: %s", tool_name, exc)
-            allowed = False
-
-        if allowed:
-            # Permission granted - register with MCP server
-            wrapped = (
-                wrap_tool(func, tool_name or getattr(func, "__name__", "<tool>")) if diagnostics_enabled() else func
-            )
-            return _original_tool_decorator(*d_args, **d_kwargs)(wrapped)
-
-        # Permission denied - tool is in index but not callable via MCP
-        logger.info(
-            "[permissions] Skipping MCP registration of tool '%s' (category=%s, action=%s)",
-            tool_name,
-            category,
-            action,
-        )
-        # Return original function (unregistered with MCP) for import side-effects/testing
-        return func
-
-    return decorator
+permissioned_tool = create_permissioned_tool(
+    original_tool_decorator=_original_tool_decorator,
+    permission_checker=permission_checker,
+    register_tool_fn=register_tool,
+    diagnostics_enabled_fn=diagnostics_enabled,
+    wrap_tool_fn=wrap_tool,
+    logger=logger,
+)
 
 
 server.tool = permissioned_tool  # type: ignore
@@ -264,6 +127,8 @@ async def main_async():
         start_async_tool=start_async_tool,
         get_job_status=get_job_status,
         register_tool=register_tool,
+        prefix="access",
+        server_label="UniFi Access",
     )
 
     # Load full tool set based on registration mode
@@ -294,6 +159,8 @@ async def main_async():
             lazy_loader=lazy_loader,
             register_tool=register_tool,
             tool_module_map=TOOL_MODULE_MAP,
+            prefix="access",
+            server_label="UniFi Access",
         )
 
         logger.info("   Lazy loader ready - %d tools available on-demand", len(TOOL_MODULE_MAP))

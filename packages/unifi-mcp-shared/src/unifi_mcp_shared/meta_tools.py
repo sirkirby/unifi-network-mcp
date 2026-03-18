@@ -5,15 +5,30 @@ that work in both MCP server mode and dev console mode.
 
 Generic version extracted from the network app. All app-specific references
 (like TOOL_MODULE_MAP) are injected as parameters rather than imported.
+
+Each server uses its own prefix so tools are distinguishable when multiple
+servers are loaded simultaneously:
+- Network: ``unifi_tool_index``, ``unifi_execute``, ...
+- Protect: ``protect_tool_index``, ``protect_execute``, ...
+- Access:  ``access_tool_index``, ``access_execute``, ...
 """
 
 import logging
 from typing import TYPE_CHECKING, Callable, List
 
+from mcp.types import ToolAnnotations
+
 if TYPE_CHECKING:
     from unifi_mcp_shared.lazy_tools import LazyToolLoader
 
 logger = logging.getLogger(__name__)
+
+# Default domain hints per prefix
+_DEFAULT_DOMAIN_HINTS = {
+    "unifi": "WiFi networks, clients, devices, switches, APs, firewall, VPN, routing, and statistics",
+    "protect": "security cameras, recordings, snapshots, motion events, live views, and NVR management",
+    "access": "door locks, access readers, credentials, visitors, access policies, and entry events",
+}
 
 
 def register_meta_tools(
@@ -23,14 +38,17 @@ def register_meta_tools(
     start_async_tool: Callable,
     get_job_status: Callable,
     register_tool: Callable,
+    prefix: str = "unifi",
+    server_label: str = "UniFi Network",
+    domain_hint: str | None = None,
 ) -> None:
     """Register meta-tools with the MCP server.
 
-    Tools registered:
-    - unifi_tool_index: Discover available tools
-    - unifi_execute: Execute a single tool (returns result directly)
-    - unifi_batch: Execute multiple tools in parallel (returns job IDs)
-    - unifi_batch_status: Check batch job progress
+    Tools registered (using the configured prefix):
+    - {prefix}_tool_index: Discover available tools
+    - {prefix}_execute: Execute a single tool (returns result directly)
+    - {prefix}_batch: Execute multiple tools in parallel (returns job IDs)
+    - {prefix}_batch_status: Check batch job progress
 
     Args:
         server: FastMCP server instance (for call_tool access)
@@ -39,53 +57,79 @@ def register_meta_tools(
         start_async_tool: Function to start async jobs
         get_job_status: Function to get job status
         register_tool: Function to register in tool index
+        prefix: Tool name prefix (e.g. "unifi", "protect", "access").
+        server_label: Human-readable server name for descriptions
+                      (e.g. "UniFi Network", "UniFi Protect").
+        domain_hint: Short description of the tool domain for LLM context.
+                     Falls back to a built-in default per prefix.
     """
+    idx_name = f"{prefix}_tool_index"
+    exec_name = f"{prefix}_execute"
+    batch_name = f"{prefix}_batch"
+    status_name = f"{prefix}_batch_status"
+
+    hint = domain_hint or _DEFAULT_DOMAIN_HINTS.get(prefix, "controller management")
 
     # =========================================================================
-    # DISCOVERY: unifi_tool_index
+    # DISCOVERY: {prefix}_tool_index
     # =========================================================================
     @tool_decorator(
-        name="unifi_tool_index",
-        description="""List all 80+ available UniFi tools and their schemas.
-
-CALL THIS FIRST to discover the right tool for your task.
-Tools are organized by category: clients, devices, networks, firewall, VPN, stats, etc.
-
-After finding the right tool, use unifi_execute to run it.""",
+        name=idx_name,
+        description=(
+            f"List all available {server_label} tools and their schemas. "
+            f"This server manages {hint}. "
+            f"CALL THIS FIRST to discover the right tool for your task. "
+            f"After finding the right tool, use {exec_name} to run it."
+        ),
+        annotations=ToolAnnotations(
+            readOnlyHint=True,
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=False,
+        ),
     )
     async def _tool_index_wrapper(args: dict | None = None) -> dict:
         return await tool_index_handler(args)
 
     register_tool(
-        name="unifi_tool_index",
-        description="CALL FIRST - List all 80+ UniFi tools with schemas to find the right one for your task.",
+        name=idx_name,
+        description=(
+            f"CALL FIRST - List all {server_label} tools ({hint}) "
+            f"with schemas to find the right one for your task."
+        ),
         input_schema={"type": "object", "properties": {}},
         output_schema={
             "type": "object",
             "properties": {
-                "tools": {"type": "array", "description": "Available tools with schemas"},
-                "count": {"type": "integer"},
+                "tools": {
+                    "type": "array",
+                    "description": "Available tools with name, description, and input/output schemas",
+                },
+                "count": {"type": "integer", "description": "Total number of available tools"},
             },
         },
     )
 
     # =========================================================================
-    # SINGLE EXECUTION: unifi_execute
+    # SINGLE EXECUTION: {prefix}_execute
     # =========================================================================
     @tool_decorator(
-        name="unifi_execute",
-        description="""Execute a UniFi tool discovered via unifi_tool_index.
-
-WORKFLOW: Call unifi_tool_index first to find the right tool, then execute it here.
-
-PARAMETERS:
-- tool: Tool name from unifi_tool_index
-- arguments: Tool parameters (see tool schema from unifi_tool_index)
-
-For bulk/parallel operations, use unifi_batch instead.""",
+        name=exec_name,
+        description=(
+            f"Execute a {server_label} tool discovered via {idx_name}. "
+            f"This server manages {hint}. "
+            f"WORKFLOW: Call {idx_name} first to find the right tool, then execute it here. "
+            f"For bulk/parallel operations, use {batch_name} instead."
+        ),
+        annotations=ToolAnnotations(
+            readOnlyHint=False,
+            destructiveHint=False,
+            idempotentHint=False,
+            openWorldHint=False,
+        ),
     )
     async def execute_handler(tool: str, arguments: dict = None) -> dict:
-        """Execute a UniFi tool synchronously."""
+        """Execute a tool synchronously."""
         if arguments is None:
             arguments = {}
 
@@ -97,35 +141,48 @@ For bulk/parallel operations, use unifi_batch instead.""",
             return {"error": f"Failed to execute tool: {str(e)}"}
 
     register_tool(
-        name="unifi_execute",
-        description="Execute a tool discovered via unifi_tool_index. Call unifi_tool_index first.",
+        name=exec_name,
+        description=(
+            f"Execute a {server_label} tool ({hint}). "
+            f"Call {idx_name} first to discover tools."
+        ),
         input_schema={
             "type": "object",
             "required": ["tool"],
             "properties": {
-                "tool": {"type": "string", "description": "Tool name from unifi_tool_index"},
-                "arguments": {"type": "object", "description": "Tool parameters from schema"},
+                "tool": {
+                    "type": "string",
+                    "description": f"Tool name from {idx_name} (e.g. '{prefix}_list_*')",
+                },
+                "arguments": {
+                    "type": "object",
+                    "description": "Tool parameters matching the schema from the tool index",
+                },
             },
         },
-        output_schema={"type": "object", "description": "Tool result"},
+        output_schema={
+            "type": "object",
+            "description": f"Result from the executed {server_label} tool",
+        },
     )
 
     # =========================================================================
-    # BATCH EXECUTION: unifi_batch
+    # BATCH EXECUTION: {prefix}_batch
     # =========================================================================
     @tool_decorator(
-        name="unifi_batch",
-        description="""Execute multiple UniFi tools in parallel.
-
-WORKFLOW: Call unifi_tool_index first to discover tools, then batch execute them here.
-
-Returns job IDs for each operation. Use unifi_batch_status to check progress and get results.
-
-PARAMETERS:
-- operations: Array of {tool, arguments} objects where tool names come from unifi_tool_index
-
-USE FOR: Bulk operations, parallel execution, long-running tasks.
-FOR SINGLE OPERATIONS: Use unifi_execute instead (returns result directly).""",
+        name=batch_name,
+        description=(
+            f"Execute multiple {server_label} tools in parallel. "
+            f"WORKFLOW: Call {idx_name} first to discover tools, then batch execute them here. "
+            f"Returns job IDs for each operation. Use {status_name} to check progress and get results. "
+            f"For single operations, use {exec_name} instead (returns result directly)."
+        ),
+        annotations=ToolAnnotations(
+            readOnlyHint=False,
+            destructiveHint=False,
+            idempotentHint=False,
+            openWorldHint=False,
+        ),
     )
     async def batch_handler(operations: List[dict]) -> dict:
         """Execute multiple operations in parallel."""
@@ -168,12 +225,15 @@ FOR SINGLE OPERATIONS: Use unifi_execute instead (returns result directly).""",
         return {
             "jobs": jobs,
             "errors": errors if errors else None,
-            "message": f"Started {len(jobs)} operation(s). Use unifi_batch_status to check progress.",
+            "message": f"Started {len(jobs)} operation(s). Use {status_name} to check progress.",
         }
 
     register_tool(
-        name="unifi_batch",
-        description="Execute multiple tools in parallel. Returns job IDs for status checking.",
+        name=batch_name,
+        description=(
+            f"Execute multiple {server_label} tools in parallel. "
+            f"Returns job IDs; use {status_name} to check progress."
+        ),
         input_schema={
             "type": "object",
             "required": ["operations"],
@@ -184,33 +244,60 @@ FOR SINGLE OPERATIONS: Use unifi_execute instead (returns result directly).""",
                         "type": "object",
                         "required": ["tool"],
                         "properties": {
-                            "tool": {"type": "string"},
-                            "arguments": {"type": "object"},
+                            "tool": {
+                                "type": "string",
+                                "description": f"Tool name from {idx_name}",
+                            },
+                            "arguments": {
+                                "type": "object",
+                                "description": "Tool parameters matching the schema from the tool index",
+                            },
                         },
                     },
-                    "description": "Array of {tool, arguments} objects",
+                    "description": f"Array of {{tool, arguments}} objects using tool names from {idx_name}",
                 },
             },
         },
         output_schema={
             "type": "object",
             "properties": {
-                "jobs": {"type": "array", "description": "Started jobs with IDs"},
-                "errors": {"type": "array", "description": "Any errors"},
+                "jobs": {
+                    "type": "array",
+                    "description": "Started jobs with index, tool name, and jobId",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "index": {"type": "integer"},
+                            "tool": {"type": "string"},
+                            "jobId": {"type": "string"},
+                        },
+                    },
+                },
+                "errors": {
+                    "type": "array",
+                    "description": "Errors for operations that failed to start",
+                },
+                "message": {"type": "string"},
             },
         },
     )
 
     # =========================================================================
-    # BATCH STATUS: unifi_batch_status
+    # BATCH STATUS: {prefix}_batch_status
     # =========================================================================
     @tool_decorator(
-        name="unifi_batch_status",
-        description="""Check status of operations started with unifi_batch.
-
-Returns: status ("running", "done", "error"), result (if done), error (if failed).
-
-Can check multiple jobs at once by passing an array of job IDs.""",
+        name=status_name,
+        description=(
+            f"Check status of {server_label} operations started with {batch_name}. "
+            f"Returns status ('running', 'done', 'error'), result (if done), or error (if failed). "
+            f"Can check multiple jobs at once by passing an array of job IDs."
+        ),
+        annotations=ToolAnnotations(
+            readOnlyHint=True,
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=False,
+        ),
     )
     async def batch_status_handler(jobId: str = None, jobIds: List[str] = None) -> dict:
         """Check status of one or more jobs."""
@@ -237,8 +324,11 @@ Can check multiple jobs at once by passing an array of job IDs.""",
         return {"error": "Provide jobId or jobIds parameter"}
 
     register_tool(
-        name="unifi_batch_status",
-        description="Check status of batch operations. Returns status, result (if done), or error.",
+        name=status_name,
+        description=(
+            f"Check status of {server_label} batch operations. "
+            f"Returns status, result (if done), or error (if failed)."
+        ),
         input_schema={
             "type": "object",
             "properties": {
@@ -246,22 +336,29 @@ Can check multiple jobs at once by passing an array of job IDs.""",
                 "jobIds": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Multiple job IDs to check",
+                    "description": "Multiple job IDs to check at once",
                 },
             },
         },
         output_schema={
             "type": "object",
             "properties": {
-                "status": {"type": "string", "enum": ["running", "done", "error", "unknown"]},
-                "result": {"description": "Result (if done)"},
-                "error": {"type": "string", "description": "Error message (if failed)"},
-                "jobs": {"type": "array", "description": "Status of multiple jobs"},
+                "status": {
+                    "type": "string",
+                    "enum": ["running", "done", "error", "unknown"],
+                    "description": "Current job status",
+                },
+                "result": {"description": "Job result (present when status is 'done')"},
+                "error": {"type": "string", "description": "Error message (present when status is 'error')"},
+                "jobs": {
+                    "type": "array",
+                    "description": "Status of multiple jobs (when using jobIds parameter)",
+                },
             },
         },
     )
 
-    logger.info("Registered meta-tools: unifi_tool_index, unifi_execute, unifi_batch, unifi_batch_status")
+    logger.info("Registered meta-tools: %s, %s, %s, %s", idx_name, exec_name, batch_name, status_name)
 
 
 def register_load_tools(
@@ -270,11 +367,14 @@ def register_load_tools(
     lazy_loader: "LazyToolLoader",
     register_tool: Callable,
     tool_module_map: dict,
+    prefix: str = "unifi",
+    server_label: str = "UniFi Network",
+    domain_hint: str | None = None,
 ) -> None:
-    """Register unifi_load_tools for dynamic tool loading (capable clients only).
+    """Register load_tools for dynamic tool loading (capable clients only).
 
     This enables direct tool access for MCP clients that support tool_list_changed notifications.
-    Most users should use unifi_execute instead - it works with all clients.
+    Most users should use {prefix}_execute instead - it works with all clients.
 
     Args:
         server: FastMCP server instance
@@ -282,19 +382,30 @@ def register_load_tools(
         lazy_loader: LazyToolLoader instance
         register_tool: Function to register in tool index
         tool_module_map: Mapping of tool names to their module paths
+        prefix: Tool name prefix (e.g. "unifi", "protect", "access").
+        server_label: Human-readable server name for descriptions.
+        domain_hint: Short description of the tool domain for LLM context.
     """
     from mcp.server.fastmcp import Context
 
+    load_name = f"{prefix}_load_tools"
+    exec_name = f"{prefix}_execute"
+    hint = domain_hint or _DEFAULT_DOMAIN_HINTS.get(prefix, "controller management")
+
     @tool_decorator(
-        name="unifi_load_tools",
-        description="""Load tools for direct MCP access (advanced).
-
-Most users should use unifi_execute instead - it works with all clients.
-
-This tool is for MCP clients that support tool_list_changed notifications.
-After loading, the client is notified to refresh its tool list.
-
-EXAMPLE: {"tools": ["unifi_list_clients", "unifi_list_devices"]}""",
+        name=load_name,
+        description=(
+            f"Load {server_label} tools ({hint}) for direct MCP access (advanced). "
+            f"Most users should use {exec_name} instead - it works with all clients. "
+            f"This tool is for MCP clients that support tool_list_changed notifications. "
+            f"After loading, the client is notified to refresh its tool list."
+        ),
+        annotations=ToolAnnotations(
+            readOnlyHint=False,
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=False,
+        ),
     )
     async def load_tools_handler(tools: List[str], ctx: Context) -> dict:
         """Load specific tools and notify the client."""
@@ -333,8 +444,11 @@ EXAMPLE: {"tools": ["unifi_list_clients", "unifi_list_devices"]}""",
         }
 
     register_tool(
-        name="unifi_load_tools",
-        description="Load tools for direct MCP access (advanced). Most users should use unifi_execute.",
+        name=load_name,
+        description=(
+            f"Load {server_label} tools ({hint}) for direct MCP access. "
+            f"Advanced - most users should use {exec_name} instead."
+        ),
         input_schema={
             "type": "object",
             "required": ["tools"],
@@ -342,18 +456,25 @@ EXAMPLE: {"tools": ["unifi_list_clients", "unifi_list_devices"]}""",
                 "tools": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Tool names to load",
+                    "description": f"Tool names to load (from {prefix}_tool_index)",
                 },
             },
         },
         output_schema={
             "type": "object",
             "properties": {
-                "loaded": {"type": "array", "description": "Successfully loaded tools"},
-                "errors": {"type": "array", "description": "Any errors"},
-                "message": {"type": "string"},
+                "loaded": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Successfully loaded tool names",
+                },
+                "errors": {
+                    "type": "array",
+                    "description": "Errors for tools that failed to load",
+                },
+                "message": {"type": "string", "description": "Summary message"},
             },
         },
     )
 
-    logger.info("Registered unifi_load_tools meta-tool for dynamic tool loading")
+    logger.info("Registered %s meta-tool for dynamic tool loading", load_name)

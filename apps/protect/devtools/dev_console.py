@@ -282,6 +282,8 @@ async def main_async() -> None:
             start_async_tool=start_async_tool,
             get_job_status=get_job_status,
             register_tool=register_tool,
+            prefix="protect",
+            server_label="UniFi Protect",
         )
 
         if not await _ensure_connected(connection_manager):
