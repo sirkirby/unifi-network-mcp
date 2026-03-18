@@ -44,8 +44,9 @@ Options:
 
 ## Step 5: Write Configuration
 
-Use the `set-env.sh` script to write all collected values to `.claude/settings.json`. The script handles creating the file, merging into existing env vars, and masking sensitive values in output.
+Use the appropriate script for the user's platform to write all collected values to `.claude/settings.json`. Check the platform from your environment info. On **Windows** use `set-env.ps1`, on **macOS/Linux** use `set-env.sh`:
 
+**macOS / Linux:**
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/set-env.sh \
   UNIFI_PROTECT_HOST=<host> \
@@ -53,13 +54,12 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/set-env.sh \
   UNIFI_PROTECT_PASSWORD=<password>
 ```
 
-If the host and credentials are the same as existing shared `UNIFI_*` vars, use the shared prefix instead:
-```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/set-env.sh \
-  UNIFI_HOST=<host> \
-  UNIFI_USERNAME=<username> \
-  UNIFI_PASSWORD=<password>
+**Windows:**
+```powershell
+powershell -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/set-env.ps1" UNIFI_PROTECT_HOST=<host> UNIFI_PROTECT_USERNAME=<username> UNIFI_PROTECT_PASSWORD=<password>
 ```
+
+If the host and credentials are the same as existing shared `UNIFI_*` vars, use the shared prefix instead (same script, different keys).
 
 If permissions were enabled, also pass those:
 ```bash

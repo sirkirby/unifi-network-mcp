@@ -48,8 +48,11 @@ Options:
 
 ## Step 6: Write Configuration
 
-Use the `set-env.sh` script to write all collected values to `.claude/settings.json`. The script handles creating the file, merging into existing env vars, and masking sensitive values in output.
+Use the appropriate script for the user's platform to write all collected values to `.claude/settings.json`. The script handles creating the file, merging into existing env vars, and masking sensitive values in output.
 
+Check the platform from your environment info. On **Windows** use `set-env.ps1`, on **macOS/Linux** use `set-env.sh`:
+
+**macOS / Linux:**
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/set-env.sh \
   UNIFI_NETWORK_HOST=<host> \
@@ -57,9 +60,14 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/set-env.sh \
   UNIFI_NETWORK_PASSWORD=<password>
 ```
 
+**Windows:**
+```powershell
+powershell -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/set-env.ps1" UNIFI_NETWORK_HOST=<host> UNIFI_NETWORK_USERNAME=<username> UNIFI_NETWORK_PASSWORD=<password>
+```
+
 Only pass variables the user provided values for. Use the `UNIFI_NETWORK_` prefix so it doesn't conflict with other server plugins.
 
-If permissions were enabled, also pass those:
+If permissions were enabled, also pass those (same script, separate call):
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/set-env.sh \
   UNIFI_PERMISSIONS_FIREWALL_POLICIES_CREATE=true \
