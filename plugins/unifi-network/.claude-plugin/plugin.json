@@ -1,17 +1,25 @@
 {
   "name": "unifi-network",
-  "version": "1.0.0",
-  "description": "UniFi Network MCP server — manage network devices, clients, firewall, VPN, and more",
+  "version": "0.7.1",
+  "description": "UniFi Network MCP server \u2014 manage network devices, clients, firewall, VPN, and more",
   "author": {
     "name": "sirkirby",
     "url": "https://github.com/sirkirby"
   },
   "license": "MIT",
-  "keywords": ["unifi", "network", "firewall", "wifi", "mcp"],
+  "keywords": [
+    "unifi",
+    "network",
+    "firewall",
+    "wifi",
+    "mcp"
+  ],
   "mcpServers": {
     "unifi-network": {
       "command": "uvx",
-      "args": ["unifi-network-mcp"],
+      "args": [
+        "unifi-network-mcp"
+      ],
       "env": {
         "UNIFI_HOST": "${UNIFI_NETWORK_HOST}",
         "UNIFI_USERNAME": "${UNIFI_NETWORK_USERNAME}",

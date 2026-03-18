@@ -1,17 +1,25 @@
 {
   "name": "unifi-access",
-  "version": "1.0.0",
-  "description": "UniFi Access MCP server — manage door locks, credentials, visitors, and access policies",
+  "version": "0.1.1",
+  "description": "UniFi Access MCP server \u2014 manage door locks, credentials, visitors, and access policies",
   "author": {
     "name": "sirkirby",
     "url": "https://github.com/sirkirby"
   },
   "license": "MIT",
-  "keywords": ["unifi", "access", "doors", "credentials", "mcp"],
+  "keywords": [
+    "unifi",
+    "access",
+    "doors",
+    "credentials",
+    "mcp"
+  ],
   "mcpServers": {
     "unifi-access": {
       "command": "uvx",
-      "args": ["unifi-access-mcp"],
+      "args": [
+        "unifi-access-mcp"
+      ],
       "env": {
         "UNIFI_HOST": "${UNIFI_ACCESS_HOST}",
         "UNIFI_USERNAME": "${UNIFI_ACCESS_USERNAME}",
