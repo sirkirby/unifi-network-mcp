@@ -4,6 +4,7 @@ Reads server URLs from environment variables with localhost fallbacks.
 Each MCP server binds to a distinct port when HTTP is enabled.
 """
 import os
+from pathlib import Path
 
 DEFAULT_PORTS = {
     "network": 3000,
@@ -31,3 +32,31 @@ def get_server_url(server: str) -> str:
 def get_all_server_urls() -> dict[str, str]:
     """Get URLs for all known MCP servers."""
     return {name: get_server_url(name) for name in ENV_VARS}
+
+
+STATE_DIR_ENV = "UNIFI_SKILLS_STATE_DIR"
+DEFAULT_STATE_SUBDIR = Path(".claude") / "unifi-skills"
+
+
+def get_state_dir(ensure: bool = False) -> Path:
+    """Get the writable state directory for skill data.
+
+    State includes baselines, audit history, event databases, PID files.
+    Defaults to .claude/unifi-skills/ relative to CWD.
+
+    Args:
+        ensure: If True, create the directory if it doesn't exist.
+
+    Returns:
+        Path to the state directory.
+    """
+    env_val = os.environ.get(STATE_DIR_ENV)
+    if env_val:
+        state_dir = Path(env_val)
+    else:
+        state_dir = Path.cwd() / DEFAULT_STATE_SUBDIR
+
+    if ensure:
+        state_dir.mkdir(parents=True, exist_ok=True)
+
+    return state_dir
