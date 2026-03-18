@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>UniFi MCP — AI-Powered UniFi Management</title>
-  <meta name="description" content="MCP servers that give AI agents direct access to your UniFi infrastructure. 125+ tools across Network, Protect, Access, and Drive.">
+  <meta name="description" content="MCP servers that give AI agents direct access to your UniFi infrastructure. 150+ tools across Network, Protect, Access, and Drive.">
   <meta name="theme-color" content="#0a0e1a">
   <meta property="og:title" content="UniFi MCP — AI-Powered UniFi Management">
-  <meta property="og:description" content="MCP servers that give AI agents direct access to your UniFi infrastructure. 125+ tools across Network, Protect, Access, and Drive.">
+  <meta property="og:description" content="MCP servers that give AI agents direct access to your UniFi infrastructure. 150+ tools across Network, Protect, Access, and Drive.">
   <meta property="og:url" content="https://unifimcp.com">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
@@ -848,9 +848,11 @@
             <h3>Access</h3>
           </div>
           <div class="server-card-meta">
-            <span class="badge badge-planned">Planned</span>
+            <span class="badge badge-beta">Beta</span>
+            <span class="server-card-tools">29 tools</span>
           </div>
           <p>Door access control, visitor management, and credential provisioning for UniFi Access hubs, locks, and readers.</p>
+          <a href="https://github.com/sirkirby/unifi-mcp/tree/main/apps/access" class="server-card-link">Explore Access &rarr;</a>
         </div>
 
         <!-- Drive -->
@@ -891,7 +893,10 @@
 uvx unifi-network-mcp
 
 <span class="comment"># Protect server</span>
-uvx unifi-protect-mcp</code></pre>
+uvx unifi-protect-mcp
+
+<span class="comment"># Access server</span>
+uvx unifi-access-mcp</code></pre>
         </div>
         <div role="tabpanel" id="panel-docker" class="tab-panel" aria-labelledby="tab-docker" hidden>
           <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
@@ -929,9 +934,9 @@ uvx unifi-protect-mcp</code></pre>
         <div class="feature">
           <div class="feature-header">
             <span class="feature-dot feature-dot--blue"></span>
-            <h3>125+ Tools</h3>
+            <h3>150+ Tools</h3>
           </div>
-          <p>Comprehensive coverage across Network and Protect controllers. Devices, clients, firewall, cameras, events, and more.</p>
+          <p>Comprehensive coverage across Network, Protect, and Access controllers. Devices, clients, firewall, cameras, doors, events, and more.</p>
         </div>
 
         <div class="feature">
@@ -997,6 +1002,7 @@ uvx unifi-protect-mcp</code></pre>
           <ul>
             <li><a href="https://pypi.org/project/unifi-network-mcp/">Network on PyPI</a></li>
             <li><a href="https://pypi.org/project/unifi-protect-mcp/">Protect on PyPI</a></li>
+            <li><a href="https://pypi.org/project/unifi-access-mcp/">Access on PyPI</a></li>
             <li><a href="https://github.com/sirkirby/unifi-mcp/blob/main/docker-compose.yml">Docker Setup</a></li>
           </ul>
         </div>
