@@ -1,4 +1,4 @@
-.PHONY: help test lint format manifest skill-references pre-commit core-test shared-test \
+.PHONY: help test lint format manifest skill-references sync-skills check-skills-sync pre-commit core-test shared-test \
        docker-build docker-up docker-down docker-logs
 
 help:
@@ -44,12 +44,19 @@ manifest:
 	$(MAKE) -C apps/network manifest
 	$(MAKE) -C apps/protect manifest
 	$(MAKE) -C apps/access manifest
+	$(MAKE) sync-skills
 	$(MAKE) skill-references
 
 skill-references:
 	python3 scripts/generate_skill_references.py
 
-pre-commit: format lint test
+sync-skills:
+	python3 skills/_build/sync_shared.py
+
+check-skills-sync:
+	python3 skills/_build/sync_shared.py --check
+
+pre-commit: format lint sync-skills test
 
 docker-build:
 	docker compose -f docker/docker-compose.yml build
