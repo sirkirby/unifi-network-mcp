@@ -25,26 +25,26 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SKILL_DIR = REPO_ROOT / "skills" / "unifi"
+PLUGINS_DIR = REPO_ROOT / "plugins"
 
-# Server configs
+# Server configs — reference files live in each plugin's skill directory
 SERVERS = [
     {
         "name": "network",
         "manifest": REPO_ROOT / "apps" / "network" / "src" / "unifi_network_mcp" / "tools_manifest.json",
-        "reference": SKILL_DIR / "references" / "network-tools.md",
+        "reference": PLUGINS_DIR / "unifi-network" / "skills" / "unifi-network" / "references" / "network-tools.md",
         "module_strip": "unifi_network_mcp.tools.",
     },
     {
         "name": "protect",
         "manifest": REPO_ROOT / "apps" / "protect" / "src" / "unifi_protect_mcp" / "tools_manifest.json",
-        "reference": SKILL_DIR / "references" / "protect-tools.md",
+        "reference": PLUGINS_DIR / "unifi-protect" / "skills" / "unifi-protect" / "references" / "protect-tools.md",
         "module_strip": "unifi_protect_mcp.tools.",
     },
     {
         "name": "access",
         "manifest": REPO_ROOT / "apps" / "access" / "src" / "unifi_access_mcp" / "tools_manifest.json",
-        "reference": SKILL_DIR / "references" / "access-tools.md",
+        "reference": PLUGINS_DIR / "unifi-access" / "skills" / "unifi-access" / "references" / "access-tools.md",
         "module_strip": "unifi_access_mcp.tools.",
     },
 ]

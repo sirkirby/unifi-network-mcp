@@ -19,8 +19,8 @@
 **Check:**
 1. Verify `UNIFI_USERNAME` and `UNIFI_PASSWORD` are correct
 2. Ensure the account is a **local admin** (not a Ubiquiti SSO account)
-3. For dual auth: verify `UNIFI_API_KEY` is valid and has the correct permissions
-4. Try logging into the controller web UI with the same credentials
+3. Try logging into the controller web UI with the same credentials
+4. If using an API key: note that API key auth is experimental and limited to read-only operations — username/password are still required for full functionality
 
 ### 404 errors on API calls
 

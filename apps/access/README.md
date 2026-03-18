@@ -11,8 +11,27 @@ MCP server exposing UniFi Access tools for LLMs, agents, and automation platform
 
 ## Install
 
+### Claude Code (recommended)
+
+The plugin installs the MCP server, an agent skill for tool discovery, and a guided setup command:
+
+```
+/plugin marketplace add sirkirby/unifi-mcp
+/plugin install unifi-access@unifi-plugins
+```
+
+Then run the interactive setup to configure your controller connection:
+
+```
+/unifi-access:setup
+```
+
+This walks you through connecting to your Access controller, explains the dual-auth system (API key for reads, username/password for mutations), and configures permissions — then writes everything to `.claude/settings.json`. If you already have other UniFi plugins configured on the same controller, the setup will detect and reuse those credentials. Restart Claude Code after setup to connect.
+
+### PyPI / Docker
+
 ```bash
-# PyPI (recommended)
+# PyPI
 uvx unifi-access-mcp
 # or: pip install unifi-access-mcp
 
@@ -26,7 +45,7 @@ cd unifi-mcp && uv sync
 
 ## Configure
 
-Set these environment variables (or create a `.env` file):
+Set these environment variables (or create a `.env` file). If you used `/unifi-access:setup`, this is already done.
 
 ```bash
 # Server-specific variables (recommended)

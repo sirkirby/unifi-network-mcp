@@ -8,8 +8,27 @@ MCP server exposing 91 UniFi Network Controller tools for LLMs, agents, and auto
 
 ## Install
 
+### Claude Code (recommended)
+
+The plugin installs the MCP server, an agent skill for tool discovery, and a guided setup command:
+
+```
+/plugin marketplace add sirkirby/unifi-mcp
+/plugin install unifi-network@unifi-plugins
+```
+
+Then run the interactive setup to configure your controller connection:
+
+```
+/unifi-network:setup
+```
+
+This walks you through entering your controller host, credentials, and permission preferences — then writes everything to `.claude/settings.json` so it persists across sessions. Restart Claude Code after setup to connect.
+
+### PyPI / Docker
+
 ```bash
-# PyPI (recommended)
+# PyPI
 uvx unifi-network-mcp
 # or: pip install unifi-network-mcp
 
@@ -23,7 +42,7 @@ cd unifi-mcp && uv sync
 
 ## Configure
 
-Set these environment variables (or create a `.env` file):
+Set these environment variables (or create a `.env` file). If you used `/unifi-network:setup`, this is already done.
 
 ```bash
 # Server-specific variables (recommended)
@@ -31,7 +50,7 @@ UNIFI_NETWORK_HOST=192.168.1.1      # Controller IP or hostname
 UNIFI_NETWORK_USERNAME=admin         # Local admin username
 UNIFI_NETWORK_PASSWORD=your-password # Admin password
 # Optional:
-# UNIFI_NETWORK_API_KEY=             # Official UniFi API key (dual auth)
+# UNIFI_NETWORK_API_KEY=             # UniFi API key (experimental — read-only, subset of tools)
 # UNIFI_NETWORK_PORT=443             # Controller HTTPS port
 # UNIFI_NETWORK_SITE=default         # UniFi site name
 # UNIFI_NETWORK_VERIFY_SSL=false     # SSL certificate verification

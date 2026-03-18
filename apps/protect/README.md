@@ -11,8 +11,27 @@ MCP server exposing UniFi Protect tools for LLMs, agents, and automation platfor
 
 ## Install
 
+### Claude Code (recommended)
+
+The plugin installs the MCP server, an agent skill for tool discovery, and a guided setup command:
+
+```
+/plugin marketplace add sirkirby/unifi-mcp
+/plugin install unifi-protect@unifi-plugins
+```
+
+Then run the interactive setup to configure your controller connection:
+
+```
+/unifi-protect:setup
+```
+
+This walks you through entering your controller host, credentials, and permission preferences — then writes everything to `.claude/settings.json` so it persists across sessions. If you already have the Network plugin configured on the same controller, the setup will detect and reuse those credentials. Restart Claude Code after setup to connect.
+
+### PyPI / Docker
+
 ```bash
-# PyPI (recommended)
+# PyPI
 uvx unifi-protect-mcp
 # or: pip install unifi-protect-mcp
 
@@ -26,7 +45,7 @@ cd unifi-mcp && uv sync
 
 ## Configure
 
-Set these environment variables (or create a `.env` file):
+Set these environment variables (or create a `.env` file). If you used `/unifi-protect:setup`, this is already done.
 
 ```bash
 # Server-specific variables (recommended)
@@ -34,7 +53,7 @@ UNIFI_PROTECT_HOST=192.168.1.1      # Controller IP or hostname
 UNIFI_PROTECT_USERNAME=admin         # Local admin username
 UNIFI_PROTECT_PASSWORD=your-password # Admin password
 # Optional:
-# UNIFI_PROTECT_API_KEY=             # Official UniFi API key (dual auth)
+# UNIFI_PROTECT_API_KEY=             # UniFi API key (experimental — read-only, subset of tools)
 # UNIFI_PROTECT_PORT=443             # Controller HTTPS port
 # UNIFI_PROTECT_VERIFY_SSL=false     # SSL certificate verification
 ```

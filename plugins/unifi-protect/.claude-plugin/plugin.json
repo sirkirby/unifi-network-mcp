@@ -1,0 +1,26 @@
+{
+  "name": "unifi-protect",
+  "version": "1.0.0",
+  "description": "UniFi Protect MCP server — manage security cameras, NVR, recordings, and smart detections",
+  "author": {
+    "name": "sirkirby",
+    "url": "https://github.com/sirkirby"
+  },
+  "license": "MIT",
+  "keywords": ["unifi", "protect", "cameras", "nvr", "security", "mcp"],
+  "mcpServers": {
+    "unifi-protect": {
+      "command": "uvx",
+      "args": ["unifi-protect-mcp"],
+      "env": {
+        "UNIFI_PROTECT_HOST": "${UNIFI_PROTECT_HOST:-${UNIFI_HOST}}",
+        "UNIFI_PROTECT_USERNAME": "${UNIFI_PROTECT_USERNAME:-${UNIFI_USERNAME}}",
+        "UNIFI_PROTECT_PASSWORD": "${UNIFI_PROTECT_PASSWORD:-${UNIFI_PASSWORD}}",
+        "UNIFI_PROTECT_API_KEY": "${UNIFI_PROTECT_API_KEY:-${UNIFI_API_KEY:-}}",
+        "UNIFI_PROTECT_PORT": "${UNIFI_PROTECT_PORT:-${UNIFI_PORT:-443}}",
+        "UNIFI_PROTECT_VERIFY_SSL": "${UNIFI_PROTECT_VERIFY_SSL:-${UNIFI_VERIFY_SSL:-false}}",
+        "UNIFI_TOOL_REGISTRATION_MODE": "${UNIFI_TOOL_REGISTRATION_MODE:-lazy}"
+      }
+    }
+  }
+}

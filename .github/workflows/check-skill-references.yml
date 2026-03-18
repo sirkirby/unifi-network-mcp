@@ -5,14 +5,14 @@ on:
     branches: [main, develop]
     paths:
       - 'apps/*/src/*/tools_manifest.json'
-      - 'skills/unifi/references/*.md'
+      - 'plugins/*/skills/*/references/*.md'
       - 'scripts/generate_skill_references.py'
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main, develop]
     paths:
       - 'apps/*/src/*/tools_manifest.json'
-      - 'skills/unifi/references/*.md'
+      - 'plugins/*/skills/*/references/*.md'
       - 'scripts/generate_skill_references.py'
 
 jobs:
