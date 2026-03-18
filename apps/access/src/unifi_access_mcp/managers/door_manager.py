@@ -25,10 +25,7 @@ logger = logging.getLogger(__name__)
 # Query parameters for the dashboard locations endpoint (includes all
 # useful expansions discovered from browser network inspection).
 _LOCATIONS_EXPAND = (
-    "expand[]=location.thumbnail"
-    "&expand[]=device.access_method"
-    "&expand[]=device.lock_state"
-    "&expand[]=device.thumbnail"
+    "expand[]=location.thumbnail&expand[]=device.access_method&expand[]=device.lock_state&expand[]=device.thumbnail"
 )
 
 
@@ -62,7 +59,7 @@ class DoorManager:
             elif self._cm.has_proxy:
                 data = await self._cm.proxy_request("GET", f"dashboard/locations?{_LOCATIONS_EXPAND}")
                 # Response is {"data": {"locations": [...]}}
-                inner = data.get("data", data) if isinstance(data, dict) else data
+                inner = self._cm.extract_data(data)
                 if isinstance(inner, dict):
                     return inner.get("locations", [])
                 return inner
@@ -97,7 +94,7 @@ class DoorManager:
             elif self._cm.has_proxy:
                 data = await self._cm.proxy_request("GET", f"dashboard/locations?{_LOCATIONS_EXPAND}")
                 # Response is {"data": {"locations": [...]}}
-                inner = data.get("data", data) if isinstance(data, dict) else data
+                inner = self._cm.extract_data(data)
                 locations = inner.get("locations", inner) if isinstance(inner, dict) else inner
                 if isinstance(locations, list):
                     for loc in locations:
@@ -131,7 +128,7 @@ class DoorManager:
             elif self._cm.has_proxy:
                 data = await self._cm.proxy_request("GET", f"dashboard/locations?{_LOCATIONS_EXPAND}")
                 # Response is {"data": {"locations": [...]}}
-                inner = data.get("data", data) if isinstance(data, dict) else data
+                inner = self._cm.extract_data(data)
                 locations = inner.get("locations", inner) if isinstance(inner, dict) else inner
                 if isinstance(locations, list):
                     for loc in locations:
@@ -159,7 +156,7 @@ class DoorManager:
         try:
             if self._cm.has_proxy:
                 data = await self._cm.proxy_request("GET", "access_groups")
-                return data.get("data", data) if isinstance(data, dict) else data
+                return self._cm.extract_data(data)
             else:
                 raise UniFiConnectionError("No auth path available for list_door_groups (proxy session required)")
         except UniFiConnectionError:

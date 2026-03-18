@@ -39,7 +39,7 @@ class PolicyManager:
             raise UniFiConnectionError("No proxy session available for list_policies")
         try:
             data = await self._cm.proxy_request("GET", "access_policies?expand[]=schedule")
-            return data.get("data", data) if isinstance(data, dict) else data
+            return self._cm.extract_data(data)
         except UniFiConnectionError:
             raise
         except Exception as e:
@@ -47,14 +47,18 @@ class PolicyManager:
             raise
 
     async def get_policy(self, policy_id: str) -> Dict[str, Any]:
-        """Return detailed information for a single access policy."""
+        """Return detailed information for a single access policy.
+
+        The single-policy endpoint uses the **singular** path
+        ``access_policy/{id}`` (not ``access_policies/{id}``).
+        """
         if not policy_id:
             raise ValueError("policy_id is required")
         if not self._cm.has_proxy:
             raise UniFiConnectionError("No proxy session available for get_policy")
         try:
-            data = await self._cm.proxy_request("GET", f"access_policies/{policy_id}?expand[]=schedule")
-            return data.get("data", data) if isinstance(data, dict) else data
+            data = await self._cm.proxy_request("GET", f"access_policy/{policy_id}")
+            return self._cm.extract_data(data)
         except (UniFiConnectionError, ValueError):
             raise
         except Exception as e:
@@ -67,7 +71,7 @@ class PolicyManager:
             raise UniFiConnectionError("No proxy session available for list_schedules")
         try:
             data = await self._cm.proxy_request("GET", "schedules?expand[]=week_schedule")
-            return data.get("data", data) if isinstance(data, dict) else data
+            return self._cm.extract_data(data)
         except UniFiConnectionError:
             raise
         except Exception as e:
@@ -106,7 +110,7 @@ class PolicyManager:
         if not self._cm.has_proxy:
             raise UniFiConnectionError("No proxy session available for update_policy")
         try:
-            await self._cm.proxy_request("PUT", f"access_policies/{policy_id}", json=changes)
+            await self._cm.proxy_request("PUT", f"access_policy/{policy_id}", json=changes)
             return {
                 "policy_id": policy_id,
                 "action": "update",

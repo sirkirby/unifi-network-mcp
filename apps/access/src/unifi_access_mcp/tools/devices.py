@@ -86,21 +86,20 @@ async def access_reboot_device(
     """Reboot a device with preview/confirm."""
     logger.info("access_reboot_device tool called for %s (confirm=%s)", device_id, confirm)
     try:
+        if confirm or should_auto_confirm():
+            result = await device_manager.apply_reboot_device(device_id)
+            return {"success": True, "data": result}
+
         preview_data = await device_manager.reboot_device(device_id)
-
-        if not confirm and not should_auto_confirm():
-            return preview_response(
-                action="reboot",
-                resource_type="access_device",
-                resource_id=device_id,
-                current_state=preview_data["current_state"],
-                proposed_changes=preview_data["proposed_changes"],
-                resource_name=preview_data.get("device_name"),
-                warnings=["The device will be temporarily offline during reboot."],
-            )
-
-        result = await device_manager.apply_reboot_device(device_id)
-        return {"success": True, "data": result}
+        return preview_response(
+            action="reboot",
+            resource_type="access_device",
+            resource_id=device_id,
+            current_state=preview_data["current_state"],
+            proposed_changes=preview_data["proposed_changes"],
+            resource_name=preview_data.get("device_name"),
+            warnings=["The device will be temporarily offline during reboot."],
+        )
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:

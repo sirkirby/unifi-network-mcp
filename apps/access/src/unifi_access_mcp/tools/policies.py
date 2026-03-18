@@ -119,19 +119,18 @@ async def access_update_policy(
         if not changes:
             return {"success": False, "error": "No changes provided. Specify at least one field to update."}
 
+        if confirm or should_auto_confirm():
+            result = await policy_manager.apply_update_policy(policy_id, changes)
+            return {"success": True, "data": result}
+
         preview_data = await policy_manager.update_policy(policy_id, changes)
-
-        if not confirm and not should_auto_confirm():
-            return update_preview(
-                resource_type="access_policy",
-                resource_id=policy_id,
-                resource_name=preview_data.get("policy_name"),
-                current_state=preview_data["current_state"],
-                updates=preview_data["proposed_changes"],
-            )
-
-        result = await policy_manager.apply_update_policy(policy_id, changes)
-        return {"success": True, "data": result}
+        return update_preview(
+            resource_type="access_policy",
+            resource_id=policy_id,
+            resource_name=preview_data.get("policy_name"),
+            current_state=preview_data["current_state"],
+            updates=preview_data["proposed_changes"],
+        )
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:

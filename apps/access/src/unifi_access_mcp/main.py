@@ -8,11 +8,12 @@ Responsibilities:
 """
 
 import asyncio
+import inspect
 import logging
 import os
 import sys
-import traceback
-from typing import Any, Union
+import types
+from typing import Annotated, Any, Union, get_args, get_origin
 
 import uvicorn.config
 
@@ -72,10 +73,6 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
         # If no explicit input_schema, try to infer from function annotations
         if input_schema is None:
             try:
-                import inspect
-                import types
-                from typing import Annotated, get_args, get_origin
-
                 sig = inspect.signature(func)
                 properties = {}
                 required = []
@@ -142,7 +139,7 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
                     input_schema["required"] = required
 
             except Exception as exc:
-                logger.debug(f"Could not infer input schema for {tool_name}: {exc}")
+                logger.debug("Could not infer input schema for %s: %s", tool_name, exc)
                 input_schema = {"type": "object", "properties": {}}
 
         # Fast path: no permissions requested, just register.
@@ -196,27 +193,7 @@ def permissioned_tool(*d_args, **d_kwargs):  # acts like @server.tool
 
 server.tool = permissioned_tool  # type: ignore
 
-# Log server version and capabilities
-try:
-    import mcp
-
-    logger.info(f"MCP Python SDK version: {getattr(mcp, '__version__', 'unknown')}")
-    logger.info(f"Server methods: {dir(server)}")
-    logger.info(f"Server tool methods: {[m for m in dir(server) if 'tool' in m.lower()]}")
-except Exception as e:
-    logger.error(f"Error inspecting server: {e}")
-
-# Config is loaded globally via bootstrap helper
-logger.info("Loaded configuration globally.")
-
-# --- Global Connection and Managers ---
-# ConnectionManager is instantiated globally by unifi_access_mcp.runtime import
-logger.info("Using global AccessConnectionManager instance.")
-
-# Other Managers are instantiated globally by unifi_access_mcp.runtime import
-logger.info("Using global Manager instances.")
-
-# Dynamic tool loader helper already imported above
+logger.debug("Access MCP server module loaded; singletons initialised.")
 
 
 async def main_async():
@@ -234,25 +211,15 @@ async def main_async():
             log_message += f"\nHandle: {context['handle']}"
         logger.error(log_message)
         if context.get("exception"):
-            orig_traceback = "".join(
-                traceback.format_exception(
-                    type(context["exception"]),
-                    context["exception"],
-                    context["exception"].__traceback__,
-                )
-            )
-            logger.error(f"Original traceback for global asyncio exception:\n{orig_traceback}")
+            logger.error("Original traceback for global asyncio exception:", exc_info=context["exception"])
 
     loop.set_exception_handler(handle_asyncio_exception)
     logger.info("Global asyncio exception handler set.")
     # --- End asyncio global exception handler ---
 
-    # Config is now loaded globally (from unifi_access_mcp.runtime -> unifi_access_mcp.bootstrap)
+    # Apply log level from config (bootstrap already set up handlers)
     log_level = config.server.get("log_level", "INFO").upper()
-    # Ensure logging is configured (might be redundant if already set by bootstrap)
-    # but this ensures the level is applied if changed post-bootstrap.
-    logging.basicConfig(level=getattr(logging, log_level, logging.INFO), force=True)  # Use default format
-    logger.info(f"Log level set to {log_level} in main_async.")
+    logging.getLogger("unifi-access-mcp").setLevel(getattr(logging, log_level, logging.INFO))
 
     # Initialize the global Access connection
     logger.info("Initializing global Access connection from main_async...")
@@ -309,7 +276,7 @@ async def main_async():
         # Setup lazy loading interceptor so access_execute/access_batch can load tools on demand
         setup_lazy_loading(server, _original_tool_decorator)
 
-        logger.info(f"   On-demand loader ready - {len(TOOL_MODULE_MAP)} tools available via access_execute")
+        logger.info("   On-demand loader ready - %d tools available via access_execute", len(TOOL_MODULE_MAP))
     elif UNIFI_TOOL_REGISTRATION_MODE == "lazy":
         logger.info("Tool registration mode: lazy")
         logger.info(
@@ -329,7 +296,7 @@ async def main_async():
             tool_module_map=TOOL_MODULE_MAP,
         )
 
-        logger.info(f"   Lazy loader ready - {len(TOOL_MODULE_MAP)} tools available on-demand")
+        logger.info("   Lazy loader ready - %d tools available on-demand", len(TOOL_MODULE_MAP))
     else:  # eager (default)
         logger.info("Tool registration mode: eager")
 
@@ -349,9 +316,9 @@ async def main_async():
             enabled_tools = None
 
         if enabled_categories:
-            logger.info(f"   Filtering by categories: {enabled_categories}")
+            logger.info("   Filtering by categories: %s", enabled_categories)
         elif enabled_tools:
-            logger.info(f"   Filtering to {len(enabled_tools)} specific tools")
+            logger.info("   Filtering to %d specific tools", len(enabled_tools))
         else:
             logger.info("   All tools registered (no filtering)")
 
@@ -365,9 +332,9 @@ async def main_async():
     # List all registered tools for debugging
     try:
         tools = await server.list_tools()
-        logger.info(f"Registered tools in main_async: {[tool.name for tool in tools]}")
+        logger.debug("Registered tools: %s", [tool.name for tool in tools])
     except Exception as e:
-        logger.error(f"Error listing tools in main_async: {e}")
+        logger.debug("Error listing tools: %s", e)
 
     # Run stdio always; optionally run HTTP based on config flag
     host = config.server.get("host", "0.0.0.0")
@@ -411,7 +378,7 @@ async def main_async():
 
         async def run_http():
             try:
-                logger.info(f"Starting FastMCP {transport_label} server on {host}:{port} ...")
+                logger.info("Starting FastMCP %s server on %s:%s ...", transport_label, host, port)
                 server.settings.host = host
                 server.settings.port = port
 
@@ -423,10 +390,9 @@ async def main_async():
                     await server.run_streamable_http_async()
                 else:
                     await server.run_sse_async()
-                logger.info(f"{transport_label} server exited.")
+                logger.info("%s server exited.", transport_label)
             except Exception as http_e:
-                logger.error(f"FastMCP {transport_label} server failed to start: {http_e}")
-                logger.error(traceback.format_exc())
+                logger.error("FastMCP %s server failed to start: %s", transport_label, http_e, exc_info=True)
 
         tasks.append(run_http())
 
@@ -434,8 +400,7 @@ async def main_async():
         await asyncio.gather(*tasks)
         logger.info("FastMCP servers exited.")
     except Exception as e:
-        logger.error(f"Error running FastMCP servers from main_async: {e}")
-        logger.error(traceback.format_exc())
+        logger.error("Error running FastMCP servers: %s", e, exc_info=True)
         raise
 
 

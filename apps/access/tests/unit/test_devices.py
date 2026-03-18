@@ -77,12 +77,42 @@ class TestListDevices:
 
     @pytest.mark.asyncio
     async def test_list_devices_proxy(self, device_mgr_proxy, cm_proxy):
-        """list_devices uses devices/topology4 via proxy."""
-        expected = [{"id": "dev-2", "name": "Reader G2"}]
+        """list_devices flattens nested topology4 structure."""
+        topology = [
+            {
+                "name": "Site",
+                "unique_id": "site-1",
+                "floors": [
+                    {
+                        "name": "1F",
+                        "unique_id": "floor-1",
+                        "doors": [
+                            {
+                                "name": "Front Door",
+                                "unique_id": "door-1",
+                                "device_groups": [
+                                    [
+                                        {
+                                            "unique_id": "dev-2",
+                                            "name": "Reader G2",
+                                            "device_type": "reader",
+                                            "mac": "AA:BB",
+                                        },
+                                    ]
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
-            mock_req.return_value = {"data": expected}
+            mock_req.return_value = {"data": topology}
             devices = await device_mgr_proxy.list_devices()
-        assert devices == expected
+        assert len(devices) == 1
+        assert devices[0]["unique_id"] == "dev-2"
+        assert devices[0]["name"] == "Reader G2"
+        assert devices[0]["_door_name"] == "Front Door"
         mock_req.assert_awaited_once_with("GET", "devices/topology4")
 
     @pytest.mark.asyncio
@@ -117,22 +147,44 @@ class TestGetDevice:
 
     @pytest.mark.asyncio
     async def test_get_device_proxy(self, device_mgr_proxy, cm_proxy):
-        """get_device filters from topology4 response by ID."""
+        """get_device finds device by unique_id from nested topology."""
         topology = [
-            {"id": "dev-1", "name": "Hub Pro"},
-            {"id": "dev-2", "name": "Reader G2", "type": "reader"},
+            {
+                "name": "Site",
+                "unique_id": "site-1",
+                "floors": [
+                    {
+                        "name": "1F",
+                        "unique_id": "floor-1",
+                        "doors": [
+                            {
+                                "name": "Front Door",
+                                "unique_id": "door-1",
+                                "device_groups": [
+                                    [
+                                        {"unique_id": "dev-1", "name": "Hub Pro"},
+                                        {"unique_id": "dev-2", "name": "Reader G2", "device_type": "reader"},
+                                    ]
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
         ]
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = {"data": topology}
             detail = await device_mgr_proxy.get_device("dev-2")
-        assert detail == {"id": "dev-2", "name": "Reader G2", "type": "reader"}
+        assert detail["unique_id"] == "dev-2"
+        assert detail["name"] == "Reader G2"
         mock_req.assert_awaited_once_with("GET", "devices/topology4")
 
     @pytest.mark.asyncio
     async def test_get_device_proxy_not_found(self, device_mgr_proxy, cm_proxy):
         """get_device raises ValueError when device ID not found in topology."""
+        topology = [{"name": "Site", "unique_id": "s", "floors": [{"name": "1F", "unique_id": "f", "doors": []}]}]
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
-            mock_req.return_value = {"data": [{"id": "other-dev"}]}
+            mock_req.return_value = {"data": topology}
             with pytest.raises(ValueError, match="Device not found"):
                 await device_mgr_proxy.get_device("missing-dev")
 

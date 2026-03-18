@@ -32,6 +32,39 @@ class DeviceManager:
     # Read-only methods
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _extract_devices_from_topology(topology: Any) -> List[Dict[str, Any]]:
+        """Flatten the nested topology4 structure into a device list.
+
+        The topology4 response has the structure::
+
+            [site] -> floors -> doors -> device_groups -> [devices]
+
+        Each device uses ``unique_id`` as its identifier.
+        """
+        devices: List[Dict[str, Any]] = []
+        sites = topology if isinstance(topology, list) else [topology] if isinstance(topology, dict) else []
+        for site in sites:
+            if not isinstance(site, dict):
+                continue
+            for floor in site.get("floors", []):
+                if not isinstance(floor, dict):
+                    continue
+                for door in floor.get("doors", []):
+                    if not isinstance(door, dict):
+                        continue
+                    for dg in door.get("device_groups", []):
+                        # device_groups can be a list of lists or list of dicts
+                        group_devices = (
+                            dg if isinstance(dg, list) else dg.get("devices", []) if isinstance(dg, dict) else []
+                        )
+                        for dev in group_devices:
+                            if isinstance(dev, dict):
+                                dev["_door_name"] = door.get("name")
+                                dev["_door_id"] = door.get("unique_id")
+                                devices.append(dev)
+        return devices
+
     async def list_devices(self) -> List[Dict[str, Any]]:
         """Return all Access devices as summary dicts.
 
@@ -53,7 +86,8 @@ class DeviceManager:
                 ]
             elif self._cm.has_proxy:
                 data = await self._cm.proxy_request("GET", "devices/topology4")
-                return data.get("data", data) if isinstance(data, dict) else data
+                topology = self._cm.extract_data(data)
+                return self._extract_devices_from_topology(topology)
             else:
                 raise UniFiConnectionError("No auth path available for list_devices")
         except UniFiConnectionError:
@@ -66,8 +100,8 @@ class DeviceManager:
         """Return detailed information for a single device.
 
         Tries the API client first, then falls back to the proxy path.
-        When using the proxy path we fetch the full topology and filter
-        by device ID.
+        When using the proxy path we flatten the topology tree and search
+        by ``unique_id`` or ``mac``.
         """
         if not device_id:
             raise ValueError("device_id is required")
@@ -85,11 +119,11 @@ class DeviceManager:
                 }
             elif self._cm.has_proxy:
                 data = await self._cm.proxy_request("GET", "devices/topology4")
-                devices = data.get("data", data) if isinstance(data, dict) else data
-                if isinstance(devices, list):
-                    for dev in devices:
-                        if isinstance(dev, dict) and dev.get("id") == device_id:
-                            return dev
+                topology = self._cm.extract_data(data)
+                devices = self._extract_devices_from_topology(topology)
+                for dev in devices:
+                    if dev.get("unique_id") == device_id or dev.get("mac") == device_id:
+                        return dev
                 raise ValueError(f"Device not found: {device_id}")
             else:
                 raise UniFiConnectionError("No auth path available for get_device")

@@ -30,6 +30,12 @@ logger = logging.getLogger(__name__)
     auth="local_only",
 )
 async def access_list_events(
+    topic: Annotated[
+        str,
+        Field(
+            description="Event topic to query: 'admin' (user/account changes) or 'admin_activity' (admin actions). Default: admin."
+        ),
+    ] = "admin",
     start: Annotated[
         Optional[str],
         Field(description="Start time as ISO 8601 timestamp (e.g., 2026-03-17T00:00:00Z). Omit for no lower bound."),
@@ -52,9 +58,10 @@ async def access_list_events(
     ] = 30,
 ) -> Dict[str, Any]:
     """List access events."""
-    logger.info("access_list_events tool called (door=%s, user=%s, limit=%s)", door_id, user_id, limit)
+    logger.info("access_list_events tool called (topic=%s, door=%s, user=%s, limit=%s)", topic, door_id, user_id, limit)
     try:
         events = await event_manager.list_events(
+            topic=topic,
             start=start,
             end=end,
             door_id=door_id,

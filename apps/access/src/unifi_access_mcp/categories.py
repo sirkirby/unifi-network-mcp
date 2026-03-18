@@ -38,14 +38,11 @@ ACCESS_CATEGORY_MAP = {
     "user": "system",
 }
 
-# Backward-compatible alias used by the old permissions module
-CATEGORY_MAP = ACCESS_CATEGORY_MAP
-
 
 def parse_permission(permissions: Dict[str, Any], category: str, action: str) -> bool:
     """Check if an action is permitted for a given category.
 
-    This is a backward-compatible wrapper around
+    Backward-compatible wrapper around
     :meth:`PermissionChecker.check <unifi_mcp_shared.permissions.PermissionChecker.check>`.
     New code should use ``PermissionChecker`` directly.
     """

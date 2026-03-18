@@ -46,9 +46,11 @@ class EventBuffer:
         self._ttl = ttl_seconds
 
     def add(self, event: dict[str, Any]) -> None:
-        """Add *event* to the buffer, stamping it with the current time."""
-        event["_buffered_at"] = time.time()
-        self._buffer.append(event)
+        """Add *event* to the buffer, stamping it with the current time.
+
+        A shallow copy is made so the caller's original dict is not mutated.
+        """
+        self._buffer.append({**event, "_buffered_at": time.time()})
 
     def get_recent(
         self,
@@ -191,6 +193,7 @@ class EventManager:
 
     async def list_events(
         self,
+        topic: str = "admin",
         start: str | None = None,
         end: str | None = None,
         door_id: str | None = None,
@@ -204,6 +207,9 @@ class EventManager:
 
         Parameters
         ----------
+        topic:
+            Event topic to query.  Valid values include ``admin`` and
+            ``admin_activity``.  The Access API requires this field.
         start:
             ISO 8601 start time filter.
         end:
@@ -219,9 +225,8 @@ class EventManager:
             raise UniFiConnectionError("No proxy session available for list_events")
 
         try:
-            # Build the search payload -- the system_log/search endpoint
-            # expects a POST with filter criteria in the request body.
-            body: dict[str, Any] = {}
+            # The system_log/search endpoint requires a ``topic`` field.
+            body: dict[str, Any] = {"topic": topic}
             if start:
                 body["start"] = start
             if end:
@@ -236,14 +241,15 @@ class EventManager:
 
             data = await self._cm.proxy_request("POST", path, json=body)
 
-            if isinstance(data, dict):
-                events = data.get("data", data)
+            inner = self._cm.extract_data(data)
+            # Response wraps events in {"events": [...], "versions": {...}}
+            if isinstance(inner, dict):
+                events = inner.get("events", [])
+            elif isinstance(inner, list):
+                events = inner
             else:
-                events = data
-
-            if isinstance(events, list):
-                return events
-            return [events] if events else []
+                events = []
+            return events
         except UniFiConnectionError:
             raise
         except Exception as e:
@@ -263,16 +269,18 @@ class EventManager:
             raise UniFiConnectionError("No proxy session available for get_event")
 
         try:
-            # Search for the specific event by ID in the system log
-            path = "insights/system_log/search?page_size=1&page_num=1&isAccess"
-            data = await self._cm.proxy_request("POST", path, json={"event_id": event_id})
-            result = data.get("data", data) if isinstance(data, dict) else data
-            # If the result is a list, return the first matching entry
-            if isinstance(result, list):
-                if result:
-                    return result[0]
-                raise ValueError(f"Event not found: {event_id}")
-            return result
+            # Search across both known topics for the event
+            for topic in ("admin", "admin_activity"):
+                path = "insights/system_log/search?page_size=100&page_num=1&isAccess"
+                data = await self._cm.proxy_request("POST", path, json={"topic": topic})
+                inner = self._cm.extract_data(data)
+                events = (
+                    inner.get("events", []) if isinstance(inner, dict) else (inner if isinstance(inner, list) else [])
+                )
+                for ev in events:
+                    if isinstance(ev, dict) and ev.get("id") == event_id:
+                        return ev
+            raise ValueError(f"Event not found: {event_id}")
         except (UniFiConnectionError, ValueError):
             raise
         except Exception as e:
@@ -307,7 +315,7 @@ class EventManager:
                 path += f"&door_id={door_id}"
 
             data = await self._cm.proxy_request("GET", path)
-            return data.get("data", data) if isinstance(data, dict) else data
+            return self._cm.extract_data(data)
         except UniFiConnectionError:
             raise
         except Exception as e:

@@ -68,28 +68,42 @@ permissions:
 
   doors:
     read: true
+    create: false
     update: false
+    delete: false
 
   policies:
     read: true
+    create: false
     update: false
+    delete: false
 
   credentials:
     read: true
     create: false
+    update: false
     delete: false
 
   visitors:
     read: true
     create: false
+    update: false
     delete: false
 
   events:
     read: true
+    create: false
+    update: false
+    delete: false
 
   devices:
     read: true
+    create: false
     update: false
+    delete: false
 
   system:
     read: true
+    create: false
+    update: false
+    delete: false

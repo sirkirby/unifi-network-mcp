@@ -102,17 +102,16 @@ async def access_create_credential(
         if not credential_data:
             return {"success": False, "error": "No credential data provided."}
 
+        if confirm or should_auto_confirm():
+            result = await credential_manager.apply_create_credential(credential_type, credential_data)
+            return {"success": True, "data": result}
+
         preview_data = await credential_manager.create_credential(credential_type, credential_data)
-
-        if not confirm and not should_auto_confirm():
-            return create_preview(
-                resource_type="access_credential",
-                resource_data=preview_data["proposed_changes"],
-                resource_name=f"{credential_type} credential",
-            )
-
-        result = await credential_manager.apply_create_credential(credential_type, credential_data)
-        return {"success": True, "data": result}
+        return create_preview(
+            resource_type="access_credential",
+            resource_data=preview_data["proposed_changes"],
+            resource_name=f"{credential_type} credential",
+        )
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
@@ -142,22 +141,19 @@ async def access_revoke_credential(
     """Revoke a credential with preview/confirm."""
     logger.info("access_revoke_credential tool called for %s (confirm=%s)", credential_id, confirm)
     try:
+        if confirm or should_auto_confirm():
+            result = await credential_manager.apply_revoke_credential(credential_id)
+            return {"success": True, "data": result}
+
         preview_data = await credential_manager.revoke_credential(credential_id)
-
-        if not confirm and not should_auto_confirm():
-            return preview_response(
-                action="revoke",
-                resource_type="access_credential",
-                resource_id=credential_id,
-                current_state=preview_data["current_state"],
-                proposed_changes=preview_data["proposed_changes"],
-                warnings=[
-                    "This will permanently remove the credential. The user will lose access via this credential."
-                ],
-            )
-
-        result = await credential_manager.apply_revoke_credential(credential_id)
-        return {"success": True, "data": result}
+        return preview_response(
+            action="revoke",
+            resource_type="access_credential",
+            resource_id=credential_id,
+            current_state=preview_data["current_state"],
+            proposed_changes=preview_data["proposed_changes"],
+            warnings=["This will permanently remove the credential. The user will lose access via this credential."],
+        )
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:

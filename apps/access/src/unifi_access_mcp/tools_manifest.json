@@ -350,6 +350,10 @@
               "description": "Start time as ISO 8601 timestamp (e.g., 2026-03-17T00:00:00Z). Omit for no lower bound.",
               "type": "string"
             },
+            "topic": {
+              "description": "Event topic to query: 'admin' (user/account changes) or 'admin_activity' (admin actions). Default: admin.",
+              "type": "string"
+            },
             "user_id": {
               "description": "Filter events to a specific user by UUID (from access_list_users). Omit for all users.",
               "type": "string"

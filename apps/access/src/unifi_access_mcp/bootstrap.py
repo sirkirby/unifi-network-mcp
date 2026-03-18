@@ -121,7 +121,7 @@ def load_config(path_override: str | Path | None = None) -> OmegaConf:
                 else:
                     logger.error("Bundled default configuration file could not be accessed (not a file).")
                     raise SystemExit(3)  # Exit if bundled config isn't a file
-            except (ModuleNotFoundError, FileNotFoundError, Exception) as e:
+            except Exception as e:
                 logger.error("Could not find or access bundled default configuration: %s", e)
                 raise SystemExit(3)  # Exit if bundled config cannot be loaded
 
@@ -172,8 +172,8 @@ UNIFI_TOOL_REGISTRATION_MODE = os.getenv("UNIFI_TOOL_REGISTRATION_MODE", "lazy")
 # Validate registration mode
 if UNIFI_TOOL_REGISTRATION_MODE not in VALID_REGISTRATION_MODES:
     logger.warning(
-        f"Invalid UNIFI_TOOL_REGISTRATION_MODE: '{UNIFI_TOOL_REGISTRATION_MODE}'. "
-        f"Must be one of: {', '.join(sorted(VALID_REGISTRATION_MODES))}. "
-        f"Defaulting to 'lazy'."
+        "Invalid UNIFI_TOOL_REGISTRATION_MODE: '%s'. Must be one of: %s. Defaulting to 'lazy'.",
+        UNIFI_TOOL_REGISTRATION_MODE,
+        ", ".join(sorted(VALID_REGISTRATION_MODES)),
     )
     UNIFI_TOOL_REGISTRATION_MODE = "lazy"

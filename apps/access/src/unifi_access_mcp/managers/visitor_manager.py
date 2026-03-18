@@ -44,12 +44,11 @@ class VisitorManager:
             raise UniFiConnectionError("No proxy session available for list_visitors")
         try:
             data = await self._cm.proxy_request("GET", "visitors")
-            return data.get("data", data) if isinstance(data, dict) else data
+            return self._cm.extract_data(data)
         except UniFiConnectionError as e:
             if "HTTP 404" in str(e):
                 logger.warning(
-                    "[visitors] Visitor endpoint returned 404 — endpoint path may not be correct. "
-                    "Returning empty list."
+                    "[visitors] Visitor endpoint returned 404 — endpoint path may not be correct. Returning empty list."
                 )
                 return []
             raise
@@ -68,7 +67,7 @@ class VisitorManager:
             raise UniFiConnectionError("No proxy session available for get_visitor")
         try:
             data = await self._cm.proxy_request("GET", f"visitors/{visitor_id}")
-            return data.get("data", data) if isinstance(data, dict) else data
+            return self._cm.extract_data(data)
         except UniFiConnectionError as e:
             if "HTTP 404" in str(e):
                 logger.warning(
@@ -148,7 +147,7 @@ class VisitorManager:
             return {
                 "action": "create",
                 "result": "success",
-                "data": result.get("data", result) if isinstance(result, dict) else result,
+                "data": self._cm.extract_data(result),
             }
         except UniFiConnectionError:
             raise

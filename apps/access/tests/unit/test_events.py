@@ -164,28 +164,30 @@ class TestEventManagerWebsocket:
 class TestEventManagerREST:
     @pytest.mark.asyncio
     async def test_list_events_proxy(self, event_mgr_proxy, cm_proxy):
-        """list_events queries via proxy using POST to system_log/search."""
+        """list_events queries via proxy using POST to system_log/search with topic."""
         expected = [{"id": "evt-1", "type": "door_open"}]
 
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
-            mock_req.return_value = {"data": expected}
+            mock_req.return_value = {"data": {"events": expected}}
             events = await event_mgr_proxy.list_events()
 
         assert events == expected
         mock_req.assert_awaited_once()
-        # Verify it uses POST (not GET) to the system_log/search endpoint
         call_args = mock_req.call_args
         assert call_args[0][0] == "POST"
         assert "insights/system_log/search" in call_args[0][1]
         assert "page_size=30" in call_args[0][1]
         assert "isAccess" in call_args[0][1]
+        # Verify topic is included in request body
+        assert call_args[1]["json"]["topic"] == "admin"
 
     @pytest.mark.asyncio
     async def test_list_events_with_filters(self, event_mgr_proxy, cm_proxy):
-        """list_events passes filters in the POST body."""
+        """list_events passes filters and topic in the POST body."""
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
-            mock_req.return_value = {"data": []}
+            mock_req.return_value = {"data": {"events": []}}
             await event_mgr_proxy.list_events(
+                topic="admin_activity",
                 door_id="d1",
                 user_id="u1",
                 start="2026-03-01",
@@ -194,13 +196,12 @@ class TestEventManagerREST:
             )
 
         call_args = mock_req.call_args
-        # POST body contains filters
         body = call_args[1]["json"]
+        assert body["topic"] == "admin_activity"
         assert body["door_id"] == "d1"
         assert body["user_id"] == "u1"
         assert body["start"] == "2026-03-01"
         assert body["end"] == "2026-03-17"
-        # page_size in query string
         assert "page_size=10" in call_args[0][1]
 
     @pytest.mark.asyncio
@@ -211,25 +212,26 @@ class TestEventManagerREST:
 
     @pytest.mark.asyncio
     async def test_get_event_proxy(self, event_mgr_proxy, cm_proxy):
-        """get_event searches for a single event via system_log/search."""
+        """get_event searches across topics for a single event."""
         expected = {"id": "evt-1", "type": "door_open", "door_id": "d1"}
 
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
-            mock_req.return_value = {"data": [expected]}
+            # First topic returns the event
+            mock_req.return_value = {"data": {"events": [expected]}}
             event = await event_mgr_proxy.get_event("evt-1")
 
         assert event == expected
-        # Verify it uses POST to system_log/search
-        call_args = mock_req.call_args
+        # Verify it uses POST to system_log/search with topic
+        call_args = mock_req.call_args_list[0]
         assert call_args[0][0] == "POST"
         assert "insights/system_log/search" in call_args[0][1]
-        assert call_args[1]["json"] == {"event_id": "evt-1"}
+        assert call_args[1]["json"]["topic"] == "admin"
 
     @pytest.mark.asyncio
     async def test_get_event_not_found(self, event_mgr_proxy, cm_proxy):
-        """get_event raises ValueError when event not found in search results."""
+        """get_event raises ValueError when event not found across all topics."""
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
-            mock_req.return_value = {"data": []}
+            mock_req.return_value = {"data": {"events": []}}
             with pytest.raises(ValueError, match="Event not found"):
                 await event_mgr_proxy.get_event("missing-evt")
 

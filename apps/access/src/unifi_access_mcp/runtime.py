@@ -97,7 +97,9 @@ def get_server() -> FastMCP:
     )
 
     logger.debug(
-        f"Configuring FastMCP with allowed_hosts: {allowed_hosts}, dns_rebinding_protection: {enable_dns_rebinding}"
+        "Configuring FastMCP with allowed_hosts: %s, dns_rebinding_protection: %s",
+        allowed_hosts,
+        enable_dns_rebinding,
     )
 
     server = FastMCP(
@@ -134,8 +136,8 @@ def get_connection_manager() -> AccessConnectionManager:
     api_port = 12445
     try:
         api_port = int(full_cfg.access.api_port)
-    except Exception:
-        pass
+    except (AttributeError, TypeError, ValueError) as exc:
+        logger.debug("Could not parse access.api_port, using default %d: %s", api_port, exc)
     return AccessConnectionManager(
         host=cfg.host,
         username=cfg.username,

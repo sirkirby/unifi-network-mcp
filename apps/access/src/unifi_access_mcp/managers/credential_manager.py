@@ -43,7 +43,7 @@ class CredentialManager:
             raise UniFiConnectionError("No proxy session available for list_credentials")
         try:
             data = await self._cm.proxy_request("GET", "credentials")
-            return data.get("data", data) if isinstance(data, dict) else data
+            return self._cm.extract_data(data)
         except UniFiConnectionError as e:
             if "HTTP 404" in str(e):
                 logger.warning(
@@ -67,7 +67,7 @@ class CredentialManager:
             raise UniFiConnectionError("No proxy session available for get_credential")
         try:
             data = await self._cm.proxy_request("GET", f"credentials/{credential_id}")
-            return data.get("data", data) if isinstance(data, dict) else data
+            return self._cm.extract_data(data)
         except UniFiConnectionError as e:
             if "HTTP 404" in str(e):
                 logger.warning(
@@ -123,7 +123,7 @@ class CredentialManager:
                 "action": "create",
                 "credential_type": credential_type,
                 "result": "success",
-                "data": result.get("data", result) if isinstance(result, dict) else result,
+                "data": self._cm.extract_data(result),
             }
         except UniFiConnectionError:
             raise

@@ -84,21 +84,20 @@ async def access_unlock_door(
     """Unlock a door with preview/confirm."""
     logger.info("access_unlock_door tool called for %s (duration=%s, confirm=%s)", door_id, duration, confirm)
     try:
+        if confirm or should_auto_confirm():
+            result = await door_manager.apply_unlock_door(door_id, duration=duration)
+            return {"success": True, "data": result}
+
         preview_data = await door_manager.unlock_door(door_id, duration=duration)
-
-        if not confirm and not should_auto_confirm():
-            return preview_response(
-                action="unlock",
-                resource_type="door",
-                resource_id=door_id,
-                current_state=preview_data["current_state"],
-                proposed_changes=preview_data["proposed_changes"],
-                resource_name=preview_data.get("door_name"),
-                warnings=["This will physically unlock a door. Ensure this is intentional."],
-            )
-
-        result = await door_manager.apply_unlock_door(door_id, duration=duration)
-        return {"success": True, "data": result}
+        return preview_response(
+            action="unlock",
+            resource_type="door",
+            resource_id=door_id,
+            current_state=preview_data["current_state"],
+            proposed_changes=preview_data["proposed_changes"],
+            resource_name=preview_data.get("door_name"),
+            warnings=["This will physically unlock a door. Ensure this is intentional."],
+        )
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
@@ -127,20 +126,19 @@ async def access_lock_door(
     """Lock a door with preview/confirm."""
     logger.info("access_lock_door tool called for %s (confirm=%s)", door_id, confirm)
     try:
+        if confirm or should_auto_confirm():
+            result = await door_manager.apply_lock_door(door_id)
+            return {"success": True, "data": result}
+
         preview_data = await door_manager.lock_door(door_id)
-
-        if not confirm and not should_auto_confirm():
-            return preview_response(
-                action="lock",
-                resource_type="door",
-                resource_id=door_id,
-                current_state=preview_data["current_state"],
-                proposed_changes=preview_data["proposed_changes"],
-                resource_name=preview_data.get("door_name"),
-            )
-
-        result = await door_manager.apply_lock_door(door_id)
-        return {"success": True, "data": result}
+        return preview_response(
+            action="lock",
+            resource_type="door",
+            resource_id=door_id,
+            current_state=preview_data["current_state"],
+            proposed_changes=preview_data["proposed_changes"],
+            resource_name=preview_data.get("door_name"),
+        )
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:

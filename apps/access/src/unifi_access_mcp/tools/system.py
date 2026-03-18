@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
         "Use for basic health checks and capacity overview."
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+    permission_category="system",
+    permission_action="read",
+    auth="either",
 )
 async def access_get_system_info() -> Dict[str, Any]:
     """Get Access system information."""
@@ -40,6 +43,9 @@ async def access_get_system_info() -> Dict[str, Any]:
         "Use to verify connectivity and diagnose auth path issues."
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+    permission_category="system",
+    permission_action="read",
+    auth="either",
 )
 async def access_get_health() -> Dict[str, Any]:
     """Get Access system health metrics."""
@@ -59,6 +65,9 @@ async def access_get_health() -> Dict[str, Any]:
         "Use to audit who has physical access or to look up a specific user."
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+    permission_category="system",
+    permission_action="read",
+    auth="local_only",
 )
 async def access_list_users(
     limit: Annotated[
@@ -69,10 +78,9 @@ async def access_list_users(
     """List users with access."""
     logger.info("access_list_users tool called (limit=%s)", limit)
     try:
-        users = await system_manager.list_users()
-        if limit is not None and limit > 0:
-            users = users[:limit]
-        return {"success": True, "data": users, "count": len(users)}
+        page_size = limit if limit and limit > 0 else 25
+        users = await system_manager.list_users(page_size=page_size)
+        return {"success": True, "data": {"users": users, "count": len(users)}}
     except Exception as e:
         logger.error("Failed to list users: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list users: {e}"}

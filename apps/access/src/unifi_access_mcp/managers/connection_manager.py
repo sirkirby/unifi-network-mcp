@@ -18,6 +18,7 @@ everything else).
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import ssl
 from typing import Any, Dict
@@ -87,9 +88,13 @@ class AccessConnectionManager:
     # SSL helper
     # ------------------------------------------------------------------
 
-    @property
+    @functools.cached_property
     def _ssl_context(self) -> ssl.SSLContext | bool:
-        """Return an SSL context appropriate for the current verify_ssl setting."""
+        """Return an SSL context appropriate for the current verify_ssl setting.
+
+        Cached to avoid recreating the SSL context (and reloading the CA bundle)
+        on every request.
+        """
         if self.verify_ssl:
             return True
         ctx = ssl.create_default_context()
@@ -216,7 +221,7 @@ class AccessConnectionManager:
         url = f"https://{self.host}:{self.port}/api/auth/login"
         payload = {"username": self.username, "password": self.password}
 
-        async with self._proxy_session.post(url, json=payload, ssl=self._ssl_context) as resp:
+        async with self._proxy_session.post(url, json=payload) as resp:
             if resp.status != 200:
                 body = ""
                 try:
@@ -228,8 +233,52 @@ class AccessConnectionManager:
             logger.debug("[access-cm] Proxy login successful, CSRF token obtained.")
 
     # ------------------------------------------------------------------
-    # Proxy request helper
+    # Proxy request helpers
     # ------------------------------------------------------------------
+
+    async def _proxy_request_impl(self, method: str, url: str, label: str, **kwargs: Any) -> Dict[str, Any]:
+        """Shared proxy request implementation with 401 re-auth.
+
+        Parameters
+        ----------
+        method:
+            HTTP method (GET, POST, PUT, DELETE).
+        url:
+            Fully-qualified URL to request.
+        label:
+            Human-readable label for error messages (e.g. "Proxy" or "ULP proxy").
+        **kwargs:
+            Extra keyword arguments forwarded to ``aiohttp.ClientSession.request``.
+        """
+        headers = {"X-CSRF-Token": self._csrf_token}
+        token_before = self._csrf_token
+
+        async with self._proxy_session.request(method, url, headers=headers, **kwargs) as resp:
+            if resp.status == 401:
+                async with self._auth_lock:
+                    # Double-check: skip re-auth if another coroutine already refreshed
+                    if self._csrf_token == token_before:
+                        logger.info("[access-cm] %s session expired, re-authenticating...", label)
+                        await self._proxy_login()
+
+                retry_headers = {"X-CSRF-Token": self._csrf_token}
+                async with self._proxy_session.request(method, url, headers=retry_headers, **kwargs) as retry_resp:
+                    if retry_resp.status != 200:
+                        raise UniFiConnectionError(
+                            f"{label} request failed after re-auth: HTTP {retry_resp.status} {method} {url}"
+                        )
+                    return await retry_resp.json()
+
+            if resp.status != 200:
+                body = ""
+                try:
+                    body = await resp.text()
+                except Exception:
+                    pass
+                raise UniFiConnectionError(
+                    f"{label} request failed: HTTP {resp.status} {method} {url}{(' — ' + body[:200]) if body else ''}"
+                )
+            return await resp.json()
 
     async def proxy_request(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
         """Make a request via the UniFi OS proxy path.
@@ -258,37 +307,7 @@ class AccessConnectionManager:
             raise UniFiConnectionError("Proxy session is not available. Call initialize() first.")
 
         url = f"https://{self.host}:{self.port}/proxy/access/api/v2/{path.lstrip('/')}"
-        headers = {"X-CSRF-Token": self._csrf_token}
-
-        async with self._proxy_session.request(method, url, headers=headers, ssl=self._ssl_context, **kwargs) as resp:
-            if resp.status == 401:
-                # Session expired — re-login under lock to prevent concurrent re-auths
-                async with self._auth_lock:
-                    # Double-check: another coroutine may have already re-authenticated
-                    logger.info("[access-cm] Proxy session expired, re-authenticating...")
-                    await self._proxy_login()
-
-                # Retry the original request with the refreshed CSRF token
-                retry_headers = {"X-CSRF-Token": self._csrf_token}
-                async with self._proxy_session.request(
-                    method, url, headers=retry_headers, ssl=self._ssl_context, **kwargs
-                ) as retry_resp:
-                    if retry_resp.status != 200:
-                        raise UniFiConnectionError(
-                            f"Proxy request failed after re-auth: HTTP {retry_resp.status} {method} {path}"
-                        )
-                    return await retry_resp.json()
-
-            if resp.status != 200:
-                body = ""
-                try:
-                    body = await resp.text()
-                except Exception:
-                    pass
-                raise UniFiConnectionError(
-                    f"Proxy request failed: HTTP {resp.status} {method} {path}{(' — ' + body[:200]) if body else ''}"
-                )
-            return await resp.json()
+        return await self._proxy_request_impl(method, url, "Proxy", **kwargs)
 
     async def proxy_request_ulp(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
         """Make a request via the ULP-Go sub-proxy path.
@@ -321,38 +340,62 @@ class AccessConnectionManager:
             raise UniFiConnectionError("Proxy session is not available. Call initialize() first.")
 
         url = f"https://{self.host}:{self.port}/proxy/access/ulp-go/api/v2/{path.lstrip('/')}"
-        headers = {"X-CSRF-Token": self._csrf_token}
+        return await self._proxy_request_impl(method, url, "ULP proxy", **kwargs)
 
-        async with self._proxy_session.request(method, url, headers=headers, ssl=self._ssl_context, **kwargs) as resp:
-            if resp.status == 401:
-                async with self._auth_lock:
-                    logger.info("[access-cm] Proxy session expired (ulp-go), re-authenticating...")
-                    await self._proxy_login()
+    async def proxy_request_users(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
+        """Make a request via the Users proxy path.
 
-                retry_headers = {"X-CSRF-Token": self._csrf_token}
-                async with self._proxy_session.request(
-                    method, url, headers=retry_headers, ssl=self._ssl_context, **kwargs
-                ) as retry_resp:
-                    if retry_resp.status != 200:
-                        raise UniFiConnectionError(
-                            f"ULP proxy request failed after re-auth: HTTP {retry_resp.status} {method} {path}"
-                        )
-                    return await retry_resp.json()
+        User management on UniFi OS is handled by the dedicated Users
+        application at ``/proxy/users/api/v2/...``, not the Access
+        proxy.
 
-            if resp.status != 200:
-                body = ""
-                try:
-                    body = await resp.text()
-                except Exception:
-                    pass
-                raise UniFiConnectionError(
-                    f"ULP proxy request failed: HTTP {resp.status} {method} {path}{(' — ' + body[:200]) if body else ''}"
-                )
-            return await resp.json()
+        Parameters
+        ----------
+        method:
+            HTTP method (GET, POST, PUT, DELETE).
+        path:
+            API path relative to ``/proxy/users/api/v2/``.
+        **kwargs:
+            Extra keyword arguments forwarded to ``aiohttp.ClientSession.request``.
+
+        Returns
+        -------
+        dict
+            Parsed JSON response body.
+
+        Raises
+        ------
+        UniFiConnectionError
+            If the proxy session is not available.
+        """
+        if not self._proxy_available or self._proxy_session is None:
+            raise UniFiConnectionError("Proxy session is not available. Call initialize() first.")
+
+        url = f"https://{self.host}:{self.port}/proxy/users/api/v2/{path.lstrip('/')}"
+        return await self._proxy_request_impl(method, url, "Users proxy", **kwargs)
+
+    # ------------------------------------------------------------------
+    # Response helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def extract_data(response: Any) -> Any:
+        """Unwrap the ``{"data": ...}`` envelope common in Access API responses.
+
+        Returns ``response["data"]`` when present, otherwise ``response`` itself.
+        """
+        if isinstance(response, dict):
+            return response.get("data", response)
+        return response
 
     # ------------------------------------------------------------------
     # Properties
     # ------------------------------------------------------------------
+
+    @property
+    def api_port(self) -> int:
+        """Return the Access API port."""
+        return self._api_port
 
     @property
     def api_client(self) -> Any | None:

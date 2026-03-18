@@ -15,6 +15,7 @@ Proxy paths discovered via browser inspection:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Dict
 
@@ -60,7 +61,7 @@ class SystemManager:
                 return {
                     "source": "api_client",
                     "host": self._cm.host,
-                    "api_port": self._cm._api_port,
+                    "api_port": self._cm.api_port,
                     "connected": True,
                     "door_count": len(doors),
                 }
@@ -73,7 +74,7 @@ class SystemManager:
         if self._cm.has_proxy:
             try:
                 data = await self._cm.proxy_request("GET", "access/info")
-                return data.get("data", data) if isinstance(data, dict) else data
+                return self._cm.extract_data(data)
             except Exception as exc:
                 logger.error("[system] Failed to get system info via proxy: %s", exc, exc_info=True)
                 raise
@@ -93,8 +94,7 @@ class SystemManager:
             "proxy_available": self._cm.has_proxy,
         }
 
-        # Probe API client path
-        if self._cm.has_api_client:
+        async def _probe_api() -> None:
             try:
                 await self._cm.api_client.get_doors()
                 health["api_client_healthy"] = True
@@ -103,8 +103,7 @@ class SystemManager:
                 health["api_client_healthy"] = False
                 health["api_client_error"] = str(exc)
 
-        # Probe proxy path using dashboard stats
-        if self._cm.has_proxy:
+        async def _probe_proxy() -> None:
             try:
                 await self._cm.proxy_request("GET", f"dashboard/stats?{_STATS_EXPAND}")
                 health["proxy_healthy"] = True
@@ -113,14 +112,23 @@ class SystemManager:
                 health["proxy_healthy"] = False
                 health["proxy_error"] = str(exc)
 
+        # Run available probes concurrently
+        probes = []
+        if self._cm.has_api_client:
+            probes.append(_probe_api())
+        if self._cm.has_proxy:
+            probes.append(_probe_proxy())
+        if probes:
+            await asyncio.gather(*probes)
+
         return health
 
     async def list_users(self, page_num: int = 1, page_size: int = 25) -> list[Dict[str, Any]]:
         """List users with access.
 
-        Users are served by the ULP-Go sub-proxy at
-        ``/proxy/access/ulp-go/api/v2/users/search``, which requires a
-        POST request and uses a different base path from the main Access API.
+        Users are served by the UniFi OS Users application at
+        ``/proxy/users/api/v2/users/search`` (GET request), not the
+        Access proxy.
 
         Parameters
         ----------
@@ -131,15 +139,18 @@ class SystemManager:
         """
         if self._cm.has_proxy:
             try:
-                path = f"users/search?page_num={page_num}&page_size={page_size}"
-                data = await self._cm.proxy_request_ulp("POST", path, json={})
-                if isinstance(data, dict):
-                    return data.get("data", [data])
-                if isinstance(data, list):
-                    return data
-                return [data]
+                path = (
+                    f"users/search?including_resource=true"
+                    f"&page_num={page_num}&page_size={page_size}"
+                    f"&expand=with_last_activity,with_assignments"
+                )
+                data = await self._cm.proxy_request_users("GET", path)
+                result = self._cm.extract_data(data)
+                if isinstance(result, list):
+                    return result
+                return [result] if result else []
             except Exception as exc:
-                logger.error("[system] Failed to list users via ulp-go proxy: %s", exc, exc_info=True)
+                logger.error("[system] Failed to list users via users proxy: %s", exc, exc_info=True)
                 raise
 
         raise UniFiConnectionError("No auth path available for list_users (proxy session required)")

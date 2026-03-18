@@ -4,7 +4,7 @@ Provides tools for listing, inspecting, creating, and deleting visitor passes.
 """
 
 import logging
-from typing import Annotated, Any, Dict, Optional
+from typing import Annotated, Any, Dict
 
 from mcp.types import ToolAnnotations
 from pydantic import Field
@@ -83,11 +83,11 @@ async def access_create_visitor(
         Field(description="End of access period as ISO 8601 timestamp (e.g., 2026-03-17T17:00:00Z)"),
     ],
     email: Annotated[
-        Optional[str],
+        str | None,
         Field(description="Visitor email address for notifications. Optional."),
     ] = None,
     phone: Annotated[
-        Optional[str],
+        str | None,
         Field(description="Visitor phone number. Optional."),
     ] = None,
     confirm: Annotated[
@@ -104,27 +104,26 @@ async def access_create_visitor(
         if phone:
             extra["phone"] = phone
 
+        if confirm or should_auto_confirm():
+            result = await visitor_manager.apply_create_visitor(
+                name=name,
+                access_start=access_start,
+                access_end=access_end,
+                **extra,
+            )
+            return {"success": True, "data": result}
+
         preview_data = await visitor_manager.create_visitor(
             name=name,
             access_start=access_start,
             access_end=access_end,
             **extra,
         )
-
-        if not confirm and not should_auto_confirm():
-            return create_preview(
-                resource_type="visitor_pass",
-                resource_data=preview_data["proposed_changes"],
-                resource_name=name,
-            )
-
-        result = await visitor_manager.apply_create_visitor(
-            name=name,
-            access_start=access_start,
-            access_end=access_end,
-            **extra,
+        return create_preview(
+            resource_type="visitor_pass",
+            resource_data=preview_data["proposed_changes"],
+            resource_name=name,
         )
-        return {"success": True, "data": result}
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
@@ -153,21 +152,20 @@ async def access_delete_visitor(
     """Delete a visitor pass with preview/confirm."""
     logger.info("access_delete_visitor tool called for %s (confirm=%s)", visitor_id, confirm)
     try:
+        if confirm or should_auto_confirm():
+            result = await visitor_manager.apply_delete_visitor(visitor_id)
+            return {"success": True, "data": result}
+
         preview_data = await visitor_manager.delete_visitor(visitor_id)
-
-        if not confirm and not should_auto_confirm():
-            return preview_response(
-                action="delete",
-                resource_type="visitor_pass",
-                resource_id=visitor_id,
-                current_state=preview_data["current_state"],
-                proposed_changes=preview_data["proposed_changes"],
-                resource_name=preview_data.get("visitor_name"),
-                warnings=["This will permanently remove the visitor pass and revoke all associated access."],
-            )
-
-        result = await visitor_manager.apply_delete_visitor(visitor_id)
-        return {"success": True, "data": result}
+        return preview_response(
+            action="delete",
+            resource_type="visitor_pass",
+            resource_id=visitor_id,
+            current_state=preview_data["current_state"],
+            proposed_changes=preview_data["proposed_changes"],
+            resource_name=preview_data.get("visitor_name"),
+            warnings=["This will permanently remove the visitor pass and revoke all associated access."],
+        )
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
