@@ -117,7 +117,7 @@ apps/
   access/           # UniFi Access MCP server (beta, 29 tools)
 packages/
   unifi-core/       # Shared UniFi connectivity (auth, detection, retry)
-  unifi-mcp-shared/ # Shared MCP patterns (permissions, confirmation, lazy loading)
+  unifi-mcp-shared/ # Shared MCP patterns (permissions, tools, diagnostics, config)
 docs/               # Ecosystem-level documentation
 ```
 
