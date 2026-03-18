@@ -140,10 +140,6 @@ Each server in `apps/` is an independent Python package that depends on the shar
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
-## Roadmap
-
-The Protect and Access servers are in beta. See the [ecosystem design spec](docs/superpowers/specs/) for the full roadmap.
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, including how to work with the monorepo, run tests, and submit PRs.
