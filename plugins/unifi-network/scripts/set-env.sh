@@ -8,7 +8,7 @@
 
 set -e
 
-SETTINGS_FILE=".claude/settings.json"
+SETTINGS_FILE=".claude/settings.local.json"
 
 # Parse arguments
 declare -A new_vars

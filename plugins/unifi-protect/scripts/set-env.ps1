@@ -27,7 +27,7 @@ foreach ($pair in $KeyValuePairs) {
     $newVars[$key] = $value
 }
 
-$settingsFile = ".claude/settings.json"
+$settingsFile = ".claude/settings.local.json"
 
 # Ensure .claude directory exists
 $dir = Split-Path $settingsFile -Parent

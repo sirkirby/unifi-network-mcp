@@ -12,7 +12,7 @@ Walk the user through configuring their UniFi Protect NVR connection. **Ask each
 
 Ask: "What is your UniFi controller's IP address or hostname?" (e.g., 192.168.1.1)
 
-If the user already has a Network server configured (check for `UNIFI_NETWORK_HOST` or `UNIFI_HOST` in `.claude/settings.json`), ask: "Is Protect on the same controller as your Network server?" If yes, use the same host.
+If the user already has a Network server configured (check for `UNIFI_NETWORK_HOST` or `UNIFI_HOST` in `.claude/settings.local.json`), ask: "Is Protect on the same controller as your Network server?" If yes, use the same host.
 
 ## Step 2: Credentials
 
@@ -44,7 +44,7 @@ Options:
 
 ## Step 5: Write Configuration
 
-Use the appropriate script for the user's platform to write all collected values to `.claude/settings.json`. Check the platform from your environment info. On **Windows** use `set-env.ps1`, on **macOS/Linux** use `set-env.sh`:
+Use the appropriate script for the user's platform to write all collected values to `.claude/settings.local.json`. Check the platform from your environment info. On **Windows** use `set-env.ps1`, on **macOS/Linux** use `set-env.sh`:
 
 **macOS / Linux:**
 ```bash
@@ -75,6 +75,6 @@ Permission variables by option:
 
 Tell the user:
 
-"Configuration saved to `.claude/settings.json`. Restart Claude Code to connect the MCP server. After restart, run `/mcp` to verify the connection, or just ask me about your cameras."
+"Configuration saved to `.claude/settings.local.json`. Restart Claude Code to connect the MCP server. After restart, run `/mcp` to verify the connection, or just ask me about your cameras."
 
 Show a summary table of what was configured.

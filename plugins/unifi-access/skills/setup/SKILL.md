@@ -12,7 +12,7 @@ Walk the user through configuring their UniFi Access controller connection. **As
 
 Ask: "What is your UniFi controller's IP address or hostname?" (e.g., 192.168.1.1)
 
-If the user already has Network or Protect configured (check `.claude/settings.json` for existing `UNIFI_*` env vars), ask: "Is Access on the same controller?" If yes, use the same host.
+If the user already has Network or Protect configured (check `.claude/settings.local.json` for existing `UNIFI_*` env vars), ask: "Is Access on the same controller?" If yes, use the same host.
 
 ## Step 2: Authentication
 
@@ -49,7 +49,7 @@ Options:
 
 ## Step 5: Write Configuration
 
-Use the appropriate script for the user's platform to write all collected values to `.claude/settings.json`. Check the platform from your environment info. On **Windows** use `set-env.ps1`, on **macOS/Linux** use `set-env.sh`:
+Use the appropriate script for the user's platform to write all collected values to `.claude/settings.local.json`. Check the platform from your environment info. On **Windows** use `set-env.ps1`, on **macOS/Linux** use `set-env.sh`:
 
 **macOS / Linux:**
 ```bash
@@ -85,6 +85,6 @@ Permission variables by option:
 
 Tell the user:
 
-"Configuration saved to `.claude/settings.json`. Restart Claude Code to connect the MCP server. After restart, run `/mcp` to verify the connection, or just ask me about your doors."
+"Configuration saved to `.claude/settings.local.json`. Restart Claude Code to connect the MCP server. After restart, run `/mcp` to verify the connection, or just ask me about your doors."
 
 Show a summary table of what was configured, noting which auth paths are active and what permissions are enabled.

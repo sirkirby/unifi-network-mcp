@@ -48,7 +48,7 @@ Options:
 
 ## Step 6: Write Configuration
 
-Use the appropriate script for the user's platform to write all collected values to `.claude/settings.json`. The script handles creating the file, merging into existing env vars, and masking sensitive values in output.
+Use the appropriate script for the user's platform to write all collected values to `.claude/settings.local.json`. The script handles creating the file, merging into existing env vars, and masking sensitive values in output.
 
 Check the platform from your environment info. On **Windows** use `set-env.ps1`, on **macOS/Linux** use `set-env.sh`:
 
@@ -92,6 +92,6 @@ Common permission variables for "enable all write":
 
 Tell the user:
 
-"Configuration saved to `.claude/settings.json`. Restart Claude Code to connect the MCP server. After restart, run `/mcp` to verify the connection, or just ask me about your network."
+"Configuration saved to `.claude/settings.local.json`. Restart Claude Code to connect the MCP server. After restart, run `/mcp` to verify the connection, or just ask me about your network."
 
 Show a summary table of what was configured.
