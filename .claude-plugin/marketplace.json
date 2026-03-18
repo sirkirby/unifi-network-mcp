@@ -1,0 +1,39 @@
+{
+  "name": "unifi-plugins",
+  "owner": {
+    "name": "sirkirby",
+    "email": "unifi@privatly.net"
+  },
+  "metadata": {
+    "description": "UniFi MCP plugins — manage Ubiquiti UniFi infrastructure from Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "unifi-network",
+      "source": "./plugins/unifi-network",
+      "description": "UniFi Network MCP server — manage network devices, clients, firewall, VPN, and more",
+      "license": "MIT",
+      "keywords": ["unifi", "network", "firewall", "wifi", "mcp"],
+      "category": "networking",
+      "repository": "https://github.com/sirkirby/unifi-mcp"
+    },
+    {
+      "name": "unifi-protect",
+      "source": "./plugins/unifi-protect",
+      "description": "UniFi Protect MCP server — manage security cameras, NVR, recordings, and smart detections",
+      "license": "MIT",
+      "keywords": ["unifi", "protect", "cameras", "nvr", "security", "mcp"],
+      "category": "networking",
+      "repository": "https://github.com/sirkirby/unifi-mcp"
+    },
+    {
+      "name": "unifi-access",
+      "source": "./plugins/unifi-access",
+      "description": "UniFi Access MCP server — manage door locks, credentials, visitors, and access policies",
+      "license": "MIT",
+      "keywords": ["unifi", "access", "doors", "credentials", "mcp"],
+      "category": "networking",
+      "repository": "https://github.com/sirkirby/unifi-mcp"
+    }
+  ]
+}

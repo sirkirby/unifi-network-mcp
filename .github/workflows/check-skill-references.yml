@@ -1,0 +1,32 @@
+name: "Skill: Check References"
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/*/src/*/tools_manifest.json'
+      - 'plugins/*/skills/*/references/*.md'
+      - 'scripts/generate_skill_references.py'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, develop]
+    paths:
+      - 'apps/*/src/*/tools_manifest.json'
+      - 'plugins/*/skills/*/references/*.md'
+      - 'scripts/generate_skill_references.py'
+
+jobs:
+  check-drift:
+    name: Check skill references match tool manifests
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.13"
+
+    - name: Check for drift
+      run: python3 scripts/generate_skill_references.py --check

@@ -883,11 +883,23 @@
       <p>Get up and running in under a minute with your preferred method.</p>
       <div class="tab-container">
         <div class="tab-bar" role="tablist" aria-label="Installation methods">
-          <button role="tab" id="tab-uvx" aria-selected="true" aria-controls="panel-uvx" tabindex="0" onclick="switchTab('uvx')">uvx</button>
+          <button role="tab" id="tab-plugin" aria-selected="true" aria-controls="panel-plugin" tabindex="0" onclick="switchTab('plugin')">Claude Code</button>
+          <button role="tab" id="tab-uvx" aria-selected="false" aria-controls="panel-uvx" tabindex="-1" onclick="switchTab('uvx')">uvx</button>
           <button role="tab" id="tab-docker" aria-selected="false" aria-controls="panel-docker" tabindex="-1" onclick="switchTab('docker')">Docker</button>
           <button role="tab" id="tab-claude" aria-selected="false" aria-controls="panel-claude" tabindex="-1" onclick="switchTab('claude')">Claude Desktop</button>
         </div>
-        <div role="tabpanel" id="panel-uvx" class="tab-panel active" aria-labelledby="tab-uvx">
+        <div role="tabpanel" id="panel-plugin" class="tab-panel active" aria-labelledby="tab-plugin">
+          <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
+          <pre><code><span class="comment"># Add the marketplace (one-time)</span>
+/plugin marketplace add sirkirby/unifi-mcp
+
+<span class="comment"># Install a server plugin</span>
+/plugin install unifi-network@unifi-plugins
+
+<span class="comment"># Run interactive setup</span>
+/unifi-network:setup</code></pre>
+        </div>
+        <div role="tabpanel" id="panel-uvx" class="tab-panel" aria-labelledby="tab-uvx" hidden>
           <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
           <pre><code><span class="comment"># Network server</span>
 uvx unifi-network-mcp

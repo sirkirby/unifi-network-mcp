@@ -1,4 +1,4 @@
-.PHONY: help test lint format manifest pre-commit core-test shared-test \
+.PHONY: help test lint format manifest skill-references pre-commit core-test shared-test \
        docker-build docker-up docker-down docker-logs
 
 help:
@@ -7,7 +7,8 @@ help:
 	@echo "  make test           Run all tests (core + shared + all apps)"
 	@echo "  make lint           Lint all apps"
 	@echo "  make format         Format all apps"
-	@echo "  make manifest       Regenerate tool manifests for all apps"
+	@echo "  make manifest       Regenerate tool manifests + skill references"
+	@echo "  make skill-references  Update skill tool tables from manifests"
 	@echo "  make pre-commit     Format + lint + test"
 	@echo ""
 	@echo "  make docker-build   Build all Docker images"
@@ -43,6 +44,10 @@ manifest:
 	$(MAKE) -C apps/network manifest
 	$(MAKE) -C apps/protect manifest
 	$(MAKE) -C apps/access manifest
+	$(MAKE) skill-references
+
+skill-references:
+	python3 scripts/generate_skill_references.py
 
 pre-commit: format lint test
 

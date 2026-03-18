@@ -515,7 +515,7 @@ For single-controller setups, the shared `UNIFI_*` variables are all you need.
 | `UNIFI_HOST` | `UNIFI_NETWORK_HOST` | `UNIFI_PROTECT_HOST` | (required) | Controller IP/hostname |
 | `UNIFI_USERNAME` | `UNIFI_NETWORK_USERNAME` | `UNIFI_PROTECT_USERNAME` | (required*) | Admin username (*required for local auth) |
 | `UNIFI_PASSWORD` | `UNIFI_NETWORK_PASSWORD` | `UNIFI_PROTECT_PASSWORD` | (required*) | Admin password (*required for local auth) |
-| `UNIFI_API_KEY` | `UNIFI_NETWORK_API_KEY` | `UNIFI_PROTECT_API_KEY` | (optional) | API key for UniFi OS API key auth |
+| `UNIFI_API_KEY` | `UNIFI_NETWORK_API_KEY` | `UNIFI_PROTECT_API_KEY` | (optional) | API key (experimental — read-only, subset of tools; username/password still required for Network/Protect) |
 | `UNIFI_PORT` | `UNIFI_NETWORK_PORT` | `UNIFI_PROTECT_PORT` | 443 | Controller HTTPS port |
 | `UNIFI_SITE` | `UNIFI_NETWORK_SITE` | — | default | UniFi site name |
 | `UNIFI_VERIFY_SSL` | `UNIFI_NETWORK_VERIFY_SSL` | `UNIFI_PROTECT_VERIFY_SSL` | false | SSL certificate verification |

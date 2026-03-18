@@ -17,7 +17,7 @@ The Protect server supports server-specific environment variables with the `UNIF
 | `UNIFI_PROTECT_PASSWORD` | `UNIFI_PASSWORD` | Yes | -- | Admin password |
 | `UNIFI_PROTECT_PORT` | `UNIFI_PORT` | No | `443` | Controller HTTPS port |
 | `UNIFI_PROTECT_VERIFY_SSL` | `UNIFI_VERIFY_SSL` | No | `false` | SSL certificate verification |
-| `UNIFI_PROTECT_API_KEY` | `UNIFI_API_KEY` | No | `""` | Official UniFi API key (dual auth) |
+| `UNIFI_PROTECT_API_KEY` | `UNIFI_API_KEY` | No | `""` | UniFi API key (experimental — read-only, subset of tools; username/password still required) |
 
 **Resolution order:** `UNIFI_PROTECT_*` > `UNIFI_*` > YAML config > hardcoded default.
 

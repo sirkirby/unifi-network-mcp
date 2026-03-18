@@ -26,16 +26,31 @@ UniFi MCP is a collection of [Model Context Protocol](https://modelcontextprotoc
 
 ## Quick Start
 
-The fastest way to run the servers:
+### Claude Code (recommended)
+
+Install via the plugin marketplace — includes the MCP server, an agent skill, and guided setup:
+
+```
+/plugin marketplace add sirkirby/unifi-mcp
+/plugin install unifi-network@unifi-plugins
+/unifi-network:setup
+```
+
+Repeat for Protect or Access if needed:
+```
+/plugin install unifi-protect@unifi-plugins
+/plugin install unifi-access@unifi-plugins
+```
+
+Each plugin's `/setup` command walks you through connecting to your controller and configuring permissions.
+
+### Other MCP clients
+
+Run the servers directly:
 
 ```bash
-# Network server
 uvx unifi-network-mcp
-
-# Protect server
 uvx unifi-protect-mcp
-
-# Access server
 uvx unifi-access-mcp
 ```
 
@@ -87,7 +102,7 @@ Set these environment variables (or use a `.env` file):
 | `UNIFI_HOST` | Yes | Controller IP or hostname |
 | `UNIFI_USERNAME` | Yes | Local admin username |
 | `UNIFI_PASSWORD` | Yes | Admin password |
-| `UNIFI_API_KEY` | No | Official UniFi API key (dual auth) |
+| `UNIFI_API_KEY` | No | UniFi API key (experimental — limited to read-only, subset of tools) |
 
 ### Multi-controller setups
 
