@@ -1,0 +1,204 @@
+# Protect Server Tool Reference (34 tools)
+
+Complete reference for `protect_*` tools. All read tools are always available. All mutations are **disabled by default** — the user must explicitly enable them because Protect controls physical security hardware.
+
+## Table of Contents
+- [Meta-Tools](#meta-tools)
+- [Cameras](#cameras)
+- [Events](#events)
+- [Recordings](#recordings)
+- [Devices: Lights, Sensors, Chimes](#devices-lights-sensors-chimes)
+- [Liveviews](#liveviews)
+- [System](#system)
+- [Common Scenarios](#common-scenarios)
+- [Important Limitations](#important-limitations)
+
+---
+
+## Meta-Tools
+
+Always available, regardless of registration mode.
+
+| Tool | Purpose |
+|------|---------|
+| `protect_tool_index` | List all available tools with full parameter schemas |
+| `protect_execute` | Execute any tool by name (essential in lazy mode) |
+| `protect_batch` | Run multiple tools in parallel |
+| `protect_batch_status` | Check status of an async batch job |
+
+---
+
+## Cameras
+
+<!-- AUTO:tools:cameras -->
+10 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `protect_get_camera` | Read | Returns detailed information for a single camera including firmware, IP address, MAC, mic/speaker settings, IR/HDR mode, stream channels,... |
+| `protect_get_camera_analytics` | Read | Returns motion and smart detection analytics for a camera including current detection state, last-detected timestamps for each type (pers... |
+| `protect_get_camera_streams` | Read | Returns RTSP/RTSPS stream URLs for a camera organized by channel (High, Medium, Low). |
+| `protect_get_snapshot` | Read | Fetches a JPEG snapshot from a camera. |
+| `protect_list_cameras` | Read | Lists all cameras adopted by the Protect NVR with their name, model, connection state, recording mode, and whether they are currently rec... |
+| `protect_ptz_move` | Read | Adjusts PTZ camera position. |
+| `protect_ptz_preset` | Read | Moves a PTZ camera to a saved preset position by slot number. |
+| `protect_reboot_camera` | Mutate | Reboots a camera. |
+| `protect_toggle_recording` | Mutate | Enables or disables recording on a camera. |
+| `protect_update_camera_settings` | Mutate | Updates camera settings such as IR LED mode, HDR mode, mic/speaker volume, status light, and motion detection. |
+<!-- /AUTO:tools:cameras -->
+
+**Tips:**
+- `protect_get_snapshot` with `include_image=true` returns base64 JPEG inline — useful for quick visual checks
+- `protect_get_camera_streams` gives RTSP URLs for video player integration — these can be shared with the user
+- Camera settings use a dict: `settings={"ir_led_mode": "auto", "hdr_mode": true, "mic_enabled": true}`
+- PTZ: only zoom works via the API. For pan/tilt, use preset positions
+
+**Permission env vars:**
+- `UNIFI_PERMISSIONS_CAMERAS_UPDATE=true` — enables settings, recording toggle, PTZ, reboot
+
+---
+
+## Events
+
+<!-- AUTO:tools:events -->
+7 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `protect_get_event` | Read | Get detailed information for a single event by ID. |
+| `protect_get_event_thumbnail` | Read | Get the thumbnail image for an event. |
+| `protect_list_events` | Read | Query events from the NVR with optional filters. |
+| `protect_list_smart_detections` | Read | List smart detection events (person, vehicle, animal, package, etc.) with optional filters. |
+| `protect_recent_events` | Read | Get recent events from the in-memory websocket buffer. |
+| `protect_subscribe_events` | Read | Returns instructions for subscribing to real-time Protect events. |
+| `protect_acknowledge_event` | Mutate | Acknowledge an event by marking it as a favorite on the NVR. |
+<!-- /AUTO:tools:events -->
+
+**Tips:**
+- **Real-time vs historical**: Use `protect_recent_events` for "what just happened?" (instant, from websocket buffer). Use `protect_list_events` for "what happened last Tuesday?" (API query, slower)
+- Smart detection types: `person`, `vehicle`, `animal`, `package`, `face`, `licensePlate`
+- `min_confidence` parameter filters out low-confidence detections (default threshold: 50)
+- Event types for filtering: `motion`, `smartDetectZone`, `ring`, `sensorMotion`, `sensorContact`, `sensorDoorbell`
+- Time parameters use ISO 8601 format: `2026-03-17T00:00:00Z`
+
+---
+
+## Recordings
+
+<!-- AUTO:tools:recordings -->
+4 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `protect_export_clip` | Read | Exports a video clip from a camera for a specified time range. |
+| `protect_get_recording_status` | Read | Returns the current recording state for one or all cameras. |
+| `protect_list_recordings` | Read | Returns recording availability information for a camera within a time range. |
+| `protect_delete_recording` | Mutate | Attempts to delete recordings for a camera in a time range. |
+<!-- /AUTO:tools:recordings -->
+
+**Tips:**
+- `protect_export_clip` produces the video on the NVR. The tool returns metadata (size, duration) — the actual video is too large for MCP
+- Timelapse fps values: 4 (60x speed), 8 (120x), 20 (300x), 40 (600x)
+- Channel index: 0 = high quality, 1 = medium, 2 = low
+- Recording deletion is managed by the NVR's retention policy, not per-request — the delete tool returns info about this limitation
+
+---
+
+## Devices: Lights, Sensors, Chimes
+
+<!-- AUTO:tools:devices -->
+6 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `protect_list_chimes` | Read | Lists all UniFi Protect chime devices with their name, connection state, volume, ring settings per camera, and available ringtones/tracks. |
+| `protect_list_lights` | Read | Lists all UniFi Protect floodlight devices with their name, connection state, brightness level, PIR motion sensitivity, and paired camera. |
+| `protect_list_sensors` | Read | Lists all UniFi Protect sensor devices (motion, door/window, temperature, humidity, light level, leak detection). |
+| `protect_trigger_chime` | Read | Plays the chime tone on a specific chime device. |
+| `protect_update_chime` | Mutate | Updates chime settings such as speaker volume (0-100), repeat times (1-6), and device name. |
+| `protect_update_light` | Mutate | Updates light settings such as on/off state, LED brightness level (1-6), PIR motion sensitivity (0-100), motion-triggered duration (15-90... |
+<!-- /AUTO:tools:devices -->
+
+**Permission env vars:**
+- `UNIFI_PERMISSIONS_LIGHTS_UPDATE=true`
+- `UNIFI_PERMISSIONS_CHIMES_UPDATE=true`
+
+---
+
+## Liveviews
+
+<!-- AUTO:tools:liveviews -->
+3 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `protect_list_liveviews` | Read | Lists all liveview configurations from the Protect NVR. |
+| `protect_create_liveview` | Mutate | Validates input for creating a new liveview with the given name and camera IDs. |
+| `protect_delete_liveview` | Mutate | Validates a liveview for deletion by ID. |
+<!-- /AUTO:tools:liveviews -->
+
+**Note:** Liveview creation and deletion must be done via the Protect web UI. These tools validate inputs but cannot perform the actual operations.
+
+---
+
+## System
+
+<!-- AUTO:tools:system -->
+4 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `protect_get_firmware_status` | Read | Returns firmware update availability for the NVR and all adopted devices (cameras, lights, sensors, viewers, chimes, bridges, doorlocks). |
+| `protect_get_health` | Read | Returns NVR health summary including CPU load and temperature, memory usage, and storage utilization. |
+| `protect_get_system_info` | Read | Returns NVR model, firmware version, uptime, storage usage, and connected device counts. |
+| `protect_list_viewers` | Read | Lists all connected Protect viewers (e.g., UP-Viewer, Viewport) with their connection state, firmware version, and assigned liveview. |
+<!-- /AUTO:tools:system -->
+
+**Tips:**
+- `protect_get_health` is the best "is the NVR healthy?" check — covers CPU, RAM, storage
+- `protect_get_firmware_status` shows which devices have updates available
+
+---
+
+## Common Scenarios
+
+### "What's happening on the cameras right now?"
+1. `protect_list_cameras` → see all cameras and their status
+2. `protect_recent_events` → what was just detected (instant, from buffer)
+3. `protect_get_snapshot(camera_id="...", include_image=true)` → visual check
+
+### "Was anyone detected last night?"
+1. `protect_list_smart_detections(detection_type="person", start="<last night>", end="<this morning>")` → person detections
+2. `protect_get_event_thumbnail(event_id="...")` → see what was detected
+3. `protect_get_event(event_id="...")` → full details including confidence score
+
+### "Export footage from the front door camera"
+1. `protect_list_cameras` → find the front door camera ID
+2. `protect_list_recordings(camera_id="...", start="...", end="...")` → verify footage exists
+3. `protect_export_clip(camera_id="...", start="...", end="...")` → export the clip
+
+### "Check NVR health"
+```
+protect_batch(tools=[
+    {"tool": "protect_get_system_info"},
+    {"tool": "protect_get_health"},
+    {"tool": "protect_get_firmware_status"},
+    {"tool": "protect_get_recording_status"}
+])
+```
+
+### "A camera seems offline"
+1. `protect_list_cameras` → check connection state
+2. `protect_get_camera(camera_id="...")` → detailed status including IP and MAC
+3. Cross-reference with Network: `unifi_lookup_by_ip(ip="<camera IP>")` → network-level status
+4. If needed: `protect_reboot_camera(camera_id="...", confirm=true)` → reboot (requires permission)
+
+---
+
+## Important Limitations
+
+1. **Liveview create/delete** — Not supported by the uiprotect API. Tools validate inputs but the actual operations must be done in the Protect web UI.
+2. **Recording deletion** — Managed by NVR retention policy, not per-request.
+3. **PTZ pan/tilt** — Only zoom is supported via the API. For pan/tilt control, use saved preset positions via `protect_ptz_preset`.
+4. **Video data** — `protect_export_clip` returns metadata about the exported clip, not the video bytes (too large for MCP responses).
+5. **Snapshot size** — Base64 snapshots can be large. Use width/height params to resize, or use `include_image=false` for just the reference URI.
