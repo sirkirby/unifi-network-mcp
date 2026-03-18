@@ -1,0 +1,48 @@
+# Device States Reference
+
+## State Codes
+
+| Code | Label | Description |
+|------|-------|-------------|
+| 0 | offline | Device not communicating with controller |
+| 1 | online | Connected and functioning normally |
+| 2 | pending_adoption | Discovered but not yet adopted |
+| 4 | adopting | Being adopted or managed by another controller |
+| 5 | provisioning | Applying configuration changes |
+| 6 | upgrading | Performing firmware upgrade |
+| 11 | heartbeat_missed | Missed heartbeat — may be rebooting or unreachable |
+
+**Key rule:** State 1 = healthy. Any other state for an adopted device = investigate.
+
+## Device Type Prefixes
+
+| API Prefix | Type | Filter Keyword |
+|------------|------|---------------|
+| `uap` | Access Point | `ap` |
+| `usw`, `usk` | Switch | `switch` |
+| `ugw`, `udm`, `uxg` | Gateway / Dream Machine | `gateway` |
+| `usp` | Smart Power (PDU) | `pdu` |
+
+## Radio Band Codes
+
+| API Code | Band |
+|----------|------|
+| `ng` | 2.4 GHz |
+| `na` | 5 GHz |
+| `6e` | 6 GHz (WiFi 6E) |
+
+## Device Response Fields
+
+**Base fields** (always returned by `unifi_list_devices`):
+`mac`, `name`, `model`, `type`, `ip`, `status`, `uptime`, `last_seen`, `firmware`, `adopted`, `_id`
+
+**Extended fields** (with `include_details=true`):
+`serial`, `hw_revision`, `model_display`, `clients`
+
+**Type-specific fields:**
+
+| Type | Additional Fields |
+|------|------------------|
+| AP | `radio_table`, `vap_table`, `wifi_bands`, `experience_score`, `num_clients` |
+| Switch | `ports`, `total_ports`, `num_clients`, `poe_info` (current, power, voltage) |
+| Gateway | `wan1`, `wan2`, `num_clients`, `network_table`, `system_stats`, `speedtest_status` |
