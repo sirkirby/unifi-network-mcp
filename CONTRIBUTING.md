@@ -22,6 +22,7 @@ This installs all workspace packages (apps + shared packages) in development mod
 | `/` | Workspace root | `make test` runs all tests |
 | `apps/network/` | Network MCP server | `make test`, `make lint`, `make manifest` |
 | `apps/protect/` | Protect MCP server | `make test`, `make lint`, `make manifest` |
+| `apps/access/` | Access MCP server | `make test`, `make lint`, `make manifest` |
 | `packages/unifi-core/` | Shared connectivity | Tested via root `make core-test` |
 | `packages/unifi-mcp-shared/` | Shared MCP patterns | Tested via root `make shared-test` |
 
@@ -30,7 +31,7 @@ This installs all workspace packages (apps + shared packages) in development mod
 The root Makefile delegates to app/package Makefiles:
 
 ```bash
-make test              # Run ALL tests (core + shared + network + protect)
+make test              # Run ALL tests (core + shared + network + protect + access)
 make lint              # Lint all packages
 make format            # Format all packages
 make pre-commit        # Format + lint + test
@@ -44,6 +45,9 @@ make network-manifest  # Regenerate network tools manifest
 make protect-test      # Run protect server tests
 make protect-lint      # Lint protect server
 make protect-manifest  # Regenerate protect tools manifest
+make access-test       # Run access server tests
+make access-lint       # Lint access server
+make access-manifest   # Regenerate access tools manifest
 ```
 
 ## App-Level Makefile
@@ -62,13 +66,26 @@ make run-meta     # Run in meta_only mode
 make pre-commit   # Format + lint + test
 ```
 
-The protect server has the same targets:
+The protect and access servers have the same targets:
 
 ```bash
 cd apps/protect
 make test         # Run protect tests
 make lint         # Lint protect code
 make format       # Format protect code
+make manifest     # Regenerate tools_manifest.json
+make run-lazy     # Run in lazy mode (default)
+make run-eager    # Run in eager mode
+make run-meta     # Run in meta_only mode
+make console      # Start interactive dev console
+make pre-commit   # Format + lint + test
+```
+
+```bash
+cd apps/access
+make test         # Run access tests
+make lint         # Lint access code
+make format       # Format access code
 make manifest     # Regenerate tools_manifest.json
 make run-lazy     # Run in lazy mode (default)
 make run-eager    # Run in eager mode
@@ -95,6 +112,14 @@ make pre-commit   # Format + lint + test
 3. Run `make protect-manifest` from the repo root (or `make manifest` from `apps/protect/`)
    - The manifest auto-discovers tools from `@server.tool()` decorators; no manual map update needed
 4. Add tests in `apps/protect/tests/`
+5. Commit code + manifest + tests together
+
+### Adding a tool to the access server
+
+1. Add the manager method in `apps/access/src/unifi_access_mcp/managers/<domain>_manager.py`
+2. Add the tool function in `apps/access/src/unifi_access_mcp/tools/<category>.py`
+3. Run `make access-manifest` from the repo root (or `make manifest` from `apps/access/`)
+4. Add tests in `apps/access/tests/`
 5. Commit code + manifest + tests together
 
 ### Adding a shared package feature
@@ -145,10 +170,12 @@ make test
 # With coverage
 cd apps/network && make test-cov
 cd apps/protect && make test-cov
+cd apps/access && make test-cov
 
 # Specific test file
 uv run --package unifi-network-mcp pytest apps/network/tests/unit/test_permissions.py -v
 uv run --package unifi-protect-mcp pytest apps/protect/tests/unit/test_camera_tools.py -v
+uv run --package unifi-access-mcp pytest apps/access/tests/unit/test_door_tools.py -v
 ```
 
 Tests use `pytest-asyncio` for async support and `aioresponses` for HTTP mocking.

@@ -1,0 +1,179 @@
+# ruff: noqa: E402
+from __future__ import annotations
+
+"""Bootstrap utilities for the UniFi-Access MCP server.
+
+This module consolidates:
+- environment loading
+- logging configuration
+- configuration loading / validation
+
+Importing it early guarantees deterministic side-effects (env + logging) and
+exposes a `load_config()` helper that the rest of the codebase can share.
+"""
+
+import importlib.resources
+import logging
+import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from dotenv import load_dotenv
+from omegaconf import OmegaConf
+
+from unifi_mcp_shared.config import load_yaml_config  # noqa: F401 -- re-export for convenience
+from unifi_mcp_shared.config import setup_logging as _shared_setup_logging
+
+# ---------------------------------------------------------------------------
+# Environment & logging
+# ---------------------------------------------------------------------------
+
+load_dotenv()
+
+
+DEFAULT_LOG_LEVEL = os.getenv("UNIFI_MCP_LOG_LEVEL", "INFO").upper()
+
+
+def setup_logging(level: str | None = None) -> logging.Logger:
+    """Configure root logger once and return the project logger."""
+    return _shared_setup_logging("unifi-access-mcp", level=level or DEFAULT_LOG_LEVEL)
+
+
+logger = setup_logging()
+
+
+# ---------------------------------------------------------------------------
+# Domain config dataclasses  -------------------------------------------------
+# ---------------------------------------------------------------------------
+
+
+@dataclass(slots=True)
+class AccessSettings:
+    host: str
+    username: str
+    password: str
+    port: int = 443
+    site: str = "default"
+    verify_ssl: bool = False
+    api_key: str = ""  # Optional API key for official API access
+
+    @classmethod
+    def from_omegaconf(cls, cfg: Any) -> "AccessSettings":
+        """Create from an OmegaConf config object."""
+        return cls(
+            host=str(cfg.host),
+            username=str(cfg.username),
+            password=str(cfg.password),
+            port=int(cfg.get("port", 443)),
+            site=str(cfg.get("site", "default")),
+            verify_ssl=bool(cfg.get("verify_ssl", False)),
+            api_key=str(cfg.get("api_key", "")),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Config loading  -----------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+
+def load_config(path_override: str | Path | None = None) -> OmegaConf:
+    """Load YAML config with environment variable substitution.
+
+    Order of precedence:
+    1. Environment variable `CONFIG_PATH`
+    2. Path provided via `path_override` argument
+    3. Relative path `config/config.yaml` in current working directory
+    4. Default `config.yaml` bundled within the package (`src/config/`)
+    """
+    config_path_str: str | None = os.getenv("CONFIG_PATH")
+    if path_override:
+        config_path_str = str(path_override)
+
+    resolved_path: Path | None = None
+
+    if config_path_str:
+        # 1. Check env var / explicit override
+        path = Path(config_path_str).expanduser()
+        if path.exists() and path.is_file():
+            resolved_path = path
+            logger.info("Using configuration file from CONFIG_PATH/override: %s", path)
+        else:
+            logger.error(
+                "Configuration file specified by CONFIG_PATH/override not found: %s",
+                path,
+            )
+            raise SystemExit(2)  # Exit if specified path is invalid
+    else:
+        # 2. Check relative path in CWD
+        relative_path = Path("config/config.yaml")
+        if relative_path.exists() and relative_path.is_file():
+            resolved_path = relative_path
+            logger.info("Using configuration file from relative path: %s", relative_path)
+        else:
+            # 3. Use bundled default config
+            try:
+                # Use importlib.resources to safely access package data
+                config_file_ref = importlib.resources.files("unifi_access_mcp.config").joinpath("config.yaml")
+                if config_file_ref.is_file():
+                    resolved_path = Path(str(config_file_ref))  # Convert Traversable to Path
+                    logger.info("Using bundled default configuration: %s", resolved_path)
+                else:
+                    logger.error("Bundled default configuration file could not be accessed (not a file).")
+                    raise SystemExit(3)  # Exit if bundled config isn't a file
+            except Exception as e:
+                logger.error("Could not find or access bundled default configuration: %s", e)
+                raise SystemExit(3)  # Exit if bundled config cannot be loaded
+
+    if resolved_path is None:
+        # Should not be reachable if logic above is correct, but safeguard
+        logger.critical("Failed to determine configuration file path.")
+        raise SystemExit(4)
+
+    cfg = OmegaConf.load(str(resolved_path))
+
+    # Merge env vars for UniFi settings so they override YAML.
+    # Access-specific vars (UNIFI_ACCESS_*) take priority over shared (UNIFI_*).
+    # This allows running Network, Protect, and Access with different controllers from the same .env.
+    unifi_env_overrides: dict[str, Any] = {}
+    for key in (
+        "host",
+        "username",
+        "password",
+        "port",
+        "site",
+        "verify_ssl",
+        "api_key",
+    ):
+        # Check UNIFI_ACCESS_HOST first, then fall back to UNIFI_HOST
+        access_key = f"UNIFI_ACCESS_{key.upper()}"
+        shared_key = f"UNIFI_{key.upper()}"
+        val = os.getenv(access_key) or os.getenv(shared_key)
+        if val is not None:
+            if key == "verify_ssl":
+                val = val.lower() in {"1", "true", "yes"}
+            unifi_env_overrides[key] = val
+    if unifi_env_overrides:
+        logger.debug("Applying env overrides to Access config: %s", unifi_env_overrides)
+        cfg.unifi = OmegaConf.merge(cfg.unifi, unifi_env_overrides)
+
+    return cfg
+
+
+# ---------------------------------------------------------------------------
+# Tool registration mode
+# ---------------------------------------------------------------------------
+
+# Valid values: "eager" (all tools immediately), "lazy" (on-demand loading), "meta_only" (just meta-tools)
+# DEFAULT: "lazy" - Provides 96% token savings with seamless UX
+VALID_REGISTRATION_MODES = {"lazy", "eager", "meta_only"}
+UNIFI_TOOL_REGISTRATION_MODE = os.getenv("UNIFI_TOOL_REGISTRATION_MODE", "lazy").lower()
+
+# Validate registration mode
+if UNIFI_TOOL_REGISTRATION_MODE not in VALID_REGISTRATION_MODES:
+    logger.warning(
+        "Invalid UNIFI_TOOL_REGISTRATION_MODE: '%s'. Must be one of: %s. Defaulting to 'lazy'.",
+        UNIFI_TOOL_REGISTRATION_MODE,
+        ", ".join(sorted(VALID_REGISTRATION_MODES)),
+    )
+    UNIFI_TOOL_REGISTRATION_MODE = "lazy"

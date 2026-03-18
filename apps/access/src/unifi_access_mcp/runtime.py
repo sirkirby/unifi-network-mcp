@@ -1,0 +1,219 @@
+# ruff: noqa: E402
+from __future__ import annotations
+
+"""Shared runtime objects for the UniFi-Access MCP server.
+
+This module is the *single* source of truth for global singletons such as the
+FastMCP server instance, loaded configuration, and all manager helpers.
+
+Downstream code (tool modules, tests, etc.) should import these via::
+
+    from unifi_access_mcp.runtime import server, config, door_manager
+
+Lazy factories (`get_*`) are provided so unit tests can substitute fakes by
+monkey-patching before the first call.
+
+IMPORTANT: The server's `tool` decorator is wrapped here (not in main.py) to
+ensure that tool modules can be imported directly (for testing, etc.) without
+errors from unrecognized decorator kwargs like `permission_category`.
+"""
+
+import os
+from functools import lru_cache
+from typing import Any
+
+from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
+
+from unifi_access_mcp.bootstrap import load_config, logger
+from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
+from unifi_access_mcp.managers.credential_manager import CredentialManager
+from unifi_access_mcp.managers.device_manager import DeviceManager
+from unifi_access_mcp.managers.door_manager import DoorManager
+from unifi_access_mcp.managers.event_manager import EventManager
+from unifi_access_mcp.managers.policy_manager import PolicyManager
+from unifi_access_mcp.managers.system_manager import SystemManager
+from unifi_access_mcp.managers.visitor_manager import VisitorManager
+from unifi_access_mcp.tool_index import TOOL_REGISTRY
+from unifi_core.auth import UniFiAuth
+
+# ---------------------------------------------------------------------------
+# Core singletons
+# ---------------------------------------------------------------------------
+
+
+@lru_cache
+def get_config():
+    """Load and cache configuration."""
+    return load_config()
+
+
+@lru_cache
+def get_auth() -> UniFiAuth:
+    """Create and cache the dual-auth instance."""
+    settings = get_config().unifi
+    api_key = getattr(settings, "api_key", None) or os.environ.get("UNIFI_API_KEY")
+    return UniFiAuth(api_key=api_key if api_key else None)
+
+
+def _create_permissioned_tool_wrapper(original_tool_decorator):
+    """Wrap the FastMCP tool decorator to handle permission kwargs.
+
+    This wrapper strips `permission_category` and `permission_action` kwargs
+    before passing to the original FastMCP decorator. This allows tool modules
+    to be imported directly (for testing, etc.) without errors.
+
+    The actual permission checking is done in main.py's permissioned_tool,
+    which replaces this wrapper at startup. This wrapper just ensures imports
+    don't fail when tools have permission kwargs.
+    """
+
+    def wrapper(*args, **kwargs):
+        # Strip permission-related kwargs that FastMCP doesn't understand
+        kwargs.pop("permission_category", None)
+        kwargs.pop("permission_action", None)
+        kwargs.pop("auth", None)
+        return original_tool_decorator(*args, **kwargs)
+
+    return wrapper
+
+
+@lru_cache
+def get_server() -> FastMCP:
+    """Create the FastMCP server instance exactly once."""
+    # Parse allowed hosts from environment variable for reverse proxy support
+    # Default to localhost only for backwards compatibility
+    allowed_hosts_str = os.getenv("UNIFI_MCP_ALLOWED_HOSTS", "localhost,127.0.0.1")
+    allowed_hosts = [h.strip() for h in allowed_hosts_str.split(",") if h.strip()]
+
+    # Allow disabling DNS rebinding protection entirely (default: enabled)
+    # Set to "false" for Kubernetes/proxy deployments where allowed_hosts is insufficient
+    enable_dns_rebinding = os.getenv("UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION", "true").lower() == "true"
+
+    # Configure transport security settings
+    transport_security = TransportSecuritySettings(
+        allowed_hosts=allowed_hosts,
+        enable_dns_rebinding_protection=enable_dns_rebinding,
+    )
+
+    logger.debug(
+        "Configuring FastMCP with allowed_hosts: %s, dns_rebinding_protection: %s",
+        allowed_hosts,
+        enable_dns_rebinding,
+    )
+
+    server = FastMCP(
+        name="unifi-access-mcp",
+        debug=True,
+        transport_security=transport_security,
+    )
+
+    # Wrap the tool decorator to handle permission kwargs gracefully.
+    # This ensures tool modules can be imported directly without errors.
+    # main.py will replace this with the full permissioned_tool implementation.
+    server._original_tool = server.tool
+    server.tool = _create_permissioned_tool_wrapper(server.tool)
+
+    return server
+
+
+# ---------------------------------------------------------------------------
+# Manager factories ---------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+
+def _unifi_settings() -> Any:
+    cfg = get_config().unifi
+    return cfg
+
+
+@lru_cache
+def get_connection_manager() -> AccessConnectionManager:
+    cfg = _unifi_settings()
+    full_cfg = get_config()
+    api_key = getattr(cfg, "api_key", None) or os.environ.get("UNIFI_ACCESS_API_KEY") or os.environ.get("UNIFI_API_KEY")
+    # Access-specific API port from config.yaml access.api_port (default 12445)
+    api_port = 12445
+    try:
+        api_port = int(full_cfg.access.api_port)
+    except (AttributeError, TypeError, ValueError) as exc:
+        logger.debug("Could not parse access.api_port, using default %d: %s", api_port, exc)
+    return AccessConnectionManager(
+        host=cfg.host,
+        username=cfg.username,
+        password=cfg.password,
+        port=int(cfg.port),
+        verify_ssl=str(cfg.verify_ssl).lower() in ("true", "1", "yes"),
+        api_key=api_key if api_key else None,
+        api_port=api_port,
+    )
+
+
+@lru_cache
+def get_door_manager() -> DoorManager:
+    return DoorManager(get_connection_manager())
+
+
+@lru_cache
+def get_policy_manager() -> PolicyManager:
+    return PolicyManager(get_connection_manager())
+
+
+@lru_cache
+def get_credential_manager() -> CredentialManager:
+    return CredentialManager(get_connection_manager())
+
+
+@lru_cache
+def get_visitor_manager() -> VisitorManager:
+    return VisitorManager(get_connection_manager())
+
+
+@lru_cache
+def get_event_manager() -> EventManager:
+    cfg = get_config()
+    events_cfg: dict = {}
+    try:
+        events_cfg = dict(cfg.access.events) if hasattr(cfg, "access") and hasattr(cfg.access, "events") else {}
+    except Exception:
+        pass
+    return EventManager(get_connection_manager(), config=events_cfg)
+
+
+@lru_cache
+def get_device_manager() -> DeviceManager:
+    return DeviceManager(get_connection_manager())
+
+
+@lru_cache
+def get_system_manager() -> SystemManager:
+    return SystemManager(get_connection_manager())
+
+
+@lru_cache
+def get_tool_registry() -> dict[str, Any]:
+    """Return the global tool registry for runtime access."""
+    return TOOL_REGISTRY
+
+
+# ---------------------------------------------------------------------------
+# Shorthand aliases (import-time singletons) --------------------------------
+# ---------------------------------------------------------------------------
+
+# These provide the convenient attribute style while still being created lazily
+# the first time the corresponding factory is called.
+
+config = get_config()
+auth = get_auth()
+server = get_server()
+connection_manager = get_connection_manager()
+door_manager = get_door_manager()
+policy_manager = get_policy_manager()
+credential_manager = get_credential_manager()
+visitor_manager = get_visitor_manager()
+event_manager = get_event_manager()
+device_manager = get_device_manager()
+system_manager = get_system_manager()
+tool_registry = get_tool_registry()
+
+logger.debug("runtime.py: shared singletons initialised")

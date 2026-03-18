@@ -8,6 +8,7 @@ Leverage agents and agentic AI workflows to manage your UniFi deployment.
 
 [![PyPI - Network](https://img.shields.io/pypi/v/unifi-network-mcp)](https://pypi.org/project/unifi-network-mcp/)
 [![PyPI - Protect](https://img.shields.io/pypi/v/unifi-protect-mcp)](https://pypi.org/project/unifi-protect-mcp/)
+[![PyPI - Access](https://img.shields.io/pypi/v/unifi-access-mcp)](https://pypi.org/project/unifi-access-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/downloads/)
 
@@ -17,7 +18,7 @@ Leverage agents and agentic AI workflows to manage your UniFi deployment.
 |--------|--------|-------|---------|
 | [Network](apps/network/) | Stable | 91 | [`unifi-network-mcp`](https://pypi.org/project/unifi-network-mcp/) |
 | [Protect](apps/protect/) | Beta | 34 | [`unifi-protect-mcp`](https://pypi.org/project/unifi-protect-mcp/) |
-| Access | Planned | — | — |
+| [Access](apps/access/) | Beta | 29 | [`unifi-access-mcp`](https://pypi.org/project/unifi-access-mcp/) |
 
 ## What is this?
 
@@ -33,6 +34,9 @@ uvx unifi-network-mcp
 
 # Protect server
 uvx unifi-protect-mcp
+
+# Access server
+uvx unifi-access-mcp
 ```
 
 For Claude Desktop, add to your `claude_desktop_config.json`:
@@ -58,12 +62,21 @@ For Claude Desktop, add to your `claude_desktop_config.json`:
         "UNIFI_PROTECT_USERNAME": "admin",
         "UNIFI_PROTECT_PASSWORD": "your-password"
       }
+    },
+    "unifi-access": {
+      "command": "uvx",
+      "args": ["unifi-access-mcp"],
+      "env": {
+        "UNIFI_ACCESS_HOST": "192.168.1.1",
+        "UNIFI_ACCESS_USERNAME": "admin",
+        "UNIFI_ACCESS_PASSWORD": "your-password"
+      }
     }
   }
 }
 ```
 
-> **Tip:** If both servers connect to the same controller, you can use the shared `UNIFI_HOST` / `UNIFI_USERNAME` / `UNIFI_PASSWORD` variables instead of repeating them per server.
+> **Tip:** If all servers connect to the same controller, you can use the shared `UNIFI_HOST` / `UNIFI_USERNAME` / `UNIFI_PASSWORD` variables instead of repeating them per server.
 
 ## Configuration
 
@@ -80,18 +93,18 @@ Set these environment variables (or use a `.env` file):
 
 Each server supports its own prefixed environment variables that take priority over the shared `UNIFI_*` variables. This lets you point the Network and Protect servers at different controllers (or different credentials) while keeping a single `.env` file:
 
-| Shared (fallback) | Network server | Protect server |
-|--------------------|----------------|----------------|
-| `UNIFI_HOST` | `UNIFI_NETWORK_HOST` | `UNIFI_PROTECT_HOST` |
-| `UNIFI_USERNAME` | `UNIFI_NETWORK_USERNAME` | `UNIFI_PROTECT_USERNAME` |
-| `UNIFI_PASSWORD` | `UNIFI_NETWORK_PASSWORD` | `UNIFI_PROTECT_PASSWORD` |
-| `UNIFI_PORT` | `UNIFI_NETWORK_PORT` | `UNIFI_PROTECT_PORT` |
-| `UNIFI_VERIFY_SSL` | `UNIFI_NETWORK_VERIFY_SSL` | `UNIFI_PROTECT_VERIFY_SSL` |
-| `UNIFI_API_KEY` | `UNIFI_NETWORK_API_KEY` | `UNIFI_PROTECT_API_KEY` |
+| Shared (fallback) | Network server | Protect server | Access server |
+|--------------------|----------------|----------------|---------------|
+| `UNIFI_HOST` | `UNIFI_NETWORK_HOST` | `UNIFI_PROTECT_HOST` | `UNIFI_ACCESS_HOST` |
+| `UNIFI_USERNAME` | `UNIFI_NETWORK_USERNAME` | `UNIFI_PROTECT_USERNAME` | `UNIFI_ACCESS_USERNAME` |
+| `UNIFI_PASSWORD` | `UNIFI_NETWORK_PASSWORD` | `UNIFI_PROTECT_PASSWORD` | `UNIFI_ACCESS_PASSWORD` |
+| `UNIFI_PORT` | `UNIFI_NETWORK_PORT` | `UNIFI_PROTECT_PORT` | `UNIFI_ACCESS_PORT` |
+| `UNIFI_VERIFY_SSL` | `UNIFI_NETWORK_VERIFY_SSL` | `UNIFI_PROTECT_VERIFY_SSL` | `UNIFI_ACCESS_VERIFY_SSL` |
+| `UNIFI_API_KEY` | `UNIFI_NETWORK_API_KEY` | `UNIFI_PROTECT_API_KEY` | `UNIFI_ACCESS_API_KEY` |
 
-**Single controller?** Just set the shared `UNIFI_*` variables -- both servers will use them. Server-specific variables are only needed when the servers talk to different controllers or use different credentials.
+**Single controller?** Just set the shared `UNIFI_*` variables -- all servers will use them. Server-specific variables are only needed when the servers talk to different controllers or use different credentials.
 
-For the full configuration reference including permissions, transports, and advanced options, see the [Network server docs](apps/network/docs/configuration.md) or [Protect server docs](apps/protect/docs/configuration.md).
+For the full configuration reference including permissions, transports, and advanced options, see the [Network server docs](apps/network/docs/configuration.md), [Protect server docs](apps/protect/docs/configuration.md), or [Access server docs](apps/access/docs/configuration.md).
 
 ## Architecture
 
@@ -101,6 +114,7 @@ This is a monorepo with shared packages:
 apps/
   network/          # UniFi Network MCP server (stable, 91 tools)
   protect/          # UniFi Protect MCP server (beta, 34 tools)
+  access/           # UniFi Access MCP server (beta, 29 tools)
 packages/
   unifi-core/       # Shared UniFi connectivity (auth, detection, retry)
   unifi-mcp-shared/ # Shared MCP patterns (permissions, confirmation, lazy loading)
@@ -113,7 +127,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
 ## Roadmap
 
-The Protect server is in beta. An Access server is planned for a future phase. See the [ecosystem design spec](docs/superpowers/specs/) for the full roadmap.
+The Protect and Access servers are in beta. See the [ecosystem design spec](docs/superpowers/specs/) for the full roadmap.
 
 ## Contributing
 

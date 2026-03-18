@@ -32,3 +32,20 @@ services:
       - "3001:3001"
     restart: unless-stopped
     container_name: unifi-protect-mcp
+
+  unifi-access-mcp:
+    build:
+      context: ..
+      dockerfile: apps/access/Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      - UNIFI_MCP_HTTP_ENABLED=true
+      - UNIFI_MCP_HTTP_TRANSPORT=streamable-http
+      - UNIFI_MCP_HOST=0.0.0.0
+      - UNIFI_MCP_PORT=3002
+      - UNIFI_MCP_ALLOWED_HOSTS=localhost,localhost:3002,127.0.0.1,127.0.0.1:3002,host.docker.internal,host.docker.internal:3002
+    ports:
+      - "3002:3002"
+    restart: unless-stopped
+    container_name: unifi-access-mcp

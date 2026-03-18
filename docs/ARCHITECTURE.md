@@ -7,6 +7,7 @@ unifi-mcp/
   apps/
     network/              # UniFi Network MCP server
     protect/              # UniFi Protect MCP server
+    access/               # UniFi Access MCP server
   packages/
     unifi-core/           # Shared UniFi controller connectivity
     unifi-mcp-shared/     # Shared MCP server patterns
@@ -30,7 +31,7 @@ Low-level UniFi controller connectivity. No MCP dependency.
 | `retry.py` | Retry logic with exponential backoff |
 | `exceptions.py` | Shared exception types |
 
-Used by: `apps/network`, `apps/protect`, and future `apps/access`.
+Used by: `apps/network`, `apps/protect`, `apps/access`.
 
 ### unifi-mcp-shared
 
@@ -46,7 +47,7 @@ Shared MCP server patterns. Depends on `mcp` SDK and `omegaconf`.
 | `config.py` | OmegaConf config loading with env var interpolation |
 | `formatting.py` | Response formatting helpers |
 
-Used by: `apps/network`, `apps/protect`, and future server apps.
+Used by: `apps/network`, `apps/protect`, `apps/access`.
 
 ### apps/network
 
@@ -78,6 +79,24 @@ The UniFi Protect MCP server. 34 tools across 6 categories covering cameras, eve
 - `tests/` -- unit and integration tests
 - `Makefile` -- app-level development commands
 - `Dockerfile` -- container build
+
+### apps/access
+
+The UniFi Access MCP server. 29 tools across 7 categories covering doors, policies, credentials, visitors, events, devices, and system. Uses a **dual-path authentication** model: API key auth on the dedicated Access port (12445) via `py-unifi-access`, and a local proxy session on port 443 for mutations.
+
+- `src/unifi_access_mcp/` -- server code
+  - `main.py` -- entry point, tool registration, transport dispatch
+  - `runtime.py` -- singleton factories (`@lru_cache`)
+  - `managers/` -- domain logic (door, policy, credential, visitor, event, device, system)
+  - `tools/` -- thin tool wrappers (delegate to managers)
+  - `resources/` -- MCP resources (event stream)
+  - `config/config.yaml` -- default configuration with Access-specific event and auth settings
+  - `tools_manifest.json` -- pre-generated tool metadata
+- `tests/` -- unit and integration tests
+- `Makefile` -- app-level development commands
+- `Dockerfile` -- container build
+
+**Dual-path auth** is unique to the Access server. The `AccessConnectionManager` maintains two independent sessions: an API key client for read-heavy queries and a proxy session (cookie + CSRF token) for mutations. Each tool declares which auth path it requires.
 
 ## Layering
 
@@ -113,23 +132,23 @@ Rules:
 
 ## Adding a New Server
 
-To add a new UniFi application server (e.g., Access), follow the pattern established by `apps/protect/`:
+To add a new UniFi application server, follow the pattern established by `apps/protect/` and `apps/access/`:
 
-1. **Create app directory:** `apps/access/`
+1. **Create app directory:** `apps/<appname>/`
 2. **Create `pyproject.toml`** depending on `unifi-core` and `unifi-mcp-shared`
 3. **Add to workspace** in root `pyproject.toml` (`apps/*` is already a glob)
-4. **Follow the established pattern** (see `apps/protect/` as the reference implementation):
-   - `src/unifi_access_mcp/main.py` -- entry point
-   - `src/unifi_access_mcp/managers/` -- domain logic
-   - `src/unifi_access_mcp/tools/` -- tool wrappers
-   - `src/unifi_access_mcp/resources/` -- MCP resources (if applicable)
-   - `src/unifi_access_mcp/config/config.yaml` -- defaults
+4. **Follow the established pattern** (see `apps/protect/` or `apps/access/` as references):
+   - `src/unifi_<appname>_mcp/main.py` -- entry point
+   - `src/unifi_<appname>_mcp/managers/` -- domain logic
+   - `src/unifi_<appname>_mcp/tools/` -- tool wrappers
+   - `src/unifi_<appname>_mcp/resources/` -- MCP resources (if applicable)
+   - `src/unifi_<appname>_mcp/config/config.yaml` -- defaults
 5. **Reuse shared packages:**
    - `unifi_core` for controller connectivity and auth
    - `unifi_mcp_shared` for permissions, confirmation, lazy loading, config
 6. **Add Makefile** targets (test, lint, format, manifest)
 7. **Add to root Makefile** delegation targets
-8. **Add Dockerfile** following the protect/network server pattern
+8. **Add Dockerfile** following the protect/network/access server pattern
 
 ## Shared Patterns
 
@@ -141,6 +160,6 @@ All servers share these patterns via `unifi-mcp-shared`:
 - **Config:** OmegaConf YAML with `${oc.env:VAR,default}` interpolation
 - **Tool response contract:** `{"success": bool, "data": ...}` or `{"success": false, "error": "..."}`
 
-### MCP Resources (introduced by Protect)
+### MCP Resources (Protect and Access)
 
-Servers may also register MCP resources via a `resources/` directory alongside `tools/`. Resources are ideal for data that benefits from polling rather than explicit tool calls (e.g., event streams, camera snapshots). Resource modules use `@server.resource()` decorators and are imported during startup in `main.py`.
+Servers may also register MCP resources via a `resources/` directory alongside `tools/`. Resources are ideal for data that benefits from polling rather than explicit tool calls (e.g., event streams, camera snapshots). Resource modules use `@server.resource()` decorators and are imported during startup in `main.py`. Both the Protect server (camera snapshots, event streams) and the Access server (event streams) use this pattern.
