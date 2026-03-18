@@ -5,31 +5,191 @@ description: Manage UniFi firewall policies using natural language — create, m
 
 # Firewall Manager
 
-You are managing firewall policies on a UniFi network. Your goal is to translate natural-language requests into the correct firewall tool calls, always previewing before executing.
+You are managing firewall policies on a UniFi network. Your goal is to translate natural-language requests into the correct firewall tool calls, always previewing before executing. Use the scripts and reference documents in this skill directory to work safely and efficiently.
 
 ## Required MCP Server
 
 This skill requires the `unifi-network` MCP server. Use `unifi_tool_index` to verify available tools, then `unifi_execute` to call them.
 
-## Safety Rules
+---
 
-1. **ALWAYS preview first** — every mutation returns a preview when called without `confirm=true`. Show the user what will change before executing.
-2. **NEVER auto-confirm** — wait for explicit user approval before calling with `confirm=true`.
-3. **Check permissions** — if a mutation fails with a permission error, tell the user the env var: `UNIFI_PERMISSIONS_FIREWALL_CREATE=true` (or UPDATE/DELETE as appropriate).
-4. **Understand the impact** — before creating rules, check existing rules to avoid conflicts.
+## 1. Setup Check
 
-## Tool Reference
+Before doing anything else, confirm the environment is ready:
 
-### Read (always available)
+- Check that `UNIFI_NETWORK_HOST` (or `UNIFI_HOST`) is set. If not, tell the user:
+  > "UNIFI_NETWORK_HOST is not configured. Please run the setup flow at `/setup` before using this skill."
+- Verify the MCP server is reachable by calling `unifi_tool_index`.
+
+---
+
+## 2. Before Making Changes
+
+**Always export a snapshot before any mutation.** This gives you a before-state to diff against and a rollback reference.
+
+```bash
+python scripts/export-policies.py
+```
+
+Options:
+- `--mcp-url URL` — override MCP server URL if not using the default
+- `--state-dir DIR` — override the directory where snapshots are saved
+
+The script saves a timestamped JSON snapshot (e.g., `firewall-snapshots/firewall_20260318_143200Z.json`) containing all policies, zones, and IP groups. Run this before **every** mutating operation in the session.
+
+---
+
+## 3. Using Templates
+
+For common security scenarios, use pre-built templates rather than constructing rules from scratch.
+
+**List available templates:**
+```bash
+python scripts/apply-template.py --list
+```
+
+**Apply a template:**
+```bash
+python scripts/apply-template.py --template <template-name> --param key=value --param key2=value2
+```
+
+The script reads `references/policy-templates.yaml`, substitutes parameters, and outputs the MCP tool call payload. It does **not** execute — you review the output, then confirm with the user before calling the tool.
+
+**Example — IoT isolation:**
+```bash
+python scripts/apply-template.py --template iot-isolation \
+  --param iot_network=IoT \
+  --param private_network=Main
+```
+
+**Available templates** (see `references/policy-templates.md` for full details):
+
+| Template | Description |
+|----------|-------------|
+| `iot-isolation` | Block IoT VLAN from reaching the main LAN |
+| `guest-lockdown` | Restrict guest network to internet-only |
+| `kids-content-filter` | Time-based social media and gaming block by DPI category |
+| `block-bittorrent` | Block P2P/BitTorrent traffic via DPI |
+| `work-vpn-split-tunnel` | Allow corporate VPN while keeping local LAN accessible |
+| `camera-isolation` | Lock IP cameras to NVR-only communication |
+
+For parameter details, required tool calls, and expected outcomes for each template, see `references/policy-templates.md`.
+
+---
+
+## 4. Creating Custom Rules
+
+When no template fits, create rules manually. Consult the references before writing any policy payload.
+
+- **`references/firewall-schema.md`** — complete schema reference: rulesets (`LAN_IN`, `WAN_IN`, `GUEST_IN`, etc.), actions (`accept`/`drop`/`reject`), source/destination matching types, port matching, protocols, connection states, and schedule format.
+- **`references/dpi-categories.md`** — application-aware blocking. When users mention app names (TikTok, YouTube, Steam, BitTorrent), find the right DPI category here. Always call `unifi_get_dpi_stats` to confirm the exact category IDs on the user's controller before building DPI rules.
+
+**Tool selection:**
+- `unifi_create_simple_firewall_policy` — use for most requests. Accepts friendly network names; resolves IDs automatically. See `references/firewall-schema.md` for the simple policy input format.
+- `unifi_create_firewall_policy` — full schema with raw IDs. Use when the simple tool cannot express the required matching logic (IP groups, geographic regions, complex port/protocol/DPI combinations).
+
+---
+
+## 5. Verifying Changes
+
+After every mutation, run the diff script to confirm the change matches intent:
+
+```bash
+python scripts/diff-policies.py
+```
+
+The script auto-loads the two most recent snapshots in the state directory and shows added, removed, and modified policies. If the diff looks wrong, report it to the user and do not proceed with further changes.
+
+Options:
+- `--current FILE` — path to the after-snapshot
+- `--previous FILE` — path to the before-snapshot
+- `--state-dir DIR` — directory to scan for the two most recent snapshots (default)
+
+---
+
+## 6. Safety Rules
+
+1. **Always preview first** — every mutation returns a preview when called without `confirm=true`. Show the preview to the user before executing.
+2. **Never auto-confirm** — wait for explicit user approval before calling with `confirm=true`.
+3. **Check permissions** — if a mutation fails with a permission error, tell the user the relevant env var:
+   - Create: `UNIFI_PERMISSIONS_FIREWALL_CREATE=true`
+   - Update: `UNIFI_PERMISSIONS_FIREWALL_UPDATE=true`
+   - Delete: `UNIFI_PERMISSIONS_FIREWALL_DELETE=true` (disabled by default)
+4. **Understand the impact** — call `unifi_list_firewall_policies` before creating rules to check for conflicts or redundancy.
+5. **Export before mutating** — always run `scripts/export-policies.py` before any create, update, or delete operation (see Section 2).
+6. **Diff after mutating** — always run `scripts/diff-policies.py` after applying changes to verify the result (see Section 5).
+
+---
+
+## 7. Common Scenarios
+
+### "Block [app/service] on [network/VLAN]"
+
+1. Run `scripts/export-policies.py` to snapshot current state.
+2. Check `references/dpi-categories.md` for the app's DPI category, then call `unifi_get_dpi_stats` to confirm the category ID on this controller.
+3. Check `scripts/apply-template.py --list` — if a matching template exists (e.g., `block-bittorrent`), use it.
+4. Otherwise: call `unifi_list_networks` and `unifi_list_firewall_zones` to gather IDs, then `unifi_create_simple_firewall_policy` with `action=reject`.
+5. Show preview → wait for confirmation → execute with `confirm=true`.
+6. Run `scripts/diff-policies.py` to verify.
+
+### "Block [app] after [time] on [days]"
+
+1. Run `scripts/export-policies.py`.
+2. If the `kids-content-filter` template applies, use it with `block_days`, `block_start`, and `block_end` parameters.
+3. Otherwise: consult `references/firewall-schema.md` for the schedule format, then use `unifi_create_firewall_policy` with the schedule object.
+4. Preview → confirm → diff.
+
+### "Show me all rules affecting [network/VLAN]"
+
+1. `unifi_list_firewall_policies` — get all policies.
+2. Filter by source/destination matching the target network.
+3. Present as a readable table: name, action (allow/reject/drop), source → destination, enabled status.
+
+### "Are there any conflicting or redundant rules?"
+
+1. `unifi_list_firewall_policies` — get all policies.
+2. Analyze for:
+   - Rules with the same source/destination but different actions (conflict).
+   - Rules that are subsets of broader rules (redundant).
+   - Disabled rules that duplicate enabled ones.
+3. Report findings with recommendations.
+
+### "Set up IoT isolation / guest lockdown / camera isolation"
+
+1. Run `scripts/export-policies.py`.
+2. Run `scripts/apply-template.py --list` and select the matching template.
+3. Run `scripts/apply-template.py --template <name> --param ...` to generate the payload.
+4. Review the output with the user, then call the indicated tool with `confirm=false` first (preview).
+5. Confirm → execute → diff.
+
+See `references/policy-templates.md` for the full parameter list and expected outcome for each template.
+
+### "Clean up / optimize firewall rules"
+
+1. `unifi_list_firewall_policies` — full audit.
+2. Run `scripts/export-policies.py` before making any changes.
+3. Identify quick wins: disabled rules that can be deleted, redundant rules, shadowed rules.
+4. Propose changes one at a time with previews.
+5. Diff after each change.
+6. For the comprehensive audit workflow, see the `firewall-auditor` skill.
+
+---
+
+## 8. Manual Procedure (Fallback)
+
+Use these direct tool calls when scripts are unavailable (e.g., no Python runtime, running in a sandboxed environment).
+
+### Read tools (always available)
 - `unifi_list_firewall_policies` — all firewall policies
 - `unifi_get_firewall_policy_details` — full details for one policy by ID
 - `unifi_list_firewall_zones` — available zones (Internal, External, DMZ, etc.)
 - `unifi_list_ip_groups` — IP groups for use in rules
 - `unifi_list_networks` — networks/VLANs (needed for targeting specific segments)
+- `unifi_get_dpi_stats` — DPI categories available on this controller
 
 ### Create
-- `unifi_create_simple_firewall_policy` — **use this for most requests**. Accepts friendly names for zones and actions. Handles the complexity of the full API.
-- `unifi_create_firewall_policy` — full schema, for advanced cases the simple version can't handle.
+- `unifi_create_simple_firewall_policy` — recommended for most requests
+- `unifi_create_firewall_policy` — full schema for advanced cases
 
 ### Modify
 - `unifi_update_firewall_policy` — update specific fields of an existing policy
@@ -38,47 +198,21 @@ This skill requires the `unifi-network` MCP server. Use `unifi_tool_index` to ve
 ### Delete
 - Deletion requires `UNIFI_PERMISSIONS_FIREWALL_DELETE=true` (disabled by default)
 
-## Common Scenarios
-
-### "Block [app/service] on [network/VLAN]"
-1. `unifi_list_networks` — find the target network/VLAN ID
-2. `unifi_list_firewall_zones` — identify the zone
-3. `unifi_create_simple_firewall_policy` with action=REJECT, matching the app/port/IP
-4. Show preview → wait for confirmation → execute
-
-### "Block [app] after [time] on [days]"
-1. Same as above, but include schedule parameters in the policy
-2. UniFi firewall supports time-based rules — check if the simple schema supports scheduling, otherwise use the full schema
-
-### "Show me all rules affecting [network/VLAN]"
-1. `unifi_list_firewall_policies` — get all policies
-2. Filter by source/destination matching the target network
-3. Present as a readable table: name, action (allow/reject/drop), source → destination, enabled status
-
-### "Are there any conflicting or redundant rules?"
-1. `unifi_list_firewall_policies` — get all policies
-2. Analyze for:
-   - Rules with the same source/destination but different actions (conflict)
-   - Rules that are subsets of broader rules (redundant)
-   - Disabled rules that duplicate enabled ones
-3. Report findings with recommendations
-
-### "Clean up / optimize firewall rules"
-1. Full audit (see firewall-auditor skill for the comprehensive version)
-2. Identify quick wins: disabled rules that can be deleted, redundant rules
-3. Propose changes one at a time with previews
-
-## Response Pattern
-
-For every mutation request:
+**Response pattern for every mutation:**
 1. Confirm understanding: "I'll create a firewall policy that blocks [X] on [network]. Let me check the current configuration first."
-2. Gather context (list existing rules, networks, zones)
-3. Call the create/update tool WITHOUT confirm=true
-4. Present the preview clearly
+2. Gather context (list existing rules, networks, zones).
+3. Call the create/update tool **without** `confirm=true`.
+4. Present the preview clearly.
 5. Ask: "Does this look correct? Confirm to apply."
-6. On user confirmation, call with confirm=true
+6. On user confirmation, call with `confirm=true`.
 
-## Tips
-- `unifi_create_simple_firewall_policy` handles most cases — try it first before the full schema.
-- Users often say "block" when they mean REJECT (sends RST/ICMP unreachable) vs DROP (silent discard). REJECT is usually better for internal networks. DROP is better for external-facing rules.
-- When users mention app names (TikTok, YouTube), you'll need to map to IP ranges or use DPI categories if available. Check `unifi_get_dpi_stats` to see what DPI categories the controller recognizes.
+---
+
+## 9. Tips
+
+- `unifi_create_simple_firewall_policy` handles most cases — try it before reaching for the full schema. See `references/firewall-schema.md` for both formats.
+- Users often say "block" when they mean `reject` (sends RST/ICMP unreachable) vs `drop` (silent discard). `reject` is usually better for internal networks; `drop` is better for external-facing rules. See `references/firewall-schema.md` for the action comparison table.
+- When users mention app names (TikTok, YouTube, Steam), consult `references/dpi-categories.md` first to identify the category group, then confirm the exact ID with `unifi_get_dpi_stats` on the live controller.
+- DPI rules can be bypassed by VPNs — if blocking social media or gaming, consider also blocking the VPN/Proxy DPI category. See `references/dpi-categories.md` for the VPN category group.
+- Rule order matters for `camera-isolation` and multi-rule templates — confirm ordering with `unifi_list_firewall_policies` after creation, and use `scripts/diff-policies.py` to verify the final state.
+- Snapshots from `scripts/export-policies.py` serve as rollback references. If a change causes unexpected behavior, share the before-snapshot path with the user so they can restore manually.
