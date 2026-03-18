@@ -1,5 +1,9 @@
 # UniFi Access MCP Server
 
+<p align="center">
+  <img src="../../assets/hero-access.svg" alt="UniFi Access MCP Server" width="720">
+</p>
+
 MCP server exposing UniFi Access tools for LLMs, agents, and automation platforms. Manage doors, credentials, access policies, visitors, events, and devices -- with safe-by-default permissions and preview-before-confirm for all mutations.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
