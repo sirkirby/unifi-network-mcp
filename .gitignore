@@ -60,6 +60,9 @@ pids/
 # Testing
 .coverage
 
+# Playwright MCP artifacts
+.playwright-mcp/
+
 .DS_Store
 
 aiounifi/*
