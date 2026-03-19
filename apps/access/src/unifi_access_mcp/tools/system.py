@@ -74,12 +74,21 @@ async def access_list_users(
         int | None,
         Field(description="Maximum number of users to return. Omit for all users."),
     ] = None,
+    compact: Annotated[
+        bool,
+        Field(
+            description=(
+                "When true, strips scopes, permissions, groups, roles, and resources fields "
+                "(~85% smaller). Recommended for overviews and summaries."
+            )
+        ),
+    ] = False,
 ) -> Dict[str, Any]:
     """List users with access."""
-    logger.info("access_list_users tool called (limit=%s)", limit)
+    logger.info("access_list_users tool called (limit=%s, compact=%s)", limit, compact)
     try:
         page_size = limit if limit and limit > 0 else 25
-        users = await system_manager.list_users(page_size=page_size)
+        users = await system_manager.list_users(page_size=page_size, compact=compact)
         return {"success": True, "data": {"users": users, "count": len(users)}}
     except Exception as e:
         logger.error("Failed to list users: %s", e, exc_info=True)

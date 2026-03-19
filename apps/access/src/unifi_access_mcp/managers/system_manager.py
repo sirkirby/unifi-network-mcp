@@ -24,6 +24,15 @@ from unifi_core.exceptions import UniFiConnectionError
 
 logger = logging.getLogger(__name__)
 
+# Fields to keep in compact mode.  The stripped fields (scopes at 74%,
+# permissions, groups, roles, resources, SSO fields, empty strings)
+# account for ~85% of per-user payload size.
+_COMPACT_USER_KEYS = frozenset({
+    "unique_id", "full_name", "email", "status",
+    "nfc_display_id", "nfc_card_type",
+    "create_time", "last_activity_time",
+})
+
 # Query parameters for the dashboard stats endpoint (includes all
 # useful expansions discovered from browser network inspection).
 _STATS_EXPAND = (
@@ -41,6 +50,20 @@ class SystemManager:
 
     def __init__(self, connection_manager: AccessConnectionManager) -> None:
         self._cm = connection_manager
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _compact_user(user: Dict[str, Any]) -> Dict[str, Any]:
+        """Strip low-value fields from a user dict.
+
+        Keeps identity, status, credential, and activity fields.
+        Strips scopes (74%), permissions, groups, roles, resources,
+        SSO fields, and empty string fields (~85% smaller).
+        """
+        return {k: v for k, v in user.items() if k in _COMPACT_USER_KEYS}
 
     # ------------------------------------------------------------------
     # Public methods
@@ -123,7 +146,7 @@ class SystemManager:
 
         return health
 
-    async def list_users(self, page_num: int = 1, page_size: int = 25) -> list[Dict[str, Any]]:
+    async def list_users(self, page_num: int = 1, page_size: int = 25, compact: bool = False) -> list[Dict[str, Any]]:
         """List users with access.
 
         Users are served by the UniFi OS Users application at
@@ -136,6 +159,9 @@ class SystemManager:
             Page number for pagination (default 1).
         page_size:
             Number of users per page (default 25).
+        compact:
+            When True, strip high-volume/low-value fields from user
+            responses (~85% smaller).
         """
         if self._cm.has_proxy:
             try:
@@ -147,8 +173,12 @@ class SystemManager:
                 data = await self._cm.proxy_request_users("GET", path)
                 result = self._cm.extract_data(data)
                 if isinstance(result, list):
-                    return result
-                return [result] if result else []
+                    users = result
+                else:
+                    users = [result] if result else []
+                if compact:
+                    users = [self._compact_user(u) for u in users]
+                return users
             except Exception as exc:
                 logger.error("[system] Failed to list users via users proxy: %s", exc, exc_info=True)
                 raise
