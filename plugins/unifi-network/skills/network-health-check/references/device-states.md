@@ -25,16 +25,15 @@
 
 ### Important: Smart Power Strips vs Access Points
 
-UniFi Smart Power strips (USP-Strip, USP-Plug, USP-RPS) connect wirelessly via mesh and may appear as `uap` type devices in the API. **Do NOT count these as access points.** Identify them by:
+UniFi Smart Power strips (model UP6, UP1) connect wirelessly via mesh and report as `uap` type in the API — but they are NOT access points.
 
-- **Model string:** contains `UP1`, `UP6`, `USP`, `USPRPS`, or similar power-related model codes
-- **Name pattern:** often named "Power-*" or contain "UPS", "PDU", "Power Strip"
-- **Uplink type:** shows "Meshing" (wireless mesh) rather than a wired Ethernet uplink
-- **No radio_table or vap_table:** power strips do not serve wireless clients
+**The definitive field is `is_access_point`** (boolean) in the device object. The MCP tool's `device_category` field uses this to correctly classify devices:
+- `device_category: "ap"` → real access point (`is_access_point: true`)
+- `device_category: "pdu"` → power strip or PDU (`is_access_point: false` despite `type: uap`)
 
-When counting APs, **exclude** any device whose `model` or `name` indicates it is a power strip or UPS. Use `unifi_list_devices` with `device_type=pdu` to get power devices separately, but note this filter uses `usp` prefix and may miss power strips that report as `uap`.
+**When counting APs, use the `device_category` field, not the `type` field.** The `unifi_list_devices` filter `device_type=ap` already uses this classification and will exclude power strips.
 
-**For accurate AP counts:** Filter `unifi_list_devices` with `device_type=ap`, then exclude any device whose name contains "Power", "UPS", or "PDU", or whose model does not match known AP models (U6, U7, UAP, nanoHD, FlexHD, etc.).
+Known power strip models: UP6 (6-outlet strip), UP1 (single plug). These have `is_access_point: false`, mesh uplinks, and no `vap_table`.
 
 ## Radio Band Codes
 

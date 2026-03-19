@@ -21,29 +21,38 @@ logger = logging.getLogger(__name__)
 
 
 # Model prefixes for USP Smart Power devices that may report as 'uap' type
-_POWER_DEVICE_MODELS = {"UP1", "UP6", "USP", "USPRPS"}
+_POWER_DEVICE_MODELS = {"UP1", "UP6", "USP"}
 
 
 def classify_device(device: Dict[str, Any]) -> str:
     """Classify a device into a semantic category.
 
-    UniFi Smart Power strips (USP) connect via wireless mesh and may report
-    as 'uap' type in the API. This function uses both type prefix and model
-    to produce an accurate category.
+    Uses the controller's ``is_access_point`` flag as the primary signal
+    for distinguishing real APs from other ``uap``-typed devices (e.g.,
+    USP Smart Power strips that connect via wireless mesh).  Falls back
+    to model-prefix matching when the flag is absent.
 
     Returns one of: 'ap', 'switch', 'gateway', 'pdu', 'unknown'
     """
     device_type = device.get("type", "")
     model = device.get("model", "")
 
-    # Check for power devices first — they can masquerade as uap
+    # Explicit power device types
     if device_type.startswith("usp"):
         return "pdu"
-    if any(model.upper().startswith(prefix) for prefix in _POWER_DEVICE_MODELS):
-        return "pdu"
 
+    # For uap-typed devices, use the controller's is_access_point flag
     if device_type.startswith("uap"):
+        is_ap = device.get("is_access_point")
+        if is_ap is not None:
+            if not is_ap:
+                return "pdu"
+            return "ap"
+        # Fallback: check model prefix when flag is missing (older firmware)
+        if any(model.upper().startswith(prefix) for prefix in _POWER_DEVICE_MODELS):
+            return "pdu"
         return "ap"
+
     if device_type[:3] in ("usw", "usk"):
         return "switch"
     if device_type[:3] in ("ugw", "udm", "uxg"):
