@@ -1587,7 +1587,6 @@ dev = [
 
 [[package]]
 name = "unifi-core"
-version = "0.1.0"
 source = { editable = "packages/unifi-core" }
 dependencies = [
     { name = "aiohttp" },
@@ -1621,7 +1620,6 @@ source = { virtual = "." }
 
 [[package]]
 name = "unifi-mcp-shared"
-version = "0.1.0"
 source = { editable = "packages/unifi-mcp-shared" }
 dependencies = [
     { name = "jsonschema" },
