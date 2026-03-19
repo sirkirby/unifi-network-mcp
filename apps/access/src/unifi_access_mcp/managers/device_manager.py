@@ -21,12 +21,31 @@ from unifi_core.exceptions import UniFiConnectionError
 
 logger = logging.getLogger(__name__)
 
-_COMPACT_DEVICE_KEYS = frozenset({
-    "unique_id", "name", "alias", "device_type", "firmware", "version",
-    "ip", "mac", "hw_type", "is_online", "is_adopted", "is_connected",
-    "is_rebooting", "is_unavailable", "adopting", "connected_uah_id",
-    "location_id", "model", "display_model", "_door_name", "_door_id",
-})
+_COMPACT_DEVICE_KEYS = frozenset(
+    {
+        "unique_id",
+        "name",
+        "alias",
+        "device_type",
+        "firmware",
+        "version",
+        "ip",
+        "mac",
+        "hw_type",
+        "is_online",
+        "is_adopted",
+        "is_connected",
+        "is_rebooting",
+        "is_unavailable",
+        "adopting",
+        "connected_uah_id",
+        "location_id",
+        "model",
+        "display_model",
+        "_door_name",
+        "_door_id",
+    }
+)
 
 
 class DeviceManager:

@@ -303,7 +303,12 @@
       "name": "access_list_devices",
       "schema": {
         "input": {
-          "properties": {},
+          "properties": {
+            "compact": {
+              "description": "When true, strips configs, images, location/door/floor duplicates, extensions, update_manual, and capabilities fields (~87% smaller). Recommended for overviews and summaries.",
+              "type": "boolean"
+            }
+          },
           "type": "object"
         }
       }
@@ -323,7 +328,12 @@
       "name": "access_list_doors",
       "schema": {
         "input": {
-          "properties": {},
+          "properties": {
+            "compact": {
+              "description": "When true, strips thumbnail, extras, and simplifies nested device details (~70% smaller). Recommended for overviews and summaries.",
+              "type": "boolean"
+            }
+          },
           "type": "object"
         }
       }
@@ -389,6 +399,10 @@
       "schema": {
         "input": {
           "properties": {
+            "compact": {
+              "description": "When true, strips scopes, permissions, groups, roles, and resources fields (~85% smaller). Recommended for overviews and summaries.",
+              "type": "boolean"
+            },
             "limit": {
               "description": "Maximum number of users to return. Omit for all users.",
               "type": "integer"

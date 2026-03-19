@@ -27,11 +27,18 @@ logger = logging.getLogger(__name__)
 # Fields to keep in compact mode.  The stripped fields (scopes at 74%,
 # permissions, groups, roles, resources, SSO fields, empty strings)
 # account for ~85% of per-user payload size.
-_COMPACT_USER_KEYS = frozenset({
-    "unique_id", "full_name", "email", "status",
-    "nfc_display_id", "nfc_card_type",
-    "create_time", "last_activity_time",
-})
+_COMPACT_USER_KEYS = frozenset(
+    {
+        "unique_id",
+        "full_name",
+        "email",
+        "status",
+        "nfc_display_id",
+        "nfc_card_type",
+        "create_time",
+        "last_activity_time",
+    }
+)
 
 # Query parameters for the dashboard stats endpoint (includes all
 # useful expansions discovered from browser network inspection).
