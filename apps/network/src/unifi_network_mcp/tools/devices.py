@@ -20,6 +20,38 @@ from unifi_network_mcp.runtime import config, device_manager, server
 logger = logging.getLogger(__name__)
 
 
+# Model prefixes for USP Smart Power devices that may report as 'uap' type
+_POWER_DEVICE_MODELS = {"UP1", "UP6", "USP", "USPRPS"}
+
+
+def classify_device(device: Dict[str, Any]) -> str:
+    """Classify a device into a semantic category.
+
+    UniFi Smart Power strips (USP) connect via wireless mesh and may report
+    as 'uap' type in the API. This function uses both type prefix and model
+    to produce an accurate category.
+
+    Returns one of: 'ap', 'switch', 'gateway', 'pdu', 'unknown'
+    """
+    device_type = device.get("type", "")
+    model = device.get("model", "")
+
+    # Check for power devices first — they can masquerade as uap
+    if device_type.startswith("usp"):
+        return "pdu"
+    if any(model.upper().startswith(prefix) for prefix in _POWER_DEVICE_MODELS):
+        return "pdu"
+
+    if device_type.startswith("uap"):
+        return "ap"
+    if device_type[:3] in ("usw", "usk"):
+        return "switch"
+    if device_type[:3] in ("ugw", "udm", "uxg"):
+        return "gateway"
+
+    return "unknown"
+
+
 def get_wifi_bands(device: Dict[str, Any]) -> List[str]:
     """Extract active WiFi bands from device radio table."""
     bands = set()
@@ -71,17 +103,9 @@ async def list_devices(
         # Convert Device objects to plain dictionaries for easier filtering
         devices_raw = [d.raw if hasattr(d, "raw") else d for d in devices]
 
-        # Filter by device type
+        # Filter by device type using semantic classification
         if device_type != "all":
-            prefix_map = {
-                "ap": "uap",
-                "switch": ("usw", "usk"),
-                "gateway": ("ugw", "udm", "uxg"),
-                "pdu": "usp",
-            }
-            prefixes = prefix_map.get(device_type)
-            if prefixes:
-                devices_raw = [d for d in devices_raw if d.get("type", "").startswith(prefixes)]
+            devices_raw = [d for d in devices_raw if classify_device(d) == device_type]
 
         # Filter by status
         if status != "all":
@@ -114,11 +138,14 @@ async def list_devices(
             device_state = device.get("state", 0)
             device_status_str = state_map.get(device_state, f"unknown_state ({device_state})")
 
+            category = classify_device(device)
+
             device_info = {
                 "mac": device.get("mac", ""),
                 "name": device.get("name", device.get("model", "Unknown")),
                 "model": device.get("model", ""),
                 "type": device.get("type", ""),
+                "device_category": category,
                 "ip": device.get("ip", ""),
                 "status": device_status_str,
                 "uptime": str(timedelta(seconds=device.get("uptime", 0))) if device.get("uptime") else "N/A",
@@ -138,9 +165,7 @@ async def list_devices(
                     "clients": device.get("num_sta", 0),
                 }
 
-                device_type_prefix = device.get("type", "")[:3]
-
-                if device_type_prefix == "uap":
+                if category == "ap":
                     details_to_add.update(
                         {
                             "radio_table": device.get("radio_table", []),
@@ -150,7 +175,7 @@ async def list_devices(
                             "num_clients": device.get("num_sta", 0),
                         }
                     )
-                elif device_type_prefix in ["usw", "usk"]:
+                elif category == "switch":
                     details_to_add.update(
                         {
                             "ports": device.get("port_table", []),
@@ -163,7 +188,7 @@ async def list_devices(
                             },
                         }
                     )
-                elif device_type_prefix in ["ugw", "udm", "uxg"]:
+                elif category == "gateway":
                     details_to_add.update(
                         {
                             "wan1": device.get("wan1", {}),
