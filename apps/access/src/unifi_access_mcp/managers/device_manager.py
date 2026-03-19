@@ -21,6 +21,13 @@ from unifi_core.exceptions import UniFiConnectionError
 
 logger = logging.getLogger(__name__)
 
+_COMPACT_DEVICE_KEYS = frozenset({
+    "unique_id", "name", "alias", "device_type", "firmware", "version",
+    "ip", "mac", "hw_type", "is_online", "is_adopted", "is_connected",
+    "is_rebooting", "is_unavailable", "adopting", "connected_uah_id",
+    "location_id", "model", "display_model", "_door_name", "_door_id",
+})
+
 
 class DeviceManager:
     """Reads and mutates device data from the Access controller."""
@@ -31,6 +38,16 @@ class DeviceManager:
     # ------------------------------------------------------------------
     # Read-only methods
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _compact_device(dev: Dict[str, Any]) -> Dict[str, Any]:
+        """Strip low-value fields from a device dict.
+
+        Keeps identity, status, and relationship fields.  Strips configs
+        (58%), images (6%), location/door/floor duplicates (9%),
+        extensions (6%), update_manual (5%), and capabilities (3%).
+        """
+        return {k: v for k, v in dev.items() if k in _COMPACT_DEVICE_KEYS}
 
     @staticmethod
     def _extract_devices_from_topology(topology: Any) -> List[Dict[str, Any]]:
@@ -65,14 +82,19 @@ class DeviceManager:
                                 devices.append(dev)
         return devices
 
-    async def list_devices(self) -> List[Dict[str, Any]]:
+    async def list_devices(self, compact: bool = False) -> List[Dict[str, Any]]:
         """Return all Access devices as summary dicts.
 
         Tries the API client first, then falls back to the proxy path
         using the ``devices/topology4`` endpoint.
+
+        Args:
+            compact: When True, strip high-volume/low-value fields from
+                proxy-path responses (~87% smaller).
         """
         try:
             if self._cm.has_api_client:
+                # API client already returns minimal 5-field dicts; compact is irrelevant.
                 devices = await self._cm.api_client.get_devices()
                 return [
                     {
@@ -87,7 +109,10 @@ class DeviceManager:
             elif self._cm.has_proxy:
                 data = await self._cm.proxy_request("GET", "devices/topology4")
                 topology = self._cm.extract_data(data)
-                return self._extract_devices_from_topology(topology)
+                devices = self._extract_devices_from_topology(topology)
+                if compact:
+                    devices = [self._compact_device(d) for d in devices]
+                return devices
             else:
                 raise UniFiConnectionError("No auth path available for list_devices")
         except UniFiConnectionError:

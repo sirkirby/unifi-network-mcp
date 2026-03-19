@@ -27,11 +27,21 @@ logger = logging.getLogger(__name__)
     permission_action="read",
     auth="either",
 )
-async def access_list_devices() -> Dict[str, Any]:
+async def access_list_devices(
+    compact: Annotated[
+        bool,
+        Field(
+            description=(
+                "When true, strips configs, images, location/door/floor duplicates, extensions, "
+                "update_manual, and capabilities fields (~87% smaller). Recommended for overviews and summaries."
+            )
+        ),
+    ] = False,
+) -> Dict[str, Any]:
     """List all Access devices."""
-    logger.info("access_list_devices tool called")
+    logger.info("access_list_devices tool called (compact=%s)", compact)
     try:
-        devices = await device_manager.list_devices()
+        devices = await device_manager.list_devices(compact=compact)
         return {"success": True, "data": {"devices": devices, "count": len(devices)}}
     except Exception as e:
         logger.error("Error listing devices: %s", e, exc_info=True)
