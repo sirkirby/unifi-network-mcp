@@ -31,6 +31,7 @@ jobs:
         ref: main
         fetch-depth: 0
         fetch-tags: true
+        token: ${{ secrets.PUSH_TOKEN }}
 
     - name: Set up Python
       uses: actions/setup-python@v6
