@@ -113,6 +113,15 @@ Add to `claude_desktop_config.json`:
 - **Devices** -- list, inspect, reboot access hubs, readers, relays, intercoms
 - **System** -- controller info, health metrics, user listing
 
+## Agent Skills
+
+The Claude Code plugin ships with agent skills that teach AI assistants how to work with Access effectively:
+
+- **UniFi Access** — core skill for door control, credentials, visitors, access policies, and event monitoring. Includes guidance on the dual-auth system, real-time event streaming via WebSocket buffer, and the preview-confirm flow for physical door operations.
+- **Setup** — interactive configuration wizard that walks through controller connection, credential setup, and permission configuration.
+
+Skills are automatically available when the plugin is installed.
+
 ## Cross-Product Skills
 
 When the Access plugin is installed alongside the **Protect plugin**, the `security-digest` skill can incorporate door events into its analysis. Badge-ins, access-denied events, and after-hours access are correlated with camera motion and alerts from Protect to produce a richer security summary across your full UniFi deployment.
