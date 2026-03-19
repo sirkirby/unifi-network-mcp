@@ -76,9 +76,15 @@ async def protect_list_events(
         int,
         Field(description="Maximum number of events to return (default 30)."),
     ] = 30,
+    compact: Annotated[
+        bool,
+        Field(
+            description="When true, omits thumbnail_id, category, sub_category, and is_favorite fields to reduce response size (~40% smaller). Recommended for digests and summaries."
+        ),
+    ] = False,
 ) -> Dict[str, Any]:
     """List events from the NVR."""
-    logger.info("protect_list_events called (type=%s, camera=%s, limit=%s)", event_type, camera_id, limit)
+    logger.info("protect_list_events called (type=%s, camera=%s, limit=%s, compact=%s)", event_type, camera_id, limit, compact)
     try:
         events = await event_manager.list_events(
             start=_parse_datetime(start),
@@ -86,6 +92,7 @@ async def protect_list_events(
             event_type=event_type,
             camera_id=camera_id,
             limit=limit,
+            compact=compact,
         )
         return {"success": True, "data": {"events": events, "count": len(events)}}
     except Exception as e:
@@ -191,13 +198,20 @@ async def protect_list_smart_detections(
         int,
         Field(description="Maximum number of smart detection events to return (default 30)."),
     ] = 30,
+    compact: Annotated[
+        bool,
+        Field(
+            description="When true, omits thumbnail_id, category, sub_category, and is_favorite fields to reduce response size (~40% smaller). Recommended for digests and summaries."
+        ),
+    ] = False,
 ) -> Dict[str, Any]:
     """List smart detection events."""
     logger.info(
-        "protect_list_smart_detections called (type=%s, camera=%s, confidence>=%s)",
+        "protect_list_smart_detections called (type=%s, camera=%s, confidence>=%s, compact=%s)",
         detection_type,
         camera_id,
         min_confidence,
+        compact,
     )
     try:
         detections = await event_manager.list_smart_detections(
@@ -207,6 +221,7 @@ async def protect_list_smart_detections(
             detection_type=detection_type,
             min_confidence=min_confidence,
             limit=limit,
+            compact=compact,
         )
         return {"success": True, "data": {"detections": detections, "count": len(detections)}}
     except Exception as e:

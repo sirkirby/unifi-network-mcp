@@ -33,10 +33,12 @@ Use `protect_list_smart_detections` as the primary source — these are the high
 
 ```
 protect_batch([
-  { "tool": "protect_list_smart_detections", "args": { "start": "...", "limit": 50 } },
-  { "tool": "protect_list_events", "args": { "start": "...", "event_type": "ring", "limit": 20 } }
+  { "tool": "protect_list_smart_detections", "args": { "start": "...", "limit": 50, "compact": true } },
+  { "tool": "protect_list_events", "args": { "start": "...", "event_type": "ring", "limit": 20, "compact": true } }
 ])
 ```
+
+Use `compact=true` on all event queries for digests — it strips thumbnail_id, category, sub_category, and is_favorite fields, reducing response size by ~40%.
 
 Events now include `camera_name` alongside `camera_id` — no need to call `protect_list_cameras` separately to resolve names.
 
