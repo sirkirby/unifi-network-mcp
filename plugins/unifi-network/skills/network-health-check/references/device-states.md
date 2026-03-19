@@ -23,6 +23,19 @@
 | `ugw`, `udm`, `uxg` | Gateway / Dream Machine | `gateway` |
 | `usp` | Smart Power (PDU) | `pdu` |
 
+### Important: Smart Power Strips vs Access Points
+
+UniFi Smart Power strips (USP-Strip, USP-Plug, USP-RPS) connect wirelessly via mesh and may appear as `uap` type devices in the API. **Do NOT count these as access points.** Identify them by:
+
+- **Model string:** contains `UP1`, `UP6`, `USP`, `USPRPS`, or similar power-related model codes
+- **Name pattern:** often named "Power-*" or contain "UPS", "PDU", "Power Strip"
+- **Uplink type:** shows "Meshing" (wireless mesh) rather than a wired Ethernet uplink
+- **No radio_table or vap_table:** power strips do not serve wireless clients
+
+When counting APs, **exclude** any device whose `model` or `name` indicates it is a power strip or UPS. Use `unifi_list_devices` with `device_type=pdu` to get power devices separately, but note this filter uses `usp` prefix and may miss power strips that report as `uap`.
+
+**For accurate AP counts:** Filter `unifi_list_devices` with `device_type=ap`, then exclude any device whose name contains "Power", "UPS", or "PDU", or whose model does not match known AP models (U6, U7, UAP, nanoHD, FlexHD, etc.).
+
 ## Radio Band Codes
 
 | API Code | Band |
