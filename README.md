@@ -49,9 +49,9 @@ Each plugin's `/setup` command walks you through connecting to your controller a
 Run the servers directly:
 
 ```bash
-uvx unifi-network-mcp
-uvx unifi-protect-mcp
-uvx unifi-access-mcp
+uvx unifi-network-mcp@latest
+uvx unifi-protect-mcp@latest
+uvx unifi-access-mcp@latest
 ```
 
 For Claude Desktop, add to your `claude_desktop_config.json`:
@@ -61,7 +61,7 @@ For Claude Desktop, add to your `claude_desktop_config.json`:
   "mcpServers": {
     "unifi-network": {
       "command": "uvx",
-      "args": ["unifi-network-mcp"],
+      "args": ["unifi-network-mcp@latest"],
       "env": {
         // Server-specific vars take priority; UNIFI_* is the fallback
         "UNIFI_NETWORK_HOST": "192.168.1.1",
@@ -71,7 +71,7 @@ For Claude Desktop, add to your `claude_desktop_config.json`:
     },
     "unifi-protect": {
       "command": "uvx",
-      "args": ["unifi-protect-mcp"],
+      "args": ["unifi-protect-mcp@latest"],
       "env": {
         "UNIFI_PROTECT_HOST": "192.168.1.1",
         "UNIFI_PROTECT_USERNAME": "admin",
@@ -80,7 +80,7 @@ For Claude Desktop, add to your `claude_desktop_config.json`:
     },
     "unifi-access": {
       "command": "uvx",
-      "args": ["unifi-access-mcp"],
+      "args": ["unifi-access-mcp@latest"],
       "env": {
         "UNIFI_ACCESS_HOST": "192.168.1.1",
         "UNIFI_ACCESS_USERNAME": "admin",

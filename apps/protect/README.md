@@ -32,7 +32,7 @@ This walks you through entering your controller host, credentials, and permissio
 
 ```bash
 # PyPI
-uvx unifi-protect-mcp
+uvx unifi-protect-mcp@latest
 # or: pip install unifi-protect-mcp
 
 # Docker

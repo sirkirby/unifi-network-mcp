@@ -29,7 +29,7 @@ This walks you through entering your controller host, credentials, and permissio
 
 ```bash
 # PyPI
-uvx unifi-network-mcp
+uvx unifi-network-mcp@latest
 # or: pip install unifi-network-mcp
 
 # Docker

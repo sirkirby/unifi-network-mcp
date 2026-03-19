@@ -32,7 +32,7 @@ This walks you through connecting to your Access controller, explains the dual-a
 
 ```bash
 # PyPI
-uvx unifi-access-mcp
+uvx unifi-access-mcp@latest
 # or: pip install unifi-access-mcp
 
 # Docker

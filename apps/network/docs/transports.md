@@ -11,7 +11,7 @@ Used by Claude Desktop, LM Studio, and most MCP clients. No configuration needed
 unifi-network-mcp
 
 # Via uvx
-uvx unifi-network-mcp
+uvx unifi-network-mcp@latest
 
 # Docker (stdin_open required)
 docker run -i --rm \

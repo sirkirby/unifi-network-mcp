@@ -902,13 +902,13 @@
         <div role="tabpanel" id="panel-uvx" class="tab-panel" aria-labelledby="tab-uvx" hidden>
           <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
           <pre><code><span class="comment"># Network server</span>
-uvx unifi-network-mcp
+uvx unifi-network-mcp@latest
 
 <span class="comment"># Protect server</span>
-uvx unifi-protect-mcp
+uvx unifi-protect-mcp@latest
 
 <span class="comment"># Access server</span>
-uvx unifi-access-mcp</code></pre>
+uvx unifi-access-mcp@latest</code></pre>
         </div>
         <div role="tabpanel" id="panel-docker" class="tab-panel" aria-labelledby="tab-docker" hidden>
           <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
@@ -924,7 +924,7 @@ uvx unifi-access-mcp</code></pre>
   "mcpServers": {
     "unifi-network": {
       "command": "uvx",
-      "args": ["unifi-network-mcp"],
+      "args": ["unifi-network-mcp@latest"],
       "env": {
         "UNIFI_NETWORK_HOST": "192.168.1.1",
         "UNIFI_NETWORK_USERNAME": "admin",
