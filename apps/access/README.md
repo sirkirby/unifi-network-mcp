@@ -113,6 +113,12 @@ Add to `claude_desktop_config.json`:
 - **Devices** -- list, inspect, reboot access hubs, readers, relays, intercoms
 - **System** -- controller info, health metrics, user listing
 
+## Cross-Product Skills
+
+When the Access plugin is installed alongside the **Protect plugin**, the `security-digest` skill can incorporate door events into its analysis. Badge-ins, access-denied events, and after-hours access are correlated with camera motion and alerts from Protect to produce a richer security summary across your full UniFi deployment.
+
+No additional configuration is required — if both plugins are active, the skill automatically pulls from both servers.
+
 ## Documentation
 
 - [Configuration](docs/configuration.md) -- Full env var reference, YAML config, Access-specific options
