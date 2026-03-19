@@ -2,7 +2,7 @@
 import json
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -63,28 +63,27 @@ _substitute = apply_mod._substitute
 
 def _make_mock_client(tool_results: dict, ready: bool = True):
     """Create a mock MCPClient that returns canned results."""
-    client = AsyncMock()
-    client.check_ready = AsyncMock(return_value=ready)
-    client.get_setup_error = AsyncMock(return_value={
+    client = MagicMock()
+    client.check_ready = MagicMock(return_value=ready)
+    client.get_setup_error = MagicMock(return_value={
         "success": False,
         "error": "setup_required",
         "message": "MCP server not reachable.",
     })
 
-    async def fake_parallel(calls):
+    def fake_parallel(calls):
         return [tool_results.get(name, {"success": False, "error": f"{name} not mocked"}) for name, _ in calls]
 
-    client.call_tools_parallel = AsyncMock(side_effect=fake_parallel)
+    client.call_tools_parallel = MagicMock(side_effect=fake_parallel)
 
-    async def fake_call_tool(name, args=None):
+    def fake_call_tool(name, args=None):
         if name == "unifi_get_firewall_policy_details":
             pid = (args or {}).get("policy_id", "")
             return tool_results.get(f"detail_{pid}", {"success": False, "error": "not found"})
         return tool_results.get(name, {"success": False, "error": f"{name} not mocked"})
 
-    client.call_tool = AsyncMock(side_effect=fake_call_tool)
-    client.__aenter__ = AsyncMock(return_value=client)
-    client.__aexit__ = AsyncMock(return_value=False)
+    client.call_tool = MagicMock(side_effect=fake_call_tool)
+
     return client
 
 
@@ -157,13 +156,12 @@ class TestExportParseArgs:
         assert args.state_dir == "/tmp/test"
 
 
-@pytest.mark.asyncio
-async def test_export_parallel_collection(tmp_path):
+def test_export_parallel_collection(tmp_path):
     """Test that export calls four tools in parallel then fetches details."""
     mock_client = _make_mock_client(EXPORT_TOOL_RESULTS)
 
     with patch(f"{export_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await export_policies("http://localhost:3000", tmp_path)
+        result = export_policies("http://localhost:3000", tmp_path)
 
     assert result["success"] is True
     # Parallel collection should have been called.
@@ -176,13 +174,12 @@ async def test_export_parallel_collection(tmp_path):
     assert "unifi_list_ip_groups" in tool_names
 
 
-@pytest.mark.asyncio
-async def test_export_fetches_policy_details(tmp_path):
+def test_export_fetches_policy_details(tmp_path):
     """Test that export fetches details for each policy."""
     mock_client = _make_mock_client(EXPORT_TOOL_RESULTS)
 
     with patch(f"{export_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await export_policies("http://localhost:3000", tmp_path)
+        result = export_policies("http://localhost:3000", tmp_path)
 
     assert result["success"] is True
     detail_calls = [
@@ -192,13 +189,12 @@ async def test_export_fetches_policy_details(tmp_path):
     assert len(detail_calls) == 2
 
 
-@pytest.mark.asyncio
-async def test_export_snapshot_structure(tmp_path):
+def test_export_snapshot_structure(tmp_path):
     """Test that the snapshot has the correct top-level keys."""
     mock_client = _make_mock_client(EXPORT_TOOL_RESULTS)
 
     with patch(f"{export_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await export_policies("http://localhost:3000", tmp_path)
+        result = export_policies("http://localhost:3000", tmp_path)
 
     snapshot = result["snapshot"]
     assert "timestamp" in snapshot
@@ -212,13 +208,12 @@ async def test_export_snapshot_structure(tmp_path):
     assert len(snapshot["ip_groups"]) == 1
 
 
-@pytest.mark.asyncio
-async def test_export_saves_file(tmp_path):
+def test_export_saves_file(tmp_path):
     """Test that export saves a timestamped snapshot file."""
     mock_client = _make_mock_client(EXPORT_TOOL_RESULTS)
 
     with patch(f"{export_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await export_policies("http://localhost:3000", tmp_path)
+        result = export_policies("http://localhost:3000", tmp_path)
 
     assert result["success"] is True
     assert "file" in result
@@ -229,38 +224,35 @@ async def test_export_saves_file(tmp_path):
     assert "policies" in saved_data
 
 
-@pytest.mark.asyncio
-async def test_export_snapshot_file_naming(tmp_path):
+def test_export_snapshot_file_naming(tmp_path):
     """Test that snapshot files have timestamp-based names in the correct subdir."""
     mock_client = _make_mock_client(EXPORT_TOOL_RESULTS)
 
     with patch(f"{export_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await export_policies("http://localhost:3000", tmp_path)
+        result = export_policies("http://localhost:3000", tmp_path)
 
     file_path = Path(result["file"])
     assert file_path.suffix == ".json"
     assert file_path.parent.name == "firewall-snapshots"
 
 
-@pytest.mark.asyncio
-async def test_export_setup_required(tmp_path):
+def test_export_setup_required(tmp_path):
     """Test that unreachable server returns setup_required error."""
     mock_client = _make_mock_client({}, ready=False)
 
     with patch(f"{export_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await export_policies("http://localhost:3000", tmp_path)
+        result = export_policies("http://localhost:3000", tmp_path)
 
     assert result["success"] is False
     assert result["error"] == "setup_required"
 
 
-@pytest.mark.asyncio
-async def test_export_summary_counts(tmp_path):
+def test_export_summary_counts(tmp_path):
     """Test that export returns correct summary counts."""
     mock_client = _make_mock_client(EXPORT_TOOL_RESULTS)
 
     with patch(f"{export_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await export_policies("http://localhost:3000", tmp_path)
+        result = export_policies("http://localhost:3000", tmp_path)
 
     assert result["summary"]["policies"] == 2
     assert result["summary"]["zones"] == 2

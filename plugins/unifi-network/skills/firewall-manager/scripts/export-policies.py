@@ -7,7 +7,6 @@ Usage:
     python export-policies.py [--mcp-url URL] [--state-dir DIR]
 """
 import argparse
-import asyncio
 import json
 import logging
 import sys
@@ -89,88 +88,89 @@ def list_snapshots(state_dir: Path) -> list[Path]:
     return files
 
 
-# -- Main async logic ----------------------------------------------------------
+# -- Main logic ----------------------------------------------------------------
 
 
-async def export_policies(mcp_url: str, state_dir: Path) -> dict[str, Any]:
+def export_policies(mcp_url: str, state_dir: Path) -> dict[str, Any]:
     """Connect to MCP, gather firewall data, build and save a snapshot."""
-    async with MCPClient(mcp_url) as client:
-        # Check readiness.
-        ready = await client.check_ready("unifi_tool_index")
-        if not ready:
-            return await client.get_setup_error()
+    client = MCPClient(mcp_url)
 
-        # Step 1: Collect bulk data in parallel.
+    # Check readiness.
+    ready = client.check_ready("unifi_tool_index")
+    if not ready:
+        return client.get_setup_error()
+
+    # Step 1: Collect bulk data in parallel.
+    try:
+        results = client.call_tools_parallel([
+            ("unifi_list_firewall_policies", {}),
+            ("unifi_list_firewall_zones", {}),
+            ("unifi_list_networks", {}),
+            ("unifi_list_ip_groups", {}),
+        ])
+    except (MCPConnectionError, MCPToolError) as e:
+        return {"success": False, "error": f"Failed to collect firewall data: {e}"}
+
+    policies_result, zones_result, networks_result, ip_groups_result = results
+
+    policies = _extract_list(policies_result, "policies")
+    zones = _extract_list(zones_result, "zones")
+    networks = _extract_list(networks_result, "networks")
+    ip_groups = _extract_list(ip_groups_result, "ip_groups")
+
+    # Step 2: Fetch details for each policy.
+    detailed_policies: list[dict] = []
+    for p in policies:
+        pid = p.get("id")
+        if not pid:
+            detailed_policies.append(p)
+            continue
         try:
-            results = await client.call_tools_parallel([
-                ("unifi_list_firewall_policies", {}),
-                ("unifi_list_firewall_zones", {}),
-                ("unifi_list_networks", {}),
-                ("unifi_list_ip_groups", {}),
-            ])
-        except (MCPConnectionError, MCPToolError) as e:
-            return {"success": False, "error": f"Failed to collect firewall data: {e}"}
-
-        policies_result, zones_result, networks_result, ip_groups_result = results
-
-        policies = _extract_list(policies_result, "policies")
-        zones = _extract_list(zones_result, "zones")
-        networks = _extract_list(networks_result, "networks")
-        ip_groups = _extract_list(ip_groups_result, "ip_groups")
-
-        # Step 2: Fetch details for each policy.
-        detailed_policies: list[dict] = []
-        for p in policies:
-            pid = p.get("id")
-            if not pid:
+            detail_result = client.call_tool(
+                "unifi_get_firewall_policy_details", {"policy_id": pid}
+            )
+            if detail_result.get("success"):
+                detail = detail_result.get("details", detail_result.get("data", {}))
+                # Merge summary fields for completeness.
+                detail.setdefault("id", pid)
+                detail.setdefault("name", p.get("name"))
+                detail.setdefault("enabled", p.get("enabled"))
+                detail.setdefault("action", p.get("action"))
+                detail.setdefault("rule_index", p.get("rule_index"))
+                detail.setdefault("ruleset", p.get("ruleset"))
+                detailed_policies.append(detail)
+            else:
+                # Fall back to summary if details unavailable.
                 detailed_policies.append(p)
-                continue
-            try:
-                detail_result = await client.call_tool(
-                    "unifi_get_firewall_policy_details", {"policy_id": pid}
-                )
-                if detail_result.get("success"):
-                    detail = detail_result.get("details", detail_result.get("data", {}))
-                    # Merge summary fields for completeness.
-                    detail.setdefault("id", pid)
-                    detail.setdefault("name", p.get("name"))
-                    detail.setdefault("enabled", p.get("enabled"))
-                    detail.setdefault("action", p.get("action"))
-                    detail.setdefault("rule_index", p.get("rule_index"))
-                    detail.setdefault("ruleset", p.get("ruleset"))
-                    detailed_policies.append(detail)
-                else:
-                    # Fall back to summary if details unavailable.
-                    detailed_policies.append(p)
-            except (MCPConnectionError, MCPToolError):
-                logger.warning("Failed to fetch details for policy %s, using summary", pid)
-                detailed_policies.append(p)
+        except (MCPConnectionError, MCPToolError):
+            logger.warning("Failed to fetch details for policy %s, using summary", pid)
+            detailed_policies.append(p)
 
-        # Step 3: Build snapshot.
-        timestamp = datetime.now(timezone.utc).isoformat()
-        snapshot = {
-            "timestamp": timestamp,
-            "policies": detailed_policies,
-            "zones": zones,
-            "networks": networks,
-            "ip_groups": ip_groups,
-        }
+    # Step 3: Build snapshot.
+    timestamp = datetime.now(timezone.utc).isoformat()
+    snapshot = {
+        "timestamp": timestamp,
+        "policies": detailed_policies,
+        "zones": zones,
+        "networks": networks,
+        "ip_groups": ip_groups,
+    }
 
-        # Step 4: Save to disk.
-        path = save_snapshot(state_dir, snapshot)
-        logger.info("Snapshot saved to %s", path)
+    # Step 4: Save to disk.
+    path = save_snapshot(state_dir, snapshot)
+    logger.info("Snapshot saved to %s", path)
 
-        return {
-            "success": True,
-            "snapshot": snapshot,
-            "file": str(path),
-            "summary": {
-                "policies": len(detailed_policies),
-                "zones": len(zones),
-                "networks": len(networks),
-                "ip_groups": len(ip_groups),
-            },
-        }
+    return {
+        "success": True,
+        "snapshot": snapshot,
+        "file": str(path),
+        "summary": {
+            "policies": len(detailed_policies),
+            "zones": len(zones),
+            "networks": len(networks),
+            "ip_groups": len(ip_groups),
+        },
+    }
 
 
 # -- Entry point ---------------------------------------------------------------
@@ -182,7 +182,7 @@ def main(argv: list[str] | None = None) -> None:
     mcp_url = args.mcp_url or get_server_url("network")
     state_dir = Path(args.state_dir) if args.state_dir else get_state_dir(ensure=True)
 
-    result = asyncio.run(export_policies(mcp_url, state_dir))
+    result = export_policies(mcp_url, state_dir)
 
     print(json.dumps(result, indent=2))
 

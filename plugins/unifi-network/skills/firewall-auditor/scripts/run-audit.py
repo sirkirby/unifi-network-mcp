@@ -8,7 +8,6 @@ Usage:
     python run-audit.py [--mcp-url URL] [--format json|human] [--state-dir DIR]
 """
 import argparse
-import asyncio
 import json
 import logging
 import sys
@@ -697,134 +696,135 @@ def format_human(report: dict) -> str:
     return "\n".join(lines)
 
 
-# ── Main async logic ─────────────────────────────────────────────────────────
+# ── Main logic ───────────────────────────────────────────────────────────────
 
 
-async def run_audit(mcp_url: str, state_dir: Path) -> dict:
+def run_audit(mcp_url: str, state_dir: Path) -> dict:
     """Connect to MCP, gather data, run checks, score, return report."""
-    async with MCPClient(mcp_url) as client:
-        # Check readiness.
-        ready = await client.check_ready("unifi_tool_index")
-        if not ready:
-            return await client.get_setup_error()
+    client = MCPClient(mcp_url)
 
-        # Step 1: Collect bulk data in parallel.
+    # Check readiness.
+    ready = client.check_ready("unifi_tool_index")
+    if not ready:
+        return client.get_setup_error()
+
+    # Step 1: Collect bulk data in parallel.
+    try:
+        results = client.call_tools_parallel([
+            ("unifi_list_firewall_policies", {}),
+            ("unifi_list_firewall_zones", {}),
+            ("unifi_list_networks", {}),
+            ("unifi_list_ip_groups", {}),
+            ("unifi_list_devices", {}),
+        ])
+    except (MCPConnectionError, MCPToolError) as e:
+        return {"success": False, "error": f"Failed to collect data: {e}"}
+
+    policies_result, zones_result, networks_result, ip_groups_result, devices_result = results
+
+    policies = _extract_list(policies_result, "policies")
+    zones = _extract_list(zones_result, "zones")
+    networks = _extract_list(networks_result, "networks")
+    ip_groups = _extract_list(ip_groups_result, "ip_groups")
+    devices = _extract_list(devices_result, "devices")
+
+    # Step 2: Fetch details for each policy.
+    policy_details: dict[str, dict] = {}
+    for p in policies:
+        pid = p.get("id")
+        if not pid:
+            continue
         try:
-            results = await client.call_tools_parallel([
-                ("unifi_list_firewall_policies", {}),
-                ("unifi_list_firewall_zones", {}),
-                ("unifi_list_networks", {}),
-                ("unifi_list_ip_groups", {}),
-                ("unifi_list_devices", {}),
-            ])
-        except (MCPConnectionError, MCPToolError) as e:
-            return {"success": False, "error": f"Failed to collect data: {e}"}
+            detail_result = client.call_tool(
+                "unifi_get_firewall_policy_details", {"policy_id": pid}
+            )
+            if detail_result.get("success"):
+                detail = detail_result.get("details", {})
+                # Merge summary fields for convenience.
+                detail.setdefault("name", p.get("name"))
+                detail.setdefault("enabled", p.get("enabled"))
+                detail.setdefault("action", p.get("action"))
+                policy_details[pid] = detail
+        except (MCPConnectionError, MCPToolError):
+            logger.warning("Failed to fetch details for policy %s", pid)
 
-        policies_result, zones_result, networks_result, ip_groups_result, devices_result = results
+    # Step 3: Run benchmark checks.
+    seg_findings = check_segmentation(policies, policy_details, networks, zones)
+    egress_findings = check_egress(policies, policy_details, networks)
+    hygiene_findings = check_hygiene(policies, policy_details, networks, ip_groups)
+    topology_findings = check_topology(devices)
 
-        policies = _extract_list(policies_result, "policies")
-        zones = _extract_list(zones_result, "zones")
-        networks = _extract_list(networks_result, "networks")
-        ip_groups = _extract_list(ip_groups_result, "ip_groups")
-        devices = _extract_list(devices_result, "devices")
+    # Step 4: Score each category.
+    categories = {
+        "segmentation": {
+            "score": score_findings(seg_findings),
+            "max": CATEGORY_MAX,
+            "findings": seg_findings,
+        },
+        "egress_control": {
+            "score": score_findings(egress_findings),
+            "max": CATEGORY_MAX,
+            "findings": egress_findings,
+        },
+        "rule_hygiene": {
+            "score": score_findings(hygiene_findings),
+            "max": CATEGORY_MAX,
+            "findings": hygiene_findings,
+        },
+        "topology": {
+            "score": score_findings(topology_findings),
+            "max": CATEGORY_MAX,
+            "findings": topology_findings,
+        },
+    }
 
-        # Step 2: Fetch details for each policy.
-        policy_details: dict[str, dict] = {}
-        for p in policies:
-            pid = p.get("id")
-            if not pid:
-                continue
-            try:
-                detail_result = await client.call_tool(
-                    "unifi_get_firewall_policy_details", {"policy_id": pid}
-                )
-                if detail_result.get("success"):
-                    detail = detail_result.get("details", {})
-                    # Merge summary fields for convenience.
-                    detail.setdefault("name", p.get("name"))
-                    detail.setdefault("enabled", p.get("enabled"))
-                    detail.setdefault("action", p.get("action"))
-                    policy_details[pid] = detail
-            except (MCPConnectionError, MCPToolError):
-                logger.warning("Failed to fetch details for policy %s", pid)
+    total_score = sum(c["score"] for c in categories.values())
 
-        # Step 3: Run benchmark checks.
-        seg_findings = check_segmentation(policies, policy_details, networks, zones)
-        egress_findings = check_egress(policies, policy_details, networks)
-        hygiene_findings = check_hygiene(policies, policy_details, networks, ip_groups)
-        topology_findings = check_topology(devices)
+    # Step 5: Trend tracking.
+    history = load_history(state_dir)
+    trend = compute_trend(history, total_score)
 
-        # Step 4: Score each category.
-        categories = {
-            "segmentation": {
-                "score": score_findings(seg_findings),
-                "max": CATEGORY_MAX,
-                "findings": seg_findings,
-            },
-            "egress_control": {
-                "score": score_findings(egress_findings),
-                "max": CATEGORY_MAX,
-                "findings": egress_findings,
-            },
-            "rule_hygiene": {
-                "score": score_findings(hygiene_findings),
-                "max": CATEGORY_MAX,
-                "findings": hygiene_findings,
-            },
-            "topology": {
-                "score": score_findings(topology_findings),
-                "max": CATEGORY_MAX,
-                "findings": topology_findings,
-            },
-        }
+    # Collect critical findings for top-level visibility.
+    critical_findings = []
+    for cat_data in categories.values():
+        for f in cat_data.get("findings", []):
+            if f.get("severity") == "critical":
+                critical_findings.append(f)
 
-        total_score = sum(c["score"] for c in categories.values())
+    # Summary.
+    enabled_count = sum(1 for p in policies if p.get("enabled"))
+    disabled_count = sum(1 for p in policies if not p.get("enabled"))
+    summary = {
+        "total_policies": len(policies),
+        "enabled": enabled_count,
+        "disabled": disabled_count,
+        "networks": len(networks),
+        "devices": len(devices),
+    }
 
-        # Step 5: Trend tracking.
-        history = load_history(state_dir)
-        trend = compute_trend(history, total_score)
+    # Build recommendations.
+    recommendations = build_recommendations(categories)
 
-        # Collect critical findings for top-level visibility.
-        critical_findings = []
-        for cat_data in categories.values():
-            for f in cat_data.get("findings", []):
-                if f.get("severity") == "critical":
-                    critical_findings.append(f)
+    report = {
+        "success": True,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "overall_score": total_score,
+        "overall_status": overall_status(total_score),
+        "categories": categories,
+        "trend": trend,
+        "critical_findings": critical_findings,
+        "summary": summary,
+        "recommendations": recommendations,
+    }
 
-        # Summary.
-        enabled_count = sum(1 for p in policies if p.get("enabled"))
-        disabled_count = sum(1 for p in policies if not p.get("enabled"))
-        summary = {
-            "total_policies": len(policies),
-            "enabled": enabled_count,
-            "disabled": disabled_count,
-            "networks": len(networks),
-            "devices": len(devices),
-        }
+    # Step 6: Save history.
+    history.append({
+        "timestamp": report["timestamp"],
+        "overall_score": total_score,
+    })
+    save_history(state_dir, history)
 
-        # Build recommendations.
-        recommendations = build_recommendations(categories)
-
-        report = {
-            "success": True,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "overall_score": total_score,
-            "overall_status": overall_status(total_score),
-            "categories": categories,
-            "trend": trend,
-            "critical_findings": critical_findings,
-            "summary": summary,
-            "recommendations": recommendations,
-        }
-
-        # Step 6: Save history.
-        history.append({
-            "timestamp": report["timestamp"],
-            "overall_score": total_score,
-        })
-        save_history(state_dir, history)
-
-        return report
+    return report
 
 
 # ── Entry point ──────────────────────────────────────────────────────────────
@@ -836,7 +836,7 @@ def main(argv: list[str] | None = None) -> None:
     mcp_url = args.mcp_url or get_server_url("network")
     state_dir = Path(args.state_dir) if args.state_dir else get_state_dir(ensure=True)
 
-    report = asyncio.run(run_audit(mcp_url, state_dir))
+    report = run_audit(mcp_url, state_dir)
 
     if args.output_format == "human":
         print(format_human(report))

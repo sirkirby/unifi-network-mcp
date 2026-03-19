@@ -2,7 +2,7 @@
 import json
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -422,29 +422,27 @@ class TestHistory:
 
 def _make_mock_client(tool_results: dict, ready: bool = True):
     """Create a mock MCPClient that returns canned results."""
-    client = AsyncMock()
-    client.check_ready = AsyncMock(return_value=ready)
-    client.get_setup_error = AsyncMock(return_value={
+    client = MagicMock()
+    client.check_ready = MagicMock(return_value=ready)
+    client.get_setup_error = MagicMock(return_value={
         "success": False,
         "error": "setup_required",
         "message": "MCP server not reachable.",
     })
 
-    async def fake_parallel(calls):
+    def fake_parallel(calls):
         return [tool_results.get(name, {"success": False, "error": f"{name} not mocked"}) for name, _ in calls]
 
-    client.call_tools_parallel = AsyncMock(side_effect=fake_parallel)
+    client.call_tools_parallel = MagicMock(side_effect=fake_parallel)
 
-    async def fake_call_tool(name, args=None):
+    def fake_call_tool(name, args=None):
         if name == "unifi_get_firewall_policy_details":
             pid = (args or {}).get("policy_id", "")
             return tool_results.get(f"detail_{pid}", {"success": False, "error": "not found"})
         return tool_results.get(name, {"success": False, "error": f"{name} not mocked"})
 
-    client.call_tool = AsyncMock(side_effect=fake_call_tool)
+    client.call_tool = MagicMock(side_effect=fake_call_tool)
 
-    client.__aenter__ = AsyncMock(return_value=client)
-    client.__aexit__ = AsyncMock(return_value=False)
     return client
 
 
@@ -500,13 +498,12 @@ CLEAN_TOOL_RESULTS = {
 }
 
 
-@pytest.mark.asyncio
-async def test_run_audit_clean(tmp_path):
+def test_run_audit_clean(tmp_path):
     """Test full audit with a reasonably clean configuration."""
     mock_client = _make_mock_client(CLEAN_TOOL_RESULTS)
 
     with patch(f"{run_audit_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await run_audit("http://localhost:3000", tmp_path)
+        result = run_audit("http://localhost:3000", tmp_path)
 
     assert result["success"] is True
     assert "overall_score" in result
@@ -520,25 +517,23 @@ async def test_run_audit_clean(tmp_path):
     assert result["summary"]["devices"] == 3
 
 
-@pytest.mark.asyncio
-async def test_run_audit_setup_required(tmp_path):
+def test_run_audit_setup_required(tmp_path):
     """Test that unreachable server returns setup_required error."""
     mock_client = _make_mock_client({}, ready=False)
 
     with patch(f"{run_audit_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await run_audit("http://localhost:3000", tmp_path)
+        result = run_audit("http://localhost:3000", tmp_path)
 
     assert result["success"] is False
     assert result["error"] == "setup_required"
 
 
-@pytest.mark.asyncio
-async def test_run_audit_saves_history(tmp_path):
+def test_run_audit_saves_history(tmp_path):
     """Running the audit should save history."""
     mock_client = _make_mock_client(CLEAN_TOOL_RESULTS)
 
     with patch(f"{run_audit_mod.__name__}.MCPClient", return_value=mock_client):
-        await run_audit("http://localhost:3000", tmp_path)
+        run_audit("http://localhost:3000", tmp_path)
 
     history_path = tmp_path / "audit-history.json"
     assert history_path.exists()
@@ -547,25 +542,23 @@ async def test_run_audit_saves_history(tmp_path):
     assert "overall_score" in history[0]
 
 
-@pytest.mark.asyncio
-async def test_run_audit_trend_on_second_run(tmp_path):
+def test_run_audit_trend_on_second_run(tmp_path):
     """Second run should include trend data."""
     mock_client = _make_mock_client(CLEAN_TOOL_RESULTS)
 
     with patch(f"{run_audit_mod.__name__}.MCPClient", return_value=mock_client):
-        first = await run_audit("http://localhost:3000", tmp_path)
+        first = run_audit("http://localhost:3000", tmp_path)
 
     assert first["trend"]["previous_score"] is None
 
     with patch(f"{run_audit_mod.__name__}.MCPClient", return_value=mock_client):
-        second = await run_audit("http://localhost:3000", tmp_path)
+        second = run_audit("http://localhost:3000", tmp_path)
 
     assert second["trend"]["previous_score"] is not None
     assert second["trend"]["change"] is not None
 
 
-@pytest.mark.asyncio
-async def test_run_audit_with_issues(tmp_path):
+def test_run_audit_with_issues(tmp_path):
     """Test audit detecting multiple issue categories."""
     # Policies with conflicts.
     tool_results = {
@@ -616,7 +609,7 @@ async def test_run_audit_with_issues(tmp_path):
     mock_client = _make_mock_client(tool_results)
 
     with patch(f"{run_audit_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await run_audit("http://localhost:3000", tmp_path)
+        result = run_audit("http://localhost:3000", tmp_path)
 
     assert result["success"] is True
     # Should have critical findings (SEG-01, SEG-02 missing, conflict).
@@ -625,13 +618,12 @@ async def test_run_audit_with_issues(tmp_path):
     assert result["overall_score"] < 100
 
 
-@pytest.mark.asyncio
-async def test_output_structure(tmp_path):
+def test_output_structure(tmp_path):
     """Validate that output has all required top-level keys."""
     mock_client = _make_mock_client(CLEAN_TOOL_RESULTS)
 
     with patch(f"{run_audit_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await run_audit("http://localhost:3000", tmp_path)
+        result = run_audit("http://localhost:3000", tmp_path)
 
     required_keys = {
         "success",
@@ -672,13 +664,12 @@ async def test_output_structure(tmp_path):
 # ── Human-readable format tests ──────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
-async def test_human_format(tmp_path):
+def test_human_format(tmp_path):
     """Test human-readable output contains expected sections."""
     mock_client = _make_mock_client(CLEAN_TOOL_RESULTS)
 
     with patch(f"{run_audit_mod.__name__}.MCPClient", return_value=mock_client):
-        result = await run_audit("http://localhost:3000", tmp_path)
+        result = run_audit("http://localhost:3000", tmp_path)
 
     text = format_human(result)
     assert "Firewall Audit Report" in text

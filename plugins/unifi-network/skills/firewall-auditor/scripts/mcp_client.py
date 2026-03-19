@@ -1,15 +1,17 @@
-"""Lightweight async MCP HTTP client for skill scripts.
+"""Lightweight synchronous MCP HTTP client for skill scripts.
 
 Connects to MCP servers via Streamable HTTP transport,
 calls tools by name, and returns parsed JSON results.
 All tool calls go through the MCP permission system.
+
+Zero external dependencies — uses only Python stdlib.
 """
-import asyncio
 import json
 import logging
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
-
-import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -26,33 +28,23 @@ class MCPToolError(Exception):
 
 
 class MCPClient:
-    """Async HTTP client for calling MCP tools.
+    """Synchronous HTTP client for calling MCP tools.
 
     Usage:
-        async with MCPClient("http://localhost:3000") as client:
-            result = await client.call_tool("unifi_list_devices", {})
+        client = MCPClient("http://localhost:3000")
+        result = client.call_tool("unifi_list_devices", {})
     """
 
     def __init__(self, base_url: str, timeout: float = 30.0):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self._http = httpx.AsyncClient(timeout=timeout)
         self._request_id = 0
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *args):
-        await self._http.aclose()
-
-    async def close(self):
-        await self._http.aclose()
 
     def _next_id(self) -> int:
         self._request_id += 1
         return self._request_id
 
-    async def call_tool(self, tool_name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+    def call_tool(self, tool_name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
         """Call a single MCP tool and return the parsed result."""
         payload = {
             "jsonrpc": JSONRPC_VERSION,
@@ -60,22 +52,25 @@ class MCPClient:
             "method": "tools/call",
             "params": {"name": tool_name, "arguments": arguments or {}},
         }
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            f"{self.base_url}/mcp",
+            data=body,
+            headers={"Content-Type": MCP_CONTENT_TYPE, "Accept": MCP_CONTENT_TYPE},
+            method="POST",
+        )
         try:
-            response = await self._http.post(
-                f"{self.base_url}/mcp",
-                json=payload,
-                headers={"Content-Type": MCP_CONTENT_TYPE, "Accept": MCP_CONTENT_TYPE},
-            )
-            response.raise_for_status()
-        except httpx.ConnectError as e:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                raw = resp.read()
+        except urllib.error.URLError as e:
             raise MCPConnectionError(
                 f"Cannot connect to MCP server at {self.base_url}. "
                 f"Is the server running with HTTP enabled? Error: {e}"
             ) from e
-        except httpx.HTTPStatusError as e:
-            raise MCPToolError(f"HTTP error calling {tool_name}: {e.response.status_code}") from e
+        except urllib.error.HTTPError as e:
+            raise MCPToolError(f"HTTP error calling {tool_name}: {e.code}") from e
 
-        data = response.json()
+        data = json.loads(raw)
         if "error" in data:
             raise MCPToolError(f"Tool {tool_name} error: {data['error']}")
 
@@ -89,20 +84,21 @@ class MCPClient:
                     return {"success": True, "data": item["text"]}
         return {"success": True, "data": result}
 
-    async def call_tools_parallel(self, calls: list[tuple[str, dict[str, Any] | None]]) -> list[dict[str, Any]]:
-        """Call multiple MCP tools in parallel."""
-        tasks = [self.call_tool(name, args) for name, args in calls]
-        return await asyncio.gather(*tasks)
+    def call_tools_parallel(self, calls: list[tuple[str, dict[str, Any] | None]]) -> list[dict[str, Any]]:
+        """Call multiple MCP tools in parallel using threads."""
+        with ThreadPoolExecutor(max_workers=len(calls) or 1) as pool:
+            results = list(pool.map(lambda c: self.call_tool(c[0], c[1]), calls))
+        return results
 
-    async def check_ready(self, tool_index_name: str = "unifi_tool_index") -> bool:
+    def check_ready(self, tool_index_name: str = "unifi_tool_index") -> bool:
         """Check if the MCP server is reachable and has tools available."""
         try:
-            result = await self.call_tool(tool_index_name, {})
+            result = self.call_tool(tool_index_name, {})
             return result.get("success", False)
         except (MCPConnectionError, MCPToolError):
             return False
 
-    async def get_setup_error(self) -> dict[str, Any]:
+    def get_setup_error(self) -> dict[str, Any]:
         """Return a structured setup_required error for JSON output."""
         return {
             "success": False,
