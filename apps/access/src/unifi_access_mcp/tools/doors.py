@@ -26,11 +26,21 @@ logger = logging.getLogger(__name__)
     permission_action="read",
     auth="either",
 )
-async def access_list_doors() -> Dict[str, Any]:
+async def access_list_doors(
+    compact: Annotated[
+        bool,
+        Field(
+            description=(
+                "When true, strips thumbnail, extras, and simplifies nested device details "
+                "(~70% smaller). Recommended for overviews and summaries."
+            )
+        ),
+    ] = False,
+) -> Dict[str, Any]:
     """List all doors."""
-    logger.info("access_list_doors tool called")
+    logger.info("access_list_doors tool called (compact=%s)", compact)
     try:
-        doors = await door_manager.list_doors()
+        doors = await door_manager.list_doors(compact=compact)
         return {"success": True, "data": {"doors": doors, "count": len(doors)}}
     except Exception as e:
         logger.error("Error listing doors: %s", e, exc_info=True)

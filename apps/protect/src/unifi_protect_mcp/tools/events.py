@@ -84,7 +84,9 @@ async def protect_list_events(
     ] = False,
 ) -> Dict[str, Any]:
     """List events from the NVR."""
-    logger.info("protect_list_events called (type=%s, camera=%s, limit=%s, compact=%s)", event_type, camera_id, limit, compact)
+    logger.info(
+        "protect_list_events called (type=%s, camera=%s, limit=%s, compact=%s)", event_type, camera_id, limit, compact
+    )
     try:
         events = await event_manager.list_events(
             start=_parse_datetime(start),

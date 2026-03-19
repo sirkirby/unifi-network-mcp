@@ -76,9 +76,7 @@ async def main_async():
     )
 
     # ---- Start transports ----
-    http_enabled, http_transport, host, port = resolve_http_config(
-        config.server, default_port=3000, logger=logger
-    )
+    http_enabled, http_transport, host, port = resolve_http_config(config.server, default_port=3000, logger=logger)
     await run_transports(
         server=server,
         http_enabled=http_enabled,

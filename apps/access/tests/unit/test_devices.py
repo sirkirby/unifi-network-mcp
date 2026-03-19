@@ -116,6 +116,92 @@ class TestListDevices:
         mock_req.assert_awaited_once_with("GET", "devices/topology4")
 
     @pytest.mark.asyncio
+    async def test_list_devices_proxy_compact(self, device_mgr_proxy, cm_proxy):
+        """compact=True strips configs, images, location, door, floor, extensions, update_manual, capabilities."""
+        topology = [
+            {
+                "name": "Site",
+                "unique_id": "site-1",
+                "floors": [
+                    {
+                        "name": "1F",
+                        "unique_id": "floor-1",
+                        "doors": [
+                            {
+                                "name": "Front Door",
+                                "unique_id": "door-1",
+                                "device_groups": [
+                                    [
+                                        {
+                                            "unique_id": "dev-2",
+                                            "name": "Reader G2",
+                                            "alias": "Front Reader",
+                                            "device_type": "UA-G3",
+                                            "firmware": "v3.17.11.0",
+                                            "ip": "10.0.0.1",
+                                            "mac": "AA:BB:CC:DD:EE:FF",
+                                            "hw_type": "GA",
+                                            "is_online": True,
+                                            "is_adopted": True,
+                                            "is_connected": True,
+                                            "is_rebooting": False,
+                                            "is_unavailable": False,
+                                            "adopting": False,
+                                            "connected_uah_id": "hub-1",
+                                            "location_id": "door-1",
+                                            "model": "G3 Pro",
+                                            "display_model": "Access Reader G3 Pro",
+                                            # Fields that should be stripped:
+                                            "configs": [{"key": "k1", "value": "v1"}],
+                                            "images": {"xs": "https://example.com/img.png"},
+                                            "location": {"name": "Front Door", "unique_id": "door-1"},
+                                            "door": {"name": "Front Door", "unique_id": "door-1"},
+                                            "floor": {"name": "1F", "unique_id": "floor-1"},
+                                            "extensions": [{"extension_name": "port_setting"}],
+                                            "update_manual": {"completed": False},
+                                            "capabilities": ["cap1", "cap2"],
+                                            "guid": "some-guid",
+                                            "source": None,
+                                            "bom_rev": "",
+                                            "revision": "123456",
+                                        },
+                                    ]
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+        with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = {"data": topology}
+            devices = await device_mgr_proxy.list_devices(compact=True)
+
+        assert len(devices) == 1
+        dev = devices[0]
+        # Essential fields kept
+        assert dev["unique_id"] == "dev-2"
+        assert dev["name"] == "Reader G2"
+        assert dev["device_type"] == "UA-G3"
+        assert dev["firmware"] == "v3.17.11.0"
+        assert dev["ip"] == "10.0.0.1"
+        assert dev["is_online"] is True
+        assert dev["_door_name"] == "Front Door"
+        # Bloat fields stripped
+        assert "configs" not in dev
+        assert "images" not in dev
+        assert "location" not in dev
+        assert "door" not in dev
+        assert "floor" not in dev
+        assert "extensions" not in dev
+        assert "update_manual" not in dev
+        assert "capabilities" not in dev
+        assert "guid" not in dev
+        assert "source" not in dev
+        assert "bom_rev" not in dev
+        assert "revision" not in dev
+
+    @pytest.mark.asyncio
     async def test_list_devices_no_auth(self, device_mgr_none):
         with pytest.raises(UniFiConnectionError, match="No auth path"):
             await device_mgr_none.list_devices()
