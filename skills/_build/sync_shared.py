@@ -18,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SHARED_DIR = REPO_ROOT / "skills" / "_shared"
 PLUGINS_DIR = REPO_ROOT / "plugins"
 
-SHARED_FILES = ["mcp_client.py", "config.py", "requirements.txt"]
+SHARED_FILES = ["mcp_client.py", "config.py"]
 
 
 def find_skill_script_dirs() -> list[Path]:
