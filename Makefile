@@ -1,9 +1,10 @@
 .PHONY: help test lint format manifest skill-references sync-skills check-skills-sync pre-commit core-test shared-test \
-       docker-build docker-up docker-down docker-logs
+       sync docker-build docker-up docker-down docker-logs
 
 help:
 	@echo "UniFi MCP Ecosystem — Top-Level Commands"
 	@echo ""
+	@echo "  make sync           Sync uv workspace (install/update all packages)"
 	@echo "  make test           Run all tests (core + shared + all apps)"
 	@echo "  make lint           Lint all apps"
 	@echo "  make format         Format all apps"
@@ -18,6 +19,9 @@ help:
 	@echo ""
 	@echo "  make core-test      Run unifi-core tests only"
 	@echo "  make shared-test    Run unifi-mcp-shared tests only"
+
+sync:
+	uv sync --all-packages
 
 core-test:
 	uv run --package unifi-core pytest packages/unifi-core/tests -v

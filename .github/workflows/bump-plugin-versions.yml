@@ -70,6 +70,11 @@ jobs:
         with open(pj) as f:
             data = json.load(f)
         data['version'] = ver
+        for server in data.get('mcpServers', {}).values():
+            args = server.get('args', [])
+            if args:
+                pkg = args[0].split('==')[0]
+                args[0] = f'{pkg}=={ver}'
         with open(pj, 'w') as f:
             json.dump(data, f, indent=2)
             f.write('\n')
