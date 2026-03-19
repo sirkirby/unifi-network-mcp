@@ -45,10 +45,19 @@ All tools return: `{"success": true, "data": ...}`, `{"success": false, "error":
 
 - **Snapshots:** `protect_get_snapshot` with `include_image=true` returns base64 JPEG inline
 - **RTSP streams:** `protect_get_camera_streams` gives stream URLs for video player integration
-- **Smart detections:** `protect_list_smart_detections` filters by type (person, vehicle, animal, package, face, licensePlate)
-- **Real-time events:** `protect_recent_events` reads from websocket buffer instantly (no API call). Use `protect_list_events` for historical queries
+- **Smart detections:** `protect_list_smart_detections` filters by type (person, vehicle, animal, package, face, licensePlate). These are the highest-signal events — prioritize over raw motion.
+- **Event camera names:** All event responses include `camera_name` alongside `camera_id` — no need to call `protect_list_cameras` separately to resolve names.
+- **Real-time events:** `protect_recent_events` reads from websocket buffer instantly (no API call). Buffer holds ~100 events with 5-minute TTL. Use `protect_list_events` for historical queries.
 - **Video export:** `protect_export_clip` returns metadata (not video data — too large for MCP). Max 2 hours, supports timelapse (fps: 4=60x, 8=120x, 20=300x)
 - **PTZ:** Only zoom works via API. For pan/tilt, use `protect_ptz_preset` with saved positions
+
+## Efficiency Tips
+
+- **Use `protect_batch` for parallel queries** — biggest performance win. Batch smart detections + events in one call.
+- **Prefer `protect_list_smart_detections` over `protect_list_events`** for security analysis — smart detections are pre-classified (person, vehicle, etc.) and higher signal than raw motion.
+- **`protect_recent_events` is fast but small** — only a few minutes of buffered data. For anything beyond real-time monitoring, use `protect_list_events` with time range filters.
+- **Limit results** — event queries default to 30 but can return large payloads. Use `limit` parameter to keep responses focused.
+- **Security digest** — for comprehensive event summaries, use the `security-digest` skill which handles batch calls, severity classification, and cross-product correlation.
 
 ## Authentication
 

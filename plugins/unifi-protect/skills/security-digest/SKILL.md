@@ -29,13 +29,16 @@ Use each server's batch tool to gather events in parallel within that server. Do
 
 **From Protect** (required):
 
+Use `protect_list_smart_detections` as the primary source — these are the highest-signal events (person, vehicle, package, animal). Only add `protect_list_events` with `event_type=motion` if you need raw motion data beyond smart detections. Skip `protect_recent_events` for digests — it only contains the last few minutes of buffered events and adds little value for historical ranges.
+
 ```
 protect_batch([
-  { "tool": "protect_list_events", "args": { ... time range ... } },
-  { "tool": "protect_list_smart_detections", "args": { ... time range ... } },
-  { "tool": "protect_recent_events" }
+  { "tool": "protect_list_smart_detections", "args": { "start": "...", "limit": 50 } },
+  { "tool": "protect_list_events", "args": { "start": "...", "event_type": "ring", "limit": 20 } }
 ])
 ```
+
+Events now include `camera_name` alongside `camera_id` — no need to call `protect_list_cameras` separately to resolve names.
 
 **From Access** (if available):
 
