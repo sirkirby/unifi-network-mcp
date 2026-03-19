@@ -25,6 +25,39 @@ import types
 from typing import Annotated, Any, Callable, Union, get_args, get_origin
 
 
+def setup_permissioned_tool(
+    *,
+    server: Any,
+    category_map: dict[str, str],
+    permissions: Any,
+    register_tool_fn: Callable,
+    diagnostics_enabled_fn: Callable[[], bool],
+    wrap_tool_fn: Callable,
+    logger: Any,
+) -> Callable:
+    """One-call setup: create a permissioned_tool decorator and install it on *server*.
+
+    This is a convenience wrapper around :func:`create_permissioned_tool` that also
+    creates the ``PermissionChecker`` and replaces ``server.tool``.
+
+    Returns the permissioned_tool decorator (also installed as ``server.tool``).
+    """
+    from unifi_mcp_shared.permissions import PermissionChecker
+
+    original = getattr(server, "_original_tool", server.tool)
+    checker = PermissionChecker(category_map=category_map, permissions=permissions)
+    pt = create_permissioned_tool(
+        original_tool_decorator=original,
+        permission_checker=checker,
+        register_tool_fn=register_tool_fn,
+        diagnostics_enabled_fn=diagnostics_enabled_fn,
+        wrap_tool_fn=wrap_tool_fn,
+        logger=logger,
+    )
+    server.tool = pt  # type: ignore[assignment]
+    return pt
+
+
 def create_permissioned_tool(
     *,
     original_tool_decorator: Callable,
