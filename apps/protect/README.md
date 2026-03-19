@@ -104,6 +104,64 @@ Add to `claude_desktop_config.json`:
 - **Liveviews** -- list and inspect multi-camera layouts
 - **System** -- NVR info, health metrics, firmware status, connected viewers
 
+## Agent Skills
+
+The Protect plugin ships one agent skill that works alongside the MCP tools:
+
+### Security Digest
+
+Cross-product event intelligence that generates a concise security summary across all connected UniFi systems.
+
+- **Sources:** Protect camera events, Access door events, Network firewall activity
+- **Severity classification:** Events are classified by time-of-day context (business hours vs. after hours vs. overnight) and event type (person detection, vehicle, door access, firewall block, etc.)
+- **Cross-product correlation:** Five built-in correlation rules surface patterns that span products:
+  - Motion at a door camera without a corresponding badge-in
+  - Multiple failed door access attempts in a short window
+  - Person detection coinciding with firewall blocks from the same timeframe
+  - After-hours camera activity with no Access event
+  - Repeated vehicle detections at the perimeter
+- **Activity counts:** Aggregated totals across all sources for quick at-a-glance awareness
+
+Invoke via the skill command after installing the plugin:
+
+```
+/unifi-protect:security-digest
+```
+
+## Event Improvements
+
+### camera_name in Event Responses
+
+All event-related tools now include `camera_name` alongside `camera_id` in every event object. The name is resolved from bootstrap data cached at startup — no extra API calls required.
+
+Affected tools: `protect_list_events`, `protect_list_smart_detections`, `protect_recent_events`
+
+Before:
+```json
+{ "camera_id": "abc123", "type": "motion", ... }
+```
+
+After:
+```json
+{ "camera_id": "abc123", "camera_name": "Front Door", "type": "motion", ... }
+```
+
+This eliminates the need to call `protect_list_cameras` separately just to map IDs to names.
+
+### Compact Mode
+
+`protect_list_events` and `protect_list_smart_detections` accept a `compact=true` parameter that strips low-signal fields from responses: `thumbnail_id`, `category`, `sub_category`, and `is_favorite`. This produces responses roughly 40% smaller.
+
+```python
+# Standard call
+protect_list_events(limit=50)
+
+# Compact — recommended for digests, summaries, and context-constrained workflows
+protect_list_events(limit=50, compact=True)
+```
+
+Compact mode is the recommended default when building summaries or feeding events into downstream prompts where token budget matters.
+
 ## Documentation
 
 - [Configuration](docs/configuration.md) -- Full env var reference, YAML config, Protect-specific options
