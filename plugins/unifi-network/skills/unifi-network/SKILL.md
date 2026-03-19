@@ -43,6 +43,19 @@ Always preview first and show the user before confirming.
 
 All tools return: `{"success": true, "data": ...}`, `{"success": false, "error": "..."}`, or `{"success": true, "requires_confirmation": true, "preview": ...}`. Always check `success` first.
 
+## Device Classification
+
+`unifi_list_devices` returns a `device_category` field that accurately classifies devices:
+- `ap` — real access points (excludes USP Smart Power strips that report as `uap` type)
+- `switch` — switches
+- `gateway` — UDM/USG gateways
+- `pdu` — smart power strips, UPS devices
+- `wan` — cable internet (UCI) devices
+
+Use `device_category` (not `type`) when counting or filtering devices. The `device_type` filter parameter uses this classification.
+
+Additional enriched fields: `upgradable` (bool), `connection_network` (VLAN name), `uplink` (topology), `load_avg_1`, `mem_pct`, `model_eol`.
+
 ## Efficiency Tips
 
 - **Batch reads** — `unifi_batch` for parallel queries (biggest efficiency win)
@@ -50,6 +63,7 @@ All tools return: `{"success": true, "data": ...}`, `{"success": false, "error":
 - **Use filters** — most list tools accept time range, type, and ID parameters
 - **`unifi_get_top_clients`** — fastest way to find bandwidth hogs
 - **Check health first** — `unifi_get_network_health` for quick "is everything OK?"
+- **Device counts** — use `device_category` field, not `type`, for accurate AP/switch/PDU counts
 
 ## Authentication
 

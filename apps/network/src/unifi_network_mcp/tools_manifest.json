@@ -1094,7 +1094,7 @@
       }
     },
     {
-      "description": "Returns adopted device inventory with MAC, name, model, IP, firmware version, uptime, and status (online/offline/upgrading/etc). Filter by device_type (ap/switch/gateway/pdu) and status (online/offline/pending/upgrading). Set include_details=true for radio tables, port tables, and client counts. For a single device's full raw object, use unifi_get_device_details.",
+      "description": "Returns adopted device inventory with MAC, name, model, IP, firmware version, uptime, status (online/offline/upgrading/etc), device_category (ap/switch/gateway/pdu), upgradable flag, connection_network, uplink topology, load_avg, mem_pct, and model_eol. Filter by device_type (ap/switch/gateway/pdu) and status (online/offline/pending/upgrading). Note: device_type=ap correctly excludes USP Smart Power strips. Set include_details=true for radio tables, port tables, and client counts. For a single device's full raw object, use unifi_get_device_details.",
       "name": "unifi_list_devices",
       "schema": {
         "input": {

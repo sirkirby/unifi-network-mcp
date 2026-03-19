@@ -381,6 +381,10 @@
               "description": "Filter events to a specific camera by its UUID (from protect_list_cameras). Omit to include all cameras.",
               "type": "string"
             },
+            "compact": {
+              "description": "When true, omits thumbnail_id, category, sub_category, and is_favorite fields to reduce response size (~40% smaller). Recommended for digests and summaries.",
+              "type": "boolean"
+            },
             "end": {
               "description": "End time as ISO 8601 timestamp (e.g., 2026-03-17T23:59:59Z). Defaults to now.",
               "type": "string"
@@ -467,6 +471,10 @@
             "camera_id": {
               "description": "Filter detections to a specific camera by its UUID (from protect_list_cameras). Omit to include all cameras.",
               "type": "string"
+            },
+            "compact": {
+              "description": "When true, omits thumbnail_id, category, sub_category, and is_favorite fields to reduce response size (~40% smaller). Recommended for digests and summaries.",
+              "type": "boolean"
             },
             "detection_type": {
               "description": "Filter by smart detection type: person, vehicle, animal, package, face, licensePlate.",

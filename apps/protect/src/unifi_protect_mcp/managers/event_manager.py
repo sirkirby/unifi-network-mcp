@@ -188,23 +188,42 @@ class EventManager:
         # obj is an Event instance at this point
         return self._event_to_dict(obj)
 
-    def _event_to_dict(self, event: Event) -> dict[str, Any]:
-        """Convert a uiprotect ``Event`` object to a serialisable dict."""
-        return {
+    def _resolve_camera_name(self, camera_id: str | None) -> str | None:
+        """Resolve a camera ID to its display name from bootstrap data."""
+        if not camera_id:
+            return None
+        try:
+            cameras = self._cm.client.bootstrap.cameras
+            camera = cameras.get(camera_id)
+            return camera.name if camera else None
+        except Exception:
+            return None
+
+    def _event_to_dict(self, event: Event, compact: bool = False) -> dict[str, Any]:
+        """Convert a uiprotect ``Event`` object to a serialisable dict.
+
+        When *compact* is True, omits low-value fields (thumbnail_id,
+        category, sub_category, is_favorite) to reduce token usage in
+        LLM contexts (~40% smaller per event).
+        """
+        result: dict[str, Any] = {
             "id": event.id,
             "type": event.type.value if isinstance(event.type, EventType) else str(event.type),
             "camera_id": event.camera_id,
+            "camera_name": self._resolve_camera_name(event.camera_id),
             "start": event.start.isoformat() if event.start else None,
             "end": event.end.isoformat() if event.end else None,
             "score": event.score,
             "smart_detect_types": [
                 t.value if isinstance(t, SmartDetectObjectType) else str(t) for t in (event.smart_detect_types or [])
             ],
-            "thumbnail_id": event.thumbnail_id,
-            "category": event.category,
-            "sub_category": event.sub_category,
-            "is_favorite": event.is_favorite,
         }
+        if not compact:
+            result["thumbnail_id"] = event.thumbnail_id
+            result["category"] = event.category
+            result["sub_category"] = event.sub_category
+            result["is_favorite"] = event.is_favorite
+        return result
 
     # ------------------------------------------------------------------
     # Buffer access
@@ -241,6 +260,7 @@ class EventManager:
         event_type: str | None = None,
         camera_id: str | None = None,
         limit: int = 30,
+        compact: bool = False,
     ) -> list[dict[str, Any]]:
         """Query events from the NVR via the REST API.
 
@@ -275,7 +295,7 @@ class EventManager:
         for ev in events:
             if camera_id and ev.camera_id != camera_id:
                 continue
-            results.append(self._event_to_dict(ev))
+            results.append(self._event_to_dict(ev, compact=compact))
 
         return results
 
@@ -355,6 +375,7 @@ class EventManager:
         detection_type: str | None = None,
         min_confidence: int | None = None,
         limit: int = 30,
+        compact: bool = False,
     ) -> list[dict[str, Any]]:
         """List smart detection events with optional filtering.
 
@@ -394,7 +415,7 @@ class EventManager:
                 continue
             if ev.score < min_conf:
                 continue
-            results.append(self._event_to_dict(ev))
+            results.append(self._event_to_dict(ev, compact=compact))
 
         return results
 
@@ -415,6 +436,7 @@ class EventManager:
             "event_id": event_id,
             "type": event.type.value if isinstance(event.type, EventType) else str(event.type),
             "camera_id": event.camera_id,
+            "camera_name": self._resolve_camera_name(event.camera_id),
             "current_is_favorite": event.is_favorite,
             "proposed_is_favorite": True,
         }

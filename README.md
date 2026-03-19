@@ -121,6 +121,20 @@ Each server supports its own prefixed environment variables that take priority o
 
 For the full configuration reference including permissions, transports, and advanced options, see the [Network server docs](apps/network/docs/configuration.md), [Protect server docs](apps/protect/docs/configuration.md), or [Access server docs](apps/access/docs/configuration.md).
 
+## Agent Skills
+
+Each plugin ships with agent skills that go beyond raw tool access — they teach agents how to perform common tasks effectively:
+
+| Skill | Plugin | What it does |
+|-------|--------|-------------|
+| **Network Health Check** | unifi-network | Batch diagnostics across devices, health subsystems, and alarms with reference docs for interpreting results |
+| **Firewall Manager** | unifi-network | Natural language firewall management with policy templates, config snapshots, and change tracking |
+| **Firewall Auditor** | unifi-network | Security audit with 16 benchmarks, 100-point scoring, topology analysis, and trend tracking |
+| **Security Digest** | unifi-protect | Cross-product event intelligence — summarizes camera, door, and network events with severity classification and correlation rules |
+| **UniFi Access** | unifi-access | Door control, credentials, visitors, access policies — with real-time event streaming and activity summaries |
+
+Skills include reference documentation (device states, alarm types, firewall schemas, event catalogs) and Python scripts for deterministic operations (auditing, config export/diff, template application).
+
 ## Architecture
 
 This is a monorepo with shared packages:
@@ -133,6 +147,12 @@ apps/
 packages/
   unifi-core/       # Shared UniFi connectivity (auth, detection, retry)
   unifi-mcp-shared/ # Shared MCP patterns (permissions, tools, diagnostics, config)
+plugins/
+  unifi-network/    # Claude Code plugin: MCP server + agent skills + setup
+  unifi-protect/    # Claude Code plugin: MCP server + agent skills + setup
+  unifi-access/     # Claude Code plugin: MCP server + setup
+skills/
+  _shared/          # Shared utilities for skill scripts (MCP client, config)
 docs/               # Ecosystem-level documentation
 ```
 
