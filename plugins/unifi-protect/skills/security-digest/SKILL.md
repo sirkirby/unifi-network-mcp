@@ -5,132 +5,79 @@ description: Generate a security digest summarizing events across UniFi Protect 
 
 # Security Digest
 
-You are generating a security digest that summarizes events across multiple UniFi systems. This skill
-can operate in two modes depending on whether the event collector daemon is running:
-
-- **Rich mode** — collector has been running and events are buffered in SQLite; full history, correlation, and counting available
-- **Fallback mode** — no collector; queries MCP tools directly; limited to API retention windows
-
 ## Setup Check
 
 Before generating a digest, verify the primary server is reachable:
 
-- `UNIFI_PROTECT_HOST` must be set — this is the required variable for the Protect MCP server
-- Confirm connectivity: call `protect_tool_index` to verify the Protect server is available
+- `UNIFI_PROTECT_HOST` must be set — this is the required variable for the Protect MCP server.
+- Confirm connectivity by calling `protect_tool_index` to verify the Protect server is available.
 
-For full cross-product correlation (CORR-01 through CORR-05), the unifi-network and unifi-access
-plugins must also be configured. Check availability by calling `unifi_tool_index` and
-`access_tool_index`. Correlation rules that span missing servers are automatically skipped —
-the digest degrades gracefully to single-source output.
-
-## Starting the Event Collector (optional, recommended)
-
-For rich historical digests that cover hours or days of activity, start the event collector daemon
-before the period you want to review. The collector polls the MCP servers on a configurable interval
-and stores all events in a local SQLite database (`events.db`).
-
-**Start the collector:**
-
-```bash
-bash scripts/start-collector.sh
-```
-
-Optional flags:
-- `--poll-interval N` — polling interval in seconds (default: 10)
-- `--servers protect,network` — which servers to poll (default: protect,network)
-- `--timeout N` — auto-stop after N seconds (default: 1800, i.e. 30 minutes)
-- `--state-dir DIR` — where to write `events.db` and the PID file (default: `.claude/unifi-skills`)
-
-The script outputs JSON confirming the daemon is running and the PID. Events accumulate in SQLite
-for as long as the daemon runs — this is what enables overnight digests covering 8–12 hours of
-activity rather than just the last few minutes the API retains.
-
-**Stop the collector when done:**
-
-```bash
-bash scripts/stop-collector.sh
-```
-
-The collector is optional. If it is not running, `generate-digest.py` falls back to querying the
-MCP tools directly. The fallback still produces a valid digest but is limited to whatever the
-UniFi API currently holds in its event buffer (typically the last 1–2 hours).
+For full cross-product correlation (CORR-01 through CORR-05), the unifi-network and unifi-access plugins must also be configured. Check availability by calling `unifi_tool_index` and `access_tool_index`. Correlation rules that span missing servers are automatically skipped — the digest degrades gracefully to single-source output.
 
 ## Generating a Digest
 
-Run `scripts/generate-digest.py` to produce the digest:
+### Determine the Time Range
 
-```bash
-python scripts/generate-digest.py --range overnight
+Default ranges if the user does not specify:
+- **overnight** — last 12 hours (6 pm to 6 am)
+- **today** — since midnight
+- **recent** — last 4 hours
+
+### Gather Events (parallel batch calls per server)
+
+Use each server's batch tool to gather events in parallel within that server. Do not call these tools one at a time.
+
+**From Protect** (required):
+
+```
+protect_batch([
+  { "tool": "protect_list_events", "args": { ... time range ... } },
+  { "tool": "protect_list_smart_detections", "args": { ... time range ... } },
+  { "tool": "protect_recent_events" }
+])
 ```
 
-**How the script selects its data source:**
+**From Access** (if available):
 
-- If `events.db` exists and has data buffered within the last 60 minutes → **rich mode** (reads from SQLite)
-- Otherwise → **fallback mode** (queries MCP tools directly for the requested time range)
-
-**Time range options (`--range`):**
-
-| Range | Window | Typical use |
-|-------|--------|-------------|
-| `overnight` | Last 12 hours (6 pm–6 am) | Morning review after the night |
-| `today` | Since midnight | End-of-day summary |
-| `recent` | Last 4 hours | Quick check during the day |
-| `24h` | Full 24 hours | Daily security report |
-
-**Output format (`--format`):**
-
-- `--format json` (default) — structured JSON suitable for further processing or display
-- `--format human` — Markdown-formatted text for immediate reading
-
-**Additional options:**
-
-- `--state-dir DIR` — override state directory (also read from `UNIFI_SKILLS_STATE_DIR` env var)
-- `--mcp-url URL` — override MCP server URL for fallback mode
-
-**Example — rich overnight digest in human format:**
-
-```bash
-python scripts/generate-digest.py --range overnight --format human
+```
+access_batch([
+  { "tool": "access_list_events", "args": { ... time range ... } },
+  { "tool": "access_recent_events" },
+  { "tool": "access_get_activity_summary" }
+])
 ```
 
-**Output structure (JSON mode):**
+**From Network** (if available):
 
-```json
-{
-  "success": true,
-  "mode": "collector",
-  "status": "alert|notable|clear",
-  "summary": "...",
-  "notable_events": [...],
-  "correlations": [...],
-  "activity_counts": { "protect": {...}, "access": {...}, "network": {...} },
-  "recommendations": [...],
-  "time_range": { "name": "overnight", "start": "...", "end": "..." }
-}
+```
+unifi_batch([
+  { "tool": "unifi_list_alarms" },
+  { "tool": "unifi_list_events", "args": { ... time range ... } }
+])
 ```
 
-## Understanding Results
+The three batch calls (Protect, Access, Network) can be issued concurrently — they target independent servers.
 
-The digest script classifies events using three reference models. Consult these files for the
-full classification logic:
+## Analyzing Events
 
-- `references/event-types.md` — catalog of all event type codes from Protect, Access, and Network, with key fields and digest relevance
-- `references/severity-model.md` — how base severity is computed and modified by time of day, location, and event frequency; includes the full classification matrix
-- `references/correlation-rules.md` — the five deterministic cross-product rules with their logic, time windows, and recommended responses
+Use these reference documents to classify and correlate the gathered events:
 
-**Status values in the output:**
+- `references/event-types.md` — catalog of all event type codes from Protect, Access, and Network, with key fields and digest relevance. Consult before labeling any event type.
+- `references/correlation-rules.md` — the five deterministic cross-product correlation rules (CORR-01 through CORR-05) with their logic, time windows, and recommended responses. Apply these when data from multiple servers is available.
+- `references/severity-model.md` — how base severity is computed and modified by time of day, location, and event frequency. Includes the full classification matrix. Apply this before assigning High/Medium/Low labels.
 
-- `clear` — no notable events; nothing requires attention
-- `notable` — medium-severity events present; worth reviewing
-- `alert` — one or more high-severity events or fired correlations; prompt review warranted
+Smart detection events (person, vehicle, package) are the highest-signal items — prioritize these when reviewing Protect data.
 
-Lead with "nothing to worry about" when status is `clear`. Do not invent concerns for quiet periods.
+**Status classification:**
+- `clear` — no notable events; nothing requires attention. Lead with "nothing to worry about."
+- `notable` — medium-severity events present; worth reviewing.
+- `alert` — one or more high-severity events or fired correlations; prompt review warranted.
+
+Do not invent concerns for quiet periods.
 
 ## Cross-Product Correlation
 
-When events from multiple MCP servers are available (Protect + Access + Network), the digest runs
-five deterministic correlation rules. These rules identify security-relevant combinations that
-neither data source would surface alone:
+When events from multiple servers are available, apply the five deterministic rules from `references/correlation-rules.md`:
 
 | Rule | Sources | Window | Severity | Pattern |
 |------|---------|--------|----------|---------|
@@ -140,46 +87,9 @@ neither data source would surface alone:
 | CORR-04 | Network + Protect | 5 min | High | Network device offline coinciding with camera disconnections |
 | CORR-05 | Access + Protect | 5 min | Low | After-hours badge-in with no approach motion before it (audit trail) |
 
-When multiple rules fire on the same events, the highest severity wins and the rules are listed
-together in a single merged incident. See `references/correlation-rules.md` for full logic,
-pseudocode, and recommended responses for each rule.
+When multiple rules fire on the same events, the highest severity wins and the rules are listed together in a single merged incident. See `references/correlation-rules.md` for full logic and pseudocode.
 
-## Manual Procedure (fallback)
-
-If the scripts are unavailable (e.g., running inside a restricted MCP client that cannot execute
-bash or Python), use this tool-call-based procedure directly.
-
-### Step 1: Determine Time Range
-
-Default ranges if the user does not specify:
-- "overnight" = last 12 hours (6 pm to 6 am)
-- "today" = since midnight
-- "recent" = last 4 hours
-
-### Step 2: Gather Events (parallel where possible)
-
-**From Protect** (if available):
-- `protect_list_events` with time range filter
-- `protect_list_smart_detections` with time range
-- `protect_recent_events` for very recent events
-
-**From Access** (if available):
-- `access_list_events` with time range filter
-- `access_recent_events`
-- `access_get_activity_summary`
-
-**From Network** (if available):
-- `unifi_list_alarms`
-- `unifi_list_events` with time range
-- `unifi_get_dpi_stats`
-
-### Step 3: Analyze and Correlate
-
-Apply severity from `references/severity-model.md`. Apply correlation rules from
-`references/correlation-rules.md`. Prioritize smart detection events (person, vehicle, package)
-as the highest-signal items.
-
-### Step 4: Report
+## Report Format
 
 ```
 ## Security Digest — [date/time range]
@@ -208,14 +118,9 @@ as the highest-signal items.
 
 ## Tips
 
-- Start the collector at the beginning of the period you want to analyze (e.g., before leaving for
-  the night) for the richest overnight digests. The longer the collector runs, the more history it accumulates.
-- Use `--format human` for a quick readable review; use `--format json` when passing results to
-  another tool or workflow.
-- The most security value comes from overnight and 24h ranges where time-of-day severity modifiers
-  elevate routine events to notable ones.
-- If only one MCP server is available, produce a single-source digest — do not apologize for
-  missing data, just work with what is connected.
-- Use `protect_get_event_thumbnail` to offer visual evidence for notable person or vehicle
-  detections when the user wants to see what triggered an alert.
+- Use each server's batch tool for parallel data gathering within that server. The three server batches (Protect, Access, Network) can run concurrently.
+- Smart detections (person, vehicle, package) are the highest-signal events — surface these first when summarizing.
+- If only one MCP server is available, produce a single-source digest. Do not apologize for missing data — work with what is connected.
+- Use `protect_get_event_thumbnail` to offer visual evidence for notable person or vehicle detections when the user wants to see what triggered an alert.
+- The most security value comes from overnight and 24h ranges where time-of-day severity modifiers (from `references/severity-model.md`) elevate routine events to notable ones.
 - If status is `clear`, lead with that — do not manufacture concerns for quiet periods.

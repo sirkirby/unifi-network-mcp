@@ -13,74 +13,49 @@ Before running a health check, verify the MCP server is configured:
 - If it is not set or the connection fails, stop and direct the user to `/setup` to configure the UniFi Network MCP server.
 - Use `unifi_tool_index` to confirm available tools. If no UniFi tools are listed, the server is not connected.
 
-## Quick Health Check (recommended)
+## Health Check Procedure
 
-Run `scripts/collect-health.py` for efficient, parallelized data gathering in a single pass.
+Use `unifi_batch` to gather all required data in a single parallel operation:
 
-**For machine-readable output (default for analysis):**
-```bash
-python scripts/collect-health.py --format json
+```
+unifi_batch([
+  { "tool": "unifi_get_system_info" },
+  { "tool": "unifi_get_network_health" },
+  { "tool": "unifi_list_devices" },
+  { "tool": "unifi_list_alarms" }
+])
 ```
 
-**For human-readable output (default for display):**
-```bash
-python scripts/collect-health.py --format human
+This single batch call replaces sequential tool calls and returns all data needed for the report. Do not call these tools one at a time.
+
+If device or alarm issues are found and more detail is needed, a follow-up batch can add:
+
+```
+unifi_batch([
+  { "tool": "unifi_list_clients" },
+  { "tool": "unifi_get_top_clients" }
+])
 ```
 
-The script collects system info, network health, device list, and alarms in a single batched operation — significantly faster than sequential tool calls. Parse the output and proceed directly to reporting.
+## Analyzing Results
 
-**Autonomous usage:** When running without user interaction, use `--format json` and interpret the structured output programmatically.
+Use these reference documents to interpret the data returned by the batch call:
 
-**Interactive usage:** When summarizing for a user, use `--format human` or convert the JSON output to the report format in the Report section below.
-
-## Understanding Results
-
-Use these reference documents to interpret collected data:
-
-- `references/device-states.md` — maps device `state` integer codes to human-readable status (online, offline, isolated, etc.) and explains what each state means operationally.
-- `references/alarm-types.md` — describes known alarm types, their severity levels, and recommended remediation steps for each.
-- `references/health-subsystems.md` — explains the per-subsystem health fields returned by `unifi_get_network_health` (WAN, LAN, WLAN, VPN) and how to interpret `status` values.
-
-Consult these references before classifying device states or alarm severity. Do not rely on assumptions — the UniFi state codes are not always intuitive.
-
-## Manual Procedure (fallback)
-
-Use this procedure when `scripts/collect-health.py` is not available or fails.
-
-Run these checks in order. Use `unifi_batch` to parallelize independent queries.
-
-### Step 1: System Overview (batch these together)
-
-Call these tools via `unifi_batch`:
-- `unifi_get_system_info` — controller version, uptime, CPU/memory
-- `unifi_get_network_health` — per-subsystem health (WAN, LAN, WLAN, VPN)
-- `unifi_list_devices` — all adopted devices with status
-- `unifi_list_alarms` — active alarms
-
-### Step 2: Analyze Device Status
+- `references/device-states.md` — maps device `state` integer codes to human-readable status (online, offline, isolated, etc.) and explains what each state means operationally. Do not guess at state codes — consult this reference before classifying device status.
+- `references/alarm-types.md` — describes known alarm types, their severity levels, and recommended remediation steps. Consult before classifying alarm severity or suggesting actions.
+- `references/health-subsystems.md` — explains the per-subsystem health fields returned by `unifi_get_network_health` (WAN, LAN, WLAN, VPN), how to interpret `status` values, and the recommended diagnostic priority order: **WAN → LAN → WLAN → VPN**.
 
 From the device list, identify:
-- **Offline devices** — any device with `state` != 1 (1 = connected). Check `references/device-states.md` for full state code meanings.
-- **Devices needing updates** — check `upgradeable` field. Report current vs available firmware.
-- **High-load devices** — check CPU/memory utilization if available in device stats.
+- **Offline devices** — any device with `state` != 1. Check `references/device-states.md` for the full state code table.
+- **Devices needing updates** — check the `upgradeable` field. Report current vs available firmware version.
+- **High-load devices** — check CPU/memory utilization if present in device stats.
 - **Devices with poor uptime** — recently rebooted devices may indicate instability.
 
-### Step 3: Client Health (if issues found or requested)
+For each active alarm, classify severity using `references/alarm-types.md` and provide a plain-language explanation with remediation steps from that reference.
 
-If devices are offline or network health shows issues:
-- `unifi_list_clients` — connected client count, connection types
-- `unifi_get_top_clients` — bandwidth hogs that might indicate problems
+## Report Format
 
-### Step 4: Alarm Review
-
-For each active alarm:
-- Classify severity using `references/alarm-types.md`
-- Provide plain-language explanation of what it means
-- Suggest remediation steps from the reference doc
-
-### Step 5: Report
-
-Present findings in this format:
+Present findings using this structure:
 
 ```
 ## Network Health Report
@@ -89,8 +64,8 @@ Present findings in this format:
 **Controller:** [version] — uptime [X days]
 
 ### Devices ([online]/[total])
-- [List any offline or problematic devices]
-- [List devices needing firmware updates]
+- [List any offline or problematic devices with their state code and meaning]
+- [List devices needing firmware updates with current and available versions]
 
 ### Active Alarms ([count])
 - [Summarize each alarm with severity and recommendation]
@@ -100,10 +75,11 @@ Present findings in this format:
 2. [Actionable item]
 ```
 
+A healthy network gets a brief "all clear" summary. Do not manufacture concerns for quiet periods.
+
 ## Tips
 
-- Always use `scripts/collect-health.py` or `unifi_batch` for initial data gathering — sequential tool calls are significantly slower.
-- If `unifi_get_network_health` shows WAN health issues, that likely explains many downstream problems — lead with that finding.
-- Don't overwhelm with data. Focus on what's broken or needs attention. A healthy network gets a brief "all clear" summary.
-- Consult the reference docs before guessing at device state codes or alarm meanings — misclassification leads to bad recommendations.
-- If the script exits with a connection error, fall back to the manual procedure and note the script failure in the report.
+- Always use `unifi_batch` for initial data gathering — sequential tool calls are significantly slower.
+- If `unifi_get_network_health` shows WAN health issues, that likely explains many downstream problems — lead with that finding and follow the WAN → LAN → WLAN → VPN diagnostic priority from `references/health-subsystems.md`.
+- Don't overwhelm the user with raw data. Focus on what is broken or needs attention.
+- Consult the reference docs before classifying device state codes or alarm meanings — misclassification leads to bad recommendations.
