@@ -114,6 +114,80 @@ class TestListDoors:
             await door_mgr_none.list_doors()
 
     @pytest.mark.asyncio
+    async def test_list_doors_proxy_compact(self, door_mgr_proxy, cm_proxy):
+        """compact=True simplifies nested devices and strips thumbnail."""
+        locations = [
+            {
+                "id": "door-1",
+                "name": "Main Door",
+                "location_type": "door",
+                "access_method": ["nfc", "bt_button"],
+                "up_id": "floor-1",
+                "extras": None,
+                "device_ids": ["dev-1", "dev-2"],
+                "thumbnail": {"type": "thumbnail", "url": "/icons/cover.png"},
+                "devices": [
+                    {
+                        "name": "Reader",
+                        "id": "dev-1",
+                        "device_type": "UA-G3",
+                        "online": True,
+                        "direction": "entry",
+                        # Fields that should be stripped from nested devices:
+                        "alias": "Main Door - Entry",
+                        "ip": "10.0.0.1",
+                        "mac": "AA:BB",
+                        "firmware": "v3.17.11.0",
+                        "guid": "some-guid",
+                        "start_time": 12345,
+                        "hw_type": "GA",
+                        "revision": "123",
+                        "access_method": {"nfc": "yes"},
+                        "cap": [],
+                        "category": ["ua-lite"],
+                        "location_id": "door-1",
+                        "connected_hub_id": "dev-2",
+                        "version": "v3.17.11.0",
+                        "adopting": False,
+                        "location_states": [],
+                    },
+                ],
+            }
+        ]
+        with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = {"data": locations}
+            doors = await door_mgr_proxy.list_doors(compact=True)
+
+        assert len(doors) == 1
+        door = doors[0]
+        # Essential door fields kept
+        assert door["id"] == "door-1"
+        assert door["name"] == "Main Door"
+        assert door["location_type"] == "door"
+        assert door["access_method"] == ["nfc", "bt_button"]
+        # Thumbnail stripped
+        assert "thumbnail" not in door
+        # up_id, extras, device_ids stripped
+        assert "up_id" not in door
+        assert "extras" not in door
+        assert "device_ids" not in door
+        # Devices simplified
+        assert len(door["devices"]) == 1
+        dev = door["devices"][0]
+        assert dev["name"] == "Reader"
+        assert dev["id"] == "dev-1"
+        assert dev["device_type"] == "UA-G3"
+        assert dev["online"] is True
+        assert dev["direction"] == "entry"
+        # Nested device bloat stripped
+        assert "guid" not in dev
+        assert "start_time" not in dev
+        assert "revision" not in dev
+        assert "access_method" not in dev
+        assert "cap" not in dev
+        assert "category" not in dev
+
+    @pytest.mark.asyncio
     async def test_list_doors_prefers_api_client(self, door_mgr_both, cm_both):
         """list_doors prefers API client over proxy when both available."""
         mock_door = MagicMock()

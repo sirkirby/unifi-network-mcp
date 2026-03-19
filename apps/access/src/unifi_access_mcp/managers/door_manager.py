@@ -28,6 +28,12 @@ _LOCATIONS_EXPAND = (
     "expand[]=location.thumbnail&expand[]=device.access_method&expand[]=device.lock_state&expand[]=device.thumbnail"
 )
 
+# Fields to keep at the door level in compact mode.
+_COMPACT_DOOR_KEYS = frozenset({"id", "name", "location_type", "access_method", "devices"})
+
+# Fields to keep per nested device in compact mode.
+_COMPACT_DOOR_DEVICE_KEYS = frozenset({"name", "id", "device_type", "online", "direction"})
+
 
 class DoorManager:
     """Reads and mutates door data from the Access controller."""
@@ -39,13 +45,32 @@ class DoorManager:
     # Read-only methods
     # ------------------------------------------------------------------
 
-    async def list_doors(self) -> List[Dict[str, Any]]:
+    @staticmethod
+    def _compact_door(door: Dict[str, Any]) -> Dict[str, Any]:
+        """Strip low-value fields from a door dict.
+
+        Keeps identity and access method at the door level.  Simplifies
+        nested devices to name/id/type/online/direction only.  Strips
+        thumbnail, up_id, extras, device_ids (~70% smaller).
+        """
+        result = {k: v for k, v in door.items() if k in _COMPACT_DOOR_KEYS}
+        # Simplify nested devices
+        if "devices" in result and isinstance(result["devices"], list):
+            result["devices"] = [
+                {k: v for k, v in dev.items() if k in _COMPACT_DOOR_DEVICE_KEYS}
+                for dev in result["devices"]
+                if isinstance(dev, dict)
+            ]
+        return result
+
+    async def list_doors(self, compact: bool = False) -> List[Dict[str, Any]]:
         """Return all doors as summary dicts.
 
         Tries the API client first, then falls back to the proxy path.
         """
         try:
             if self._cm.has_api_client:
+                # API client already returns minimal 4-field dicts; compact is irrelevant.
                 doors = await self._cm.api_client.get_doors()
                 return [
                     {
@@ -61,8 +86,12 @@ class DoorManager:
                 # Response is {"data": {"locations": [...]}}
                 inner = self._cm.extract_data(data)
                 if isinstance(inner, dict):
-                    return inner.get("locations", [])
-                return inner
+                    doors = inner.get("locations", [])
+                else:
+                    doors = inner
+                if compact:
+                    doors = [self._compact_door(d) for d in doors if isinstance(d, dict)]
+                return doors
             else:
                 raise UniFiConnectionError("No auth path available for list_doors")
         except UniFiConnectionError:
