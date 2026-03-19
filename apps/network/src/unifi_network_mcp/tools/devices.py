@@ -57,6 +57,8 @@ def classify_device(device: Dict[str, Any]) -> str:
         return "switch"
     if device_type[:3] in ("ugw", "udm", "uxg"):
         return "gateway"
+    if device_type == "uci":
+        return "wan"
 
     return "unknown"
 
@@ -78,8 +80,10 @@ def get_wifi_bands(device: Dict[str, Any]) -> List[str]:
     name="unifi_list_devices",
     description=(
         "Returns adopted device inventory with MAC, name, model, IP, firmware version, "
-        "uptime, and status (online/offline/upgrading/etc). Filter by device_type "
-        "(ap/switch/gateway/pdu) and status (online/offline/pending/upgrading). "
+        "uptime, status (online/offline/upgrading/etc), device_category (ap/switch/gateway/pdu), "
+        "upgradable flag, connection_network, uplink topology, load_avg, mem_pct, and model_eol. "
+        "Filter by device_type (ap/switch/gateway/pdu) and status (online/offline/pending/upgrading). "
+        "Note: device_type=ap correctly excludes USP Smart Power strips. "
         "Set include_details=true for radio tables, port tables, and client counts. "
         "For a single device's full raw object, use unifi_get_device_details."
     ),
@@ -149,6 +153,23 @@ async def list_devices(
 
             category = classify_device(device)
 
+            # Extract per-device resource stats (available on all device types)
+            sys_stats = device.get("sys_stats", {})
+            mem_total = sys_stats.get("mem_total", 0)
+            mem_used = sys_stats.get("mem_used", 0)
+            mem_pct = round((mem_used / mem_total) * 100, 1) if mem_total else None
+
+            # Uplink topology
+            uplink = device.get("uplink", device.get("last_uplink", {}))
+            uplink_info = None
+            if uplink:
+                uplink_info = {
+                    "type": uplink.get("type", "unknown"),
+                    "speed": uplink.get("speed", 0),
+                    "uplink_device": uplink.get("uplink_device_name"),
+                    "uplink_port": uplink.get("uplink_remote_port"),
+                }
+
             device_info = {
                 "mac": device.get("mac", ""),
                 "name": device.get("name", device.get("model", "Unknown")),
@@ -162,7 +183,13 @@ async def list_devices(
                     datetime.fromtimestamp(device.get("last_seen", 0)).isoformat() if device.get("last_seen") else "N/A"
                 ),
                 "firmware": device.get("version", ""),
+                "upgradable": device.get("upgradable", False),
                 "adopted": device.get("adopted", False),
+                "connection_network": device.get("connection_network_name", ""),
+                "uplink": uplink_info,
+                "load_avg_1": sys_stats.get("loadavg_1"),
+                "mem_pct": mem_pct,
+                "model_eol": device.get("model_in_eol", False),
                 "_id": device.get("_id", ""),
             }
 

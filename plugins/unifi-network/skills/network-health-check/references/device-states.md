@@ -46,7 +46,17 @@ Known power strip models: UP6 (6-outlet strip), UP1 (single plug). These have `i
 ## Device Response Fields
 
 **Base fields** (always returned by `unifi_list_devices`):
-`mac`, `name`, `model`, `type`, `ip`, `status`, `uptime`, `last_seen`, `firmware`, `adopted`, `_id`
+`mac`, `name`, `model`, `type`, `device_category`, `ip`, `status`, `uptime`, `last_seen`, `firmware`, `upgradable`, `adopted`, `connection_network`, `uplink`, `load_avg_1`, `mem_pct`, `model_eol`, `_id`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `device_category` | string | Semantic category: `ap`, `switch`, `gateway`, `pdu`, `wan`, `unknown` |
+| `upgradable` | bool | True if firmware update is available |
+| `connection_network` | string | Name of the VLAN/network the device is connected to |
+| `uplink` | object | Topology: `{type, speed, uplink_device, uplink_port}` |
+| `load_avg_1` | float | 1-minute load average (null if unavailable) |
+| `mem_pct` | float | Memory usage percentage (null if unavailable) |
+| `model_eol` | bool | True if the device model is end-of-life |
 
 **Extended fields** (with `include_details=true`):
 `serial`, `hw_revision`, `model_display`, `clients`
