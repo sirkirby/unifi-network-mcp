@@ -1,4 +1,4 @@
-name: "Plugins: Bump versions on release"
+name: "Sync versions on release"
 
 on:
   push:
@@ -6,12 +6,14 @@ on:
       - 'network/v*.*.*'
       - 'protect/v*.*.*'
       - 'access/v*.*.*'
+      - 'core/v*.*.*'
+      - 'shared/v*.*.*'
       - 'v*.*.*'  # Legacy tag format (network)
 
 # Debounce: if multiple tags are pushed within seconds, only the last
 # workflow run proceeds. Earlier runs detect the branch has moved and skip.
 concurrency:
-  group: bump-plugin-versions
+  group: bump-versions
   cancel-in-progress: true
 
 permissions:
@@ -19,7 +21,7 @@ permissions:
 
 jobs:
   bump:
-    name: Update plugin.json versions
+    name: Sync all version references
     runs-on: ubuntu-latest
 
     steps:
@@ -30,7 +32,12 @@ jobs:
         fetch-depth: 0
         fetch-tags: true
 
-    - name: Detect tagged versions and update plugin.json files
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.13"
+
+    - name: Detect tagged versions and update files
       run: |
         get_version() {
           local prefix="$1"
@@ -75,12 +82,17 @@ jobs:
         fi
         PROTECT_VERSION=$(get_version "protect")
         ACCESS_VERSION=$(get_version "access")
+        CORE_VERSION=$(get_version "core")
+        SHARED_VERSION=$(get_version "shared")
 
         echo "Detected versions:"
         echo "  Network: ${NETWORK_VERSION:-not tagged}"
         echo "  Protect: ${PROTECT_VERSION:-not tagged}"
         echo "  Access:  ${ACCESS_VERSION:-not tagged}"
+        echo "  Core:    ${CORE_VERSION:-not tagged}"
+        echo "  Shared:  ${SHARED_VERSION:-not tagged}"
 
+        # Update plugin.json versions
         update_plugin_version "plugins/unifi-network/.claude-plugin/plugin.json" "$NETWORK_VERSION"
         update_plugin_version "plugins/unifi-protect/.claude-plugin/plugin.json" "$PROTECT_VERSION"
         update_plugin_version "plugins/unifi-access/.claude-plugin/plugin.json" "$ACCESS_VERSION"
@@ -90,12 +102,12 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-        git add plugins/*/.claude-plugin/plugin.json
+        git add -A
 
         if git diff --cached --quiet; then
           echo "No version changes to commit"
           exit 0
         fi
 
-        git commit -m "chore(plugins): bump plugin versions to match release tags"
+        git commit -m "chore(plugins): sync plugin versions to current release tags"
         git push
