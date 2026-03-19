@@ -1,0 +1,197 @@
+templates:
+
+  - name: iot-isolation
+    description: Block IoT VLAN from accessing private networks while allowing internet access
+    params:
+      - name: iot_network
+        description: IoT VLAN/network name (e.g. "IoT", "Smart Home")
+        required: true
+      - name: private_network
+        description: Private/main network name to protect (e.g. "Main", "Trusted")
+        required: true
+    tool: unifi_create_simple_firewall_policy
+    payload:
+      name: "IoT Isolation - Block {iot_network} to {private_network}"
+      ruleset: LAN_IN
+      action: reject
+      protocol: all
+      src:
+        type: network
+        value: "{iot_network}"
+      dst:
+        type: network
+        value: "{private_network}"
+      enabled: true
+
+  - name: guest-lockdown
+    description: Restrict guest VLAN to internet-only access, blocking all private LAN resources
+    params:
+      - name: guest_network
+        description: Guest network name (e.g. "Guest", "Visitor WiFi")
+        required: true
+      - name: private_network
+        description: Private network name to protect (e.g. "Main", "LAN")
+        required: true
+    tool: unifi_create_simple_firewall_policy
+    payload:
+      name: "Guest Lockdown - Block {guest_network} to {private_network}"
+      ruleset: GUEST_IN
+      action: reject
+      protocol: all
+      src:
+        type: network
+        value: "{guest_network}"
+      dst:
+        type: network
+        value: "{private_network}"
+      enabled: true
+
+  - name: kids-content-filter
+    description: Time-based block of social media and gaming on a kids VLAN during specified hours
+    params:
+      - name: kids_network
+        description: Kids VLAN/network name (e.g. "Kids", "Children")
+        required: true
+      - name: dpi_category_id
+        description: DPI category ID from unifi_get_dpi_stats (Social Media or Gaming)
+        required: true
+      - name: block_days
+        description: List of days to enforce the block (e.g. ["mon","tue","wed","thu","fri"])
+        required: true
+      - name: block_start
+        description: Block start time in 24-hour format (e.g. "21:00")
+        required: true
+      - name: block_end
+        description: Block end time in 24-hour format (e.g. "07:00")
+        required: true
+    tool: unifi_create_firewall_policy
+    payload:
+      name: "Kids Filter - Block DPI {dpi_category_id} on {kids_network}"
+      ruleset: LAN_IN
+      action: reject
+      protocol: all
+      src:
+        type: network_id
+        value: "{kids_network_id}"
+      dst:
+        type: any
+      dpi_category_id: "{dpi_category_id}"
+      schedule:
+        mode: custom
+        repeat_on_days: "{block_days}"
+        time_all_day: false
+        time_range_start: "{block_start}"
+        time_range_end: "{block_end}"
+      enabled: true
+    notes: >
+      Run unifi_get_dpi_stats first to get the correct dpi_category_id for this controller.
+      Create one rule per DPI category (e.g. separate rules for Social Media and Gaming).
+
+  - name: block-bittorrent
+    description: Block BitTorrent and P2P file sharing traffic using DPI category detection
+    params:
+      - name: target_network
+        description: Network/VLAN to restrict (use network name or "any" for all)
+        required: true
+      - name: dpi_category_id
+        description: DPI category ID for BitTorrent/P2P from unifi_get_dpi_stats
+        required: true
+    tool: unifi_create_firewall_policy
+    payload:
+      name: "Block BitTorrent - {target_network}"
+      ruleset: LAN_IN
+      action: drop
+      protocol: all
+      src:
+        type: network_id
+        value: "{target_network_id}"
+      dst:
+        type: any
+      dpi_category_id: "{dpi_category_id}"
+      enabled: true
+    notes: >
+      Run unifi_get_dpi_stats to get the P2P/BitTorrent category ID.
+      Using "drop" instead of "reject" avoids leaking firewall presence to external peers.
+
+  - name: work-vpn-split-tunnel
+    description: Allow work VLAN to route corporate traffic via VPN while accessing local resources directly
+    params:
+      - name: work_network
+        description: Work/corporate VLAN name (e.g. "Work", "Corporate")
+        required: true
+      - name: corporate_ip_group
+        description: IP group name containing corporate subnet ranges
+        required: true
+    tool: unifi_create_firewall_policy
+    payload:
+      name: "Work VPN - Allow {work_network} to Corporate"
+      ruleset: LAN_IN
+      action: accept
+      protocol: all
+      src:
+        type: network_id
+        value: "{work_network_id}"
+      dst:
+        type: ip_group_id
+        value: "{corporate_ip_group_id}"
+      enabled: true
+    notes: >
+      This template creates the allow rule for corporate traffic.
+      A separate routing policy or static route is required to direct matched traffic through the VPN interface.
+      Use unifi_list_firewall_groups to find or create the corporate IP group.
+      Use unifi_list_static_routes to review existing routing configuration.
+
+  - name: camera-isolation
+    description: Lock IP cameras to communicate only with their NVR, blocking all other traffic
+    params:
+      - name: camera_network
+        description: Camera VLAN/network name (e.g. "Cameras", "Surveillance")
+        required: true
+      - name: nvr_ip_group
+        description: IP group name containing the NVR IP address
+        required: true
+      - name: allow_cloud
+        description: Whether to allow manufacturer cloud access (true/false)
+        required: false
+        default: false
+      - name: cloud_ip_group
+        description: IP group name for manufacturer cloud IPs (only if allow_cloud is true)
+        required: false
+    rules:
+      - step: 1
+        name: "Camera Allow NVR - {camera_network}"
+        description: Allow camera traffic to NVR only
+        tool: unifi_create_firewall_policy
+        payload:
+          name: "Camera Allow NVR - {camera_network} to NVR"
+          ruleset: LAN_IN
+          action: accept
+          protocol: all
+          src:
+            type: network_id
+            value: "{camera_network_id}"
+          dst:
+            type: ip_group_id
+            value: "{nvr_ip_group_id}"
+          enabled: true
+      - step: 2
+        name: "Camera Block All - {camera_network}"
+        description: Catch-all drop rule for all other camera traffic (must follow the allow rule)
+        tool: unifi_create_firewall_policy
+        payload:
+          name: "Camera Block All - {camera_network}"
+          ruleset: LAN_IN
+          action: drop
+          protocol: all
+          src:
+            type: network_id
+            value: "{camera_network_id}"
+          dst:
+            type: any
+          enabled: true
+    notes: >
+      Multi-step template: create rules in order (allow NVR first, then catch-all drop).
+      Rule order matters — the allow rule must have a lower rule index than the drop rule.
+      Verify ordering with unifi_list_firewall_policies after creation.
+      If allow_cloud is true, insert a second accept rule between step 1 and step 2
+      targeting the manufacturer cloud IP group.

@@ -42,7 +42,7 @@ server:
   enabled_tools: ${oc.env:UNIFI_ENABLED_TOOLS,null}
 
   http:
-    enabled: ${oc.env:UNIFI_MCP_HTTP_ENABLED,false}
+    enabled: ${oc.env:UNIFI_MCP_HTTP_ENABLED,true}
     force: ${oc.env:UNIFI_MCP_HTTP_FORCE,false}
     transport: ${oc.env:UNIFI_MCP_HTTP_TRANSPORT,streamable-http}
   diagnostics:

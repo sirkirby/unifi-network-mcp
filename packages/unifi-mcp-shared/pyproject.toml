@@ -1,6 +1,6 @@
 [project]
 name = "unifi-mcp-shared"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Shared MCP server patterns: permissions, confirmation, lazy loading, config"
 requires-python = ">=3.13"
 dependencies = [
@@ -18,8 +18,18 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+raw-options.root = "../.."
+raw-options.tag_regex = "^shared/v(?P<version>\\d+(?:\\.\\d+)*)(?:\\S*)$"
+raw-options.git_describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "shared/v*"]
+raw-options.fallback_version = "0.0.0"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/unifi_mcp_shared/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/unifi_mcp_shared"]

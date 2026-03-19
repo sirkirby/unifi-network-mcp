@@ -20,6 +20,49 @@ from unifi_network_mcp.runtime import config, device_manager, server
 logger = logging.getLogger(__name__)
 
 
+# Model prefixes for USP Smart Power devices that may report as 'uap' type
+_POWER_DEVICE_MODELS = {"UP1", "UP6", "USP"}
+
+
+def classify_device(device: Dict[str, Any]) -> str:
+    """Classify a device into a semantic category.
+
+    Uses the controller's ``is_access_point`` flag as the primary signal
+    for distinguishing real APs from other ``uap``-typed devices (e.g.,
+    USP Smart Power strips that connect via wireless mesh).  Falls back
+    to model-prefix matching when the flag is absent.
+
+    Returns one of: 'ap', 'switch', 'gateway', 'pdu', 'unknown'
+    """
+    device_type = device.get("type", "")
+    model = device.get("model", "")
+
+    # Explicit power device types
+    if device_type.startswith("usp"):
+        return "pdu"
+
+    # For uap-typed devices, use the controller's is_access_point flag
+    if device_type.startswith("uap"):
+        is_ap = device.get("is_access_point")
+        if is_ap is not None:
+            if not is_ap:
+                return "pdu"
+            return "ap"
+        # Fallback: check model prefix when flag is missing (older firmware)
+        if any(model.upper().startswith(prefix) for prefix in _POWER_DEVICE_MODELS):
+            return "pdu"
+        return "ap"
+
+    if device_type[:3] in ("usw", "usk"):
+        return "switch"
+    if device_type[:3] in ("ugw", "udm", "uxg"):
+        return "gateway"
+    if device_type == "uci":
+        return "wan"
+
+    return "unknown"
+
+
 def get_wifi_bands(device: Dict[str, Any]) -> List[str]:
     """Extract active WiFi bands from device radio table."""
     bands = set()
@@ -37,8 +80,10 @@ def get_wifi_bands(device: Dict[str, Any]) -> List[str]:
     name="unifi_list_devices",
     description=(
         "Returns adopted device inventory with MAC, name, model, IP, firmware version, "
-        "uptime, and status (online/offline/upgrading/etc). Filter by device_type "
-        "(ap/switch/gateway/pdu) and status (online/offline/pending/upgrading). "
+        "uptime, status (online/offline/upgrading/etc), device_category (ap/switch/gateway/pdu), "
+        "upgradable flag, connection_network, uplink topology, load_avg, mem_pct, and model_eol. "
+        "Filter by device_type (ap/switch/gateway/pdu) and status (online/offline/pending/upgrading). "
+        "Note: device_type=ap correctly excludes USP Smart Power strips. "
         "Set include_details=true for radio tables, port tables, and client counts. "
         "For a single device's full raw object, use unifi_get_device_details."
     ),
@@ -71,17 +116,9 @@ async def list_devices(
         # Convert Device objects to plain dictionaries for easier filtering
         devices_raw = [d.raw if hasattr(d, "raw") else d for d in devices]
 
-        # Filter by device type
+        # Filter by device type using semantic classification
         if device_type != "all":
-            prefix_map = {
-                "ap": "uap",
-                "switch": ("usw", "usk"),
-                "gateway": ("ugw", "udm", "uxg"),
-                "pdu": "usp",
-            }
-            prefixes = prefix_map.get(device_type)
-            if prefixes:
-                devices_raw = [d for d in devices_raw if d.get("type", "").startswith(prefixes)]
+            devices_raw = [d for d in devices_raw if classify_device(d) == device_type]
 
         # Filter by status
         if status != "all":
@@ -114,11 +151,31 @@ async def list_devices(
             device_state = device.get("state", 0)
             device_status_str = state_map.get(device_state, f"unknown_state ({device_state})")
 
+            category = classify_device(device)
+
+            # Extract per-device resource stats (available on all device types)
+            sys_stats = device.get("sys_stats", {})
+            mem_total = sys_stats.get("mem_total", 0)
+            mem_used = sys_stats.get("mem_used", 0)
+            mem_pct = round((mem_used / mem_total) * 100, 1) if mem_total else None
+
+            # Uplink topology
+            uplink = device.get("uplink", device.get("last_uplink", {}))
+            uplink_info = None
+            if uplink:
+                uplink_info = {
+                    "type": uplink.get("type", "unknown"),
+                    "speed": uplink.get("speed", 0),
+                    "uplink_device": uplink.get("uplink_device_name"),
+                    "uplink_port": uplink.get("uplink_remote_port"),
+                }
+
             device_info = {
                 "mac": device.get("mac", ""),
                 "name": device.get("name", device.get("model", "Unknown")),
                 "model": device.get("model", ""),
                 "type": device.get("type", ""),
+                "device_category": category,
                 "ip": device.get("ip", ""),
                 "status": device_status_str,
                 "uptime": str(timedelta(seconds=device.get("uptime", 0))) if device.get("uptime") else "N/A",
@@ -126,7 +183,13 @@ async def list_devices(
                     datetime.fromtimestamp(device.get("last_seen", 0)).isoformat() if device.get("last_seen") else "N/A"
                 ),
                 "firmware": device.get("version", ""),
+                "upgradable": device.get("upgradable", False),
                 "adopted": device.get("adopted", False),
+                "connection_network": device.get("connection_network_name", ""),
+                "uplink": uplink_info,
+                "load_avg_1": sys_stats.get("loadavg_1"),
+                "mem_pct": mem_pct,
+                "model_eol": device.get("model_in_eol", False),
                 "_id": device.get("_id", ""),
             }
 
@@ -138,9 +201,7 @@ async def list_devices(
                     "clients": device.get("num_sta", 0),
                 }
 
-                device_type_prefix = device.get("type", "")[:3]
-
-                if device_type_prefix == "uap":
+                if category == "ap":
                     details_to_add.update(
                         {
                             "radio_table": device.get("radio_table", []),
@@ -150,7 +211,7 @@ async def list_devices(
                             "num_clients": device.get("num_sta", 0),
                         }
                     )
-                elif device_type_prefix in ["usw", "usk"]:
+                elif category == "switch":
                     details_to_add.update(
                         {
                             "ports": device.get("port_table", []),
@@ -163,7 +224,7 @@ async def list_devices(
                             },
                         }
                     )
-                elif device_type_prefix in ["ugw", "udm", "uxg"]:
+                elif category == "gateway":
                     details_to_add.update(
                         {
                             "wan1": device.get("wan1", {}),
