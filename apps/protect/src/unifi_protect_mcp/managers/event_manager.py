@@ -188,12 +188,24 @@ class EventManager:
         # obj is an Event instance at this point
         return self._event_to_dict(obj)
 
+    def _resolve_camera_name(self, camera_id: str | None) -> str | None:
+        """Resolve a camera ID to its display name from bootstrap data."""
+        if not camera_id:
+            return None
+        try:
+            cameras = self._cm.client.bootstrap.cameras
+            camera = cameras.get(camera_id)
+            return camera.name if camera else None
+        except Exception:
+            return None
+
     def _event_to_dict(self, event: Event) -> dict[str, Any]:
         """Convert a uiprotect ``Event`` object to a serialisable dict."""
         return {
             "id": event.id,
             "type": event.type.value if isinstance(event.type, EventType) else str(event.type),
             "camera_id": event.camera_id,
+            "camera_name": self._resolve_camera_name(event.camera_id),
             "start": event.start.isoformat() if event.start else None,
             "end": event.end.isoformat() if event.end else None,
             "score": event.score,
@@ -415,6 +427,7 @@ class EventManager:
             "event_id": event_id,
             "type": event.type.value if isinstance(event.type, EventType) else str(event.type),
             "camera_id": event.camera_id,
+            "camera_name": self._resolve_camera_name(event.camera_id),
             "current_is_favorite": event.is_favorite,
             "proposed_is_favorite": True,
         }
