@@ -133,6 +133,20 @@ async def run_transports(
         except Exception as http_e:
             logger.error("FastMCP %s server failed to start: %s", transport_label, http_e, exc_info=True)
 
+    # When running as PID 1 (Docker container main process), stdin has no
+    # client — stdio would exit immediately via EOF and cancel the HTTP
+    # transport.  Run HTTP-only in this case.
+    is_main_container_process = os.getpid() == 1
+    if is_main_container_process:
+        logger.info("Container main process (PID 1): running %s transport only.", transport_label)
+        try:
+            await run_http()
+            logger.info("FastMCP %s server exited.", transport_label)
+        except Exception as e:
+            logger.error("Error running FastMCP %s server: %s", transport_label, e, exc_info=True)
+            raise
+        return
+
     # Use asyncio tasks so we can cancel HTTP when stdio exits (or vice versa).
     # Without this, the HTTP server keeps the process alive as an orphan after
     # the stdio client disconnects.
