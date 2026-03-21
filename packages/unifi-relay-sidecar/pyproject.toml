@@ -1,0 +1,41 @@
+[project]
+name = "unifi-relay-sidecar"
+dynamic = ["version"]
+description = "Relay sidecar: bridges local MCP servers to a Cloudflare Worker gateway"
+requires-python = ">=3.13"
+dependencies = [
+    "websockets>=13.0",
+    "mcp[cli]>=1.26.0,<2",
+    "aiohttp>=3.8.5",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+unifi-relay-sidecar = "unifi_relay_sidecar.__main__:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "aioresponses>=0.7.0",
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+raw-options.root = "../.."
+raw-options.tag_regex = "^relay-sidecar/v(?P<version>\\d+(?:\\.\\d+)*)(?:\\S*)$"
+raw-options.git_describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "relay-sidecar/v*"]
+raw-options.fallback_version = "0.0.0"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/unifi_relay_sidecar/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/unifi_relay_sidecar"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

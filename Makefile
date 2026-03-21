@@ -1,5 +1,5 @@
 .PHONY: help test lint format manifest skill-references sync-skills check-skills-sync pre-commit core-test shared-test \
-       sync docker-build docker-up docker-down docker-logs
+       sidecar-test docker-sidecar sync docker-build docker-up docker-down docker-logs
 
 help:
 	@echo "UniFi MCP Ecosystem — Top-Level Commands"
@@ -29,7 +29,7 @@ core-test:
 shared-test:
 	uv run --package unifi-mcp-shared pytest packages/unifi-mcp-shared/tests -v
 
-test: core-test shared-test
+test: core-test shared-test sidecar-test
 	$(MAKE) -C apps/network test
 	$(MAKE) -C apps/protect test
 	$(MAKE) -C apps/access test
@@ -59,6 +59,12 @@ sync-skills:
 
 check-skills-sync:
 	python3 skills/_build/sync_shared.py --check
+
+sidecar-test:
+	uv run --package unifi-relay-sidecar pytest packages/unifi-relay-sidecar/tests -v
+
+docker-sidecar:
+	docker build -f packages/unifi-relay-sidecar/Dockerfile -t unifi-relay-sidecar .
 
 pre-commit: format lint sync-skills test
 
