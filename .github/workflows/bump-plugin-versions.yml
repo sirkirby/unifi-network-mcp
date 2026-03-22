@@ -8,6 +8,7 @@ on:
       - 'access/v*.*.*'
       - 'core/v*.*.*'
       - 'shared/v*.*.*'
+      - 'relay/v*.*.*'
       - 'v*.*.*'  # Legacy tag format (network)
 
 # Debounce: if multiple tags are pushed within seconds, only the last
@@ -90,6 +91,7 @@ jobs:
         ACCESS_VERSION=$(get_version "access")
         CORE_VERSION=$(get_version "core")
         SHARED_VERSION=$(get_version "shared")
+        RELAY_VERSION=$(get_version "relay")
 
         echo "Detected versions:"
         echo "  Network: ${NETWORK_VERSION:-not tagged}"
@@ -97,6 +99,7 @@ jobs:
         echo "  Access:  ${ACCESS_VERSION:-not tagged}"
         echo "  Core:    ${CORE_VERSION:-not tagged}"
         echo "  Shared:  ${SHARED_VERSION:-not tagged}"
+        echo "  Relay:   ${RELAY_VERSION:-not tagged}"
 
         # Update plugin.json versions
         update_plugin_version "plugins/unifi-network/.claude-plugin/plugin.json" "$NETWORK_VERSION"
