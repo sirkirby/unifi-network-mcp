@@ -9,6 +9,7 @@ Leverage agents and agentic AI workflows to manage your UniFi deployment.
 [![PyPI - Network](https://img.shields.io/pypi/v/unifi-network-mcp)](https://pypi.org/project/unifi-network-mcp/)
 [![PyPI - Protect](https://img.shields.io/pypi/v/unifi-protect-mcp)](https://pypi.org/project/unifi-protect-mcp/)
 [![PyPI - Access](https://img.shields.io/pypi/v/unifi-access-mcp)](https://pypi.org/project/unifi-access-mcp/)
+[![PyPI - Relay](https://img.shields.io/pypi/v/unifi-mcp-relay)](https://pypi.org/project/unifi-mcp-relay/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/downloads/)
 
@@ -19,6 +20,15 @@ Leverage agents and agentic AI workflows to manage your UniFi deployment.
 | [Network](apps/network/) | Stable | 91 | [`unifi-network-mcp`](https://pypi.org/project/unifi-network-mcp/) |
 | [Protect](apps/protect/) | Beta | 34 | [`unifi-protect-mcp`](https://pypi.org/project/unifi-protect-mcp/) |
 | [Access](apps/access/) | Beta | 29 | [`unifi-access-mcp`](https://pypi.org/project/unifi-access-mcp/) |
+
+## Cloud Relay
+
+| Component | Status | Package |
+|-----------|--------|---------|
+| [Relay Sidecar](packages/unifi-mcp-relay/) | Beta | [`unifi-mcp-relay`](https://pypi.org/project/unifi-mcp-relay/) |
+| [Worker Gateway](https://github.com/sirkirby/unifi-mcp-worker) | Beta | Cloudflare Worker |
+
+The relay bridges your local MCP servers to a Cloudflare Worker, letting cloud agents access your UniFi tools without exposing local ports. Supports multi-location with annotation-based fan-out for read-only tools. See the [relay README](packages/unifi-mcp-relay/) for setup.
 
 ## What is this?
 
@@ -147,6 +157,7 @@ apps/
 packages/
   unifi-core/       # Shared UniFi connectivity (auth, detection, retry)
   unifi-mcp-shared/ # Shared MCP patterns (permissions, tools, diagnostics, config)
+  unifi-mcp-relay/  # Cloud relay sidecar (bridges local servers to Cloudflare Worker)
 plugins/
   unifi-network/    # Claude Code plugin: MCP server + agent skills + setup
   unifi-protect/    # Claude Code plugin: MCP server + agent skills + setup
