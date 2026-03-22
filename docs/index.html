@@ -29,6 +29,7 @@
       --network: #006FFF;
       --protect: #8B5CF6;
       --access: #F59E0B;
+      --relay: #EC4899;
       --drive: #00D4AA;
     }
 
@@ -374,6 +375,9 @@
       border-top-color: var(--access);
     }
 
+    .server-card--relay {
+      border-top-color: var(--relay);
+    }
     .server-card--drive {
       border-top-color: var(--drive);
     }
@@ -853,6 +857,27 @@
           </div>
           <p>Door access control, visitor management, and credential provisioning for UniFi Access hubs, locks, and readers.</p>
           <a href="https://github.com/sirkirby/unifi-mcp/tree/main/apps/access" class="server-card-link">Explore Access &rarr;</a>
+        </div>
+
+        <!-- Relay -->
+        <div class="server-card server-card--relay">
+          <div class="server-card-header">
+            <svg class="server-card-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+              <circle cx="10" cy="20" r="5" stroke="var(--relay)" stroke-width="2" fill="var(--relay)" fill-opacity="0.15"/>
+              <circle cx="30" cy="20" r="5" stroke="var(--relay)" stroke-width="2" fill="var(--relay)" fill-opacity="0.15"/>
+              <line x1="15" y1="18" x2="25" y2="18" stroke="var(--relay)" stroke-width="1.5" opacity="0.6"/>
+              <line x1="15" y1="22" x2="25" y2="22" stroke="var(--relay)" stroke-width="1.5" opacity="0.6"/>
+              <polyline points="23,15 27,18 23,21" stroke="var(--relay)" stroke-width="1.5" fill="none" opacity="0.8"/>
+              <polyline points="17,19 13,22 17,25" stroke="var(--relay)" stroke-width="1.5" fill="none" opacity="0.8"/>
+            </svg>
+            <h3>Cloud Relay</h3>
+          </div>
+          <div class="server-card-meta">
+            <span class="badge badge-beta">Beta</span>
+          </div>
+          <p>Bridge your local MCP servers to cloud agents via Cloudflare Workers. Multi-location support with annotation-based fan-out.</p>
+          <a href="https://github.com/sirkirby/unifi-mcp/tree/main/packages/unifi-mcp-relay" class="server-card-link">Explore Relay &rarr;</a>
+          <a href="https://github.com/sirkirby/unifi-mcp-worker" class="server-card-link">Explore Worker &rarr;</a>
         </div>
 
         <!-- Drive -->

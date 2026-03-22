@@ -11,8 +11,9 @@ unifi-mcp/
   packages/
     unifi-core/           # Shared UniFi controller connectivity
     unifi-mcp-shared/     # Shared MCP server patterns
+    unifi-mcp-relay/      # Cloud relay sidecar
   docs/                   # Ecosystem-level docs and plans
-  docker/                 # Docker compose for network server
+  docker/                 # Docker compose for servers and relay
 ```
 
 The workspace is managed by [uv](https://docs.astral.sh/uv/) with `pyproject.toml` at the root defining workspace members. Each app and package is an independent Python package with its own `pyproject.toml`.
@@ -97,6 +98,22 @@ The UniFi Access MCP server. 29 tools across 7 categories covering doors, polici
 - `Dockerfile` -- container build
 
 **Dual-path auth** is unique to the Access server. The `AccessConnectionManager` maintains two independent sessions: an API key client for read-heavy queries and a proxy session (cookie + CSRF token) for mutations. Each tool declares which auth path it requires.
+
+### packages/unifi-mcp-relay
+
+A standalone sidecar that bridges local MCP servers to a Cloudflare Worker relay gateway, enabling cloud agents to access locally-hosted tools without exposing ports. Communicates with local servers via MCP HTTP transport and with the worker via authenticated WebSocket.
+
+- `src/unifi_mcp_relay/` -- sidecar code
+  - `config.py` -- environment variable loading and validation
+  - `protocol.py` -- WebSocket message types (register, tool_call, heartbeat, catalog_update)
+  - `discovery.py` -- MCP protocol tool discovery from local servers
+  - `forwarder.py` -- tool call routing to the correct local server
+  - `client.py` -- WebSocket client with reconnection, auth, and timeout enforcement
+  - `main.py` -- orchestrator wiring discovery, forwarding, and the client
+- `tests/` -- unit and integration tests (mock WebSocket worker)
+- `Dockerfile` -- container build
+
+The relay has **no dependency** on the MCP server packages (`unifi-core`, `unifi-mcp-shared`, or any `apps/*`). It is a pure MCP client that discovers tools via the standard MCP protocol.
 
 ## Layering
 
