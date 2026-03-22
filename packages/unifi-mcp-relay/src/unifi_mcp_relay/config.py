@@ -36,8 +36,21 @@ def load_config() -> RelayConfig:
 
     servers_raw = os.environ.get("UNIFI_RELAY_SERVERS", "http://localhost:3000")
     servers = [s.strip() for s in servers_raw.split(",") if s.strip()]
-    refresh_interval = int(os.environ.get("UNIFI_RELAY_REFRESH_INTERVAL", "300"))
-    reconnect_max_delay = int(os.environ.get("UNIFI_RELAY_RECONNECT_MAX_DELAY", "60"))
+
+    try:
+        refresh_interval = int(os.environ.get("UNIFI_RELAY_REFRESH_INTERVAL", "300"))
+    except ValueError:
+        raise ValueError(
+            f"UNIFI_RELAY_REFRESH_INTERVAL must be an integer (seconds), "
+            f"got: {os.environ.get('UNIFI_RELAY_REFRESH_INTERVAL')!r}"
+        )
+    try:
+        reconnect_max_delay = int(os.environ.get("UNIFI_RELAY_RECONNECT_MAX_DELAY", "60"))
+    except ValueError:
+        raise ValueError(
+            f"UNIFI_RELAY_RECONNECT_MAX_DELAY must be an integer (seconds), "
+            f"got: {os.environ.get('UNIFI_RELAY_RECONNECT_MAX_DELAY')!r}"
+        )
 
     return RelayConfig(
         relay_url=relay_url,

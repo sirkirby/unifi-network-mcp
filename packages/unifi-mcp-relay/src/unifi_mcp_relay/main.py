@@ -46,7 +46,7 @@ class RelaySidecar:
             try:
                 await self._forwarder.close()
             except Exception as exc:
-                logger.debug("[main] Error closing old forwarder: %s", exc)
+                logger.warning("[main] Error closing old forwarder: %s", exc)
 
         forwarder = ToolForwarder(servers)
         await forwarder.open()

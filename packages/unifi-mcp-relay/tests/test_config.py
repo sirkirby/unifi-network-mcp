@@ -52,3 +52,42 @@ def test_config_defaults():
         assert cfg.servers == ["http://localhost:3000"]
         assert cfg.refresh_interval == 300
         assert cfg.reconnect_max_delay == 60
+
+
+def test_config_bad_refresh_interval_names_variable():
+    env = {
+        "UNIFI_RELAY_URL": "https://my-worker.workers.dev",
+        "UNIFI_RELAY_TOKEN": "test-token",
+        "UNIFI_RELAY_LOCATION_NAME": "Test",
+        "UNIFI_RELAY_REFRESH_INTERVAL": "5m",
+    }
+    with patch.dict(os.environ, env, clear=False):
+        from unifi_mcp_relay.config import load_config
+        with pytest.raises(ValueError, match="UNIFI_RELAY_REFRESH_INTERVAL"):
+            load_config()
+
+
+def test_config_bad_reconnect_delay_names_variable():
+    env = {
+        "UNIFI_RELAY_URL": "https://my-worker.workers.dev",
+        "UNIFI_RELAY_TOKEN": "test-token",
+        "UNIFI_RELAY_LOCATION_NAME": "Test",
+        "UNIFI_RELAY_RECONNECT_MAX_DELAY": "one-minute",
+    }
+    with patch.dict(os.environ, env, clear=False):
+        from unifi_mcp_relay.config import load_config
+        with pytest.raises(ValueError, match="UNIFI_RELAY_RECONNECT_MAX_DELAY"):
+            load_config()
+
+
+def test_config_servers_with_trailing_comma():
+    env = {
+        "UNIFI_RELAY_URL": "https://my-worker.workers.dev",
+        "UNIFI_RELAY_TOKEN": "test-token",
+        "UNIFI_RELAY_LOCATION_NAME": "Test",
+        "UNIFI_RELAY_SERVERS": "http://localhost:3000,http://localhost:3001,",
+    }
+    with patch.dict(os.environ, env, clear=False):
+        from unifi_mcp_relay.config import load_config
+        cfg = load_config()
+        assert cfg.servers == ["http://localhost:3000", "http://localhost:3001"]

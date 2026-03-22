@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+from dataclasses import dataclass
 
 import pytest
 import websockets
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+from websockets.connection import State as WsState
+from websockets.frames import Close
 
-from unifi_mcp_relay.client import RelayClient
+from unifi_mcp_relay.client import RelayClient, _AUTH_FAILURE_CODES
 from unifi_mcp_relay.config import RelayConfig
 from unifi_mcp_relay.protocol import (
     ToolCallMessage,
@@ -83,6 +87,15 @@ async def test_client_sends_register_on_connect(config, tools):
         mock_websockets.connect = AsyncMock(return_value=mock_ws)
         mock_websockets.Subprotocol = websockets.Subprotocol
         await client._connect_and_register(tools)
+
+        # Verify token is in Authorization header, not in subprotocols
+        connect_kwargs = mock_websockets.connect.call_args
+        headers = connect_kwargs.kwargs.get("additional_headers", {})
+        assert headers.get("Authorization") == "Bearer test-token"
+        subprotocols = connect_kwargs.kwargs.get("subprotocols", [])
+        subprotocol_values = [str(sp) for sp in subprotocols]
+        assert "test-token" not in subprotocol_values
+        assert "unifi-relay-v1" in subprotocol_values
 
         sent_data = json.loads(mock_ws.send.call_args[0][0])
         assert sent_data["type"] == "register"
@@ -176,7 +189,7 @@ async def test_client_ignores_none_message(config):
 async def test_client_send_catalog_update_when_connected(config, tools):
     client = RelayClient(config)
     mock_ws = AsyncMock()
-    mock_ws.open = True
+    mock_ws.state = WsState.OPEN
     client._ws = mock_ws
 
     result = await client.send_catalog_update(tools)
@@ -197,7 +210,19 @@ async def test_client_send_catalog_update_when_disconnected(config, tools):
 async def test_client_send_catalog_update_when_ws_closed(config, tools):
     client = RelayClient(config)
     mock_ws = AsyncMock()
-    mock_ws.open = False
+    mock_ws.state = WsState.CLOSED
+    client._ws = mock_ws
+
+    result = await client.send_catalog_update(tools)
+    assert result is False
+
+
+async def test_client_send_catalog_update_handles_send_failure(config, tools):
+    """send_catalog_update returns False and does not raise if ws.send() fails."""
+    client = RelayClient(config)
+    mock_ws = AsyncMock()
+    mock_ws.state = WsState.OPEN
+    mock_ws.send = AsyncMock(side_effect=websockets.ConnectionClosed(None, None))
     client._ws = mock_ws
 
     result = await client.send_catalog_update(tools)
@@ -246,3 +271,121 @@ async def test_client_register_raises_on_unexpected_response(config, tools):
 
         with pytest.raises(ConnectionError, match="Registration failed"):
             await client._connect_and_register(tools)
+
+
+# --- _is_auth_failure tests ---
+
+
+def _make_connection_closed(code: int, reason: str = "") -> websockets.ConnectionClosed:
+    """Create a ConnectionClosed exception with the given close code and reason."""
+    rcvd = Close(code, reason)
+    exc = websockets.ConnectionClosed(rcvd, None)
+    return exc
+
+
+def test_is_auth_failure_code_4001():
+    exc = _make_connection_closed(4001)
+    assert RelayClient._is_auth_failure(exc) is True
+
+
+def test_is_auth_failure_code_4003():
+    exc = _make_connection_closed(4003)
+    assert RelayClient._is_auth_failure(exc) is True
+
+
+def test_is_auth_failure_normal_close():
+    exc = _make_connection_closed(1000, "normal close")
+    assert RelayClient._is_auth_failure(exc) is False
+
+
+def test_is_auth_failure_abnormal_close():
+    exc = _make_connection_closed(1006, "abnormal closure")
+    assert RelayClient._is_auth_failure(exc) is False
+
+
+def test_is_auth_failure_reason_rejected():
+    exc = _make_connection_closed(1008, "token rejected")
+    assert RelayClient._is_auth_failure(exc) is True
+
+
+def test_is_auth_failure_reason_auth():
+    exc = _make_connection_closed(1008, "authentication failed")
+    assert RelayClient._is_auth_failure(exc) is True
+
+
+def test_is_auth_failure_no_rcvd():
+    """When rcvd is None (abnormal closure with no close frame), not an auth failure."""
+    exc = websockets.ConnectionClosed(None, None)
+    assert RelayClient._is_auth_failure(exc) is False
+
+
+# --- URL validation tests ---
+
+
+def test_build_ws_url_rejects_invalid_scheme():
+    with pytest.raises(ValueError, match="must start with http"):
+        RelayClient._build_ws_url("ftp://example.com")
+
+
+def test_build_ws_url_rejects_missing_scheme():
+    with pytest.raises(ValueError, match="must start with http"):
+        RelayClient._build_ws_url("example.com")
+
+
+# --- Timeout enforcement test ---
+
+
+async def test_client_tool_call_timeout():
+    """Tool call should time out when handler exceeds timeout_ms."""
+    config = RelayConfig(
+        relay_url="https://example.com",
+        relay_token="test",
+        location_name="Test",
+    )
+    client = RelayClient(config)
+
+    async def slow_handler(name: str, args: dict) -> tuple[dict | None, str | None]:
+        await asyncio.sleep(10)
+        return {"success": True}, None
+
+    client._tool_call_handler = slow_handler
+    mock_ws = AsyncMock()
+
+    msg = ToolCallMessage(call_id="call-timeout", tool_name="slow_tool", arguments={}, timeout_ms=50)
+    await client._handle_tool_call(msg, mock_ws)
+
+    sent_data = json.loads(mock_ws.send.call_args[0][0])
+    assert sent_data["type"] == "tool_result"
+    assert sent_data["call_id"] == "call-timeout"
+    assert "timed out" in sent_data["error"]
+
+
+# --- Task tracking test ---
+
+
+async def test_client_tracks_pending_tool_call_tasks(config):
+    """Tool call tasks are tracked in _pending_tasks and cleaned up on completion."""
+    client = RelayClient(config)
+    call_started = asyncio.Event()
+    call_proceed = asyncio.Event()
+
+    async def handler(name: str, args: dict) -> tuple[dict | None, str | None]:
+        call_started.set()
+        await call_proceed.wait()
+        return {"success": True}, None
+
+    client._tool_call_handler = handler
+    mock_ws = AsyncMock()
+    mock_ws.state = WsState.OPEN
+
+    msg = ToolCallMessage(call_id="call-track", tool_name="test_tool", arguments={}, timeout_ms=5000)
+    await client._handle_message(msg, mock_ws)
+
+    await call_started.wait()
+    assert len(client._pending_tasks) == 1
+
+    call_proceed.set()
+    # Let the task complete
+    await asyncio.gather(*client._pending_tasks)
+    # Done callback should have removed it
+    assert len(client._pending_tasks) == 0

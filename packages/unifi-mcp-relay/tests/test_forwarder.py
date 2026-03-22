@@ -131,26 +131,17 @@ async def test_forwarder_call_raises_for_unknown_server(server_infos):
         await fwd._call("http://localhost:9999", "some_tool", {})
 
 
-def test_forwarder_update_refreshes_routing_table(server_infos):
+async def test_forwarder_call_returns_raw_on_bad_json(server_infos):
+    """_call falls back to raw result when text content is not valid JSON."""
     fwd = ToolForwarder(server_infos)
-    assert fwd.get_server_url("protect_list_cameras") == "http://localhost:3001"
 
-    new_infos = [
-        ServerInfo(
-            name="unifi-access-mcp",
-            url="http://localhost:3002",
-            tools=[
-                ToolInfo(name="access_list_doors", description="List doors", server_origin="unifi-access-mcp"),
-            ],
-        ),
-    ]
-    fwd.update(new_infos)
+    mock_client = AsyncMock()
+    raw_result = {"content": [{"type": "text", "text": "not-json-at-all"}]}
+    mock_client.request = AsyncMock(return_value=raw_result)
+    fwd._clients["http://localhost:3000"] = mock_client
 
-    # Old tools no longer routable
-    assert fwd.get_server_url("unifi_list_devices") is None
-    assert fwd.get_server_url("protect_list_cameras") is None
-    # New tool is routable
-    assert fwd.get_server_url("access_list_doors") == "http://localhost:3002"
+    result = await fwd._call("http://localhost:3000", "unifi_list_devices", {})
+    assert result == raw_result
 
 
 async def test_forwarder_open_and_close_lifecycle(server_infos):

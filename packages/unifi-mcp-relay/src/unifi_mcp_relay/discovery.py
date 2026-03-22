@@ -133,6 +133,8 @@ class McpHttpClient:
         async with session.post(self._base_url, json=payload, headers=headers) as resp:
             if "mcp-session-id" in resp.headers:
                 self._session_id = resp.headers["mcp-session-id"]
+            if resp.status >= 400:
+                logger.warning("[discovery] Notification '%s' got HTTP %d", method, resp.status)
 
     async def close(self) -> None:
         """Close the underlying aiohttp session."""
@@ -226,9 +228,10 @@ async def discover_tools(server_url: str) -> ServerInfo | None:
         # Send initialized notification
         try:
             await client.notify("notifications/initialized")
-        except Exception:
-            # Not all transports handle notifications; continue anyway
-            pass
+        except (aiohttp.ClientError, ConnectionError, OSError) as exc:
+            logger.debug("[discovery] Server did not accept initialized notification: %s", exc)
+        except Exception as exc:
+            logger.warning("[discovery] Unexpected error sending initialized notification to %s: %s", server_url, exc)
 
         # Step 2: List tools
         list_result = await client.request("tools/list")
@@ -268,8 +271,16 @@ async def discover_tools(server_url: str) -> ServerInfo | None:
         logger.info("[discovery] Discovered %d tools from %s (%s)", len(tools), server_name, server_url)
         return info
 
+    except (aiohttp.ClientError, ConnectionError, OSError, asyncio.TimeoutError) as e:
+        logger.error("[discovery] Failed to discover tools from %s (transient): %s", server_url, e)
+        return None
     except Exception as e:
-        logger.error("[discovery] Failed to discover tools from %s: %s", server_url, e, exc_info=True)
+        logger.error(
+            "[discovery] Failed to discover tools from %s (possibly misconfigured): %s",
+            server_url,
+            e,
+            exc_info=True,
+        )
         return None
     finally:
         await client.close()

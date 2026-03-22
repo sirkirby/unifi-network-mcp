@@ -134,7 +134,7 @@ def get_tool_index(
                 "input": meta.input_schema,
                 **({"output": meta.output_schema} if meta.output_schema else {}),
             },
-            "annotations": meta.annotations,
+            **({"annotations": meta.annotations} if meta.annotations is not None else {}),
         }
         for meta in TOOL_REGISTRY.values()
     ]

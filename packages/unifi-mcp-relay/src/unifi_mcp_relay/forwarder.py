@@ -63,7 +63,12 @@ class ToolForwarder:
         result = await client.request("tools/call", {"name": tool_name, "arguments": arguments})
         content = result.get("content", [])
         if content and content[0].get("type") == "text":
-            return json.loads(content[0]["text"])
+            raw_text = content[0].get("text", "")
+            try:
+                return json.loads(raw_text)
+            except (json.JSONDecodeError, KeyError) as exc:
+                logger.warning("[forwarder] Failed to parse tool response for %s: %s", tool_name, exc)
+                return result
         return result
 
     async def forward(self, tool_name: str, arguments: dict) -> Any | None:
@@ -106,17 +111,3 @@ class ToolForwarder:
         except Exception as e:
             logger.exception("[forwarder] Failed to forward %s to %s", tool_name, url)
             return str(e)
-
-    def update(self, server_infos: list[ServerInfo]) -> None:
-        """Refresh the routing table from a new list of discovered servers.
-
-        Only the tool-to-URL mapping is updated. Existing client sessions are
-        preserved; new server URLs will not have pre-created clients.
-
-        Args:
-            server_infos: Fresh discovery results.
-        """
-        self._tool_to_url.clear()
-        for info in server_infos:
-            for tool in info.tools:
-                self._tool_to_url[tool.name] = info.url

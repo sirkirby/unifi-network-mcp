@@ -134,19 +134,23 @@ def parse_message(
         return None
 
     msg_type = data.get("type")
-    if msg_type == "registered":
-        return RegisteredMessage(location_id=data["location_id"], location_name=data["location_name"])
-    elif msg_type == "tool_call":
-        return ToolCallMessage(
-            call_id=data["call_id"],
-            tool_name=data["tool_name"],
-            arguments=data.get("arguments", {}),
-            timeout_ms=data.get("timeout_ms", 30000),
-        )
-    elif msg_type == "heartbeat":
-        return HeartbeatMessage()
-    elif msg_type == "error":
-        return ErrorMessage(message=data.get("message", "Unknown error"), code=data.get("code"))
-    else:
-        logger.debug("[protocol] Unknown message type: %s", msg_type)
+    try:
+        if msg_type == "registered":
+            return RegisteredMessage(location_id=data["location_id"], location_name=data["location_name"])
+        elif msg_type == "tool_call":
+            return ToolCallMessage(
+                call_id=data["call_id"],
+                tool_name=data["tool_name"],
+                arguments=data.get("arguments", {}),
+                timeout_ms=data.get("timeout_ms", 30000),
+            )
+        elif msg_type == "heartbeat":
+            return HeartbeatMessage()
+        elif msg_type == "error":
+            return ErrorMessage(message=data.get("message", "Unknown error"), code=data.get("code"))
+        else:
+            logger.debug("[protocol] Unknown message type: %s", msg_type)
+            return None
+    except KeyError as e:
+        logger.warning("[protocol] Malformed '%s' message, missing key: %s", msg_type, e)
         return None

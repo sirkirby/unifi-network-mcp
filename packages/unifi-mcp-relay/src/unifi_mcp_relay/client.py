@@ -7,6 +7,7 @@ import logging
 from collections.abc import Awaitable, Callable
 
 import websockets
+from websockets.connection import State as WsState
 
 from unifi_mcp_relay.config import RelayConfig
 from unifi_mcp_relay.protocol import (
@@ -42,6 +43,7 @@ class RelayClient:
         self._location_id: str | None = None
         self._tool_call_handler: ToolCallHandler | None = None
         self._running: bool = False
+        self._pending_tasks: set[asyncio.Task] = set()
 
     @staticmethod
     def _build_ws_url(relay_url: str) -> str:
@@ -51,6 +53,8 @@ class RelayClient:
             url = "wss://" + url[len("https://"):]
         elif url.startswith("http://"):
             url = "ws://" + url[len("http://"):]
+        else:
+            raise ValueError(f"relay_url must start with http:// or https://, got: {relay_url!r}")
         return url + "/ws"
 
     async def _connect_and_register(self, tools: list[ToolInfo]) -> None:
@@ -59,15 +63,13 @@ class RelayClient:
         Sets self._ws and self._location_id on success.
         Raises ConnectionError if registration fails.
         """
-        subprotocols = [
-            websockets.Subprotocol(self._config.relay_token),
-            websockets.Subprotocol("unifi-relay-v1"),
-        ]
-
         ws = await websockets.connect(
             self._ws_url,
-            subprotocols=subprotocols,
-            additional_headers={"User-Agent": "unifi-mcp-relay/1.0"},
+            subprotocols=[websockets.Subprotocol("unifi-relay-v1")],
+            additional_headers={
+                "Authorization": f"Bearer {self._config.relay_token}",
+                "User-Agent": "unifi-mcp-relay/1.0",
+            },
         )
 
         # Send registration
@@ -105,8 +107,11 @@ class RelayClient:
             ack = HeartbeatAckMessage()
             await ws.send(ack.to_json())
         elif isinstance(msg, ToolCallMessage):
-            # Spawn as a task so multiple calls run concurrently
-            asyncio.create_task(self._handle_tool_call(msg, ws))
+            # Spawn as a task so multiple calls run concurrently; hold a reference
+            # to prevent GC and observe errors via the done callback.
+            task = asyncio.create_task(self._handle_tool_call(msg, ws))
+            self._pending_tasks.add(task)
+            task.add_done_callback(self._pending_tasks.discard)
         elif isinstance(msg, ErrorMessage):
             logger.warning("[client] Error from relay: %s (code=%s)", msg.message, msg.code)
         else:
@@ -120,11 +125,18 @@ class RelayClient:
             return
 
         try:
-            result, error = await self._tool_call_handler(msg.tool_name, msg.arguments)
+            timeout = msg.timeout_ms / 1000 if msg.timeout_ms > 0 else None
+            result, error = await asyncio.wait_for(
+                self._tool_call_handler(msg.tool_name, msg.arguments),
+                timeout=timeout,
+            )
             if error is not None:
                 response = ToolResultMessage(call_id=msg.call_id, error=error)
             else:
                 response = ToolResultMessage(call_id=msg.call_id, result=result)
+        except asyncio.TimeoutError:
+            logger.warning("[client] Tool call '%s' timed out after %dms", msg.tool_name, msg.timeout_ms)
+            response = ToolResultMessage(call_id=msg.call_id, error=f"Tool call timed out after {msg.timeout_ms}ms")
         except Exception as exc:
             logger.error("[client] Tool call handler raised for '%s': %s", msg.tool_name, exc, exc_info=True)
             response = ToolResultMessage(call_id=msg.call_id, error=str(exc))
@@ -161,18 +173,20 @@ class RelayClient:
                 logger.info("[client] Connected and registered, entering message loop")
                 await self._message_loop(self._ws)
             except websockets.ConnectionClosed as exc:
+                close_code = exc.rcvd.code if exc.rcvd else None
+                close_reason = exc.rcvd.reason if exc.rcvd else ""
                 if self._is_auth_failure(exc):
                     logger.error(
                         "[client] Authentication failure (code=%s, reason=%s). Stopping.",
-                        exc.code,
-                        exc.reason,
+                        close_code,
+                        close_reason,
                     )
                     self._running = False
                     break
                 logger.warning(
                     "[client] Connection closed (code=%s, reason=%s). Reconnecting in %.1fs...",
-                    exc.code,
-                    exc.reason,
+                    close_code,
+                    close_reason,
                     backoff,
                 )
             except ConnectionError as exc:
@@ -195,9 +209,11 @@ class RelayClient:
     @staticmethod
     def _is_auth_failure(exc: websockets.ConnectionClosed) -> bool:
         """Check if a connection close indicates an authentication failure."""
-        if exc.code in _AUTH_FAILURE_CODES:
+        close_code = exc.rcvd.code if exc.rcvd else None
+        close_reason = exc.rcvd.reason if exc.rcvd else ""
+        if close_code in _AUTH_FAILURE_CODES:
             return True
-        reason = (exc.reason or "").lower()
+        reason = (close_reason or "").lower()
         if "rejected" in reason or "auth" in reason:
             return True
         return False
@@ -207,17 +223,26 @@ class RelayClient:
 
         Returns True if sent successfully, False if not connected.
         """
-        if self._ws is None or not getattr(self._ws, "open", False):
+        ws = self._ws
+        if ws is None or not hasattr(ws, "state") or ws.state != WsState.OPEN:
             return False
 
         msg = CatalogUpdateMessage(tools=tools)
-        await self._ws.send(msg.to_json())
+        try:
+            await ws.send(msg.to_json())
+        except Exception as exc:
+            logger.warning("[client] Failed to send catalog update: %s", exc)
+            return False
         logger.info("[client] Sent catalog update with %d tools", len(tools))
         return True
 
     async def stop(self) -> None:
         """Graceful shutdown: stop the run loop and close the WebSocket."""
         self._running = False
+        # Cancel any pending tool call tasks
+        for task in list(self._pending_tasks):
+            task.cancel()
+        self._pending_tasks.clear()
         if self._ws is not None:
             try:
                 await self._ws.close()

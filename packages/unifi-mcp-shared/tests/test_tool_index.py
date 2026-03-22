@@ -122,12 +122,12 @@ class TestGetToolIndex:
         tool = index["tools"][0]
         assert tool["annotations"] == {"readOnlyHint": True, "openWorldHint": False}
 
-    def test_tool_index_annotations_none_when_not_set(self):
-        """get_tool_index annotations should be None when not provided."""
+    def test_tool_index_annotations_absent_when_not_set(self):
+        """get_tool_index should omit annotations key when not provided (consistent with manifest)."""
         register_tool(name="my_tool", description="test")
         index = get_tool_index(registration_mode="eager")
         tool = index["tools"][0]
-        assert tool["annotations"] is None
+        assert "annotations" not in tool
 
     def test_tool_index_annotations_from_manifest(self, tmp_path):
         """get_tool_index should pass through annotations from the manifest."""
