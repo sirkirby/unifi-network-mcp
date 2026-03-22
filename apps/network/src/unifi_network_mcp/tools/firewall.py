@@ -781,3 +781,318 @@ async def list_firewall_zones() -> Dict[str, Any]:
 async def list_ip_groups() -> Dict[str, Any]:
     groups = await firewall_manager.get_ip_groups()
     return {"success": True, "count": len(groups), "ip_groups": groups}
+
+
+# ---------------------------------------------------------------------------
+# V2 Zone-Based Firewall Policy Tools
+# ---------------------------------------------------------------------------
+# These tools use the v2 API schema with zone_id, matching_target,
+# matching_target_type, and uppercase actions (ALLOW/BLOCK/REJECT).
+# ---------------------------------------------------------------------------
+
+
+@server.tool(
+    name="unifi_list_firewall_policies_v2",
+    description=(
+        "List zone-based firewall policies (V2 API). Shows full source/destination "
+        "targeting including zone_id, matching_target, matching_target_type, IPs, and network IDs."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def list_firewall_policies_v2(
+    include_predefined: Annotated[
+        bool,
+        Field(description="Include predefined system policies. Default false (user-defined only)"),
+    ] = False,
+) -> Dict[str, Any]:
+    """List firewall policies with full v2 zone-based targeting details."""
+    if not parse_permission(config.permissions, "firewall", "read"):
+        return {"success": False, "error": "Permission denied to list firewall policies."}
+
+    try:
+        policies = await firewall_manager.get_firewall_policies(include_predefined=include_predefined)
+        policies_raw = [p.raw if hasattr(p, "raw") else p for p in policies]
+
+        formatted = []
+        for p in policies_raw:
+            entry = {
+                "id": p.get("_id"),
+                "name": p.get("name"),
+                "enabled": p.get("enabled"),
+                "action": p.get("action"),
+                "index": p.get("index"),
+                "protocol": p.get("protocol"),
+                "ip_version": p.get("ip_version"),
+                "logging": p.get("logging"),
+                "connection_state_type": p.get("connection_state_type"),
+            }
+            # Include full source/destination with targeting details
+            for direction in ("source", "destination"):
+                ep = p.get(direction)
+                if ep and isinstance(ep, dict):
+                    entry[direction] = {
+                        "zone_id": ep.get("zone_id"),
+                        "matching_target": ep.get("matching_target"),
+                        "matching_target_type": ep.get("matching_target_type"),
+                    }
+                    # Include targeting-specific fields
+                    if ep.get("ips"):
+                        entry[direction]["ips"] = ep["ips"]
+                    if ep.get("network_ids"):
+                        entry[direction]["network_ids"] = ep["network_ids"]
+                    if ep.get("client_macs"):
+                        entry[direction]["client_macs"] = ep["client_macs"]
+                    if ep.get("port_matching_type") and ep["port_matching_type"] != "ANY":
+                        entry[direction]["port_matching_type"] = ep["port_matching_type"]
+                        if ep.get("port_ranges"):
+                            entry[direction]["port_ranges"] = ep["port_ranges"]
+            formatted.append(entry)
+
+        return {
+            "success": True,
+            "site": firewall_manager._connection.site,
+            "count": len(formatted),
+            "policies": formatted,
+        }
+    except Exception as e:
+        logger.error(f"Error listing v2 firewall policies: {e}", exc_info=True)
+        return {"success": False, "error": f"Failed to list v2 firewall policies: {e}"}
+
+
+@server.tool(
+    name="unifi_create_firewall_policy_v2",
+    description=(
+        "Create a zone-based firewall policy (V2 API). Supports IP targeting "
+        "(matching_target=IP, matching_target_type=SPECIFIC) and network targeting "
+        "(matching_target=NETWORK, matching_target_type=OBJECT). Actions: ALLOW, BLOCK, REJECT."
+    ),
+    permission_category="firewall_policies",
+    permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+async def create_firewall_policy_v2(
+    policy_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description=(
+                "V2 firewall policy dict. Required: name (str), action (ALLOW|BLOCK|REJECT), "
+                "source (object), destination (object). "
+                "Source/destination must include zone_id and matching_target. "
+                "For IP targeting: matching_target='IP', matching_target_type='SPECIFIC', ips=['192.168.1.100']. "
+                "For network targeting: matching_target='NETWORK', matching_target_type='OBJECT', network_ids=['<id>']. "
+                "For any in zone: matching_target='ANY'. "
+                "Optional: enabled, protocol, ip_version, index, logging, connection_state_type, "
+                "connection_states, create_allow_respond, schedule, icmp_typename, icmp_v6_typename"
+            )
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the policy. When false (default), validates and returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Create a v2 zone-based firewall policy with IP or network targeting."""
+    if not parse_permission(config.permissions, "firewall", "create"):
+        return {"success": False, "error": "Permission denied to create firewall policy."}
+
+    if not isinstance(policy_data, dict) or not policy_data:
+        return {"success": False, "error": "policy_data must be a non-empty dictionary."}
+
+    # Validate against v2 schema
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("firewall_policy_v2_create", policy_data)
+    if not is_valid:
+        return {"success": False, "error": f"Validation Error: {error_msg}"}
+
+    # Validate matching_target_type is present when needed
+    for direction in ("source", "destination"):
+        ep = validated_data.get(direction, {})
+        target = ep.get("matching_target")
+        if target in ("IP", "NETWORK") and not ep.get("matching_target_type"):
+            expected = "SPECIFIC" if target == "IP" else "OBJECT"
+            return {
+                "success": False,
+                "error": (
+                    f"{direction}.matching_target_type is required when matching_target is '{target}'. "
+                    f"Use '{expected}'."
+                ),
+            }
+        if target == "IP" and not ep.get("ips"):
+            return {"success": False, "error": f"{direction}.ips array is required when matching_target is 'IP'."}
+        if target == "NETWORK" and not ep.get("network_ids"):
+            return {
+                "success": False,
+                "error": f"{direction}.network_ids array is required when matching_target is 'NETWORK'.",
+            }
+
+    # Normalize action to uppercase
+    action = validated_data.get("action", "")
+    if action.upper() not in ("ALLOW", "BLOCK", "REJECT"):
+        return {"success": False, "error": f"Invalid action '{action}'. Must be ALLOW, BLOCK, or REJECT."}
+    validated_data["action"] = action.upper()
+
+    policy_name = validated_data.get("name", "Unnamed Policy")
+
+    if not confirm and not should_auto_confirm():
+        return create_preview(
+            resource_type="firewall_policy_v2",
+            resource_data=validated_data,
+            resource_name=policy_name,
+        )
+
+    logger.info(f"Creating v2 firewall policy '{policy_name}'")
+
+    try:
+        created = await firewall_manager.create_firewall_policy(validated_data)
+        if created and hasattr(created, "raw"):
+            details = created.raw
+            new_id = details.get("_id", "unknown")
+            logger.info(f"Created v2 firewall policy '{policy_name}' with ID {new_id}")
+            return {
+                "success": True,
+                "message": f"V2 firewall policy '{policy_name}' created successfully.",
+                "policy_id": new_id,
+                "details": json.loads(json.dumps(details, default=str)),
+            }
+        return {
+            "success": False,
+            "error": f"Failed to create v2 firewall policy '{policy_name}'. Check server logs.",
+        }
+    except Exception as e:
+        logger.error(f"Error creating v2 firewall policy '{policy_name}': {e}", exc_info=True)
+        return {"success": False, "error": f"Failed to create v2 firewall policy '{policy_name}': {e}"}
+
+
+@server.tool(
+    name="unifi_update_firewall_policy_v2",
+    description=(
+        "Update a zone-based firewall policy by ID (V2 API). "
+        "Accepts v2 fields: name, action (ALLOW/BLOCK/REJECT), enabled, source, destination, "
+        "protocol, ip_version, index, logging, connection_state_type, connection_states, schedule."
+    ),
+    permission_category="firewall_policies",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+async def update_firewall_policy_v2(
+    policy_id: Annotated[
+        str,
+        Field(description="Unique identifier (_id) of the policy to update (from unifi_list_firewall_policies_v2)"),
+    ],
+    update_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description=(
+                "Dictionary of v2 fields to update. Allowed: name, action (ALLOW/BLOCK/REJECT), "
+                "enabled, source, destination, protocol, ip_version, index, logging, "
+                "connection_state_type, connection_states, schedule, create_allow_respond"
+            )
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the update. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Update specific fields of a v2 zone-based firewall policy."""
+    if not parse_permission(config.permissions, "firewall", "update"):
+        return {"success": False, "error": "Permission denied to update firewall policy."}
+
+    if not policy_id:
+        return {"success": False, "error": "policy_id is required"}
+    if not update_data:
+        return {"success": False, "error": "update_data cannot be empty"}
+
+    # Normalize action if provided
+    if "action" in update_data:
+        action = update_data["action"]
+        if isinstance(action, str) and action.upper() in ("ALLOW", "BLOCK", "REJECT"):
+            update_data["action"] = action.upper()
+        else:
+            return {"success": False, "error": f"Invalid action '{action}'. Must be ALLOW, BLOCK, or REJECT."}
+
+    try:
+        policies = await firewall_manager.get_firewall_policies(include_predefined=True)
+        current_obj = next((p for p in policies if p.id == policy_id), None)
+        if not current_obj or not current_obj.raw:
+            return {"success": False, "error": f"Firewall policy '{policy_id}' not found."}
+        current = current_obj.raw
+
+        if not confirm and not should_auto_confirm():
+            return update_preview(
+                resource_type="firewall_policy_v2",
+                resource_id=policy_id,
+                resource_name=current.get("name"),
+                current_state=current,
+                updates=update_data,
+            )
+
+        updated_fields = list(update_data.keys())
+        logger.info(f"Updating v2 firewall policy '{policy_id}' fields: {', '.join(updated_fields)}")
+
+        success = await firewall_manager.update_firewall_policy(policy_id, update_data)
+        if success:
+            updated_obj = next(
+                (p for p in await firewall_manager.get_firewall_policies(include_predefined=True) if p.id == policy_id),
+                None,
+            )
+            details = updated_obj.raw if updated_obj else {}
+            return {
+                "success": True,
+                "policy_id": policy_id,
+                "updated_fields": updated_fields,
+                "details": json.loads(json.dumps(details, default=str)),
+            }
+        return {
+            "success": False,
+            "policy_id": policy_id,
+            "error": f"Failed to update v2 firewall policy '{policy_id}'. Check server logs.",
+        }
+    except Exception as e:
+        logger.error(f"Error updating v2 firewall policy {policy_id}: {e}", exc_info=True)
+        return {"success": False, "error": f"Failed to update v2 firewall policy {policy_id}: {e}"}
+
+
+@server.tool(
+    name="unifi_delete_firewall_policy",
+    description=(
+        "Delete a firewall policy by ID. Requires confirmation. "
+        "WARNING: Removing an ALLOW rule may block traffic. Removing a BLOCK rule may open access."
+    ),
+    permission_category="firewall_policies",
+    permission_action="delete",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
+)
+async def delete_firewall_policy(
+    policy_id: Annotated[
+        str,
+        Field(
+            description="Unique identifier (_id) of the firewall policy to delete (from unifi_list_firewall_policies or unifi_list_firewall_policies_v2)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, deletes the policy. When false (default), returns a preview. WARNING: Removing an ALLOW rule may block traffic"
+        ),
+    ] = False,
+) -> Dict[str, Any]:
+    """Delete a firewall policy by ID."""
+    if not parse_permission(config.permissions, "firewall", "delete"):
+        return {"success": False, "error": "Permission denied to delete firewall policy."}
+
+    if not confirm and not should_auto_confirm():
+        return create_preview(
+            resource_type="firewall_policy",
+            resource_data={"policy_id": policy_id},
+            resource_name=policy_id,
+            warnings=["Removing an ALLOW rule may block traffic. Removing a BLOCK rule may open access."],
+        )
+
+    try:
+        success = await firewall_manager.delete_firewall_policy(policy_id)
+        if success:
+            return {"success": True, "message": f"Firewall policy '{policy_id}' deleted successfully."}
+        return {"success": False, "error": f"Failed to delete firewall policy '{policy_id}'."}
+    except Exception as e:
+        logger.error(f"Error deleting firewall policy {policy_id}: {e}", exc_info=True)
+        return {"success": False, "error": f"Failed to delete firewall policy {policy_id}: {e}"}

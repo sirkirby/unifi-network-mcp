@@ -5,6 +5,7 @@ from .schemas import (
     FIREWALL_POLICY_SCHEMA,
     FIREWALL_POLICY_SIMPLE_SCHEMA,
     FIREWALL_POLICY_UPDATE_SCHEMA,
+    FIREWALL_POLICY_V2_CREATE_SCHEMA,
     NETWORK_SCHEMA,
     NETWORK_UPDATE_SCHEMA,
     PORT_FORWARD_SCHEMA,
@@ -41,6 +42,9 @@ class UniFiValidatorRegistry:
         "traffic_route_simple": ResourceValidator(TRAFFIC_ROUTE_SIMPLE_SCHEMA, "Simple Traffic Route"),
         "qos_rule_simple": ResourceValidator(QOS_RULE_SIMPLE_SCHEMA, "Simple QoS Rule"),
         "port_forward_simple": ResourceValidator(PORT_FORWARD_SIMPLE_SCHEMA, "Simple Port Forward Rule"),
+        "firewall_policy_v2_create": ResourceValidator(
+            FIREWALL_POLICY_V2_CREATE_SCHEMA, "V2 Zone-Based Firewall Policy Create"
+        ),
     }
 
     @classmethod

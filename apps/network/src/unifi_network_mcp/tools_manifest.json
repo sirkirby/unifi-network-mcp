@@ -1,5 +1,5 @@
 {
-  "count": 91,
+  "count": 95,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "unifi_network_mcp.tools.devices",
@@ -9,6 +9,7 @@
     "unifi_block_client": "unifi_network_mcp.tools.clients",
     "unifi_create_acl_rule": "unifi_network_mcp.tools.acl",
     "unifi_create_firewall_policy": "unifi_network_mcp.tools.firewall",
+    "unifi_create_firewall_policy_v2": "unifi_network_mcp.tools.firewall",
     "unifi_create_network": "unifi_network_mcp.tools.network",
     "unifi_create_port_forward": "unifi_network_mcp.tools.port_forwards",
     "unifi_create_qos_rule": "unifi_network_mcp.tools.qos",
@@ -20,6 +21,7 @@
     "unifi_create_voucher": "unifi_network_mcp.tools.hotspot",
     "unifi_create_wlan": "unifi_network_mcp.tools.network",
     "unifi_delete_acl_rule": "unifi_network_mcp.tools.acl",
+    "unifi_delete_firewall_policy": "unifi_network_mcp.tools.firewall",
     "unifi_force_reconnect_client": "unifi_network_mcp.tools.clients",
     "unifi_get_acl_rule_details": "unifi_network_mcp.tools.acl",
     "unifi_get_alerts": "unifi_network_mcp.tools.stats",
@@ -55,6 +57,7 @@
     "unifi_list_devices": "unifi_network_mcp.tools.devices",
     "unifi_list_events": "unifi_network_mcp.tools.events",
     "unifi_list_firewall_policies": "unifi_network_mcp.tools.firewall",
+    "unifi_list_firewall_policies_v2": "unifi_network_mcp.tools.firewall",
     "unifi_list_firewall_zones": "unifi_network_mcp.tools.firewall",
     "unifi_list_ip_groups": "unifi_network_mcp.tools.firewall",
     "unifi_list_networks": "unifi_network_mcp.tools.network",
@@ -82,6 +85,7 @@
     "unifi_update_acl_rule": "unifi_network_mcp.tools.acl",
     "unifi_update_device_radio": "unifi_network_mcp.tools.devices",
     "unifi_update_firewall_policy": "unifi_network_mcp.tools.firewall",
+    "unifi_update_firewall_policy_v2": "unifi_network_mcp.tools.firewall",
     "unifi_update_network": "unifi_network_mcp.tools.network",
     "unifi_update_port_forward": "unifi_network_mcp.tools.port_forwards",
     "unifi_update_qos_rule": "unifi_network_mcp.tools.qos",
@@ -296,6 +300,28 @@
             },
             "policy_data": {
               "description": "Firewall policy configuration dict. Required keys: name (str), ruleset (str, e.g. 'WAN_IN', 'LAN_OUT'), action (str: 'accept', 'drop', 'reject'), index (int: rule priority). Optional: enabled, description, protocol, connection_states, source, destination, logging",
+              "type": "object"
+            }
+          },
+          "required": [
+            "policy_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Create a zone-based firewall policy (V2 API). Supports IP targeting (matching_target=IP, matching_target_type=SPECIFIC) and network targeting (matching_target=NETWORK, matching_target_type=OBJECT). Actions: ALLOW, BLOCK, REJECT.",
+      "name": "unifi_create_firewall_policy_v2",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, creates the policy. When false (default), validates and returns a preview",
+              "type": "boolean"
+            },
+            "policy_data": {
+              "description": "V2 firewall policy dict. Required: name (str), action (ALLOW|BLOCK|REJECT), source (object), destination (object). Source/destination must include zone_id and matching_target. For IP targeting: matching_target='IP', matching_target_type='SPECIFIC', ips=['192.168.1.100']. For network targeting: matching_target='NETWORK', matching_target_type='OBJECT', network_ids=['<id>']. For any in zone: matching_target='ANY'. Optional: enabled, protocol, ip_version, index, logging, connection_state_type, connection_states, create_allow_respond, schedule, icmp_typename, icmp_v6_typename",
               "type": "object"
             }
           },
@@ -628,6 +654,28 @@
           },
           "required": [
             "rule_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Delete a firewall policy by ID. Requires confirmation. WARNING: Removing an ALLOW rule may block traffic. Removing a BLOCK rule may open access.",
+      "name": "unifi_delete_firewall_policy",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, deletes the policy. When false (default), returns a preview. WARNING: Removing an ALLOW rule may block traffic",
+              "type": "boolean"
+            },
+            "policy_id": {
+              "description": "Unique identifier (_id) of the firewall policy to delete (from unifi_list_firewall_policies or unifi_list_firewall_policies_v2)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "policy_id"
           ],
           "type": "object"
         }
@@ -1361,6 +1409,21 @@
       }
     },
     {
+      "description": "List zone-based firewall policies (V2 API). Shows full source/destination targeting including zone_id, matching_target, matching_target_type, IPs, and network IDs.",
+      "name": "unifi_list_firewall_policies_v2",
+      "schema": {
+        "input": {
+          "properties": {
+            "include_predefined": {
+              "description": "Include predefined system policies. Default false (user-defined only)",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
       "annotations": {
         "openWorldHint": false,
         "readOnlyHint": true
@@ -1954,6 +2017,33 @@
             },
             "update_data": {
               "description": "Dictionary of fields to update. Allowed keys: name, ruleset, action ('accept'/'drop'/'reject'), rule_index, protocol, src_address, dst_address, src_port, dst_port, enabled, description, state_new, state_established, state_related, state_invalid, logging",
+              "type": "object"
+            }
+          },
+          "required": [
+            "policy_id",
+            "update_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Update a zone-based firewall policy by ID (V2 API). Accepts v2 fields: name, action (ALLOW/BLOCK/REJECT), enabled, source, destination, protocol, ip_version, index, logging, connection_state_type, connection_states, schedule.",
+      "name": "unifi_update_firewall_policy_v2",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, applies the update. When false (default), returns a preview",
+              "type": "boolean"
+            },
+            "policy_id": {
+              "description": "Unique identifier (_id) of the policy to update (from unifi_list_firewall_policies_v2)",
+              "type": "string"
+            },
+            "update_data": {
+              "description": "Dictionary of v2 fields to update. Allowed: name, action (ALLOW/BLOCK/REJECT), enabled, source, destination, protocol, ip_version, index, logging, connection_state_type, connection_states, schedule, create_allow_respond",
               "type": "object"
             }
           },
