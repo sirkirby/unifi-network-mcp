@@ -8,8 +8,8 @@ from collections.abc import Awaitable, Callable
 
 import websockets
 
-from unifi_relay_sidecar.config import RelayConfig
-from unifi_relay_sidecar.protocol import (
+from unifi_mcp_relay.config import RelayConfig
+from unifi_mcp_relay.protocol import (
     CatalogUpdateMessage,
     ErrorMessage,
     HeartbeatAckMessage,
@@ -22,7 +22,7 @@ from unifi_relay_sidecar.protocol import (
     parse_message,
 )
 
-logger = logging.getLogger("unifi-relay-sidecar")
+logger = logging.getLogger("unifi-mcp-relay")
 
 # Handler type: takes (tool_name, arguments), returns (result, None) or (None, error_string)
 ToolCallHandler = Callable[[str, dict], Awaitable[tuple[dict | None, str | None]]]
@@ -67,7 +67,7 @@ class RelayClient:
         ws = await websockets.connect(
             self._ws_url,
             subprotocols=subprotocols,
-            additional_headers={"User-Agent": "unifi-relay-sidecar/1.0"},
+            additional_headers={"User-Agent": "unifi-mcp-relay/1.0"},
         )
 
         # Send registration

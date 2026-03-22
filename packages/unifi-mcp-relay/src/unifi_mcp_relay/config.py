@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class RelayConfig:
-    """Relay sidecar configuration."""
+    """MCP relay configuration."""
 
     relay_url: str
     relay_token: str

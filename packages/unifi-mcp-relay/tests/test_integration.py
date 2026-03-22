@@ -9,9 +9,9 @@ import pytest
 import websockets
 from websockets.asyncio.server import serve
 
-from unifi_relay_sidecar.client import RelayClient
-from unifi_relay_sidecar.config import RelayConfig
-from unifi_relay_sidecar.protocol import ToolInfo
+from unifi_mcp_relay.client import RelayClient
+from unifi_mcp_relay.config import RelayConfig
+from unifi_mcp_relay.protocol import ToolInfo
 
 
 class MockWorker:

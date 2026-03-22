@@ -1,4 +1,4 @@
-"""Entry point for ``python -m unifi_relay_sidecar``."""
+"""Entry point for ``python -m unifi_mcp_relay``."""
 
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ def main() -> None:
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
         stream=sys.stderr,
     )
-    from unifi_relay_sidecar.config import load_config
-    from unifi_relay_sidecar.main import RelaySidecar
+    from unifi_mcp_relay.config import load_config
+    from unifi_mcp_relay.main import RelaySidecar
 
     try:
         config = load_config()

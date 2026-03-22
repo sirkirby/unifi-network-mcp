@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from unifi_relay_sidecar.main import RelaySidecar
-from unifi_relay_sidecar.config import RelayConfig
+from unifi_mcp_relay.main import RelaySidecar
+from unifi_mcp_relay.config import RelayConfig
 
 
 @pytest.fixture
@@ -23,8 +23,8 @@ def config():
 @pytest.mark.asyncio
 async def test_sidecar_discovers_and_builds_catalog(config):
     sidecar = RelaySidecar(config)
-    from unifi_relay_sidecar.discovery import ServerInfo
-    from unifi_relay_sidecar.protocol import ToolInfo
+    from unifi_mcp_relay.discovery import ServerInfo
+    from unifi_mcp_relay.protocol import ToolInfo
 
     mock_info = ServerInfo(
         name="unifi-network-mcp",
@@ -32,9 +32,9 @@ async def test_sidecar_discovers_and_builds_catalog(config):
         tools=[ToolInfo(name="unifi_list_devices", description="List", server_origin="unifi-network-mcp")],
     )
 
-    with patch("unifi_relay_sidecar.main.discover_all", new_callable=AsyncMock) as mock_discover:
+    with patch("unifi_mcp_relay.main.discover_all", new_callable=AsyncMock) as mock_discover:
         mock_discover.return_value = [mock_info]
-        with patch("unifi_relay_sidecar.main.ToolForwarder") as MockFwd:
+        with patch("unifi_mcp_relay.main.ToolForwarder") as MockFwd:
             mock_fwd_instance = AsyncMock()
             MockFwd.return_value = mock_fwd_instance
 
@@ -47,8 +47,8 @@ async def test_sidecar_discovers_and_builds_catalog(config):
 @pytest.mark.asyncio
 async def test_sidecar_tool_call_handler_delegates_to_forwarder(config):
     sidecar = RelaySidecar(config)
-    from unifi_relay_sidecar.discovery import ServerInfo
-    from unifi_relay_sidecar.protocol import ToolInfo
+    from unifi_mcp_relay.discovery import ServerInfo
+    from unifi_mcp_relay.protocol import ToolInfo
 
     mock_info = ServerInfo(
         name="unifi-network-mcp",
@@ -56,9 +56,9 @@ async def test_sidecar_tool_call_handler_delegates_to_forwarder(config):
         tools=[ToolInfo(name="unifi_list_devices", description="List", server_origin="unifi-network-mcp")],
     )
 
-    with patch("unifi_relay_sidecar.main.discover_all", new_callable=AsyncMock) as mock_discover:
+    with patch("unifi_mcp_relay.main.discover_all", new_callable=AsyncMock) as mock_discover:
         mock_discover.return_value = [mock_info]
-        with patch("unifi_relay_sidecar.main.ToolForwarder") as MockFwd:
+        with patch("unifi_mcp_relay.main.ToolForwarder") as MockFwd:
             mock_fwd_instance = AsyncMock()
             MockFwd.return_value = mock_fwd_instance
             await sidecar._discover_catalog()
@@ -74,7 +74,7 @@ async def test_sidecar_tool_call_handler_delegates_to_forwarder(config):
 @pytest.mark.asyncio
 async def test_sidecar_tool_call_handler_returns_error_string(config):
     sidecar = RelaySidecar(config)
-    from unifi_relay_sidecar.forwarder import ToolForwarder
+    from unifi_mcp_relay.forwarder import ToolForwarder
 
     mock_fwd = AsyncMock(spec=ToolForwarder)
     mock_fwd.forward_with_error = AsyncMock(return_value="Connection refused")

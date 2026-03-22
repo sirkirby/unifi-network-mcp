@@ -1,4 +1,4 @@
-"""Main orchestrator for the UniFi Relay Sidecar.
+"""Main orchestrator for the UniFi MCP Relay.
 
 Coordinates discovery, forwarding, and the relay client lifecycle.
 """
@@ -9,13 +9,13 @@ import asyncio
 import logging
 from typing import Any
 
-from unifi_relay_sidecar.client import RelayClient
-from unifi_relay_sidecar.config import RelayConfig
-from unifi_relay_sidecar.discovery import ServerInfo, discover_all
-from unifi_relay_sidecar.forwarder import ToolForwarder
-from unifi_relay_sidecar.protocol import ToolInfo
+from unifi_mcp_relay.client import RelayClient
+from unifi_mcp_relay.config import RelayConfig
+from unifi_mcp_relay.discovery import ServerInfo, discover_all
+from unifi_mcp_relay.forwarder import ToolForwarder
+from unifi_mcp_relay.protocol import ToolInfo
 
-logger = logging.getLogger("unifi-relay-sidecar")
+logger = logging.getLogger("unifi-mcp-relay")
 
 
 class RelaySidecar:

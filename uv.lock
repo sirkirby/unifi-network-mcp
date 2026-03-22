@@ -7,10 +7,10 @@ members = [
     "unifi-access-mcp",
     "unifi-core",
     "unifi-mcp",
+    "unifi-mcp-relay",
     "unifi-mcp-shared",
     "unifi-network-mcp",
     "unifi-protect-mcp",
-    "unifi-relay-sidecar",
 ]
 
 [[package]]
@@ -1620,6 +1620,38 @@ version = "0.0.0"
 source = { virtual = "." }
 
 [[package]]
+name = "unifi-mcp-relay"
+source = { editable = "packages/unifi-mcp-relay" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "mcp", extra = ["cli"] },
+    { name = "python-dotenv" },
+    { name = "websockets" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "aioresponses" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiohttp", specifier = ">=3.8.5" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.26.0,<2" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "websockets", specifier = ">=13.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "aioresponses", specifier = ">=0.7.0" },
+    { name = "pytest", specifier = ">=7.0.0" },
+    { name = "pytest-asyncio", specifier = ">=0.21.0" },
+]
+
+[[package]]
 name = "unifi-mcp-shared"
 source = { editable = "packages/unifi-mcp-shared" }
 dependencies = [
@@ -1745,38 +1777,6 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
     { name = "ruff", specifier = ">=0.8.0" },
-]
-
-[[package]]
-name = "unifi-relay-sidecar"
-source = { editable = "packages/unifi-relay-sidecar" }
-dependencies = [
-    { name = "aiohttp" },
-    { name = "mcp", extra = ["cli"] },
-    { name = "python-dotenv" },
-    { name = "websockets" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "aioresponses" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiohttp", specifier = ">=3.8.5" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.26.0,<2" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "websockets", specifier = ">=13.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "aioresponses", specifier = ">=0.7.0" },
-    { name = "pytest", specifier = ">=7.0.0" },
-    { name = "pytest-asyncio", specifier = ">=0.21.0" },
 ]
 
 [[package]]

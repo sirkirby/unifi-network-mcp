@@ -21,9 +21,9 @@ from dataclasses import dataclass, field
 
 import aiohttp
 
-from unifi_relay_sidecar.protocol import ToolInfo
+from unifi_mcp_relay.protocol import ToolInfo
 
-logger = logging.getLogger("unifi-relay-sidecar")
+logger = logging.getLogger("unifi-mcp-relay")
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -217,7 +217,7 @@ async def discover_tools(server_url: str) -> ServerInfo | None:
             {
                 "protocolVersion": "2025-03-26",
                 "capabilities": {},
-                "clientInfo": {"name": "unifi-relay-sidecar", "version": "1.0.0"},
+                "clientInfo": {"name": "unifi-mcp-relay", "version": "1.0.0"},
             },
         )
 

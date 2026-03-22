@@ -6,7 +6,7 @@ import json
 import logging
 from dataclasses import asdict, dataclass, field
 
-logger = logging.getLogger("unifi-relay-sidecar")
+logger = logging.getLogger("unifi-mcp-relay")
 
 PROTOCOL_VERSION = 1
 
@@ -22,7 +22,7 @@ class ToolInfo:
     server_origin: str | None = None
 
 
-# --- Outbound messages (sidecar -> worker) ---
+# --- Outbound messages (relay -> worker) ---
 
 
 @dataclass
@@ -87,7 +87,7 @@ class HeartbeatAckMessage:
         return json.dumps({"type": "heartbeat_ack"})
 
 
-# --- Inbound messages (worker -> sidecar) ---
+# --- Inbound messages (worker -> relay) ---
 
 
 @dataclass

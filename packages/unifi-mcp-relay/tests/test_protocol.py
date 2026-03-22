@@ -1,5 +1,5 @@
 import json
-from unifi_relay_sidecar.protocol import (
+from unifi_mcp_relay.protocol import (
     RegisterMessage, RegisteredMessage, ToolCallMessage, ToolResultMessage,
     CatalogUpdateMessage, HeartbeatAckMessage, ToolInfo, parse_message, PROTOCOL_VERSION,
 )

@@ -50,10 +50,10 @@ services:
     restart: unless-stopped
     container_name: unifi-access-mcp
 
-  unifi-relay-sidecar:
+  unifi-mcp-relay:
     build:
       context: ..
-      dockerfile: packages/unifi-relay-sidecar/Dockerfile
+      dockerfile: packages/unifi-mcp-relay/Dockerfile
     env_file:
       - ../.env
     environment:

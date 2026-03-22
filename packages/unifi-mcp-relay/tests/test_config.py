@@ -10,7 +10,7 @@ def test_config_loads_required_vars():
         "UNIFI_RELAY_LOCATION_NAME": "Home Lab",
     }
     with patch.dict(os.environ, env, clear=False):
-        from unifi_relay_sidecar.config import load_config
+        from unifi_mcp_relay.config import load_config
         cfg = load_config()
         assert cfg.relay_url == "https://my-worker.workers.dev"
         assert cfg.relay_token == "test-token-abc"
@@ -22,7 +22,7 @@ def test_config_missing_required_var_raises():
         "UNIFI_RELAY_URL": "https://my-worker.workers.dev",
     }
     with patch.dict(os.environ, env, clear=True):
-        from unifi_relay_sidecar.config import load_config
+        from unifi_mcp_relay.config import load_config
         with pytest.raises(ValueError, match="UNIFI_RELAY_TOKEN"):
             load_config()
 
@@ -35,7 +35,7 @@ def test_config_parses_server_list():
         "UNIFI_RELAY_SERVERS": "http://localhost:3000,http://localhost:3001,http://localhost:3002",
     }
     with patch.dict(os.environ, env, clear=False):
-        from unifi_relay_sidecar.config import load_config
+        from unifi_mcp_relay.config import load_config
         cfg = load_config()
         assert cfg.servers == ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"]
 
@@ -47,7 +47,7 @@ def test_config_defaults():
         "UNIFI_RELAY_LOCATION_NAME": "Test",
     }
     with patch.dict(os.environ, env, clear=False):
-        from unifi_relay_sidecar.config import load_config
+        from unifi_mcp_relay.config import load_config
         cfg = load_config()
         assert cfg.servers == ["http://localhost:3000"]
         assert cfg.refresh_interval == 300

@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from unifi_relay_sidecar.discovery import ServerInfo
-from unifi_relay_sidecar.forwarder import ToolForwarder
-from unifi_relay_sidecar.protocol import ToolInfo
+from unifi_mcp_relay.discovery import ServerInfo
+from unifi_mcp_relay.forwarder import ToolForwarder
+from unifi_mcp_relay.protocol import ToolInfo
 
 
 @pytest.fixture

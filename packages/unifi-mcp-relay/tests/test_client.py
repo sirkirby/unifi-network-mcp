@@ -8,9 +8,9 @@ import pytest
 import websockets
 from unittest.mock import AsyncMock, patch
 
-from unifi_relay_sidecar.client import RelayClient
-from unifi_relay_sidecar.config import RelayConfig
-from unifi_relay_sidecar.protocol import (
+from unifi_mcp_relay.client import RelayClient
+from unifi_mcp_relay.config import RelayConfig
+from unifi_mcp_relay.protocol import (
     ToolCallMessage,
     RegisteredMessage,
     HeartbeatMessage,
@@ -79,7 +79,7 @@ async def test_client_sends_register_on_connect(config, tools):
         )
     )
 
-    with patch("unifi_relay_sidecar.client.websockets") as mock_websockets:
+    with patch("unifi_mcp_relay.client.websockets") as mock_websockets:
         mock_websockets.connect = AsyncMock(return_value=mock_ws)
         mock_websockets.Subprotocol = websockets.Subprotocol
         await client._connect_and_register(tools)
@@ -240,7 +240,7 @@ async def test_client_register_raises_on_unexpected_response(config, tools):
         )
     )
 
-    with patch("unifi_relay_sidecar.client.websockets") as mock_websockets:
+    with patch("unifi_mcp_relay.client.websockets") as mock_websockets:
         mock_websockets.connect = AsyncMock(return_value=mock_ws)
         mock_websockets.Subprotocol = websockets.Subprotocol
 

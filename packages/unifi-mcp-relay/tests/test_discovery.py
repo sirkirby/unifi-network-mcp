@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from unifi_relay_sidecar.protocol import ToolInfo
+from unifi_mcp_relay.protocol import ToolInfo
 
 
 @pytest.fixture
@@ -80,8 +80,8 @@ async def test_discover_tools_lazy_mode(mock_mcp_client):
 
     mock_cls, mock_instance = mock_mcp_client(route_request)
 
-    with patch("unifi_relay_sidecar.discovery.McpHttpClient", mock_cls):
-        from unifi_relay_sidecar.discovery import discover_tools
+    with patch("unifi_mcp_relay.discovery.McpHttpClient", mock_cls):
+        from unifi_mcp_relay.discovery import discover_tools
 
         result = await discover_tools("http://localhost:3000")
 
@@ -153,8 +153,8 @@ async def test_discover_tools_identifies_tool_index_by_suffix(mock_mcp_client):
 
     mock_cls, mock_instance = mock_mcp_client(route_request)
 
-    with patch("unifi_relay_sidecar.discovery.McpHttpClient", mock_cls):
-        from unifi_relay_sidecar.discovery import discover_tools
+    with patch("unifi_mcp_relay.discovery.McpHttpClient", mock_cls):
+        from unifi_mcp_relay.discovery import discover_tools
 
         result = await discover_tools("http://localhost:3001")
 
@@ -196,8 +196,8 @@ async def test_discover_tools_eager_mode_fallback(mock_mcp_client):
 
     mock_cls, mock_instance = mock_mcp_client(route_request)
 
-    with patch("unifi_relay_sidecar.discovery.McpHttpClient", mock_cls):
-        from unifi_relay_sidecar.discovery import discover_tools
+    with patch("unifi_mcp_relay.discovery.McpHttpClient", mock_cls):
+        from unifi_mcp_relay.discovery import discover_tools
 
         result = await discover_tools("http://localhost:4000")
 
@@ -243,8 +243,8 @@ async def test_discover_all_concurrent(mock_mcp_client):
 
     mock_cls, mock_instance = mock_mcp_client(route_request)
 
-    with patch("unifi_relay_sidecar.discovery.McpHttpClient", mock_cls):
-        from unifi_relay_sidecar.discovery import discover_all
+    with patch("unifi_mcp_relay.discovery.McpHttpClient", mock_cls):
+        from unifi_mcp_relay.discovery import discover_all
 
         results = await discover_all(["http://localhost:3000", "http://localhost:3001"])
 
@@ -261,8 +261,8 @@ async def test_discover_all_handles_failures(mock_mcp_client):
 
     mock_cls, mock_instance = mock_mcp_client(route_request)
 
-    with patch("unifi_relay_sidecar.discovery.McpHttpClient", mock_cls):
-        from unifi_relay_sidecar.discovery import discover_all
+    with patch("unifi_mcp_relay.discovery.McpHttpClient", mock_cls):
+        from unifi_mcp_relay.discovery import discover_all
 
         results = await discover_all(["http://localhost:3000", "http://localhost:3001"])
 

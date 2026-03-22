@@ -6,9 +6,9 @@ import json
 import logging
 from typing import Any
 
-from unifi_relay_sidecar.discovery import McpHttpClient, ServerInfo
+from unifi_mcp_relay.discovery import McpHttpClient, ServerInfo
 
-logger = logging.getLogger("unifi-relay-sidecar")
+logger = logging.getLogger("unifi-mcp-relay")
 
 
 class ToolForwarder:
