@@ -22,6 +22,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from unifi_mcp_shared.manifest_helpers import get_tool_annotations
+
 # Add src to path so we can import modules
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
@@ -74,52 +76,6 @@ def build_module_map() -> dict[str, str]:
 
     logger.info(f"   Built module map with {len(tool_map)} tool->module mappings")
     return tool_map
-
-
-def get_tool_annotations(server: Any) -> dict[str, dict[str, Any]]:
-    """Extract ToolAnnotations from FastMCP's internal tool registry.
-
-    FastMCP stores Tool objects (with annotations) in server._tool_manager._tools.
-    Each Tool has an optional ``annotations`` field of type ``ToolAnnotations``.
-
-    Args:
-        server: The FastMCP server instance.
-
-    Returns:
-        Dictionary mapping tool_name -> annotations dict (only non-None values).
-    """
-    annotations_map: dict[str, dict[str, Any]] = {}
-
-    try:
-        tool_manager = getattr(server, "_tool_manager", None)
-        if tool_manager is None:
-            logger.warning("   server._tool_manager not found; skipping annotations")
-            return annotations_map
-
-        internal_tools = getattr(tool_manager, "_tools", None)
-        if internal_tools is None:
-            logger.warning("   server._tool_manager._tools not found; skipping annotations")
-            return annotations_map
-
-        for tool_name, tool_obj in internal_tools.items():
-            tool_annotations = getattr(tool_obj, "annotations", None)
-            if tool_annotations is None:
-                continue
-
-            # ToolAnnotations is a pydantic BaseModel; serialize only non-None fields
-            ann_dict = {}
-            for field_name in ("title", "readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"):
-                value = getattr(tool_annotations, field_name, None)
-                if value is not None:
-                    ann_dict[field_name] = value
-
-            if ann_dict:
-                annotations_map[tool_name] = ann_dict
-
-    except Exception as e:
-        logger.warning(f"   Failed to extract tool annotations: {e}")
-
-    return annotations_map
 
 
 def generate_manifest() -> dict[str, Any]:

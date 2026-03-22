@@ -25,9 +25,7 @@ class ToolForwarder:
             for tool in info.tools:
                 self._tool_to_url[tool.name] = info.url
             if info.url not in self._clients:
-                client = McpHttpClient(info.url)
-                client._session_id = info.session_id
-                self._clients[info.url] = client
+                self._clients[info.url] = McpHttpClient(info.url, session_id=info.session_id)
 
     def get_server_url(self, tool_name: str) -> str | None:
         """Return the server URL responsible for the given tool, or None if unknown."""

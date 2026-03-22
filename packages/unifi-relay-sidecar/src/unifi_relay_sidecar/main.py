@@ -88,13 +88,14 @@ class RelaySidecar:
 
             logger.info("[main] Refresh: re-discovering tool catalog...")
             try:
-                new_catalog = await self._discover_catalog()
-                # Only send catalog_update if something changed
-                if {t.name for t in new_catalog} != {t.name for t in self._catalog}:
-                    self._catalog = new_catalog
-                    sent = await self._client.send_catalog_update(new_catalog)
+                old_names = {t.name for t in self._catalog}  # Save BEFORE refresh
+                await self._discover_catalog()
+                new_names = {t.name for t in self._catalog}  # Compare AFTER refresh
+
+                if old_names != new_names:
+                    sent = await self._client.send_catalog_update(self._catalog)
                     if sent:
-                        logger.info("[main] Sent catalog_update with %d tools", len(new_catalog))
+                        logger.info("[main] Sent catalog_update with %d tools", len(self._catalog))
                     else:
                         logger.warning("[main] Could not send catalog_update: client not connected")
                 else:

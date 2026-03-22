@@ -52,10 +52,10 @@ class McpHttpClient:
     the MCP Streamable HTTP transport spec.
     """
 
-    def __init__(self, server_url: str) -> None:
+    def __init__(self, server_url: str, session_id: str | None = None) -> None:
         self._base_url = server_url.rstrip("/") + "/mcp"
         self._session: aiohttp.ClientSession | None = None
-        self._session_id: str | None = None
+        self._session_id: str | None = session_id
         self._request_id: int = 0
 
     @property

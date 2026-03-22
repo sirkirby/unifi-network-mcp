@@ -22,6 +22,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from unifi_mcp_shared.manifest_helpers import get_tool_annotations
+
 # Add src to path so we can import modules
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
@@ -76,52 +78,6 @@ def build_module_map() -> dict[str, str]:
     return tool_map
 
 
-def get_tool_annotations(server: Any) -> dict[str, dict[str, Any]]:
-    """Extract ToolAnnotations from FastMCP's internal tool registry.
-
-    FastMCP stores Tool objects (with annotations) in server._tool_manager._tools.
-    Each Tool has an optional ``annotations`` field of type ``ToolAnnotations``.
-
-    Args:
-        server: The FastMCP server instance.
-
-    Returns:
-        Dictionary mapping tool_name -> annotations dict (only non-None values).
-    """
-    annotations_map: dict[str, dict[str, Any]] = {}
-
-    try:
-        tool_manager = getattr(server, "_tool_manager", None)
-        if tool_manager is None:
-            logger.warning("   server._tool_manager not found; skipping annotations")
-            return annotations_map
-
-        internal_tools = getattr(tool_manager, "_tools", None)
-        if internal_tools is None:
-            logger.warning("   server._tool_manager._tools not found; skipping annotations")
-            return annotations_map
-
-        for tool_name, tool_obj in internal_tools.items():
-            tool_annotations = getattr(tool_obj, "annotations", None)
-            if tool_annotations is None:
-                continue
-
-            # ToolAnnotations is a pydantic BaseModel; serialize only non-None fields
-            ann_dict = {}
-            for field_name in ("title", "readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"):
-                value = getattr(tool_annotations, field_name, None)
-                if value is not None:
-                    ann_dict[field_name] = value
-
-            if ann_dict:
-                annotations_map[tool_name] = ann_dict
-
-    except Exception as e:
-        logger.warning(f"   Failed to extract tool annotations: {e}")
-
-    return annotations_map
-
-
 def generate_manifest() -> dict[str, Any]:
     """Generate tool manifest by forcing eager tool registration.
 
@@ -131,7 +87,7 @@ def generate_manifest() -> dict[str, Any]:
     Returns:
         Dictionary with tool metadata for all tools
     """
-    logger.info("🔨 Generating tool manifest with full schemas...")
+    logger.info("Generating tool manifest with full schemas...")
 
     # Import the tool registry first
     from unifi_network_mcp.tool_index import TOOL_REGISTRY
@@ -153,10 +109,10 @@ def generate_manifest() -> dict[str, Any]:
         # which in turn call register_tool() to populate TOOL_REGISTRY
         auto_load_tools(base_package="unifi_network_mcp.tools")
 
-        logger.info(f"   ✅ Loaded {len(TOOL_REGISTRY)} tools into registry")
+        logger.info(f"   Loaded {len(TOOL_REGISTRY)} tools into registry")
 
     except Exception as e:
-        logger.error(f"   ❌ Failed to load tools: {e}")
+        logger.error(f"   Failed to load tools: {e}")
         import traceback
         traceback.print_exc()
 
@@ -187,9 +143,9 @@ def generate_manifest() -> dict[str, Any]:
 
     annotations_map = get_tool_annotations(server)
     if annotations_map:
-        logger.info(f"   ✅ Extracted annotations for {len(annotations_map)} tools")
+        logger.info(f"   Extracted annotations for {len(annotations_map)} tools")
     else:
-        logger.warning("   ⚠️  No tool annotations found in FastMCP registry")
+        logger.warning("   No tool annotations found in FastMCP registry")
 
     # Build manifest from registry with full schemas
     tools = []
@@ -225,12 +181,12 @@ def generate_manifest() -> dict[str, Any]:
         "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
     }
 
-    logger.info(f"   ✅ Generated manifest with {len(tools)} tools and full schemas")
+    logger.info(f"   Generated manifest with {len(tools)} tools and full schemas")
 
     # Log a sample tool to verify schemas are complete
     if tools:
         sample_tool = tools[0]
-        logger.info(f"   📋 Sample tool: {sample_tool['name']}")
+        logger.info(f"   Sample tool: {sample_tool['name']}")
         logger.info(f"      Properties: {list(sample_tool['schema']['input'].get('properties', {}).keys())}")
 
     return manifest
@@ -249,13 +205,13 @@ def main():
         with open(output_path, "w") as f:
             json.dump(manifest, f, indent=2, sort_keys=True)
 
-        logger.info(f"   📝 Wrote manifest to {output_path}")
-        logger.info("   🎉 Tool manifest generation complete!")
+        logger.info(f"   Wrote manifest to {output_path}")
+        logger.info("   Tool manifest generation complete!")
 
         return 0
 
     except Exception as e:
-        logger.error(f"   ❌ Failed to generate manifest: {e}")
+        logger.error(f"   Failed to generate manifest: {e}")
         import traceback
         traceback.print_exc()
         return 1
