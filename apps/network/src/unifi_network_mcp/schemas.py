@@ -875,6 +875,111 @@ PORT_FORWARD_SIMPLE_SCHEMA = {
 }
 
 
+# V2 Zone-Based Firewall Policy Create schema
+# The v2 API uses zone_id + matching_target + matching_target_type instead of rulesets.
+# Actions are uppercase: ALLOW, BLOCK, REJECT.
+# See: /proxy/network/v2/api/site/{site}/firewall-policies
+FIREWALL_POLICY_V2_CREATE_SCHEMA = {
+    "type": "object",
+    "required": ["name", "action", "source", "destination"],
+    "properties": {
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name of the firewall policy.",
+        },
+        "action": {
+            "type": "string",
+            "enum": ["ALLOW", "BLOCK", "REJECT"],
+            "description": "Policy action (uppercase v2 format).",
+        },
+        "enabled": {
+            "type": "boolean",
+            "default": True,
+            "description": "Whether the policy is active.",
+        },
+        "index": {
+            "type": "integer",
+            "description": "Rule priority/order (lower = evaluated first). API assigns based on creation order.",
+        },
+        "protocol": {
+            "type": "string",
+            "default": "all",
+            "description": "Protocol to match (e.g. 'all', 'tcp', 'udp', 'icmp').",
+        },
+        "ip_version": {
+            "type": "string",
+            "enum": ["BOTH", "IPv4", "IPv6"],
+            "default": "BOTH",
+            "description": "IP version to match.",
+        },
+        "logging": {
+            "type": "boolean",
+            "default": False,
+            "description": "Enable logging for matched traffic.",
+        },
+        "connection_state_type": {
+            "type": "string",
+            "enum": ["ALL", "inclusive"],
+            "default": "ALL",
+            "description": "Connection state matching mode.",
+        },
+        "connection_states": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Connection states to match when connection_state_type is 'inclusive'.",
+        },
+        "create_allow_respond": {
+            "type": "boolean",
+            "default": True,
+            "description": "Auto-create return traffic rule for ALLOW policies.",
+        },
+        "match_ip_sec": {
+            "type": "boolean",
+            "default": False,
+            "description": "Match IPSec traffic.",
+        },
+        "match_opposite_protocol": {
+            "type": "boolean",
+            "default": False,
+            "description": "Match opposite protocol.",
+        },
+        "icmp_typename": {
+            "type": "string",
+            "default": "ANY",
+            "description": "ICMP type name.",
+        },
+        "icmp_v6_typename": {
+            "type": "string",
+            "default": "ANY",
+            "description": "ICMPv6 type name.",
+        },
+        "schedule": {
+            "type": "object",
+            "description": "Schedule object (e.g. {\"mode\": \"ALWAYS\"}).",
+        },
+        "source": {
+            "type": "object",
+            "description": (
+                "Source targeting. Must include zone_id and matching_target. "
+                "For IP targeting: matching_target='IP', matching_target_type='SPECIFIC', ips=[...]. "
+                "For network targeting: matching_target='NETWORK', matching_target_type='OBJECT', network_ids=[...]. "
+                "For any: matching_target='ANY'."
+            ),
+        },
+        "destination": {
+            "type": "object",
+            "description": (
+                "Destination targeting. Same structure as source. "
+                "For IP targeting: matching_target='IP', matching_target_type='SPECIFIC', ips=[...]. "
+                "For network targeting: matching_target='NETWORK', matching_target_type='OBJECT', network_ids=[...]. "
+                "For any: matching_target='ANY'."
+            ),
+        },
+    },
+}
+
+
 # Device Radio Update schema
 DEVICE_RADIO_UPDATE_SCHEMA = {
     "type": "object",
@@ -938,6 +1043,7 @@ class UniFiResourceRegistry:
         "qos_rule_simple": QOS_RULE_SIMPLE_SCHEMA,
         "port_forward_simple": PORT_FORWARD_SIMPLE_SCHEMA,
         "device_radio_update": DEVICE_RADIO_UPDATE_SCHEMA,
+        "firewall_policy_v2_create": FIREWALL_POLICY_V2_CREATE_SCHEMA,
     }
 
     @classmethod

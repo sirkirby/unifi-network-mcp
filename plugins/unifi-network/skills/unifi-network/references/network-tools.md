@@ -1,4 +1,4 @@
-# Network Server Tool Reference (91 tools)
+# Network Server Tool Reference (92 tools)
 
 Complete reference for `unifi_*` tools. All read tools are always available. Mutating tools require permissions (see main skill for details).
 
@@ -90,7 +90,7 @@ Always available, regardless of registration mode.
 ## Firewall
 
 <!-- AUTO:tools:firewall -->
-8 tools.
+9 tools.
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -100,6 +100,7 @@ Always available, regardless of registration mode.
 | `unifi_list_ip_groups` | Read | List IP groups configured on the controller (V2 API). |
 | `unifi_create_firewall_policy` | Mutate | Create a new firewall policy with schema validation. |
 | `unifi_create_simple_firewall_policy` | Mutate | Create a firewall policy using a simplified high-level schema. |
+| `unifi_delete_firewall_policy` | Mutate | Delete a firewall policy by ID. |
 | `unifi_toggle_firewall_policy` | Mutate | Enable or disable a specific firewall policy by ID. |
 | `unifi_update_firewall_policy` | Mutate | Update specific fields of an existing firewall policy by ID. |
 <!-- /AUTO:tools:firewall -->
