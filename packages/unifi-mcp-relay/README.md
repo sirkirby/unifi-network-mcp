@@ -74,18 +74,14 @@ docker compose --profile relay up
 
 Before running the relay, you need:
 
-1. **A deployed Cloudflare Worker** — see [sirkirby/unifi-mcp-worker](https://github.com/sirkirby/unifi-mcp-worker)
-2. **A relay token** — generated via the worker's admin API:
+1. **Deploy the Cloudflare Worker** using the CLI:
    ```bash
-   curl -X POST https://your-worker.workers.dev/api/locations/token \
-     -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-     -H "Content-Type: application/json" \
-     -d '{"location_name": "Home Lab"}'
+   npm install -g unifi-mcp-worker
+   unifi-mcp-worker install
    ```
-3. **Local MCP servers running with HTTP transport enabled:**
-   ```bash
-   UNIFI_MCP_HTTP_ENABLED=true uvx unifi-network-mcp@latest
-   ```
+   This deploys the relay gateway and generates your authentication tokens.
+
+2. **Local MCP servers** running with HTTP transport enabled (`UNIFI_MCP_HTTP_ENABLED=true`)
 
 ## Multi-Location Support
 

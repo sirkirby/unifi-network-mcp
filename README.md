@@ -26,9 +26,9 @@ Leverage agents and agentic AI workflows to manage your UniFi deployment.
 | Component | Status | Package |
 |-----------|--------|---------|
 | [Relay Sidecar](packages/unifi-mcp-relay/) | Beta | [`unifi-mcp-relay`](https://pypi.org/project/unifi-mcp-relay/) |
-| [Worker Gateway](https://github.com/sirkirby/unifi-mcp-worker) | Beta | Cloudflare Worker |
+| [Worker Gateway](https://github.com/sirkirby/unifi-mcp-worker) | Beta | [`unifi-mcp-worker`](https://www.npmjs.com/package/unifi-mcp-worker) (CLI) |
 
-The relay bridges your local MCP servers to a Cloudflare Worker, letting cloud agents access your UniFi tools without exposing local ports. Supports multi-location with annotation-based fan-out for read-only tools. See the [relay README](packages/unifi-mcp-relay/) for setup.
+The relay bridges your local MCP servers to a Cloudflare Worker, letting cloud agents access your UniFi tools without exposing local ports. Supports multi-location with annotation-based fan-out for read-only tools. Deploy the worker with `npm install -g unifi-mcp-worker && unifi-mcp-worker install`, then see the [relay README](packages/unifi-mcp-relay/) for connecting your local servers.
 
 ## What is this?
 
