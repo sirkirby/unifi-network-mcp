@@ -40,11 +40,7 @@ _SHARED_ENV_VARS = [
 APP_CONFIGS = {
     "network": {
         "title": "UniFi Network MCP",
-        "description": (
-            "MCP server exposing 90+ UniFi Network Controller tools for LLMs, agents, "
-            "and automation platforms. Query clients, devices, firewall rules, VLANs, VPNs, "
-            "stats, and more."
-        ),
+        "description": "Manage UniFi Network devices, clients, firewall, VLANs, VPNs, and more via MCP.",
         "tag_prefixes": ["network/v", "v"],
         "extra_env_vars": [
             {"name": "UNIFI_SITE", "description": "UniFi site name", "isRequired": False, "default": "default"},
@@ -52,19 +48,13 @@ APP_CONFIGS = {
     },
     "protect": {
         "title": "UniFi Protect MCP",
-        "description": (
-            "MCP server exposing UniFi Protect tools for LLMs, agents, and automation platforms. "
-            "Query cameras, events, smart detections, recordings, lights, sensors, and chimes."
-        ),
+        "description": "Manage UniFi Protect cameras, events, recordings, and smart detections via MCP.",
         "tag_prefixes": ["protect/v", "v"],
         "extra_env_vars": [],
     },
     "access": {
         "title": "UniFi Access MCP",
-        "description": (
-            "MCP server exposing UniFi Access tools for LLMs, agents, and automation platforms. "
-            "Manage doors, credentials, access policies, visitors, events, and devices."
-        ),
+        "description": "Manage UniFi Access doors, credentials, policies, visitors, and events via MCP.",
         "tag_prefixes": ["access/v", "v"],
         "extra_env_vars": [],
     },
