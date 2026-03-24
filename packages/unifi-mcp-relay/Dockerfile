@@ -15,8 +15,9 @@ COPY apps/network/pyproject.toml apps/network/pyproject.toml
 COPY apps/protect/pyproject.toml apps/protect/pyproject.toml
 COPY apps/access/pyproject.toml apps/access/pyproject.toml
 
-# Copy relay source only
+# Copy relay source and its workspace dependency (unifi-mcp-shared)
 COPY packages/unifi-mcp-relay/src packages/unifi-mcp-relay/src
+COPY packages/unifi-mcp-shared/src packages/unifi-mcp-shared/src
 
 RUN uv sync --frozen --no-dev --package unifi-mcp-relay
 
