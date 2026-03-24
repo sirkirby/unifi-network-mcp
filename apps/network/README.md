@@ -41,6 +41,24 @@ git clone https://github.com/sirkirby/unifi-mcp.git
 cd unifi-mcp && uv sync
 ```
 
+## Usage Examples
+
+Once connected, just ask your AI agent in natural language:
+
+> "Show me all clients on the Guest VLAN with their signal strength and data usage"
+
+> "Create a firewall rule that blocks IoT devices from reaching the internet between midnight and 6 AM"
+
+> "Which access points have the most client disconnections this week?"
+
+> "Audit my firewall policies — are there any redundant or conflicting rules?"
+
+> "Rename the device at 192.168.1.45 to 'Living Room TV' and show me its traffic stats"
+
+> "What changed on my network in the last 24 hours? Show me new clients and config changes."
+
+All mutations (firewall rules, device changes, client blocking) use a **preview-then-confirm** flow — you see exactly what will change before anything is applied.
+
 ## Configure
 
 Set these environment variables (or create a `.env` file). If you used `/unifi-network:setup`, this is already done.

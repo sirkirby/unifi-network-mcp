@@ -44,6 +44,24 @@ git clone https://github.com/sirkirby/unifi-mcp.git
 cd unifi-mcp && uv sync
 ```
 
+## Usage Examples
+
+Once connected, just ask your AI agent in natural language:
+
+> "Who badged into the office today? Show me a timeline of all door access events"
+
+> "List all access credentials that expire in the next 30 days"
+
+> "Show me failed badge attempts at the server room this week — any patterns?"
+
+> "Which doors had the most access events today?"
+
+> "Create a visitor pass for John Smith with access to the main entrance from 9 AM to 5 PM tomorrow"
+
+> "Audit door policies — which doors allow access outside business hours?"
+
+All queries are read-only by default. Mutations (visitor passes, credential changes, door controls) use a **preview-then-confirm** flow.
+
 ## Configure
 
 Set these environment variables (or create a `.env` file). If you used `/unifi-access:setup`, this is already done.
