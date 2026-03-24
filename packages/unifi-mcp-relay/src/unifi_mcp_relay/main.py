@@ -13,9 +13,25 @@ from unifi_mcp_relay.client import RelayClient
 from unifi_mcp_relay.config import RelayConfig
 from unifi_mcp_relay.discovery import ServerInfo, discover_all
 from unifi_mcp_relay.forwarder import ToolForwarder
+from unifi_mcp_relay.location_timeline import (
+    TOOL_ANNOTATIONS,
+    TOOL_DESCRIPTION,
+    TOOL_INPUT_SCHEMA,
+    TOOL_NAME,
+    handle_location_timeline,
+)
 from unifi_mcp_relay.protocol import ToolInfo
 
 logger = logging.getLogger("unifi-mcp-relay")
+
+# Relay-native tool registered alongside discovered tools
+_TIMELINE_TOOL = ToolInfo(
+    name=TOOL_NAME,
+    description=TOOL_DESCRIPTION,
+    input_schema=TOOL_INPUT_SCHEMA,
+    annotations=TOOL_ANNOTATIONS,
+    server_origin="unifi-mcp-relay",
+)
 
 
 class RelaySidecar:
@@ -56,8 +72,11 @@ class RelaySidecar:
         for info in servers:
             catalog.extend(info.tools)
 
+        # Append relay-native tools
+        catalog.append(_TIMELINE_TOOL)
+
         self._catalog = catalog
-        logger.info("[main] Built catalog with %d tools from %d server(s)", len(catalog), len(servers))
+        logger.info("[main] Built catalog with %d tools from %d server(s) (incl. relay-native)", len(catalog), len(servers))
         return catalog
 
     async def _handle_tool_call(
@@ -65,13 +84,30 @@ class RelaySidecar:
         tool_name: str,
         arguments: dict[str, Any],
     ) -> tuple[Any | None, str | None]:
-        """Delegate a tool call to the forwarder.
+        """Delegate a tool call to the forwarder, or handle relay-native tools.
 
         Returns:
             ``(result, None)`` on success, ``(None, error_string)`` on failure.
         """
         if self._forwarder is None:
             return None, "Forwarder not initialized"
+
+        # Relay-native tools are handled locally instead of forwarding
+        if tool_name == TOOL_NAME:
+            try:
+                result = await handle_location_timeline(
+                    arguments=arguments,
+                    forwarder=self._forwarder,
+                    location_id=self._client._location_id,
+                    location_name=self._config.location_name,
+                    is_relay_mode=True,
+                )
+                if not result.get("success"):
+                    return None, result.get("error", "Unknown error")
+                return result, None
+            except Exception as exc:
+                logger.error("[main] Relay-native tool '%s' failed: %s", tool_name, exc, exc_info=True)
+                return None, f"Failed to execute {tool_name}: {exc}"
 
         outcome = await self._forwarder.forward_with_error(tool_name, arguments)
         if isinstance(outcome, str):
