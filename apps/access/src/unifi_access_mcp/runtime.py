@@ -111,8 +111,15 @@ def get_server() -> FastMCP:
     # Wrap the tool decorator to handle permission kwargs gracefully.
     # This ensures tool modules can be imported directly without errors.
     # main.py will replace this with the full permissioned_tool implementation.
-    server._original_tool = server.tool
-    server.tool = _create_permissioned_tool_wrapper(server.tool)
+    from unifi_mcp_shared.protocol import create_mcp_tool_adapter
+
+    # Wrap Layer 1 (raw FastMCP decorator) with protocol adapter.
+    # server._original_tool must be set to the adapter (not raw server.tool),
+    # because setup_permissioned_tool reads server._original_tool (line 47 of
+    # permissioned_tool.py) and uses it as the bottom of the decorator chain.
+    # This ensures Layer 3 delegates to the protocol adapter.
+    server._original_tool = create_mcp_tool_adapter(server.tool)
+    server.tool = _create_permissioned_tool_wrapper(server._original_tool)
 
     return server
 
