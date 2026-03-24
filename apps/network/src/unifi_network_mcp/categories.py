@@ -45,6 +45,7 @@ NETWORK_CATEGORY_MAP = {
     "route": "routes",
     "snmp": "snmp",
     "acl": "acl_rules",
+    "client_group": "client_groups",
 }
 
 # Backward-compatible alias used by the old permissions module

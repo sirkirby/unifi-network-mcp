@@ -1,5 +1,5 @@
 {
-  "count": 92,
+  "count": 97,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "unifi_network_mcp.tools.devices",
@@ -8,6 +8,7 @@
     "unifi_authorize_guest": "unifi_network_mcp.tools.clients",
     "unifi_block_client": "unifi_network_mcp.tools.clients",
     "unifi_create_acl_rule": "unifi_network_mcp.tools.acl",
+    "unifi_create_client_group": "unifi_network_mcp.tools.client_groups",
     "unifi_create_firewall_policy": "unifi_network_mcp.tools.firewall",
     "unifi_create_network": "unifi_network_mcp.tools.network",
     "unifi_create_port_forward": "unifi_network_mcp.tools.port_forwards",
@@ -20,11 +21,13 @@
     "unifi_create_voucher": "unifi_network_mcp.tools.hotspot",
     "unifi_create_wlan": "unifi_network_mcp.tools.network",
     "unifi_delete_acl_rule": "unifi_network_mcp.tools.acl",
+    "unifi_delete_client_group": "unifi_network_mcp.tools.client_groups",
     "unifi_delete_firewall_policy": "unifi_network_mcp.tools.firewall",
     "unifi_force_reconnect_client": "unifi_network_mcp.tools.clients",
     "unifi_get_acl_rule_details": "unifi_network_mcp.tools.acl",
     "unifi_get_alerts": "unifi_network_mcp.tools.stats",
     "unifi_get_client_details": "unifi_network_mcp.tools.clients",
+    "unifi_get_client_group_details": "unifi_network_mcp.tools.client_groups",
     "unifi_get_client_stats": "unifi_network_mcp.tools.stats",
     "unifi_get_device_details": "unifi_network_mcp.tools.devices",
     "unifi_get_device_radio": "unifi_network_mcp.tools.devices",
@@ -38,7 +41,7 @@
     "unifi_get_port_forward": "unifi_network_mcp.tools.port_forwards",
     "unifi_get_qos_rule_details": "unifi_network_mcp.tools.qos",
     "unifi_get_route_details": "unifi_network_mcp.tools.routing",
-    "unifi_get_site_settings": "unifi_network_mcp.tools.config",
+    "unifi_get_site_settings": "unifi_network_mcp.tools.system",
     "unifi_get_snmp_settings": "unifi_network_mcp.tools.system",
     "unifi_get_system_info": "unifi_network_mcp.tools.system",
     "unifi_get_top_clients": "unifi_network_mcp.tools.stats",
@@ -52,6 +55,7 @@
     "unifi_list_active_routes": "unifi_network_mcp.tools.routing",
     "unifi_list_alarms": "unifi_network_mcp.tools.events",
     "unifi_list_blocked_clients": "unifi_network_mcp.tools.clients",
+    "unifi_list_client_groups": "unifi_network_mcp.tools.client_groups",
     "unifi_list_clients": "unifi_network_mcp.tools.clients",
     "unifi_list_devices": "unifi_network_mcp.tools.devices",
     "unifi_list_events": "unifi_network_mcp.tools.events",
@@ -81,6 +85,7 @@
     "unifi_unauthorize_guest": "unifi_network_mcp.tools.clients",
     "unifi_unblock_client": "unifi_network_mcp.tools.clients",
     "unifi_update_acl_rule": "unifi_network_mcp.tools.acl",
+    "unifi_update_client_group": "unifi_network_mcp.tools.client_groups",
     "unifi_update_device_radio": "unifi_network_mcp.tools.devices",
     "unifi_update_firewall_policy": "unifi_network_mcp.tools.firewall",
     "unifi_update_network": "unifi_network_mcp.tools.network",
@@ -274,6 +279,39 @@
             "acl_index",
             "action",
             "mac_acl_network_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Create a new client group (network member group). Groups organize devices by MAC address for use in OON policies and firewall rules. Requires confirmation.",
+      "name": "unifi_create_client_group",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, creates the group. When false (default), returns a preview of the changes",
+              "type": "boolean"
+            },
+            "members": {
+              "description": "List of MAC addresses to include in the group (e.g., ['aa:bb:cc:dd:ee:ff', '11:22:33:44:55:66'])",
+              "type": "array"
+            },
+            "name": {
+              "description": "Descriptive name for the group (e.g., 'Kids All', 'Work Laptops')",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "members"
           ],
           "type": "object"
         }
@@ -635,6 +673,28 @@
       }
     },
     {
+      "description": "Delete a client group. Requires confirmation. WARNING: Deleting a group may affect OON policies and firewall rules that reference it.",
+      "name": "unifi_delete_client_group",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, deletes the group. When false (default), returns a preview",
+              "type": "boolean"
+            },
+            "group_id": {
+              "description": "The ID of the group to delete",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
       "description": "Delete a firewall policy by ID. Requires confirmation. WARNING: Removing an ALLOW rule may block traffic. Removing a BLOCK rule may open access.",
       "name": "unifi_delete_firewall_policy",
       "schema": {
@@ -740,6 +800,28 @@
           },
           "required": [
             "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Get detailed configuration for a specific client group by ID.",
+      "name": "unifi_get_client_group_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "group_id": {
+              "description": "The unique identifier of the client group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group_id"
           ],
           "type": "object"
         }
@@ -1272,6 +1354,20 @@
       },
       "description": "List clients/devices that are currently blocked from the network",
       "name": "unifi_list_blocked_clients",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List client groups (network member groups). Groups organize devices by MAC address for use in OON policies and firewall rules.",
+      "name": "unifi_list_client_groups",
       "schema": {
         "input": {
           "properties": {},
@@ -1899,6 +1995,39 @@
           "required": [
             "rule_id",
             "rule_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Update an existing client group. Requires the full group object (PUT replaces entire resource). Requires confirmation.",
+      "name": "unifi_update_client_group",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, updates the group. When false (default), returns a preview of the changes",
+              "type": "boolean"
+            },
+            "group_data": {
+              "description": "The complete updated group object with id, name, members, and type fields",
+              "type": "object"
+            },
+            "group_id": {
+              "description": "The ID of the group to update",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group_id",
+            "group_data"
           ],
           "type": "object"
         }
