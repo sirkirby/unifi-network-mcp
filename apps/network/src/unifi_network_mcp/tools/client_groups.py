@@ -109,7 +109,7 @@ async def get_client_group_details(
     description="Create a new client group (network member group). "
     "Groups organize devices by MAC address for use in OON policies and firewall rules. "
     "Requires confirmation.",
-    permission_category="client_groups",
+    permission_category="client_group",
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
@@ -168,7 +168,7 @@ async def create_client_group(
     name="unifi_update_client_group",
     description="Update an existing client group. Requires the full group object (PUT replaces entire resource). "
     "Requires confirmation.",
-    permission_category="client_groups",
+    permission_category="client_group",
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
@@ -215,7 +215,7 @@ async def update_client_group(
     name="unifi_delete_client_group",
     description="Delete a client group. Requires confirmation. "
     "WARNING: Deleting a group may affect OON policies and firewall rules that reference it.",
-    permission_category="client_groups",
+    permission_category="client_group",
     permission_action="delete",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
 )
