@@ -72,23 +72,32 @@ APP_CONFIGS = {
 
 
 def get_version_from_git(app_name: str) -> str:
-    """Extract version from git tags using the app's tag prefix pattern."""
-    config = APP_CONFIGS[app_name]
-    prefixes = "|".join(re.escape(p) for p in config["tag_prefixes"])
-    pattern = rf"^(?:{prefixes})(\d+(?:\.\d+)*)"
+    """Extract version from git tags using the app's tag prefix pattern.
 
-    try:
-        raw = subprocess.check_output(
-            ["git", "describe", "--tags", "--always"], cwd=REPO_ROOT, text=True
-        ).strip()
-        match = re.match(pattern, raw)
-        if match:
-            return match.group(1)
-        logger.warning("Git tag '%s' does not match expected pattern. Using 0.0.0", raw)
-        return "0.0.0"
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        logger.warning("Could not determine version from git. Using 0.0.0")
-        return "0.0.0"
+    Uses ``git describe --match`` with each tag prefix to find the nearest
+    matching tag, rather than the nearest tag overall.
+    """
+    config = APP_CONFIGS[app_name]
+
+    for prefix in config["tag_prefixes"]:
+        glob_pattern = f"{prefix}*"
+        try:
+            raw = subprocess.check_output(
+                ["git", "describe", "--tags", "--match", glob_pattern, "--always"],
+                cwd=REPO_ROOT,
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+            # Extract version number from tag (e.g., "network/v0.7.7-3-gabcdef" -> "0.7.7")
+            version_pattern = rf"^{re.escape(prefix)}(\d+(?:\.\d+)*)"
+            match = re.match(version_pattern, raw)
+            if match:
+                return match.group(1)
+        except subprocess.CalledProcessError:
+            continue
+
+    logger.warning("No matching git tag found for app '%s'. Using 0.0.0", app_name)
+    return "0.0.0"
 
 
 def build_server_manifest(app_name: str, version: str) -> dict:
