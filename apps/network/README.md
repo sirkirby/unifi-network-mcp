@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.sirkirby/unifi-network-mcp -->
 # UniFi Network MCP Server
 
 <p align="center">

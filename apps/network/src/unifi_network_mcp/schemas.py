@@ -956,7 +956,7 @@ FIREWALL_POLICY_V2_CREATE_SCHEMA = {
         },
         "schedule": {
             "type": "object",
-            "description": "Schedule object (e.g. {\"mode\": \"ALWAYS\"}).",
+            "description": 'Schedule object (e.g. {"mode": "ALWAYS"}).',
         },
         "source": {
             "type": "object",

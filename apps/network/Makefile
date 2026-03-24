@@ -1,4 +1,4 @@
-.PHONY: help venv install test test-cov test-async lint format format-fix format-check manifest \
+.PHONY: help venv install test test-cov test-async lint format format-fix format-check manifest server-manifest \
        run run-lazy run-eager run-meta version build build-check build-test docker docker-run \
        clean console console-debug console-proxy console-direct pre-commit pre-release \
        deps-check deps-update info run-with-all-permissions run-read-only
@@ -35,6 +35,7 @@ help:
 	@echo "Build & Release:"
 	@echo "  make version        Show current version (from git tags)"
 	@echo "  make build          Build package (wheel + sdist)"
+	@echo "  make server-manifest  Regenerate server.json for MCP Registry"
 	@echo "  make build-check    Build and verify version in package"
 	@echo "  make docker         Build Docker image"
 	@echo "  make docker-run     Run Docker container"
@@ -78,6 +79,9 @@ run-meta:
 manifest:
 	$(UV_RUN) python apps/network/scripts/generate_tool_manifest.py
 
+server-manifest:
+	$(UV_RUN) python scripts/generate_server_manifest.py --app network
+
 # Testing
 test:
 	$(UV_RUN) pytest apps/network/tests -v
@@ -111,7 +115,7 @@ version:
 	@echo "Version is derived from git tags (e.g., network/v0.7.0 -> 0.7.0)"
 
 # Build
-build: manifest
+build: manifest server-manifest
 	cd ../.. && uv build --package unifi-network-mcp
 
 build-check: clean manifest

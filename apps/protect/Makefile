@@ -1,4 +1,4 @@
-.PHONY: help venv install test test-cov lint format format-fix format-check manifest \
+.PHONY: help venv install test test-cov lint format format-fix format-check manifest server-manifest \
        run run-lazy run-eager run-meta version build build-check build-test docker docker-run \
        clean console console-debug pre-commit pre-release \
        deps-check deps-update info
@@ -33,6 +33,7 @@ help:
 	@echo "Build & Release:"
 	@echo "  make version        Show current version (from git tags)"
 	@echo "  make build          Build package (wheel + sdist)"
+	@echo "  make server-manifest  Regenerate server.json for MCP Registry"
 	@echo "  make build-check    Build and verify version in package"
 	@echo "  make docker         Build Docker image"
 	@echo "  make docker-run     Run Docker container"
@@ -72,6 +73,9 @@ run-meta:
 manifest:
 	$(UV_RUN) python apps/protect/scripts/generate_tool_manifest.py
 
+server-manifest:
+	$(UV_RUN) python scripts/generate_server_manifest.py --app protect
+
 console:
 	cd ../.. && UNIFI_TOOL_REGISTRATION_MODE=eager uv run --package unifi-protect-mcp python apps/protect/devtools/dev_console.py
 
@@ -108,7 +112,7 @@ version:
 	@echo "Version is derived from git tags (e.g., protect/v0.1.0 -> 0.1.0)"
 
 # Build
-build: manifest
+build: manifest server-manifest
 	cd ../.. && uv build --package unifi-protect-mcp
 
 build-check: clean manifest

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.sirkirby/unifi-protect-mcp",
+  "title": "UniFi Protect MCP",
+  "description": "MCP server exposing UniFi Protect tools for LLMs, agents, and automation platforms. Query cameras, events, smart detections, recordings, lights, sensors, and chimes.",
+  "version": "0.1.5",
+  "repository": {
+    "url": "https://github.com/sirkirby/unifi-mcp",
+    "source": "github",
+    "subfolder": "apps/protect"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "unifi-protect-mcp",
+      "version": "0.1.5",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "UNIFI_HOST",
+          "description": "Controller IP/hostname",
+          "isRequired": true
+        },
+        {
+          "name": "UNIFI_USERNAME",
+          "description": "Admin username",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "UNIFI_PASSWORD",
+          "description": "Admin password",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "UNIFI_API_KEY",
+          "description": "API key (optional, experimental)",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "UNIFI_PORT",
+          "description": "Controller HTTPS port",
+          "isRequired": false,
+          "default": "443"
+        },
+        {
+          "name": "UNIFI_VERIFY_SSL",
+          "description": "SSL certificate verification",
+          "isRequired": false,
+          "default": "false"
+        }
+      ]
+    }
+  ]
+}

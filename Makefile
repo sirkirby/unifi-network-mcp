@@ -1,4 +1,4 @@
-.PHONY: help test lint format manifest skill-references sync-skills check-skills-sync pre-commit core-test shared-test \
+.PHONY: help test lint format manifest server-manifests skill-references sync-skills check-skills-sync pre-commit core-test shared-test \
        relay-test docker-relay sync docker-build docker-up docker-down docker-logs
 
 help:
@@ -9,6 +9,7 @@ help:
 	@echo "  make lint           Lint all apps"
 	@echo "  make format         Format all apps"
 	@echo "  make manifest       Regenerate tool manifests + skill references"
+	@echo "  make server-manifests  Regenerate server.json for all apps (MCP Registry)"
 	@echo "  make skill-references  Update skill tool tables from manifests"
 	@echo "  make pre-commit     Format + lint + test"
 	@echo ""
@@ -50,6 +51,12 @@ manifest:
 	$(MAKE) -C apps/access manifest
 	$(MAKE) sync-skills
 	$(MAKE) skill-references
+	$(MAKE) server-manifests
+
+server-manifests:
+	$(MAKE) -C apps/network server-manifest
+	$(MAKE) -C apps/protect server-manifest
+	$(MAKE) -C apps/access server-manifest
 
 skill-references:
 	python3 scripts/generate_skill_references.py
