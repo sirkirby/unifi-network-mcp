@@ -103,6 +103,29 @@ For Claude Desktop, add to your `claude_desktop_config.json`:
 
 > **Tip:** If all servers connect to the same controller, you can use the shared `UNIFI_HOST` / `UNIFI_USERNAME` / `UNIFI_PASSWORD` variables instead of repeating them per server.
 
+## Usage Examples
+
+Once connected, just ask your AI agent in natural language:
+
+**Network**
+> "Show me all clients on the Guest VLAN with their signal strength and data usage"
+> "Create a firewall rule that blocks IoT devices from reaching the internet between midnight and 6 AM"
+> "Audit my firewall policies — are there any redundant or conflicting rules?"
+
+**Protect**
+> "List all cameras that detected motion in the last hour"
+> "Show me smart detection events from the front door camera today — people and vehicles only"
+
+**Access**
+> "Who badged into the office today? Show me a timeline of all door access events"
+> "Create a visitor pass for John Smith with access to the main entrance tomorrow 9-5"
+
+**Cross-Product** (requires [relay](packages/unifi-mcp-relay/) for full experience)
+> "Show me everything that happened at the front entrance in the last hour" — correlates Network clients, Protect camera events, and Access badge scans in a single timeline
+> "A switch went offline at 2 AM — was there physical activity nearby?"
+
+All mutations use a **preview-then-confirm** flow — you see exactly what will change before anything is applied.
+
 ## Configuration
 
 Set these environment variables (or use a `.env` file):

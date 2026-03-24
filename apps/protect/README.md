@@ -44,6 +44,24 @@ git clone https://github.com/sirkirby/unifi-mcp.git
 cd unifi-mcp && uv sync
 ```
 
+## Usage Examples
+
+Once connected, just ask your AI agent in natural language:
+
+> "List all cameras that detected motion in the last hour"
+
+> "Show me smart detection events from the front door camera today — people and vehicles only"
+
+> "Which cameras have the most motion events this week? Any unusual patterns?"
+
+> "Are there any cameras offline or with degraded connections?"
+
+> "Show me all recording events from the driveway camera between 2 AM and 5 AM last night"
+
+> "What sensors triggered alerts today and what were the readings?"
+
+All camera and event queries are read-only by default. Mutations (camera settings, light controls) use a **preview-then-confirm** flow.
+
 ## Configure
 
 Set these environment variables (or create a `.env` file). If you used `/unifi-protect:setup`, this is already done.
