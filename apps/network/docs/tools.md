@@ -24,6 +24,14 @@ These are always registered regardless of mode:
 - `unifi_list_firewall_zones` — List firewall zones (V2 API)
 - `unifi_list_ip_groups` — List IP groups (V2 API)
 
+## Client Groups (5 tools)
+
+- `unifi_list_client_groups` — List all client groups (network member groups)
+- `unifi_get_client_group_details` — Get group details by ID
+- `unifi_create_client_group` — Create a new client group with MAC members
+- `unifi_update_client_group` — Update an existing group
+- `unifi_delete_client_group` — Delete a group (requires delete permission)
+
 ## MAC ACL Rules (5 tools)
 
 - `unifi_list_acl_rules` — List MAC ACL rules, optionally filtered by network/VLAN

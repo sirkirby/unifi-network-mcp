@@ -1,4 +1,4 @@
-# Network Server Tool Reference (92 tools)
+# Network Server Tool Reference (97 tools)
 
 Complete reference for `unifi_*` tools. All read tools are always available. Mutating tools require permissions (see main skill for details).
 
@@ -239,6 +239,26 @@ Always available, regardless of registration mode.
 
 **Tips:**
 - This is the only category with a delete tool — requires `UNIFI_PERMISSIONS_ACL_RULES_DELETE=true`
+
+---
+
+## Client Groups
+
+<!-- AUTO:tools:client_groups -->
+5 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `unifi_get_client_group_details` | Read | Get detailed configuration for a specific client group by ID. |
+| `unifi_list_client_groups` | Read | List client groups (network member groups). |
+| `unifi_create_client_group` | Mutate | Create a new client group (network member group). |
+| `unifi_delete_client_group` | Mutate | Delete a client group. |
+| `unifi_update_client_group` | Mutate | Update an existing client group. |
+<!-- /AUTO:tools:client_groups -->
+
+**Tips:**
+- Client groups organize devices by MAC address for use in OON policies and firewall rules
+- Delete requires `UNIFI_PERMISSIONS_CLIENT_GROUPS_DELETE=true`
 
 ---
 

@@ -28,6 +28,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from unifi_core.auth import UniFiAuth
 from unifi_network_mcp.bootstrap import load_config, logger
 from unifi_network_mcp.managers.acl_manager import AclManager
+from unifi_network_mcp.managers.client_group_manager import ClientGroupManager
 from unifi_network_mcp.managers.client_manager import ClientManager
 from unifi_network_mcp.managers.connection_manager import ConnectionManager
 from unifi_network_mcp.managers.device_manager import DeviceManager
@@ -151,6 +152,11 @@ def get_acl_manager() -> AclManager:
 
 
 @lru_cache
+def get_client_group_manager() -> ClientGroupManager:
+    return ClientGroupManager(get_connection_manager())
+
+
+@lru_cache
 def get_client_manager() -> ClientManager:
     return ClientManager(get_connection_manager())
 
@@ -233,6 +239,7 @@ auth = get_auth()
 server = get_server()
 connection_manager = get_connection_manager()
 acl_manager = get_acl_manager()
+client_group_manager = get_client_group_manager()
 client_manager = get_client_manager()
 device_manager = get_device_manager()
 stats_manager = get_stats_manager()
