@@ -313,9 +313,10 @@ def _validate_zone_targeting(validated_data: Dict[str, Any]) -> str | None:
         target = ep.get("matching_target")
         if target in ("IP", "NETWORK") and not ep.get("matching_target_type"):
             expected = "SPECIFIC" if target == "IP" else "OBJECT"
-            return (
-                "%s.matching_target_type is required when matching_target is '%s'. "
-                "Use '%s'." % (direction, target, expected)
+            return "%s.matching_target_type is required when matching_target is '%s'. Use '%s'." % (
+                direction,
+                target,
+                expected,
             )
         if target == "IP" and not ep.get("ips"):
             return "%s.ips array is required when matching_target is 'IP'." % direction
@@ -443,11 +444,21 @@ async def create_firewall_policy(
 
 
 # Fields that indicate zone-based update data (not in the legacy update schema)
-_V2_UPDATE_FIELDS = frozenset({
-    "source", "destination", "ip_version", "connection_state_type", "connection_states",
-    "create_allow_respond", "match_ip_sec", "match_opposite_protocol", "schedule",
-    "icmp_typename", "icmp_v6_typename",
-})
+_V2_UPDATE_FIELDS = frozenset(
+    {
+        "source",
+        "destination",
+        "ip_version",
+        "connection_state_type",
+        "connection_states",
+        "create_allow_respond",
+        "match_ip_sec",
+        "match_opposite_protocol",
+        "schedule",
+        "icmp_typename",
+        "icmp_v6_typename",
+    }
+)
 
 
 @server.tool(
