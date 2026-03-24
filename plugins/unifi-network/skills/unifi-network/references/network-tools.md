@@ -43,7 +43,7 @@ Always available, regardless of registration mode.
 
 | Tool | Type | Description |
 |------|------|-------------|
-| `unifi_get_client_details` | Read | Returns the full raw client object for one client by MAC address — includes all controller-reported fields: IP, hostname, connection stat... |
+| `unifi_get_client_details` | Read | Returns the full raw client object for one client by MAC address â€” includes all controller-reported fields: IP, hostname, connection stat... |
 | `unifi_list_blocked_clients` | Read | List clients/devices that are currently blocked from the network |
 | `unifi_list_clients` | Read | Returns connected clients with MAC, name, hostname, IP, connection type (wired/wireless), and for wireless clients: SSID, signal dBm, cha... |
 | `unifi_lookup_by_ip` | Read | Quick IP-to-hostname lookup. |
@@ -70,7 +70,7 @@ Always available, regardless of registration mode.
 
 | Tool | Type | Description |
 |------|------|-------------|
-| `unifi_get_device_details` | Read | Returns the full raw device object for one device by MAC address — includes radio tables, port tables, system stats, WAN info, firmware d... |
+| `unifi_get_device_details` | Read | Returns the full raw device object for one device by MAC address â€” includes radio tables, port tables, system stats, WAN info, firmware d... |
 | `unifi_get_device_radio` | Read | Get radio configuration and live statistics for an access point. |
 | `unifi_list_devices` | Read | Returns adopted device inventory with MAC, name, model, IP, firmware version, uptime, status (online/offline/upgrading/etc), device_categ... |
 | `unifi_adopt_device` | Mutate | Adopt a pending device into the Unifi Network by MAC address |
@@ -345,7 +345,7 @@ Always available, regardless of registration mode.
 
 | Tool | Type | Description |
 |------|------|-------------|
-| `unifi_get_network_health` | Read | Returns per-subsystem health status for WAN, LAN, WLAN, and VPN — each with status, number of gateways/switches/APs, and active user counts. |
+| `unifi_get_network_health` | Read | Returns per-subsystem health status for WAN, LAN, WLAN, and VPN â€” each with status, number of gateways/switches/APs, and active user counts. |
 | `unifi_get_site_settings` | Read | Get current site settings (e.g., country code, timezone, connectivity monitoring). |
 | `unifi_get_snmp_settings` | Read | Get current SNMP settings for the site (enabled state, community string). |
 | `unifi_get_system_info` | Read | Returns controller version, uptime, hostname, memory/CPU usage, and update availability. |
