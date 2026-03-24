@@ -106,6 +106,17 @@ jobs:
         update_plugin_version "plugins/unifi-protect/.claude-plugin/plugin.json" "$PROTECT_VERSION"
         update_plugin_version "plugins/unifi-access/.claude-plugin/plugin.json" "$ACCESS_VERSION"
 
+        # Regenerate server.json manifests for MCP Registry
+        if [ -n "$NETWORK_VERSION" ]; then
+          python3 scripts/generate_server_manifest.py --app network --version "$NETWORK_VERSION"
+        fi
+        if [ -n "$PROTECT_VERSION" ]; then
+          python3 scripts/generate_server_manifest.py --app protect --version "$PROTECT_VERSION"
+        fi
+        if [ -n "$ACCESS_VERSION" ]; then
+          python3 scripts/generate_server_manifest.py --app access --version "$ACCESS_VERSION"
+        fi
+
     - name: Commit and push if changed
       run: |
         git config user.name "github-actions[bot]"
