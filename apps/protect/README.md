@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.sirkirby/unifi-protect-mcp -->
 # UniFi Protect MCP Server
 
 <p align="center">
