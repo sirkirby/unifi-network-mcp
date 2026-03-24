@@ -8,6 +8,7 @@ dependencies = [
     "mcp[cli]>=1.26.0,<2",
     "aiohttp>=3.8.5",
     "python-dotenv>=1.0.0",
+    "unifi-mcp-shared",
 ]
 
 [project.scripts]
@@ -36,6 +37,9 @@ version-file = "src/unifi_mcp_relay/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/unifi_mcp_relay"]
+
+[tool.uv.sources]
+unifi-mcp-shared = { workspace = true }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -65,7 +65,7 @@ class RelaySidecar:
         tool_name: str,
         arguments: dict[str, Any],
     ) -> tuple[Any | None, str | None]:
-        """Delegate a tool call to the forwarder.
+        """Delegate a tool call to the forwarder, or handle relay-native tools.
 
         Returns:
             ``(result, None)`` on success, ``(None, error_string)`` on failure.

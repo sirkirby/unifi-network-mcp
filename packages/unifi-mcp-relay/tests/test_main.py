@@ -83,3 +83,5 @@ async def test_sidecar_tool_call_handler_returns_error_string(config):
     result, error = await sidecar._handle_tool_call("unifi_list_devices", {})
     assert result is None
     assert error == "Connection refused"
+
+

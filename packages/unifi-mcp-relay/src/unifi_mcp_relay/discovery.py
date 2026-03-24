@@ -94,7 +94,7 @@ class McpHttpClient:
 
         headers: dict[str, str] = {
             "Content-Type": "application/json",
-            "Accept": "application/json",
+            "Accept": "application/json, text/event-stream",
         }
         if self._session_id:
             headers["Mcp-Session-Id"] = self._session_id
@@ -105,7 +105,23 @@ class McpHttpClient:
                 self._session_id = resp.headers["mcp-session-id"]
 
             resp.raise_for_status()
-            data = await resp.json()
+
+            # Handle both JSON and SSE response formats
+            content_type = resp.headers.get("Content-Type", "")
+            if "text/event-stream" in content_type:
+                # Parse SSE: look for "event: message\ndata: {...}" lines
+                text = await resp.text()
+                data = None
+                for line in text.strip().split("\n"):
+                    if line.startswith("data: "):
+                        import json as _json
+
+                        data = _json.loads(line[6:])
+                        break
+                if data is None:
+                    raise RuntimeError(f"No data line in SSE response: {text[:200]}")
+            else:
+                data = await resp.json()
 
         if "error" in data:
             raise RuntimeError(f"MCP error: {data['error']}")
@@ -125,7 +141,7 @@ class McpHttpClient:
 
         headers: dict[str, str] = {
             "Content-Type": "application/json",
-            "Accept": "application/json",
+            "Accept": "application/json, text/event-stream",
         }
         if self._session_id:
             headers["Mcp-Session-Id"] = self._session_id

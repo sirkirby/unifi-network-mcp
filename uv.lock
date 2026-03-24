@@ -1626,6 +1626,7 @@ dependencies = [
     { name = "aiohttp" },
     { name = "mcp", extra = ["cli"] },
     { name = "python-dotenv" },
+    { name = "unifi-mcp-shared" },
     { name = "websockets" },
 ]
 
@@ -1641,6 +1642,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.8.5" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.26.0,<2" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "unifi-mcp-shared", editable = "packages/unifi-mcp-shared" },
     { name = "websockets", specifier = ">=13.0" },
 ]
 
