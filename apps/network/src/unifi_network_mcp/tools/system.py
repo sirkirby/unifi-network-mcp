@@ -10,9 +10,8 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import should_auto_confirm, update_preview
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import config, server, system_manager
+from unifi_mcp_shared.confirmation import update_preview
+from unifi_network_mcp.runtime import server, system_manager
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +120,8 @@ async def get_snmp_settings() -> Dict[str, Any]:
 @server.tool(
     name="unifi_update_snmp_settings",
     description="Update SNMP settings for the site (enable/disable, set community string). Requires confirm=true to apply changes.",
+    permission_category="snmp",
+    permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_snmp_settings(
@@ -143,10 +144,6 @@ async def update_snmp_settings(
     """
     logger.info(f"unifi_update_snmp_settings tool called (enabled={enabled}, confirm={confirm})")
 
-    if not parse_permission(config.permissions, "snmp", "update"):
-        logger.warning("Permission denied for updating SNMP settings.")
-        return {"success": False, "error": "Permission denied to update SNMP settings."}
-
     try:
         settings_list = await system_manager.get_settings("snmp")
         current = settings_list[0] if settings_list else {}
@@ -155,7 +152,7 @@ async def update_snmp_settings(
         if community is not None:
             updates["community"] = community
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return update_preview(
                 resource_type="snmp_settings",
                 resource_id=current.get("_id", "snmp"),

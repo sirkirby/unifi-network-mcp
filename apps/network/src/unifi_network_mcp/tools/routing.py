@@ -11,9 +11,8 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, update_preview
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import config, server
+from unifi_mcp_shared.confirmation import create_preview, update_preview
+from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
 
@@ -172,10 +171,6 @@ async def create_route(
     ] = False,
 ) -> Dict[str, Any]:
     """Create a new static route."""
-    if not parse_permission(config.permissions, "route", "create"):
-        logger.warning("Permission denied for creating routes.")
-        return {"success": False, "error": "Permission denied to create routes."}
-
     if not name or not name.strip():
         return {"success": False, "error": "Name is required."}
 
@@ -194,7 +189,7 @@ async def create_route(
     if distance < 1 or distance > 255:
         return {"success": False, "error": "Distance must be between 1 and 255."}
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="static_route",
             resource_data={
@@ -260,10 +255,6 @@ async def update_route(
     ] = False,
 ) -> Dict[str, Any]:
     """Update an existing static route."""
-    if not parse_permission(config.permissions, "route", "update"):
-        logger.warning(f"Permission denied for updating route ({route_id}).")
-        return {"success": False, "error": "Permission denied to update routes."}
-
     # Validate that at least one update is provided
     if all(v is None for v in [name, network, nexthop, distance, enabled]):
         return {
@@ -298,7 +289,7 @@ async def update_route(
                 "error": f"Route not found with ID: {route_id}",
             }
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             # Build current state from the route
             current_state = {
                 "name": current_route.get("name"),

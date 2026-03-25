@@ -13,9 +13,8 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import acl_manager, config, server
+from unifi_mcp_shared.confirmation import create_preview
+from unifi_network_mcp.runtime import acl_manager, server
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +43,6 @@ async def list_acl_rules(
         - count (int): Number of ACL rules found.
         - rules (List[Dict]): List of ACL rules with summary info.
     """
-    if not parse_permission(config.permissions, "acl_rules", "read"):
-        return {"success": False, "error": "Permission denied to list ACL rules."}
-
     try:
         rules = await acl_manager.get_acl_rules(network_id=network_id)
         formatted = [
@@ -92,9 +88,6 @@ async def get_acl_rule_details(
     Returns:
         A dictionary containing the full rule configuration.
     """
-    if not parse_permission(config.permissions, "acl_rules", "read"):
-        return {"success": False, "error": "Permission denied to get ACL rule details."}
-
     try:
         if not rule_id:
             return {"success": False, "error": "rule_id is required"}
@@ -198,7 +191,7 @@ async def create_acl_rule(
         "type": "MAC",
     }
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="acl_rule",
             resource_data=rule_data,
@@ -253,7 +246,7 @@ async def update_acl_rule(
     Returns:
         Preview of changes or success/failure status.
     """
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="acl_rule",
             resource_data=rule_data,
@@ -299,7 +292,7 @@ async def delete_acl_rule(
     Returns:
         Preview or success/failure status.
     """
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="acl_rule",
             resource_data={"rule_id": rule_id},

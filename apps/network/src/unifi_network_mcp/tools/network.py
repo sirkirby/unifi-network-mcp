@@ -12,9 +12,8 @@ from typing import Annotated, Any, Dict
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, update_preview
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import config, network_manager, server
+from unifi_mcp_shared.confirmation import create_preview, update_preview
+from unifi_network_mcp.runtime import network_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
 logger = logging.getLogger(__name__)
@@ -89,9 +88,6 @@ async def list_networks() -> Dict[str, Any]:
         ]
     }
     """
-    if not parse_permission(config.permissions, "network", "read"):
-        logger.warning("Permission denied for listing networks.")
-        return {"success": False, "error": "Permission denied to list networks."}
     try:
         # Get networks directly from the manager (which now uses V1)
         networks_data = await network_manager.get_networks()
@@ -155,9 +151,6 @@ async def get_network_details(
         }
     }
     """
-    if not parse_permission(config.permissions, "network", "read"):
-        logger.warning(f"Permission denied for getting network details ({network_id}).")
-        return {"success": False, "error": "Permission denied to get network details."}
     try:
         if not network_id:
             return {"success": False, "error": "network_id is required"}
@@ -240,10 +233,6 @@ async def update_network(
             "details": { ... updated network details ... }
         }
     """
-    if not parse_permission(config.permissions, "network", "update"):
-        logger.warning(f"Permission denied for updating network ({network_id}).")
-        return {"success": False, "error": "Permission denied to update network."}
-
     if not network_id:
         return {"success": False, "error": "network_id is required"}
     if not update_data:
@@ -267,7 +256,7 @@ async def update_network(
     if not current:
         return {"success": False, "error": "Network not found"}
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return update_preview(
             resource_type="network",
             resource_id=network_id,
@@ -387,10 +376,6 @@ async def create_network(
     - details (object): Details of the created network
     - error (string): Error message if unsuccessful
     """
-    if not parse_permission(config.permissions, "network", "create"):
-        logger.warning("Permission denied for creating network.")
-        return {"success": False, "error": "Permission denied to create network."}
-
     # Moved imports
     from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
@@ -462,7 +447,7 @@ async def create_network(
     if vlan_id is not None and (int(vlan_id) < 1 or int(vlan_id) > 4094):
         return {"success": False, "error": "'vlan' must be between 1 and 4094."}
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="network",
             resource_data=validated_data,
@@ -546,9 +531,6 @@ async def list_wlans() -> Dict[str, Any]:
         ]
     }
     """
-    if not parse_permission(config.permissions, "wlan", "read"):
-        logger.warning("Permission denied for listing WLANs.")
-        return {"success": False, "error": "Permission denied to list WLANs."}
     try:
         wlans = await network_manager.get_wlans()
         # Ensure wlans are dictionaries
@@ -616,9 +598,6 @@ async def get_wlan_details(
         }
     }
     """
-    if not parse_permission(config.permissions, "wlan", "read"):
-        logger.warning(f"Permission denied for getting WLAN details ({wlan_id}).")
-        return {"success": False, "error": "Permission denied to get WLAN details."}
     try:
         if not wlan_id:
             return {"success": False, "error": "wlan_id is required"}
@@ -688,10 +667,6 @@ async def update_wlan(
             "details": { ... updated WLAN details ... }
         }
     """
-    if not parse_permission(config.permissions, "wlan", "update"):
-        logger.warning(f"Permission denied for updating WLAN ({wlan_id}).")
-        return {"success": False, "error": "Permission denied to update WLAN."}
-
     if not wlan_id:
         return {"success": False, "error": "wlan_id is required"}
     if not update_data:
@@ -715,7 +690,7 @@ async def update_wlan(
     if not current:
         return {"success": False, "error": "WLAN not found"}
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return update_preview(
             resource_type="wlan",
             resource_id=wlan_id,
@@ -815,10 +790,6 @@ async def create_wlan(
     - details (object): Details of the created WLAN
     - error (string): Error message if unsuccessful
     """
-    if not parse_permission(config.permissions, "wlan", "create"):
-        logger.warning("Permission denied for creating WLAN.")
-        return {"success": False, "error": "Permission denied to create WLAN."}
-
     # Moved imports
     from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
@@ -843,7 +814,7 @@ async def create_wlan(
             "error": "'x_passphrase' is required when security is not 'open'",
         }
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="wlan",
             resource_data=validated_data,

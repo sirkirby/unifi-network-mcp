@@ -10,9 +10,8 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, update_preview
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import config, server
+from unifi_mcp_shared.confirmation import create_preview, update_preview
+from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
 
@@ -138,14 +137,10 @@ async def create_usergroup(
     ] = False,
 ) -> Dict[str, Any]:
     """Create a new user group."""
-    if not parse_permission(config.permissions, "usergroup", "create"):
-        logger.warning("Permission denied for creating user groups.")
-        return {"success": False, "error": "Permission denied to create user groups."}
-
     if not name or not name.strip():
         return {"success": False, "error": "Name is required."}
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         resource_data = {
             "name": name,
         }
@@ -209,10 +204,6 @@ async def update_usergroup(
     ] = False,
 ) -> Dict[str, Any]:
     """Update an existing user group."""
-    if not parse_permission(config.permissions, "usergroup", "update"):
-        logger.warning(f"Permission denied for updating user group ({group_id}).")
-        return {"success": False, "error": "Permission denied to update user groups."}
-
     # Validate that at least one update is provided
     if all(v is None for v in [name, down_limit_kbps, up_limit_kbps]):
         return {
@@ -224,7 +215,7 @@ async def update_usergroup(
         usergroup_manager = _get_usergroup_manager()
 
         # Fetch current state for preview
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             current = await usergroup_manager.get_usergroup_details(group_id)
             if not current:
                 return {"success": False, "error": "User group not found"}

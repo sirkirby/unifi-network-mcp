@@ -10,11 +10,10 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import should_auto_confirm, toggle_preview, update_preview
-from unifi_network_mcp.categories import parse_permission
+from unifi_mcp_shared.confirmation import toggle_preview, update_preview
 
 # Import the global FastMCP server instance, config, and managers
-from unifi_network_mcp.runtime import client_manager, config, server
+from unifi_network_mcp.runtime import client_manager, server
 
 logger = logging.getLogger(__name__)
 
@@ -218,10 +217,6 @@ async def block_client(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for blocking a client."""
-    if not parse_permission(config.permissions, "client", "block"):
-        logger.warning(f"Permission denied for blocking client ({mac_address}).")
-        return {"success": False, "error": "Permission denied to block clients."}
-
     try:
         # Fetch client details first
         client_obj = await client_manager.get_client_details(mac_address)
@@ -236,7 +231,7 @@ async def block_client(
         is_blocked = client.get("blocked", False)
 
         # Return preview when confirm=false
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return toggle_preview(
                 resource_type="client",
                 resource_id=mac_address,
@@ -281,10 +276,6 @@ async def unblock_client(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for unblocking a client."""
-    if not parse_permission(config.permissions, "client", "block"):
-        logger.warning(f"Permission denied for unblocking client ({mac_address}).")
-        return {"success": False, "error": "Permission denied to unblock clients."}
-
     try:
         # Fetch client details first
         client_obj = await client_manager.get_client_details(mac_address)
@@ -299,7 +290,7 @@ async def unblock_client(
         is_blocked = client.get("blocked", False)
 
         # Return preview when confirm=false
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return toggle_preview(
                 resource_type="client",
                 resource_id=mac_address,
@@ -327,6 +318,8 @@ async def unblock_client(
 @server.tool(
     name="unifi_rename_client",
     description="Rename a client/device in the Unifi Network controller by MAC address",
+    permission_category="clients",
+    permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def rename_client(
@@ -341,10 +334,6 @@ async def rename_client(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for renaming a client."""
-    if not parse_permission(config.permissions, "client", "update"):
-        logger.warning(f"Permission denied for renaming client ({mac_address}).")
-        return {"success": False, "error": "Permission denied to rename clients."}
-
     try:
         # Fetch client details first
         client_obj = await client_manager.get_client_details(mac_address)
@@ -358,7 +347,7 @@ async def rename_client(
         current_name = client.get("name") or client.get("hostname", "Unknown")
 
         # Return preview when confirm=false
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return update_preview(
                 resource_type="client",
                 resource_id=mac_address,
@@ -401,13 +390,6 @@ async def force_reconnect_client(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for forcing a client to reconnect."""
-    if not parse_permission(config.permissions, "client", "reconnect"):
-        logger.warning(f"Permission denied for forcing reconnect of client ({mac_address}).")
-        return {
-            "success": False,
-            "error": "Permission denied to force client reconnection.",
-        }
-
     try:
         # Fetch client details first
         client_obj = await client_manager.get_client_details(mac_address)
@@ -421,7 +403,7 @@ async def force_reconnect_client(
         client_name = client.get("name") or client.get("hostname", "Unknown")
 
         # Return preview when confirm=false
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return {
                 "success": True,
                 "requires_confirmation": True,
@@ -488,10 +470,6 @@ async def authorize_guest(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for authorizing a guest."""
-    if not parse_permission(config.permissions, "client", "authorize"):
-        logger.warning(f"Permission denied for authorizing guest ({mac_address}).")
-        return {"success": False, "error": "Permission denied to authorize guests."}
-
     try:
         # Fetch client details first
         client_obj = await client_manager.get_client_details(mac_address)
@@ -505,7 +483,7 @@ async def authorize_guest(
         client_name = client.get("name") or client.get("hostname", "Unknown")
 
         # Return preview when confirm=false
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             settings = {"minutes": minutes}
             if up_kbps is not None:
                 settings["up_kbps"] = up_kbps
@@ -563,10 +541,6 @@ async def unauthorize_guest(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for unauthorizing a guest."""
-    if not parse_permission(config.permissions, "client", "authorize"):
-        logger.warning(f"Permission denied for unauthorizing guest ({mac_address}).")
-        return {"success": False, "error": "Permission denied to unauthorize guests."}
-
     try:
         # Fetch client details first
         client_obj = await client_manager.get_client_details(mac_address)
@@ -580,7 +554,7 @@ async def unauthorize_guest(
         client_name = client.get("name") or client.get("hostname", "Unknown")
 
         # Return preview when confirm=false
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return {
                 "success": True,
                 "requires_confirmation": True,
@@ -657,13 +631,6 @@ async def set_client_ip_settings(
     ] = False,
 ) -> Dict[str, Any]:
     """Set fixed IP and/or local DNS record for a client."""
-    if not parse_permission(config.permissions, "client", "update"):
-        logger.warning(f"Permission denied for setting IP settings ({mac_address}).")
-        return {
-            "success": False,
-            "error": "Permission denied to update client settings.",
-        }
-
     # Validate that at least one setting is provided
     if all(v is None for v in [use_fixedip, fixed_ip, local_dns_record_enabled, local_dns_record]):
         return {
@@ -684,7 +651,7 @@ async def set_client_ip_settings(
         client_name = client.get("name") or client.get("hostname", "Unknown")
 
         # Return preview when confirm=false
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             # Build current state from the client object
             current_state = {
                 "use_fixedip": client.get("use_fixedip", False),

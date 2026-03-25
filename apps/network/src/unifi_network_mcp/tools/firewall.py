@@ -9,9 +9,8 @@ from typing import Annotated, Any, Dict
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, toggle_preview, update_preview
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import config, firewall_manager, network_manager, server
+from unifi_mcp_shared.confirmation import create_preview, toggle_preview, update_preview
+from unifi_network_mcp.runtime import firewall_manager, network_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry  # Added
 
 logger = logging.getLogger(__name__)
@@ -40,13 +39,6 @@ async def list_firewall_policies(
     Zone-based fields (zone_id, matching_target, matching_target_type) are
     included in source/destination when present in the API response.
     """
-    if not parse_permission(config.permissions, "firewall", "read"):
-        logger.warning("Permission denied for listing firewall policies.")
-        return {
-            "success": False,
-            "error": "Permission denied to list firewall policies.",
-        }
-
     try:
         policies = await firewall_manager.get_firewall_policies(include_predefined=include_predefined)
         policies_raw = [p.raw if hasattr(p, "raw") else p for p in policies]
@@ -142,13 +134,6 @@ async def get_firewall_policy_details(
         }
     }
     """
-    if not parse_permission(config.permissions, "firewall", "read"):
-        logger.warning(f"Permission denied for getting firewall policy details ({policy_id}).")
-        return {
-            "success": False,
-            "error": "Permission denied to get firewall policy details.",
-        }
-
     try:
         if not policy_id:
             return {"success": False, "error": "policy_id is required"}
@@ -212,13 +197,6 @@ async def toggle_firewall_policy(
         "message": "Firewall policy 'Allow Established/Related' (60b8a7f1e4b0f4a7f7d6e8c0) toggled to disabled."
     }
     """
-    if not parse_permission(config.permissions, "firewall", "update"):
-        logger.warning(f"Permission denied for toggling firewall policy ({policy_id}).")
-        return {
-            "success": False,
-            "error": "Permission denied to toggle firewall policy.",
-        }
-
     try:
         policies = await firewall_manager.get_firewall_policies(include_predefined=True)
         policy_obj = next((p for p in policies if p.id == policy_id), None)
@@ -233,7 +211,7 @@ async def toggle_firewall_policy(
         policy_name = policy.get("name", policy_id)
         new_state = not current_state
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return toggle_preview(
                 resource_type="firewall_policy",
                 resource_id=policy_id,
@@ -360,13 +338,6 @@ async def create_firewall_policy(
     ] = False,
 ) -> Dict[str, Any]:
     """Create a firewall policy. Auto-detects legacy vs zone-based format."""
-    if not parse_permission(config.permissions, "firewall", "create"):
-        logger.warning("Permission denied for creating firewall policy.")
-        return {
-            "success": False,
-            "error": "Permission denied to create firewall policy.",
-        }
-
     if not isinstance(policy_data, dict) or not policy_data:
         return {
             "success": False,
@@ -409,7 +380,7 @@ async def create_firewall_policy(
 
     policy_name = validated_data.get("name", "Unnamed Policy")
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="firewall_policy",
             resource_data=validated_data,
@@ -497,13 +468,6 @@ async def update_firewall_policy(
     ] = False,
 ) -> Dict[str, Any]:
     """Update specific fields of an existing firewall policy. Requires confirmation."""
-    if not parse_permission(config.permissions, "firewall", "update"):
-        logger.warning("Permission denied for updating firewall policy (%s).", policy_id)
-        return {
-            "success": False,
-            "error": "Permission denied to update firewall policy.",
-        }
-
     if not policy_id:
         return {"success": False, "error": "policy_id is required"}
     if not update_data:
@@ -549,7 +513,7 @@ async def update_firewall_policy(
             }
         current = current_policy_obj.raw
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return update_preview(
                 resource_type="firewall_policy",
                 resource_id=policy_id,
@@ -630,9 +594,6 @@ async def create_simple_firewall_policy(
     the rule and return the controller's response.
     """
 
-    if not parse_permission(config.permissions, "firewall", "create"):
-        return {"success": False, "error": "Permission denied."}
-
     # --- Step 1: validate high-level schema --------------------------------
     is_valid, error, validated = UniFiValidatorRegistry.validate("firewall_policy_simple", policy)
     if not is_valid or validated is None:
@@ -703,7 +664,7 @@ async def create_simple_firewall_policy(
         "destination": dst_ep,
     }
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="firewall_policy",
             resource_data=payload,
@@ -771,10 +732,7 @@ async def delete_firewall_policy(
     ] = False,
 ) -> Dict[str, Any]:
     """Delete a firewall policy by ID."""
-    if not parse_permission(config.permissions, "firewall", "delete"):
-        return {"success": False, "error": "Permission denied to delete firewall policy."}
-
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="firewall_policy",
             resource_data={"policy_id": policy_id},

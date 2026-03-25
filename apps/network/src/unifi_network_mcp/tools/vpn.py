@@ -11,8 +11,7 @@ from typing import Annotated, Any, Dict
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import config, server, vpn_manager
+from unifi_network_mcp.runtime import server, vpn_manager
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +23,6 @@ logger = logging.getLogger(__name__)
 )
 async def list_vpn_clients() -> Dict[str, Any]:
     """Implementation for listing VPN clients."""
-    if not parse_permission(config.permissions, "vpn_client", "read"):
-        logger.warning("Permission denied for listing VPN clients.")
-        return {"success": False, "error": "Permission denied to list VPN clients."}
     try:
         clients = await vpn_manager.get_vpn_clients()
         return {
@@ -51,12 +47,6 @@ async def get_vpn_client_details(
     ],
 ) -> Dict[str, Any]:
     """Implementation for getting VPN client details."""
-    if not parse_permission(config.permissions, "vpn_client", "read"):
-        logger.warning(f"Permission denied for getting VPN client details ({client_id}).")
-        return {
-            "success": False,
-            "error": "Permission denied to get VPN client details.",
-        }
     try:
         client = await vpn_manager.get_vpn_client_details(client_id)
         if client:
@@ -87,12 +77,6 @@ async def update_vpn_client_state(
     enabled: Annotated[bool, Field(description="Set to true to enable the VPN client, false to disable it")],
 ) -> Dict[str, Any]:
     """Implementation for updating VPN client state."""
-    if not parse_permission(config.permissions, "vpn_client", "update"):
-        logger.warning(f"Permission denied for updating VPN client state ({client_id}).")
-        return {
-            "success": False,
-            "error": "Permission denied to update VPN client state.",
-        }
     try:
         success = await vpn_manager.update_vpn_client_state(client_id, enabled)
         if success:
@@ -122,9 +106,6 @@ async def update_vpn_client_state(
 )
 async def list_vpn_servers() -> Dict[str, Any]:
     """Implementation for listing VPN servers."""
-    if not parse_permission(config.permissions, "vpn_server", "read"):
-        logger.warning("Permission denied for listing VPN servers.")
-        return {"success": False, "error": "Permission denied to list VPN servers."}
     try:
         servers = await vpn_manager.get_vpn_servers()
         return {
@@ -149,12 +130,6 @@ async def get_vpn_server_details(
     ],
 ) -> Dict[str, Any]:
     """Implementation for getting VPN server details."""
-    if not parse_permission(config.permissions, "vpn_server", "read"):
-        logger.warning(f"Permission denied for getting VPN server details ({server_id}).")
-        return {
-            "success": False,
-            "error": "Permission denied to get VPN server details.",
-        }
     try:
         server = await vpn_manager.get_vpn_server_details(server_id)
         if server:
@@ -185,12 +160,6 @@ async def update_vpn_server_state(
     enabled: Annotated[bool, Field(description="Set to true to enable the VPN server, false to disable it")],
 ) -> Dict[str, Any]:
     """Implementation for updating VPN server state."""
-    if not parse_permission(config.permissions, "vpn_server", "update"):
-        logger.warning(f"Permission denied for updating VPN server state ({server_id}).")
-        return {
-            "success": False,
-            "error": "Permission denied to update VPN server state.",
-        }
     try:
         success = await vpn_manager.update_vpn_server_state(server_id, enabled)
         if success:

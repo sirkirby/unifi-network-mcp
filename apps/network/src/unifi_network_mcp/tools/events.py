@@ -10,9 +10,7 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import should_auto_confirm
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import config, server
+from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
 
@@ -156,11 +154,7 @@ async def archive_alarm(
     ] = False,
 ) -> Dict[str, Any]:
     """Archive a specific alarm."""
-    if not parse_permission(config.permissions, "event", "update"):
-        logger.warning(f"Permission denied for archiving alarm ({alarm_id}).")
-        return {"success": False, "error": "Permission denied to archive alarms."}
-
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return {"success": False, "error": "Confirmation required. Set confirm=true."}
 
     try:
@@ -192,11 +186,7 @@ async def archive_all_alarms(
     ] = False,
 ) -> Dict[str, Any]:
     """Archive all active alarms."""
-    if not parse_permission(config.permissions, "event", "update"):
-        logger.warning("Permission denied for archiving all alarms.")
-        return {"success": False, "error": "Permission denied to archive alarms."}
-
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return {"success": False, "error": "Confirmation required. Set confirm=true."}
 
     try:
