@@ -41,6 +41,38 @@ class TestToolMetadata:
         assert d["output_schema"] == {"type": "object"}
         assert d["auth_method"] == "either"
 
+    def test_permission_fields_default_none(self):
+        meta = ToolMetadata(name="test", description="A test tool")
+        assert meta.permission_category is None
+        assert meta.permission_action is None
+
+    def test_permission_fields_stored(self):
+        meta = ToolMetadata(
+            name="test",
+            description="A test tool",
+            permission_category="networks",
+            permission_action="update",
+        )
+        assert meta.permission_category == "networks"
+        assert meta.permission_action == "update"
+
+    def test_to_dict_excludes_none_permission_fields(self):
+        meta = ToolMetadata(name="test", description="A test tool")
+        d = meta.to_dict()
+        assert "permission_category" not in d
+        assert "permission_action" not in d
+
+    def test_to_dict_includes_permission_fields(self):
+        meta = ToolMetadata(
+            name="test",
+            description="A test tool",
+            permission_category="networks",
+            permission_action="update",
+        )
+        d = meta.to_dict()
+        assert d["permission_category"] == "networks"
+        assert d["permission_action"] == "update"
+
 
 class TestRegisterTool:
     """Tests for register_tool."""
@@ -63,6 +95,23 @@ class TestRegisterTool:
         register_tool(name="my_tool", description="v1")
         register_tool(name="my_tool", description="v2")
         assert TOOL_REGISTRY["my_tool"].description == "v2"
+
+    def test_register_with_permission_metadata(self):
+        register_tool(
+            name="my_tool",
+            description="test",
+            permission_category="networks",
+            permission_action="update",
+        )
+        meta = TOOL_REGISTRY["my_tool"]
+        assert meta.permission_category == "networks"
+        assert meta.permission_action == "update"
+
+    def test_register_without_permission_metadata(self):
+        register_tool(name="my_tool", description="test")
+        meta = TOOL_REGISTRY["my_tool"]
+        assert meta.permission_category is None
+        assert meta.permission_action is None
 
 
 class TestGetToolIndex:

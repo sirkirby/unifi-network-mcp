@@ -44,6 +44,8 @@ class ToolMetadata:
     output_schema: Dict[str, Any] | None = None
     auth_method: str = "local_only"
     annotations: Dict[str, Any] | None = None  # MCP ToolAnnotations (readOnlyHint, destructiveHint, etc.)
+    permission_category: str | None = None  # Permission category (e.g., "networks", "devices")
+    permission_action: str | None = None  # Permission action (e.g., "create", "update", "delete")
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary, excluding None values."""
@@ -66,6 +68,8 @@ def register_tool(
     output_schema: Dict[str, Any] | None = None,
     auth_method: str = "local_only",
     annotations: Dict[str, Any] | None = None,
+    permission_category: str | None = None,
+    permission_action: str | None = None,
 ) -> None:
     """Register a tool in the global registry.
 
@@ -76,6 +80,8 @@ def register_tool(
         output_schema: Optional JSON Schema for output structure
         auth_method: Auth strategy hint -- "local_only", "api_key_only", or "either"
         annotations: MCP ToolAnnotations (readOnlyHint, destructiveHint, idempotentHint, openWorldHint)
+        permission_category: Permission category (e.g., "networks", "devices")
+        permission_action: Permission action (e.g., "create", "update", "delete")
     """
     if input_schema is None:
         input_schema = {"type": "object", "properties": {}}
@@ -87,6 +93,8 @@ def register_tool(
         output_schema=output_schema,
         auth_method=auth_method,
         annotations=annotations,
+        permission_category=permission_category,
+        permission_action=permission_action,
     )
 
     TOOL_REGISTRY[name] = metadata
