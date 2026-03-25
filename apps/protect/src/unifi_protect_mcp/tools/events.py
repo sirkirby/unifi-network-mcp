@@ -11,7 +11,7 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import preview_response, should_auto_confirm
+from unifi_mcp_shared.confirmation import preview_response
 from unifi_protect_mcp.runtime import event_manager, server
 
 logger = logging.getLogger(__name__)
@@ -351,7 +351,7 @@ async def protect_acknowledge_event(
     try:
         preview_data = await event_manager.acknowledge_event(event_id)
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return preview_response(
                 action="acknowledge",
                 resource_type="event",

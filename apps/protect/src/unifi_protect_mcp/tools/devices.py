@@ -10,7 +10,7 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import preview_response, should_auto_confirm
+from unifi_mcp_shared.confirmation import preview_response
 from unifi_protect_mcp.runtime import chime_manager, light_manager, sensor_manager, server
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ async def protect_update_light(
 
         preview_data = await light_manager.update_light(light_id, settings)
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return preview_response(
                 action="update",
                 resource_type="light_settings",
@@ -190,7 +190,7 @@ async def protect_update_chime(
 
         preview_data = await chime_manager.update_chime(chime_id, settings)
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return preview_response(
                 action="update",
                 resource_type="chime_settings",
