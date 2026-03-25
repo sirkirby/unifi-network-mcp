@@ -126,6 +126,8 @@ def create_permissioned_tool(
                 input_schema=input_schema,
                 output_schema=output_schema,
                 auth_method=resolved_auth,
+                permission_category=category,
+                permission_action=action,
             )
 
             # Check permissions for MCP server registration

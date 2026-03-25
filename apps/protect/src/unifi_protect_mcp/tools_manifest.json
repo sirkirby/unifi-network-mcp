@@ -42,6 +42,8 @@
     {
       "description": "Acknowledge an event by marking it as a favorite on the NVR. This is the closest equivalent to 'marking as read' in the Protect system. Requires confirm=True to apply.",
       "name": "protect_acknowledge_event",
+      "permission_action": "update",
+      "permission_category": "event",
       "schema": {
         "input": {
           "properties": {
@@ -64,6 +66,8 @@
     {
       "description": "Validates input for creating a new liveview with the given name and camera IDs. Note: liveview creation is not directly supported by the uiprotect Python API; this tool validates camera IDs and returns a preview. Use the Protect web UI to create liveviews.",
       "name": "protect_create_liveview",
+      "permission_action": "create",
+      "permission_category": "liveview",
       "schema": {
         "input": {
           "properties": {
@@ -91,6 +95,8 @@
     {
       "description": "Validates a liveview for deletion by ID. Note: liveview deletion is not directly supported by the uiprotect Python API; this tool returns information about the liveview. Use the Protect web UI to delete liveviews.",
       "name": "protect_delete_liveview",
+      "permission_action": "delete",
+      "permission_category": "liveview",
       "schema": {
         "input": {
           "properties": {
@@ -113,6 +119,8 @@
     {
       "description": "Attempts to delete recordings for a camera in a time range. Note: Individual recording deletion is NOT supported by the uiprotect API. Recording retention is managed automatically by the NVR. This tool returns information about the limitation and alternative approaches.",
       "name": "protect_delete_recording",
+      "permission_action": "delete",
+      "permission_category": "recording",
       "schema": {
         "input": {
           "properties": {
@@ -598,6 +606,8 @@
       },
       "description": "Adjusts PTZ camera position. Currently only zoom level is supported via the API. For pan/tilt, use protect_ptz_preset to move to a saved preset position. Only works on PTZ-capable cameras.",
       "name": "protect_ptz_move",
+      "permission_action": "update",
+      "permission_category": "camera",
       "schema": {
         "input": {
           "properties": {
@@ -632,6 +642,8 @@
       },
       "description": "Moves a PTZ camera to a saved preset position by slot number. Returns available presets for the camera. Only works on PTZ-capable cameras.",
       "name": "protect_ptz_preset",
+      "permission_action": "update",
+      "permission_category": "camera",
       "schema": {
         "input": {
           "properties": {
@@ -660,6 +672,8 @@
       },
       "description": "Reboots a camera. The camera will be temporarily unavailable during reboot. Requires confirm=True to execute. Use with caution \u2014 active recordings will be interrupted.",
       "name": "protect_reboot_camera",
+      "permission_action": "update",
+      "permission_category": "camera",
       "schema": {
         "input": {
           "properties": {
@@ -731,6 +745,8 @@
       },
       "description": "Enables or disables recording on a camera. When enabled, sets recording mode to 'always'. When disabled, sets to 'never'. Requires confirm=True to apply.",
       "name": "protect_toggle_recording",
+      "permission_action": "update",
+      "permission_category": "camera",
       "schema": {
         "input": {
           "properties": {
@@ -758,6 +774,8 @@
     {
       "description": "Plays the chime tone on a specific chime device. Optionally override volume (0-100) and repeat times (1-6) for this playback only. The chime's default settings are used if not specified.",
       "name": "protect_trigger_chime",
+      "permission_action": "update",
+      "permission_category": "chime",
       "schema": {
         "input": {
           "properties": {
@@ -788,6 +806,8 @@
       },
       "description": "Updates camera settings such as IR LED mode, HDR mode, mic/speaker volume, status light, and motion detection. Requires confirm=True to apply. Supported keys: ir_led_mode, hdr_mode, mic_enabled, mic_volume, status_light_on, speaker_volume, name, motion_detection.",
       "name": "protect_update_camera_settings",
+      "permission_action": "update",
+      "permission_category": "camera",
       "schema": {
         "input": {
           "properties": {
@@ -815,6 +835,8 @@
     {
       "description": "Updates chime settings such as speaker volume (0-100), repeat times (1-6), and device name. Requires confirm=True to apply. Supported keys: volume, repeat_times, name.",
       "name": "protect_update_chime",
+      "permission_action": "update",
+      "permission_category": "chime",
       "schema": {
         "input": {
           "properties": {
@@ -842,6 +864,8 @@
     {
       "description": "Updates light settings such as on/off state, LED brightness level (1-6), PIR motion sensitivity (0-100), motion-triggered duration (15-900 seconds), status indicator light, and device name. Requires confirm=True to apply. Supported keys: light_on, led_level, sensitivity, duration_seconds, status_light, name.",
       "name": "protect_update_light",
+      "permission_action": "update",
+      "permission_category": "light",
       "schema": {
         "input": {
           "properties": {

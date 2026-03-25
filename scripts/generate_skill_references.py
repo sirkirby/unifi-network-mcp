@@ -52,7 +52,7 @@ SERVERS = [
 
 def load_manifest(path: Path) -> dict:
     """Load a tools_manifest.json file."""
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -217,14 +217,14 @@ def main():
 
         print(f"    Manifest: {manifest['count']} tools in {len(categories)} categories")
 
-        content = reference_path.read_text()
+        content = reference_path.read_text(encoding="utf-8")
         new_content, updated, missing, missing_cats = update_reference_content(content, categories)
         new_content = update_header_count(new_content, manifest["count"], server["name"])
 
         if new_content != content:
             has_drift = True
             if not check_mode:
-                reference_path.write_text(new_content)
+                reference_path.write_text(new_content, encoding="utf-8")
 
         total_updated += updated
         total_missing += missing

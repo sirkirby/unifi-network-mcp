@@ -41,6 +41,38 @@ class TestToolMetadata:
         assert d["output_schema"] == {"type": "object"}
         assert d["auth_method"] == "either"
 
+    def test_permission_fields_default_none(self):
+        meta = ToolMetadata(name="test", description="A test tool")
+        assert meta.permission_category is None
+        assert meta.permission_action is None
+
+    def test_permission_fields_stored(self):
+        meta = ToolMetadata(
+            name="test",
+            description="A test tool",
+            permission_category="networks",
+            permission_action="update",
+        )
+        assert meta.permission_category == "networks"
+        assert meta.permission_action == "update"
+
+    def test_to_dict_excludes_none_permission_fields(self):
+        meta = ToolMetadata(name="test", description="A test tool")
+        d = meta.to_dict()
+        assert "permission_category" not in d
+        assert "permission_action" not in d
+
+    def test_to_dict_includes_permission_fields(self):
+        meta = ToolMetadata(
+            name="test",
+            description="A test tool",
+            permission_category="networks",
+            permission_action="update",
+        )
+        d = meta.to_dict()
+        assert d["permission_category"] == "networks"
+        assert d["permission_action"] == "update"
+
 
 class TestRegisterTool:
     """Tests for register_tool."""
@@ -63,6 +95,23 @@ class TestRegisterTool:
         register_tool(name="my_tool", description="v1")
         register_tool(name="my_tool", description="v2")
         assert TOOL_REGISTRY["my_tool"].description == "v2"
+
+    def test_register_with_permission_metadata(self):
+        register_tool(
+            name="my_tool",
+            description="test",
+            permission_category="networks",
+            permission_action="update",
+        )
+        meta = TOOL_REGISTRY["my_tool"]
+        assert meta.permission_category == "networks"
+        assert meta.permission_action == "update"
+
+    def test_register_without_permission_metadata(self):
+        register_tool(name="my_tool", description="test")
+        meta = TOOL_REGISTRY["my_tool"]
+        assert meta.permission_category is None
+        assert meta.permission_action is None
 
 
 class TestGetToolIndex:
@@ -139,6 +188,81 @@ class TestGetToolIndex:
         manifest_path.write_text(json.dumps(manifest))
         index = get_tool_index(registration_mode="lazy", manifest_path=manifest_path)
         assert index["tools"][0]["annotations"] == {"readOnlyHint": True}
+
+    def test_eager_mode_filters_denied_tools(self):
+        """Tools denied by permission checker should be excluded from index."""
+        from unittest.mock import MagicMock
+
+        register_tool(name="read_tool", description="Read only")
+        register_tool(
+            name="update_tool",
+            description="Update network",
+            permission_category="networks",
+            permission_action="update",
+        )
+        register_tool(
+            name="create_tool",
+            description="Create network",
+            permission_category="networks",
+            permission_action="create",
+        )
+
+        checker = MagicMock()
+        checker.check = MagicMock(side_effect=lambda cat, act: act != "update")
+
+        index = get_tool_index(registration_mode="eager", permission_checker=checker)
+        names = {t["name"] for t in index["tools"]}
+        assert "read_tool" in names  # no permission metadata = always included
+        assert "create_tool" in names  # create allowed
+        assert "update_tool" not in names  # update denied
+        assert index["count"] == 2
+
+    def test_lazy_mode_filters_denied_tools_from_manifest(self, tmp_path):
+        """Manifest tools denied by permission checker should be excluded."""
+        from unittest.mock import MagicMock
+
+        manifest = {
+            "tools": [
+                {"name": "read_tool", "description": "Read only"},
+                {
+                    "name": "update_tool",
+                    "description": "Update network",
+                    "permission_category": "networks",
+                    "permission_action": "update",
+                },
+                {
+                    "name": "allowed_tool",
+                    "description": "Allowed mutation",
+                    "permission_category": "firewall",
+                    "permission_action": "create",
+                },
+            ],
+            "count": 3,
+        }
+        manifest_path = tmp_path / "tools_manifest.json"
+        manifest_path.write_text(json.dumps(manifest))
+
+        checker = MagicMock()
+        checker.check = MagicMock(side_effect=lambda cat, act: not (cat == "networks" and act == "update"))
+
+        index = get_tool_index(registration_mode="lazy", manifest_path=manifest_path, permission_checker=checker)
+        names = {t["name"] for t in index["tools"]}
+        assert "read_tool" in names
+        assert "allowed_tool" in names
+        assert "update_tool" not in names
+        assert index["count"] == 2
+
+    def test_no_permission_checker_returns_all(self):
+        """Without a permission checker, all tools are returned (backward compat)."""
+        register_tool(name="read_tool", description="Read only")
+        register_tool(
+            name="denied_tool",
+            description="Would be denied",
+            permission_category="networks",
+            permission_action="update",
+        )
+        index = get_tool_index(registration_mode="eager")
+        assert index["count"] == 2
 
 
 class TestToolMetadataAnnotations:

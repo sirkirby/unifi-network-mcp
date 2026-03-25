@@ -13,11 +13,21 @@ def mock_deps():
     """Create mock dependencies for the factory."""
     registered_tools = {}
 
-    def fake_register(name, description="", input_schema=None, output_schema=None, auth_method="local_only"):
+    def fake_register(
+        name,
+        description="",
+        input_schema=None,
+        output_schema=None,
+        auth_method="local_only",
+        permission_category=None,
+        permission_action=None,
+    ):
         registered_tools[name] = {
             "description": description,
             "input_schema": input_schema,
             "auth_method": auth_method,
+            "permission_category": permission_category,
+            "permission_action": permission_action,
         }
 
     def fake_tool_decorator(*args, **kwargs):
@@ -92,10 +102,28 @@ class TestCreatePermissionedTool:
         async def denied_tool():
             return {"success": True}
 
-        # Still registered in index
+        # Still registered in index (with permission metadata for filtering)
         assert "denied_tool" in mock_deps["registered_tools"]
-        # Returns the raw function (not wrapped by tool decorator)
-        # The function itself is returned unmodified
+        assert mock_deps["registered_tools"]["denied_tool"]["permission_category"] == "cat"
+        assert mock_deps["registered_tools"]["denied_tool"]["permission_action"] == "delete"
+
+    def test_passes_permission_metadata_to_register(self, mock_deps):
+        mock_deps["permission_checker"].check.return_value = True
+        pt = create_permissioned_tool(
+            original_tool_decorator=mock_deps["original_tool_decorator"],
+            permission_checker=mock_deps["permission_checker"],
+            register_tool_fn=mock_deps["register_tool_fn"],
+            diagnostics_enabled_fn=mock_deps["diagnostics_enabled_fn"],
+            wrap_tool_fn=mock_deps["wrap_tool_fn"],
+            logger=mock_deps["logger"],
+        )
+
+        @pt(name="perm_tool", description="test", permission_category="networks", permission_action="update")
+        async def perm_tool():
+            return {"success": True}
+
+        assert mock_deps["registered_tools"]["perm_tool"]["permission_category"] == "networks"
+        assert mock_deps["registered_tools"]["perm_tool"]["permission_action"] == "update"
 
     def test_uses_function_name_when_no_name_given(self, mock_deps):
         pt = create_permissioned_tool(

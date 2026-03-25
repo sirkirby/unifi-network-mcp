@@ -44,6 +44,8 @@ class ToolMetadata:
     output_schema: Dict[str, Any] | None = None
     auth_method: str = "local_only"
     annotations: Dict[str, Any] | None = None  # MCP ToolAnnotations (readOnlyHint, destructiveHint, etc.)
+    permission_category: str | None = None  # Permission category (e.g., "networks", "devices")
+    permission_action: str | None = None  # Permission action (e.g., "create", "update", "delete")
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary, excluding None values."""
@@ -66,6 +68,8 @@ def register_tool(
     output_schema: Dict[str, Any] | None = None,
     auth_method: str = "local_only",
     annotations: Dict[str, Any] | None = None,
+    permission_category: str | None = None,
+    permission_action: str | None = None,
 ) -> None:
     """Register a tool in the global registry.
 
@@ -76,6 +80,8 @@ def register_tool(
         output_schema: Optional JSON Schema for output structure
         auth_method: Auth strategy hint -- "local_only", "api_key_only", or "either"
         annotations: MCP ToolAnnotations (readOnlyHint, destructiveHint, idempotentHint, openWorldHint)
+        permission_category: Permission category (e.g., "networks", "devices")
+        permission_action: Permission action (e.g., "create", "update", "delete")
     """
     if input_schema is None:
         input_schema = {"type": "object", "properties": {}}
@@ -87,15 +93,38 @@ def register_tool(
         output_schema=output_schema,
         auth_method=auth_method,
         annotations=annotations,
+        permission_category=permission_category,
+        permission_action=permission_action,
     )
 
     TOOL_REGISTRY[name] = metadata
     logger.debug("Registered tool in index: %s", name)
 
 
+def _is_tool_allowed(tool_data: Dict[str, Any], permission_checker: Any) -> bool:
+    """Check if a tool should be included based on permissions.
+
+    Tools without permission metadata (no category or action) are always included.
+    Tools with permission metadata are checked against the permission checker.
+
+    Args:
+        tool_data: Dictionary containing tool metadata (must have permission_category/permission_action keys).
+        permission_checker: Object with a .check(category, action) -> bool method.
+
+    Returns:
+        True if the tool should be included, False if denied.
+    """
+    cat = tool_data.get("permission_category")
+    act = tool_data.get("permission_action")
+    if not cat or not act:
+        return True  # No permission metadata = always included
+    return permission_checker.check(cat, act)
+
+
 def get_tool_index(
     registration_mode: str = "lazy",
     manifest_path: Path | None = None,
+    permission_checker: Any | None = None,
 ) -> Dict[str, Any]:
     """Get the complete tool index in machine-readable format.
 
@@ -105,6 +134,9 @@ def get_tool_index(
     Args:
         registration_mode: Current tool registration mode ("lazy", "eager", "meta_only").
         manifest_path: Path to the tools_manifest.json file for lazy mode.
+        permission_checker: Optional object with a .check(category, action) -> bool method.
+            When provided, tools denied by the checker are excluded from the index.
+            When None, all tools are returned (backward compatible).
 
     Returns:
         Dictionary with "tools" key containing list of tool metadata objects.
@@ -115,6 +147,9 @@ def get_tool_index(
                 with open(manifest_path) as f:
                     manifest = json.load(f)
                 logger.debug("Loaded tool index from manifest: %d tools", manifest.get("count", 0))
+                if permission_checker is not None:
+                    manifest["tools"] = [t for t in manifest["tools"] if _is_tool_allowed(t, permission_checker)]
+                    manifest["count"] = len(manifest["tools"])
                 return manifest
             except Exception as e:
                 logger.warning("Failed to load tool manifest: %s, falling back to runtime", e)
@@ -126,7 +161,7 @@ def get_tool_index(
             )
 
     # Fallback: return registered tools (for eager/meta_only or if manifest missing)
-    tools = [
+    all_tools = [
         {
             "name": meta.name,
             "description": meta.description,
@@ -137,11 +172,16 @@ def get_tool_index(
             **({"annotations": meta.annotations} if meta.annotations is not None else {}),
         }
         for meta in TOOL_REGISTRY.values()
+        if permission_checker is None
+        or _is_tool_allowed(
+            {"permission_category": meta.permission_category, "permission_action": meta.permission_action},
+            permission_checker,
+        )
     ]
 
     return {
-        "tools": tools,
-        "count": len(tools),
+        "tools": all_tools,
+        "count": len(all_tools),
     }
 
 
