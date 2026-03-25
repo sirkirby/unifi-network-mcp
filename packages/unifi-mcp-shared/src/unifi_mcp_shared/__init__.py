@@ -1,11 +1,10 @@
-"""Shared MCP server patterns: permissions, confirmation, lazy loading, config, diagnostics, jobs, validators."""
+"""Shared MCP server patterns: policy gates, confirmation, lazy loading, config, diagnostics, jobs, validators."""
 
 from unifi_mcp_shared.config import load_yaml_config, setup_logging
 from unifi_mcp_shared.config_helpers import parse_config_bool
 from unifi_mcp_shared.confirmation import (
     create_preview,
     preview_response,
-    should_auto_confirm,
     toggle_preview,
     update_preview,
 )
@@ -18,7 +17,7 @@ from unifi_mcp_shared.lazy_tools import (
     setup_lazy_loading,
 )
 from unifi_mcp_shared.meta_tools import register_load_tools, register_meta_tools
-from unifi_mcp_shared.permissions import PermissionChecker
+from unifi_mcp_shared.policy_gate import PolicyGateChecker
 from unifi_mcp_shared.tool_loader import auto_load_tools
 from unifi_mcp_shared.validators import ResourceValidator, create_response
 
@@ -26,7 +25,7 @@ __all__ = [
     "JOBS",
     "JobStore",
     "LazyToolLoader",
-    "PermissionChecker",
+    "PolicyGateChecker",
     "ResourceValidator",
     "auto_load_tools",
     "build_tool_module_map",
@@ -42,7 +41,6 @@ __all__ = [
     "register_meta_tools",
     "setup_lazy_loading",
     "setup_logging",
-    "should_auto_confirm",
     "start_async_tool",
     "success_response",
     "toggle_preview",
