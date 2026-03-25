@@ -67,6 +67,14 @@ class PolicyGateChecker:
                 logger.info("[policy] %s=%s -> %s", var, value, "allowed" if result else "denied")
                 return result
 
+        # 4. Backwards compat: old UNIFI_PERMISSIONS_ format
+        old_var = f"UNIFI_PERMISSIONS_{config_key}_{action_upper}"
+        old_value = os.environ.get(old_var)
+        if old_value is not None:
+            normalized = old_value.strip().lower()
+            result = normalized in _TRUTHY
+            return result
+
         return True  # No gate set = allowed
 
     def denial_message(self, category: str, action: str) -> str:
@@ -109,3 +117,27 @@ def resolve_permission_mode(server_prefix: str) -> str:
 
     # 4. Default
     return "confirm"
+
+
+def check_deprecated_env_vars(server_prefix: str, logger) -> None:
+    """Log deprecation warnings for old-format permission env vars at startup."""
+    old_prefix = "UNIFI_PERMISSIONS_"
+    prefix_upper = server_prefix.upper()
+    for key, value in os.environ.items():
+        if key.startswith(old_prefix):
+            category_action = key[len(old_prefix):]
+            new_key = f"UNIFI_POLICY_{prefix_upper}_{category_action}"
+            logger.warning(
+                "[permissions] Deprecated env var %s=%s detected. "
+                "Use %s=%s instead. Old format will be removed in a future release.",
+                key,
+                value,
+                new_key,
+                value,
+            )
+    # Also check UNIFI_AUTO_CONFIRM
+    if os.environ.get("UNIFI_AUTO_CONFIRM"):
+        logger.warning(
+            "[permissions] UNIFI_AUTO_CONFIRM is deprecated. "
+            "Use UNIFI_TOOL_PERMISSION_MODE=bypass instead."
+        )

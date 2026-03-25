@@ -47,12 +47,14 @@ logger.info("Using global Manager instances.")
 
 async def main_async():
     """Main asynchronous function to setup and run the server."""
+    from unifi_mcp_shared.policy_gate import check_deprecated_env_vars
     from unifi_mcp_shared.server_lifecycle import apply_log_level, install_asyncio_exception_handler
     from unifi_mcp_shared.tool_registration import register_tools_for_mode
     from unifi_mcp_shared.transport import resolve_http_config, run_transports
 
     install_asyncio_exception_handler(logger)
     apply_log_level(config, "unifi-protect-mcp")
+    check_deprecated_env_vars("protect", logger)
 
     # Initialize the global Protect connection
     logger.info("Initializing global Protect connection from main_async...")

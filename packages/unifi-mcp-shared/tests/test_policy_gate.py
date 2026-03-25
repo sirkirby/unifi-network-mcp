@@ -103,6 +103,36 @@ class TestPolicyGateChecker:
         with patch.dict(os.environ, {"UNIFI_POLICY_DELETE": "false"}, clear=True):
             assert checker.check("networks", "delete") is False
 
+    def test_old_format_env_var_compat(self):
+        """Old UNIFI_PERMISSIONS_ vars are honored as fallback."""
+        checker = PolicyGateChecker(server_prefix="network")
+        with patch.dict(os.environ, {"UNIFI_PERMISSIONS_NETWORKS_UPDATE": "false"}, clear=True):
+            assert checker.check("networks", "update") is False
+
+    def test_new_format_overrides_old(self):
+        """New UNIFI_POLICY_ vars take priority over old format."""
+        checker = PolicyGateChecker(server_prefix="network")
+        with patch.dict(os.environ, {
+            "UNIFI_PERMISSIONS_NETWORKS_UPDATE": "false",
+            "UNIFI_POLICY_NETWORK_NETWORKS_UPDATE": "true",
+        }, clear=True):
+            assert checker.check("networks", "update") is True
+
+    def test_old_format_allows(self):
+        """Old UNIFI_PERMISSIONS_ vars can allow actions too."""
+        checker = PolicyGateChecker(server_prefix="network")
+        with patch.dict(os.environ, {"UNIFI_PERMISSIONS_NETWORKS_CREATE": "true"}, clear=True):
+            assert checker.check("networks", "create") is True
+
+    def test_old_format_server_level_overrides_old(self):
+        """Server-level new format takes priority over old format."""
+        checker = PolicyGateChecker(server_prefix="network")
+        with patch.dict(os.environ, {
+            "UNIFI_PERMISSIONS_NETWORKS_UPDATE": "false",
+            "UNIFI_POLICY_NETWORK_UPDATE": "true",
+        }, clear=True):
+            assert checker.check("networks", "update") is True
+
 
 class TestResolvePermissionMode:
     """Tests for permission mode resolution."""
