@@ -1,439 +1,227 @@
 # Permission System
 
-The UniFi Network MCP server includes a comprehensive permission system that allows you to control which tools are available based on the risk level of their operations.
+The UniFi MCP permission system gives you precise control over how tools behave — from fully interactive with confirmation prompts, to fully automated, to hard read-only enforcement — without hiding tools from agents.
 
-## Overview
+## Core Concept
 
-Permissions are enforced at **decorator-level** during tool registration. Tools that don't meet the permission requirements are **never registered** with the MCP server, making them completely unavailable to LLMs.
+All tools are always visible and discoverable. Authorization is checked at **call time**, not at registration time. This means agents can always see what tools exist and get clear, actionable errors when a policy gate blocks an action.
 
-This is a security-critical feature that prevents accidental or unauthorized modifications to your network infrastructure.
+There are two independent concepts:
 
-## How It Works
+| Concept | What it controls |
+|---------|-----------------|
+| **Permission Mode** | Whether mutations require a preview-then-confirm step |
+| **Policy Gates** | Hard on/off switches that disable specific actions entirely |
 
-### 1. Permission Configuration
+---
 
-Permissions are configured in `src/config/config.yaml`:
+## Permission Mode
 
-```yaml
-permissions:
-  default:
-    create: true
-    update: true
+Permission mode controls how mutating tools (create, update, delete) behave when called. Read-only tools are unaffected by this setting.
 
-  networks:
-    create: false  # Provisioning a new network can disrupt traffic
-    update: false  # Changing subnets, VLANs, DHCP ranges requires care
+| Mode | Behavior |
+|------|----------|
+| `confirm` (default) | Mutations return a preview first; execution requires `confirm=true` |
+| `bypass` | Mutations execute immediately without a confirmation step |
 
-  devices:
-    create: false  # Adoption/provisioning
-    update: false  # Firmware upgrades, renames, etc.
+### How Confirmation Works
 
-  clients:
-    create: false  # Not applicable
-    update: false  # Block/unblock, reconnect, etc.
-```
-
-### 2. Tool Decorators
-
-Tools specify their permission requirements using decorator parameters:
-
-```python
-@server.tool(
-    name="unifi_create_network",
-    description="Create a new network (LAN/VLAN)",
-    permission_category="networks",
-    permission_action="create"
-)
-async def create_network(network_data: dict):
-    # This tool will NOT be registered if permissions.networks.create = false
-    ...
-```
-
-### 3. Enforcement
-
-The `permissioned_tool` decorator in `src/main.py` checks permissions **before** registering tools:
-
-```python
-# Check permission config
-allowed = parse_permission(config.permissions, category, action)
-
-if allowed:
-    # Register tool with MCP server
-    register_tool(...)
-    return _original_tool_decorator(...)(func)
-else:
-    # Skip registration - tool won't be available
-    logger.info("[permissions] Skipping registration of tool '%s'", tool_name)
-    return func
-```
-
-## Permission Categories
-
-| Category | Default | Description |
-|----------|---------|-------------|
-| **networks** | ❌ Disabled | Network creation/modification (high risk) |
-| **wlans** | ❌ Disabled | Wireless network configuration (high risk) |
-| **devices** | ❌ Disabled | Device adoption, upgrades, reboots (high risk) |
-| **clients** | ❌ Disabled | Client blocking, reconnection (medium risk) |
-| **vpn_servers** | Create: ❌ Update: ✅ | VPN server configuration |
-| **firewall_policies** | ✅ Enabled | Firewall rule management |
-| **traffic_routes** | ✅ Enabled | Static route configuration |
-| **port_forwards** | ✅ Enabled | Port forwarding rules |
-| **qos_rules** | ✅ Enabled | Quality of Service rules |
-| **vpn_clients** | ✅ Enabled | VPN client configuration |
-
-## Default Configuration Rationale
-
-The default configuration is **conservative** and prioritizes network stability:
-
-### Disabled by Default (High Risk)
-
-- **networks**: Creating/modifying networks can cause network outages
-- **wlans**: Wireless changes can disconnect all Wi-Fi clients
-- **devices**: Device upgrades can cause downtime
-- **clients**: Client operations affect user connectivity
-
-### Enabled by Default (Lower Risk)
-
-- **firewall_policies**: Typically additive (allow rules)
-- **traffic_routes**: Well-scoped changes
-- **port_forwards**: Isolated impact
-- **qos_rules**: Performance tuning, non-breaking
-
-## Enabling Permissions
-
-You can enable permissions in three ways (in priority order):
-
-### 1. Environment Variables (Highest Priority) ⭐ **RECOMMENDED**
-
-Enable specific permissions at runtime without modifying config files:
-
-```bash
-# Enable network creation
-export UNIFI_PERMISSIONS_NETWORKS_CREATE=true
-export UNIFI_PERMISSIONS_NETWORKS_UPDATE=true
-
-# Enable device management
-export UNIFI_PERMISSIONS_DEVICES_CREATE=true
-export UNIFI_PERMISSIONS_DEVICES_UPDATE=true
-
-# Enable client operations
-export UNIFI_PERMISSIONS_CLIENTS_UPDATE=true
-```
-
-**For Claude Desktop**, add to your MCP server config:
+When mode is `confirm` and a mutating tool is called without `confirm=true`:
 
 ```json
 {
+  "success": true,
+  "requires_confirmation": true,
+  "action": "update",
+  "resource_type": "network",
+  "resource_name": "IoT VLAN",
+  "preview": {
+    "current": {"name": "IoT VLAN"},
+    "proposed": {"name": "IoT Devices"}
+  },
+  "message": "Will update network 'IoT VLAN'. Set confirm=true to execute."
+}
+```
+
+The agent reviews the preview and re-calls with `confirm=true` to apply the change.
+
+### Permission Mode Environment Variables
+
+Resolution order: most specific wins.
+
+| Variable | Scope | Example |
+|----------|-------|---------|
+| `UNIFI_TOOL_PERMISSION_MODE` | Global (all servers) | `confirm` or `bypass` |
+| `UNIFI_<SERVER>_TOOL_PERMISSION_MODE` | Per-server | `UNIFI_NETWORK_TOOL_PERMISSION_MODE=bypass` |
+
+---
+
+## Policy Gates
+
+Policy gates are hard boundaries that disable specific actions regardless of permission mode. A denied tool is still visible in the tool index — it returns a clear error explaining exactly which variable to set to re-enable it.
+
+**Error example:**
+```
+Update is disabled by policy for networks. Set UNIFI_POLICY_NETWORK_NETWORKS_UPDATE=true to enable.
+```
+
+### Actions
+
+| Action | Covers |
+|--------|--------|
+| `CREATE` | Adding new resources |
+| `UPDATE` | Modifying existing resources |
+| `DELETE` | Removing resources |
+
+### Policy Gate Environment Variables
+
+Three-level hierarchy — most specific wins. If no gate is set for an action, it is allowed.
+
+| Variable Pattern | Scope | Example |
+|-----------------|-------|---------|
+| `UNIFI_POLICY_<ACTION>` | Global — all servers, all categories | `UNIFI_POLICY_DELETE=false` |
+| `UNIFI_POLICY_<SERVER>_<ACTION>` | Per-server — all categories on that server | `UNIFI_POLICY_NETWORK_UPDATE=false` |
+| `UNIFI_POLICY_<SERVER>_<CATEGORY>_<ACTION>` | Per-server, per-category | `UNIFI_POLICY_NETWORK_NETWORKS_UPDATE=true` |
+
+**Accepted values:** `true`, `1`, `yes`, `on` (case-insensitive) to allow; `false`, `0`, `no`, `off` to deny.
+
+### Example: selectively re-enabling within a broad deny
+
+```bash
+# Deny all updates globally
+UNIFI_POLICY_UPDATE=false
+
+# But allow firewall policy updates on the network server
+UNIFI_POLICY_NETWORK_FIREWALL_POLICIES_UPDATE=true
+```
+
+The most specific variable wins, so the category-level override takes effect.
+
+---
+
+## Practical Scenarios
+
+### Zero config (default)
+All tools work. Mutations require a confirmation step before executing. Safest option for interactive use with an LLM.
+
+```bash
+# No variables needed — this is the default
+```
+
+### Power user: skip confirmation prompts
+```bash
+UNIFI_TOOL_PERMISSION_MODE=bypass
+```
+
+### Enterprise read-only: block all mutations
+```bash
+UNIFI_POLICY_CREATE=false
+UNIFI_POLICY_UPDATE=false
+UNIFI_POLICY_DELETE=false
+```
+
+### Lock down deletes only
+```bash
+UNIFI_POLICY_DELETE=false
+```
+
+### Multi-server: different modes per server
+```bash
+# Network server: no confirmation prompts
+UNIFI_NETWORK_TOOL_PERMISSION_MODE=bypass
+
+# Protect server: keep human-in-the-loop (default confirm)
+# (no variable needed — confirm is the default)
+```
+
+### Workflow automation (n8n, Make, Zapier)
+```bash
+UNIFI_TOOL_PERMISSION_MODE=bypass
+```
+
+Or in a Claude Desktop / MCP client config:
+```json
+{
   "mcpServers": {
-    "unifi": {
+    "unifi-network": {
       "command": "uv",
-      "args": ["--directory", "/path/to/unifi-network-mcp", "run", "python", "-m", "src.main"],
+      "args": ["run", "unifi-network-mcp"],
       "env": {
         "UNIFI_HOST": "192.168.1.1",
         "UNIFI_USERNAME": "admin",
-        "UNIFI_PASSWORD": "password",
-        "UNIFI_PERMISSIONS_NETWORKS_CREATE": "true",
-        "UNIFI_PERMISSIONS_DEVICES_UPDATE": "true"
+        "UNIFI_PASSWORD": "your-password",
+        "UNIFI_TOOL_PERMISSION_MODE": "bypass"
       }
     }
   }
 }
 ```
 
-### 2. Config File
+---
 
-Modify `src/config/config.yaml`:
+## Key Behavioral Difference from the Old System
 
-```yaml
-permissions:
-  networks:
-    create: true
-    update: true
+| | Old system | New system |
+|---|------------|------------|
+| Denied tools visible to agents? | No — hidden at registration | Yes — always visible |
+| Where is access checked? | At server startup (registration) | At call time |
+| Agent feedback on denied action | Tool doesn't exist | Clear error with fix instructions |
+| Requires server restart to change? | Yes | No |
 
-  devices:
-    create: true
-    update: true
+---
+
+## Backwards Compatibility
+
+Legacy environment variables are honored with a deprecation warning logged to stderr.
+
+| Legacy variable | Maps to | Deprecation guidance |
+|----------------|---------|---------------------|
+| `UNIFI_AUTO_CONFIRM=true` | `UNIFI_TOOL_PERMISSION_MODE=bypass` | Use `UNIFI_TOOL_PERMISSION_MODE=bypass` |
+| `UNIFI_PERMISSIONS_<CAT>_<ACTION>=true/false` | `UNIFI_POLICY_<SERVER>_<CAT>_<ACTION>=true/false` | Use `UNIFI_POLICY_` prefix pattern |
+
+Example migration:
+```bash
+# Old
+UNIFI_AUTO_CONFIRM=true
+UNIFI_PERMISSIONS_NETWORKS_CREATE=false
+
+# New
+UNIFI_TOOL_PERMISSION_MODE=bypass
+UNIFI_POLICY_NETWORK_NETWORKS_CREATE=false
 ```
 
-### 3. Default Permissions
+---
 
-Falls back to the defaults in config.yaml if no overrides are set.
+## Confirmation System Details
 
-## Permission Variable Names
+### Per-call override
+Pass `confirm=true` in any mutating tool call to execute immediately, regardless of the global permission mode.
 
-Environment variables follow the pattern: `UNIFI_PERMISSIONS_<CATEGORY>_<ACTION>`
+### Three levels of confirmation control
 
-| Category | Create Variable | Update Variable | Delete Variable |
-|----------|----------------|-----------------|-----------------|
-| **networks** | `UNIFI_PERMISSIONS_NETWORKS_CREATE` | `UNIFI_PERMISSIONS_NETWORKS_UPDATE` | `UNIFI_PERMISSIONS_NETWORKS_DELETE` |
-| **wlans** | `UNIFI_PERMISSIONS_WLANS_CREATE` | `UNIFI_PERMISSIONS_WLANS_UPDATE` | `UNIFI_PERMISSIONS_WLANS_DELETE` |
-| **devices** | `UNIFI_PERMISSIONS_DEVICES_CREATE` | `UNIFI_PERMISSIONS_DEVICES_UPDATE` | `UNIFI_PERMISSIONS_DEVICES_DELETE` |
-| **clients** | N/A | `UNIFI_PERMISSIONS_CLIENTS_UPDATE` | `UNIFI_PERMISSIONS_CLIENTS_DELETE` |
-| **firewall_policies** | `UNIFI_PERMISSIONS_FIREWALL_POLICIES_CREATE` | `UNIFI_PERMISSIONS_FIREWALL_POLICIES_UPDATE` | `UNIFI_PERMISSIONS_FIREWALL_POLICIES_DELETE` |
-| **traffic_routes** | `UNIFI_PERMISSIONS_TRAFFIC_ROUTES_CREATE` | `UNIFI_PERMISSIONS_TRAFFIC_ROUTES_UPDATE` | `UNIFI_PERMISSIONS_TRAFFIC_ROUTES_DELETE` |
-| **port_forwards** | `UNIFI_PERMISSIONS_PORT_FORWARDS_CREATE` | `UNIFI_PERMISSIONS_PORT_FORWARDS_UPDATE` | `UNIFI_PERMISSIONS_PORT_FORWARDS_DELETE` |
-| **qos_rules** | `UNIFI_PERMISSIONS_QOS_RULES_CREATE` | `UNIFI_PERMISSIONS_QOS_RULES_UPDATE` | `UNIFI_PERMISSIONS_QOS_RULES_DELETE` |
-| **vpn_clients** | `UNIFI_PERMISSIONS_VPN_CLIENTS_CREATE` | `UNIFI_PERMISSIONS_VPN_CLIENTS_UPDATE` | `UNIFI_PERMISSIONS_VPN_CLIENTS_DELETE` |
-| **vpn_servers** | `UNIFI_PERMISSIONS_VPN_SERVERS_CREATE` | `UNIFI_PERMISSIONS_VPN_SERVERS_UPDATE` | `UNIFI_PERMISSIONS_VPN_SERVERS_DELETE` |
-| **acl_rules** | `UNIFI_PERMISSIONS_ACL_RULES_CREATE` | `UNIFI_PERMISSIONS_ACL_RULES_UPDATE` | `UNIFI_PERMISSIONS_ACL_RULES_DELETE` |
-| **vouchers** | `UNIFI_PERMISSIONS_VOUCHERS_CREATE` | `UNIFI_PERMISSIONS_VOUCHERS_UPDATE` | `UNIFI_PERMISSIONS_VOUCHERS_DELETE` |
+| Level | How | When to use |
+|-------|-----|-------------|
+| Per-call | `confirm=true` argument | LLM explicitly confirms a single operation |
+| Per-session | System prompt instructs the agent | User's standing instruction for the session |
+| Per-environment | `UNIFI_TOOL_PERMISSION_MODE=bypass` | Automation, no human in the loop |
 
-**Accepted Values:** `true`, `1`, `yes`, `on` (case-insensitive) = enabled; anything else = disabled
-
-## Impact on Tool Discovery and Availability
-
-**Important:** Permissions directly control which tools your MCP client (e.g., Claude Desktop) can see and use.
-
-The tool manifest (`tools_manifest.json`) always includes all tools regardless of permission settings. However, permissions determine what is actually registered with the MCP server at startup:
-
-### How It Works
-
-When the server starts:
-
-1. **All tools added to the TOOL_REGISTRY** (internal index for `unifi_tool_index` discovery)
-2. **Permission check determines MCP registration** (what your client sees):
-   - ✅ Allowed: Tool is registered with the MCP server and callable
-   - ❌ Denied: Tool is **not registered** — it will not appear in your client's tool list and cannot be called directly
-
-Example server startup output:
-
-```
-[permissions] Skipping MCP registration of tool 'unifi_create_network' (category=networks, action=create)
-[permissions] Skipping MCP registration of tool 'unifi_adopt_device' (category=devices, action=create)
-...
-```
-
-### What This Means for Each Registration Mode
-
-| Mode | Disabled tool visible? | Disabled tool callable? |
-|------|----------------------|------------------------|
-| **eager** | Not in client tool list | No |
-| **lazy** | Discoverable via `unifi_tool_index` | No — returns permission error via `unifi_execute` |
-| **meta_only** | Discoverable via `unifi_tool_index` | No — returns permission error via `unifi_execute` |
-
-**Key takeaway:** If you are using **eager mode** and a tool is missing from your client, the most likely cause is that its permission is disabled. Enable the relevant permission and restart the server.
-
-In **lazy** and **meta_only** modes, all tools always appear in `unifi_tool_index` results (since the index reads from the static manifest), but disabled tools will return a permission error when called through `unifi_execute`.
-
-**Why this design:**
-- Users configure their own permissions
-- Tool manifest is consistent across installations
-- No rebuild required when changing permissions
-- Clear feedback about what's available vs. what's allowed
-
-## Security Benefits
-
-1. **Defense in Depth** - Permissions enforced at multiple levels:
-   - Build time (manifest generation)
-   - Runtime (decorator evaluation)
-
-2. **Fail-Safe Defaults** - High-risk operations disabled by default
-
-3. **Visibility** - Clear logging of permission decisions
-
-4. **Atomic Control** - Enable/disable entire categories at once
-
-## Permission Actions
-
-| Action | Typical Operations | Default |
-|--------|-------------------|---------|
-| **create** | Add new resources (networks, rules, etc.) | Varies by category |
-| **update** | Modify existing resources (rename, toggle, change config) | Varies by category |
-| **delete** | Remove resources (ACL rules, vouchers, etc.) | Denied (opt-in) |
-
-## Tools by Permission
-
-### Networks (Disabled by Default)
-- ❌ `unifi_create_network`
-- ❌ `unifi_update_network`
-- ✅ `unifi_list_networks` (no permission required)
-- ✅ `unifi_get_network_details` (no permission required)
-
-### WLANs (Disabled by Default)
-- ❌ `unifi_create_wlan`
-- ❌ `unifi_update_wlan`
-- ✅ `unifi_list_wlans` (no permission required)
-
-### Devices (Disabled by Default)
-- ❌ `unifi_adopt_device`
-- ❌ `unifi_upgrade_device`
-- ❌ `unifi_reboot_device`
-- ❌ `unifi_rename_device`
-- ✅ `unifi_list_devices` (no permission required)
-
-### Clients (Disabled by Default)
-- ❌ `unifi_block_client`
-- ❌ `unifi_unblock_client`
-- ❌ `unifi_force_reconnect_client`
-- ❌ `unifi_authorize_guest`
-- ❌ `unifi_unauthorize_guest`
-- ✅ `unifi_list_clients` (no permission required)
-- ✅ `unifi_rename_client` (no permission check)
-
-### Firewall Policies (Enabled by Default)
-- ✅ `unifi_create_firewall_policy`
-- ✅ `unifi_update_firewall_policy`
-- ✅ `unifi_toggle_firewall_policy`
-- ✅ `unifi_create_simple_firewall_policy`
-
-### Traffic Routes (Enabled by Default)
-- ✅ `unifi_create_traffic_route`
-- ✅ `unifi_update_traffic_route`
-- ✅ `unifi_toggle_traffic_route`
-- ✅ `unifi_create_simple_traffic_route`
-
-### Port Forwards (Enabled by Default)
-- ✅ `unifi_create_port_forward`
-- ✅ `unifi_update_port_forward`
-- ✅ `unifi_toggle_port_forward`
-- ✅ `unifi_create_simple_port_forward`
-
-### QoS Rules (Enabled by Default)
-- ✅ `unifi_create_qos_rule`
-- ✅ `unifi_update_qos_rule`
-- ✅ `unifi_toggle_qos_rule_enabled`
-- ✅ `unifi_create_simple_qos_rule`
-
-### VPN (Mixed)
-- ✅ `unifi_update_vpn_client_state` (vpn_clients: enabled)
-- ✅ `unifi_update_vpn_server_state` (vpn_servers: update only)
-
-### ACL Rules (Enabled by Default)
-- ✅ `unifi_create_acl_rule`
-- ✅ `unifi_update_acl_rule`
-- ❌ `unifi_delete_acl_rule` (delete: disabled by default)
-
-### Vouchers (Enabled by Default)
-- ✅ `unifi_create_voucher`
-- ❌ `unifi_revoke_voucher` (delete: disabled by default)
-
-## Best Practices
-
-1. **Start Conservative** - Use default permissions initially
-2. **Enable Selectively** - Only enable what you need
-3. **Test First** - Enable in dev/test environments before production
-4. **Document Changes** - Track permission changes in version control
-5. **Review Regularly** - Audit enabled permissions periodically
+---
 
 ## Troubleshooting
 
-### Tool Missing from Client Tool List (Eager Mode)
+### "Action is disabled by policy" error
+The relevant policy gate is set to `false`. The error message includes the exact variable to set. Enable it and re-call — no server restart required.
 
-**Symptom:** A tool you expect to see is not listed by your MCP client (e.g., Claude Desktop)
+### Mutation executed without asking for confirmation
+`UNIFI_TOOL_PERMISSION_MODE` (or the server-specific variant) is set to `bypass`, or the legacy `UNIFI_AUTO_CONFIRM=true` is present. Remove or set to `confirm` to re-enable the preview step.
 
-**Cause:** The tool's permission is disabled, so it was not registered with the MCP server at startup.
+### Tool not appearing in tool index at all
+All tools are always indexed. If a tool is missing, the manifest may be stale. Run `make network-manifest` to regenerate it. This is unrelated to permissions.
 
-**Solution:**
-1. Enable the relevant permission via environment variable (e.g., `UNIFI_PERMISSIONS_NETWORKS_CREATE=true`)
-2. Restart the MCP server
-3. The tool will now appear in your client's tool list
+### Legacy variables not taking effect
+Ensure the variable name matches the old format exactly (`UNIFI_PERMISSIONS_<CAT>_<ACTION>`). Check stderr logs for the deprecation warning confirming the variable was detected. If the new `UNIFI_POLICY_` variable is also set, the new one takes precedence.
 
-### Tool Returns "Permission Denied" via unifi_execute (Lazy/Meta-Only Mode)
-
-**Symptom:** Tool appears in `unifi_tool_index` but returns a permission error when called through `unifi_execute`
-
-**Cause:** The tool's permission is disabled. In lazy/meta-only mode, `unifi_tool_index` reads from the static manifest (which includes all tools), but the tool's internal permission check blocks execution.
-
-**Solution:**
-1. Enable the relevant permission via environment variable
-2. Restart the MCP server
-
-### Permission Denied at Runtime
-
-**Symptom:** "Permission denied" error when calling a tool that IS registered
-
-**Cause:** Some tools have additional runtime permission checks beyond the decorator-level check
-
-**Solution:** Check both:
-- Decorator permissions (category/action level in config.yaml or env vars)
-- Runtime permission checks (within the tool function, e.g., `client.block` vs `client.update`)
-
-## Future Enhancements
-
-Planned for future releases:
-
-1. **Fine-grained permissions** - Per-tool overrides
-2. **Permission profiles** - Predefined sets (e.g., "read-only", "power-user")
-3. **Dynamic permissions** - Runtime permission changes without restart
-4. **Audit logging** - Track all permission-gated operations
-
-## Confirmation System
-
-All mutating tools (create, update, toggle, delete operations) implement a **preview-then-confirm** pattern for safety:
-
-### How It Works
-
-1. **Without confirmation** (`confirm=false`, the default): Tool returns a preview of what will change
-2. **With confirmation** (`confirm=true`): Tool executes the operation
-
-**Example preview response:**
-```json
-{
-  "success": false,
-  "requires_confirmation": true,
-  "action": "toggle",
-  "resource_type": "port_forward",
-  "resource_id": "abc123",
-  "resource_name": "SSH Access",
-  "preview": {
-    "current": {"enabled": true},
-    "proposed": {"enabled": false}
-  },
-  "message": "Will disable port_forward 'SSH Access'. Set confirm=true to execute."
-}
-```
-
-This gives LLM agents context to make informed decisions before executing changes.
-
-### Three Levels of Confirmation Control
-
-| Level | Method | Use Case |
-|-------|--------|----------|
-| **Per-call** | Pass `confirm=true` in tool arguments | LLM explicitly confirms each operation |
-| **Per-session** | System prompt instructs agent to auto-confirm | Agent follows user's standing instructions |
-| **Per-environment** | `UNIFI_AUTO_CONFIRM=true` env var | Workflow automation (n8n, Make, Zapier) |
-
-### Auto-Confirm for Workflow Automation
-
-For workflow automation tools where the two-step confirmation adds unnecessary complexity:
-
-**Environment variable:**
-```bash
-export UNIFI_AUTO_CONFIRM=true
-```
-
-**Docker:**
-```bash
-docker run -e UNIFI_AUTO_CONFIRM=true ...
-```
-
-**Claude Desktop / n8n:**
-```json
-{
-  "env": {
-    "UNIFI_AUTO_CONFIRM": "true"
-  }
-}
-```
-
-When `UNIFI_AUTO_CONFIRM=true`:
-- All mutating operations execute immediately
-- Preview step is skipped
-- No changes to your workflow logic required
-
-**Accepted values:** `true`, `1`, `yes` (case-insensitive)
-
-### Dev Console Behavior
-
-The developer console (`devtools/dev_console.py`) automatically sets `confirm=true` for testing convenience, displaying a warning:
-
-```
-⚠️  DEV CONSOLE: Auto-setting confirm=true for testing
-   (In production, LLMs must explicitly confirm operations)
-```
-
-This makes testing faster while reminding developers about production behavior.
+---
 
 ## Related Documentation
 

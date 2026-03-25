@@ -131,8 +131,8 @@ Always available, regardless of registration mode.
 <!-- /AUTO:tools:network -->
 
 **Tips:**
-- Network creation is disabled by default — requires `UNIFI_PERMISSIONS_NETWORKS_CREATE=true`
-- WLAN creation similarly requires `UNIFI_PERMISSIONS_WLANS_CREATE=true`
+- Network creation is disabled by default — requires `UNIFI_POLICY_NETWORK_NETWORKS_CREATE=true`
+- WLAN creation similarly requires `UNIFI_POLICY_NETWORK_WLANS_CREATE=true`
 - Networks and WLANs are related but separate: a WLAN connects to a network
 
 ---
@@ -238,7 +238,7 @@ Always available, regardless of registration mode.
 <!-- /AUTO:tools:acl -->
 
 **Tips:**
-- This is the only category with a delete tool — requires `UNIFI_PERMISSIONS_ACL_RULES_DELETE=true`
+- This is the only category with a delete tool — requires `UNIFI_POLICY_NETWORK_ACL_RULES_DELETE=true`
 
 ---
 
@@ -258,7 +258,7 @@ Always available, regardless of registration mode.
 
 **Tips:**
 - Client groups organize devices by MAC address for use in OON policies and firewall rules
-- Delete requires `UNIFI_PERMISSIONS_CLIENT_GROUPS_DELETE=true`
+- Delete requires `UNIFI_POLICY_NETWORK_CLIENT_GROUPS_DELETE=true`
 
 ---
 

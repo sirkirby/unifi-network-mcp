@@ -27,13 +27,13 @@ The server uses **lazy loading** by default — only meta-tools are registered i
 **Read operations** — always available. Listing doors, events, users, credentials — all work without permissions.
 
 **Mutations** require explicit opt-in via env vars:
-- `UNIFI_PERMISSIONS_DOORS_UPDATE=true` — lock/unlock doors
-- `UNIFI_PERMISSIONS_CREDENTIALS_CREATE=true` — create NFC/PIN/mobile credentials
-- `UNIFI_PERMISSIONS_CREDENTIALS_DELETE=true` — revoke credentials
-- `UNIFI_PERMISSIONS_VISITORS_CREATE=true` — create visitor passes
-- `UNIFI_PERMISSIONS_VISITORS_DELETE=true` — delete visitor passes
-- `UNIFI_PERMISSIONS_POLICIES_UPDATE=true` — update access policies
-- `UNIFI_PERMISSIONS_DEVICES_UPDATE=true` — reboot devices
+- `UNIFI_POLICY_ACCESS_DOORS_UPDATE=true` — lock/unlock doors
+- `UNIFI_POLICY_ACCESS_CREDENTIALS_CREATE=true` — create NFC/PIN/mobile credentials
+- `UNIFI_POLICY_ACCESS_CREDENTIALS_DELETE=true` — revoke credentials
+- `UNIFI_POLICY_ACCESS_VISITORS_CREATE=true` — create visitor passes
+- `UNIFI_POLICY_ACCESS_VISITORS_DELETE=true` — delete visitor passes
+- `UNIFI_POLICY_ACCESS_POLICIES_UPDATE=true` — update access policies
+- `UNIFI_POLICY_ACCESS_DEVICES_UPDATE=true` — reboot devices
 
 **Confirmation flow** — every mutation uses preview-then-confirm:
 1. Default call → returns preview of what would change

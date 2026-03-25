@@ -70,16 +70,16 @@ If the host and credentials are the same as existing shared `UNIFI_*` vars, use 
 If permissions were enabled, also pass those:
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/set-env.sh \
-  UNIFI_PERMISSIONS_DOORS_UPDATE=true \
-  UNIFI_PERMISSIONS_CREDENTIALS_CREATE=true \
-  UNIFI_PERMISSIONS_VISITORS_CREATE=true
+  UNIFI_POLICY_ACCESS_DOORS_UPDATE=true \
+  UNIFI_POLICY_ACCESS_CREDENTIALS_CREATE=true \
+  UNIFI_POLICY_ACCESS_VISITORS_CREATE=true
 ```
 
 Permission variables by option:
-- **Door control:** `UNIFI_PERMISSIONS_DOORS_UPDATE=true`
-- **Credential management:** `UNIFI_PERMISSIONS_CREDENTIALS_CREATE=true`, `UNIFI_PERMISSIONS_CREDENTIALS_DELETE=true`
-- **Visitor management:** `UNIFI_PERMISSIONS_VISITORS_CREATE=true`, `UNIFI_PERMISSIONS_VISITORS_DELETE=true`
-- **Enable all:** all of the above + `UNIFI_PERMISSIONS_DEVICES_UPDATE=true`, `UNIFI_PERMISSIONS_POLICIES_UPDATE=true`
+- **Door control:** `UNIFI_POLICY_ACCESS_DOORS_UPDATE=true`
+- **Credential management:** `UNIFI_POLICY_ACCESS_CREDENTIALS_CREATE=true`, `UNIFI_POLICY_ACCESS_CREDENTIALS_DELETE=true`
+- **Visitor management:** `UNIFI_POLICY_ACCESS_VISITORS_CREATE=true`, `UNIFI_POLICY_ACCESS_VISITORS_DELETE=true`
+- **Enable all:** all of the above + `UNIFI_POLICY_ACCESS_DEVICES_UPDATE=true`, `UNIFI_POLICY_ACCESS_POLICIES_UPDATE=true`
 
 ## Step 6: Verify and Restart
 

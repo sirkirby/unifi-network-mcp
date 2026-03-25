@@ -56,15 +56,15 @@ unifi-network-mcp is designed with a **secure-by-default** posture:
 - **Deny-by-default** for all mutations (create, update, delete)
 - **Delete operations require explicit opt-in** via environment variable or config
 - Read-only operations are allowed by default
-- Permissions are checked at tool registration time (fail-fast, not call-time)
-- Tools denied by permissions are discoverable (listed in tool index) but not callable
+- Permissions are enforced at call time — all tools are always visible and discoverable in the tool index
+- Tools denied by permissions return an authorization error when called
 
 ### Preview-Before-Confirm
 
 - All state-changing operations use a two-step flow: preview first, then confirm
 - Default call returns a preview of what would change
 - Explicit `confirm=True` is required to execute the mutation
-- `UNIFI_AUTO_CONFIRM=true` can bypass this for automation workflows
+- `UNIFI_TOOL_PERMISSION_MODE=bypass` can bypass this for automation workflows
 
 ### No Persistent Storage
 

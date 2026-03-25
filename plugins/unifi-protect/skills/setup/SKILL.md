@@ -64,12 +64,12 @@ If the host and credentials are the same as existing shared `UNIFI_*` vars, use 
 If permissions were enabled, also pass those:
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/set-env.sh \
-  UNIFI_PERMISSIONS_CAMERAS_UPDATE=true
+  UNIFI_POLICY_PROTECT_CAMERAS_UPDATE=true
 ```
 
 Permission variables by option:
-- **Camera management:** `UNIFI_PERMISSIONS_CAMERAS_UPDATE=true`
-- **All device management:** `UNIFI_PERMISSIONS_CAMERAS_UPDATE=true`, `UNIFI_PERMISSIONS_LIGHTS_UPDATE=true`, `UNIFI_PERMISSIONS_CHIMES_UPDATE=true`
+- **Camera management:** `UNIFI_POLICY_PROTECT_CAMERAS_UPDATE=true`
+- **All device management:** `UNIFI_POLICY_PROTECT_CAMERAS_UPDATE=true`, `UNIFI_POLICY_PROTECT_LIGHTS_UPDATE=true`, `UNIFI_POLICY_PROTECT_CHIMES_UPDATE=true`
 
 ## Step 6: Verify and Restart
 

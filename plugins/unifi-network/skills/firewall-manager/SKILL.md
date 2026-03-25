@@ -112,9 +112,9 @@ Options:
 1. **Always preview first** — every mutation returns a preview when called without `confirm=true`. Show the preview to the user before executing.
 2. **Never auto-confirm** — wait for explicit user approval before calling with `confirm=true`.
 3. **Check permissions** — if a mutation fails with a permission error, tell the user the relevant env var:
-   - Create: `UNIFI_PERMISSIONS_FIREWALL_CREATE=true`
-   - Update: `UNIFI_PERMISSIONS_FIREWALL_UPDATE=true`
-   - Delete: `UNIFI_PERMISSIONS_FIREWALL_DELETE=true` (disabled by default)
+   - Create: `UNIFI_POLICY_NETWORK_FIREWALL_POLICIES_CREATE=true`
+   - Update: `UNIFI_POLICY_NETWORK_FIREWALL_POLICIES_UPDATE=true`
+   - Delete: `UNIFI_POLICY_NETWORK_FIREWALL_POLICIES_DELETE=true` (disabled by default)
 4. **Understand the impact** — call `unifi_list_firewall_policies` before creating rules to check for conflicts or redundancy.
 5. **Export before mutating** — always run `scripts/export-policies.py` before any create, update, or delete operation (see Section 2).
 6. **Diff after mutating** — always run `scripts/diff-policies.py` after applying changes to verify the result (see Section 5).
@@ -196,7 +196,7 @@ Use these direct tool calls when scripts are unavailable (e.g., no Python runtim
 - `unifi_toggle_firewall_policy` — enable/disable a policy
 
 ### Delete
-- Deletion requires `UNIFI_PERMISSIONS_FIREWALL_DELETE=true` (disabled by default)
+- Deletion requires `UNIFI_POLICY_NETWORK_FIREWALL_POLICIES_DELETE=true` (disabled by default)
 
 **Response pattern for every mutation:**
 1. Confirm understanding: "I'll create a firewall policy that blocks [X] on [network]. Let me check the current configuration first."
