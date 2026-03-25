@@ -40,6 +40,11 @@
   "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
   "tools": [
     {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Acknowledge an event by marking it as a favorite on the NVR. This is the closest equivalent to 'marking as read' in the Protect system. Requires confirm=True to apply.",
       "name": "protect_acknowledge_event",
       "permission_action": "update",
@@ -64,6 +69,10 @@
       }
     },
     {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Validates input for creating a new liveview with the given name and camera IDs. Note: liveview creation is not directly supported by the uiprotect Python API; this tool validates camera IDs and returns a preview. Use the Protect web UI to create liveviews.",
       "name": "protect_create_liveview",
       "permission_action": "create",
@@ -93,6 +102,11 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Validates a liveview for deletion by ID. Note: liveview deletion is not directly supported by the uiprotect Python API; this tool returns information about the liveview. Use the Protect web UI to delete liveviews.",
       "name": "protect_delete_liveview",
       "permission_action": "delete",
@@ -117,6 +131,11 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Attempts to delete recordings for a camera in a time range. Note: Individual recording deletion is NOT supported by the uiprotect API. Recording retention is managed automatically by the NVR. This tool returns information about the limitation and alternative approaches.",
       "name": "protect_delete_recording",
       "permission_action": "delete",
@@ -772,6 +791,10 @@
       }
     },
     {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Plays the chime tone on a specific chime device. Optionally override volume (0-100) and repeat times (1-6) for this playback only. The chime's default settings are used if not specified.",
       "name": "protect_trigger_chime",
       "permission_action": "update",
@@ -833,6 +856,10 @@
       }
     },
     {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Updates chime settings such as speaker volume (0-100), repeat times (1-6), and device name. Requires confirm=True to apply. Supported keys: volume, repeat_times, name.",
       "name": "protect_update_chime",
       "permission_action": "update",
@@ -862,6 +889,10 @@
       }
     },
     {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Updates light settings such as on/off state, LED brightness level (1-6), PIR motion sensitivity (0-100), motion-triggered duration (15-900 seconds), status indicator light, and device name. Requires confirm=True to apply. Supported keys: light_on, led_level, sensitivity, duration_seconds, status_light, name.",
       "name": "protect_update_light",
       "permission_action": "update",
