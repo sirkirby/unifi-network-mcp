@@ -11,9 +11,8 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import should_auto_confirm, toggle_preview, update_preview
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import config, server
+from unifi_mcp_shared.confirmation import toggle_preview, update_preview
+from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
 
@@ -143,13 +142,6 @@ async def update_traffic_route(
             "error": "At least one of 'enabled' or 'kill_switch_enabled' must be provided.",
         }
 
-    if not parse_permission(config.permissions, "traffic_route", "update"):
-        logger.warning(f"Permission denied for updating traffic route ({route_id}).")
-        return {
-            "success": False,
-            "error": "Permission denied to update traffic route.",
-        }
-
     try:
         traffic_route_manager = _get_traffic_route_manager()
 
@@ -168,7 +160,7 @@ async def update_traffic_route(
             updates["kill_switch_enabled"] = kill_switch_enabled
 
         # Return preview when confirm=false
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return update_preview(
                 resource_type="traffic_route",
                 resource_id=route_id,
@@ -225,13 +217,6 @@ async def toggle_traffic_route(
     ] = False,
 ) -> Dict[str, Any]:
     """Toggle a traffic route's enabled state."""
-    if not parse_permission(config.permissions, "traffic_route", "update"):
-        logger.warning(f"Permission denied for toggling traffic route ({route_id}).")
-        return {
-            "success": False,
-            "error": "Permission denied to toggle traffic route.",
-        }
-
     try:
         traffic_route_manager = _get_traffic_route_manager()
 
@@ -244,7 +229,7 @@ async def toggle_traffic_route(
         route_name = current.get("description", route_id)
 
         # Return preview when confirm=false
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return toggle_preview(
                 resource_type="traffic_route",
                 resource_id=route_id,

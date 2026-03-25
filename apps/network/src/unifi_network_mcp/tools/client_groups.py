@@ -12,9 +12,8 @@ from typing import Annotated, Any, Dict
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import client_group_manager, config, server
+from unifi_mcp_shared.confirmation import create_preview
+from unifi_network_mcp.runtime import client_group_manager, server
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +34,6 @@ async def list_client_groups() -> Dict[str, Any]:
         - count (int): Number of groups found.
         - groups (List[Dict]): List of groups with id, name, type, and members.
     """
-    if not parse_permission(config.permissions, "client_groups", "read"):
-        return {"success": False, "error": "Permission denied to list client groups."}
-
     try:
         groups = await client_group_manager.get_client_groups()
         formatted = [
@@ -78,9 +74,6 @@ async def get_client_group_details(
     Returns:
         A dictionary containing the full group configuration.
     """
-    if not parse_permission(config.permissions, "client_groups", "read"):
-        return {"success": False, "error": "Permission denied to get client group details."}
-
     try:
         if not group_id:
             return {"success": False, "error": "group_id is required"}
@@ -143,7 +136,7 @@ async def create_client_group(
         "type": "CLIENTS",
     }
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="client_group",
             resource_data=group_data,
@@ -194,7 +187,7 @@ async def update_client_group(
     Returns:
         Preview of changes or success/failure status.
     """
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="client_group",
             resource_data=group_data,
@@ -236,7 +229,7 @@ async def delete_client_group(
     Returns:
         Preview or success/failure status.
     """
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="client_group",
             resource_data={"group_id": group_id},

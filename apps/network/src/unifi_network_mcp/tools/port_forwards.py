@@ -9,9 +9,8 @@ from typing import Annotated, Any, Dict
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import should_auto_confirm, toggle_preview, update_preview
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import config, firewall_manager, server
+from unifi_mcp_shared.confirmation import toggle_preview, update_preview
+from unifi_network_mcp.runtime import firewall_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry  # Added for validation
 
 logger = logging.getLogger(__name__)  # Changed logger name for consistency
@@ -58,9 +57,6 @@ async def list_port_forwards() -> Dict[str, Any]:  # Removed context, adjusted r
         ]
     }
     """
-    if not parse_permission(config.permissions, "port_forward", "read"):
-        logger.warning("Permission denied for listing port forwards.")
-        return {"success": False, "error": "Permission denied to list port forwards."}
     try:
         rules = await firewall_manager.get_port_forwards()
         rules_raw = [r.raw if hasattr(r, "raw") else r for r in rules]
@@ -127,12 +123,6 @@ async def get_port_forward(
         }
     }
     """
-    if not parse_permission(config.permissions, "port_forward", "read"):
-        logger.warning(f"Permission denied for getting port forward ({port_forward_id}).")
-        return {
-            "success": False,
-            "error": "Permission denied to get port forward details.",
-        }
     try:
         if not port_forward_id:
             return {"success": False, "error": "port_forward_id is required"}
@@ -200,10 +190,6 @@ async def toggle_port_forward(
     }
     """
 
-    if not parse_permission(config.permissions, "port_forward", "update"):
-        logger.warning(f"Permission denied for toggling port forward ({port_forward_id}).")
-        return {"success": False, "error": "Permission denied to toggle port forward."}
-
     try:
         if not port_forward_id:
             return {"success": False, "error": "port_forward_id is required"}
@@ -220,7 +206,7 @@ async def toggle_port_forward(
         current_enabled = rule.get("enabled", False)
 
         # Return preview when confirm=false
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return toggle_preview(
                 resource_type="port_forward",
                 resource_id=port_forward_id,
@@ -323,10 +309,6 @@ async def create_port_forward(
     - details (object): Additional details about the created rule
     - error (string): Error message if unsuccessful
     """
-    if not parse_permission(config.permissions, "port_forward", "create"):
-        logger.warning("Permission denied for creating port forward.")
-        return {"success": False, "error": "Permission denied to create port forward."}
-
     from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
     # Validate the input
@@ -470,10 +452,6 @@ async def update_port_forward(
         "details": { ... updated rule details ... }
     }
     """
-    if not parse_permission(config.permissions, "port_forward", "update"):
-        logger.warning(f"Permission denied for updating port forward ({port_forward_id}).")
-        return {"success": False, "error": "Permission denied to update port forward."}
-
     if not port_forward_id:
         return {"success": False, "error": "port_forward_id is required"}
     if not update_data:
@@ -505,7 +483,7 @@ async def update_port_forward(
         rule_name = existing_rule.get("name", port_forward_id)
 
         # Return preview when confirm=false
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return update_preview(
                 resource_type="port_forward",
                 resource_id=port_forward_id,
@@ -608,9 +586,6 @@ async def create_simple_port_forward(
     }
     """
 
-    if not parse_permission(config.permissions, "port_forward", "create"):
-        return {"success": False, "error": "Permission denied."}
-
     ok, err, validated = UniFiValidatorRegistry.validate("port_forward_simple", rule)
     if not ok or validated is None:
         return {"success": False, "error": err or "Validation failed"}
@@ -631,7 +606,7 @@ async def create_simple_port_forward(
         "enabled": r.get("enabled", True),
     }
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return {
             "success": True,
             "preview": payload,

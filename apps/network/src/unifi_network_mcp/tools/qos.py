@@ -9,9 +9,8 @@ from typing import Annotated, Any, Dict
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, should_auto_confirm, toggle_preview, update_preview
-from unifi_network_mcp.categories import parse_permission
-from unifi_network_mcp.runtime import config, qos_manager, server
+from unifi_mcp_shared.confirmation import create_preview, toggle_preview, update_preview
+from unifi_network_mcp.runtime import qos_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry  # Added
 
 logger = logging.getLogger(__name__)
@@ -51,10 +50,6 @@ async def list_qos_rules() -> Dict[str, Any]:
         ]
     }
     """
-    # Basic permission check (optional for read-only, but good practice)
-    if not parse_permission(config.permissions, "qos", "read"):
-        logger.warning("Permission denied for listing QoS rules.")
-        return {"success": False, "error": "Permission denied to list QoS rules."}
     try:
         qos_rules = await qos_manager.get_qos_rules()
         rules_raw = [r.raw if hasattr(r, "raw") else r for r in qos_rules]
@@ -118,9 +113,6 @@ async def get_qos_rule_details(
         }
     }
     """
-    if not parse_permission(config.permissions, "qos", "read"):
-        logger.warning(f"Permission denied for getting QoS rule details ({rule_id}).")
-        return {"success": False, "error": "Permission denied to get QoS rule details."}
     try:
         if not rule_id:
             return {"success": False, "error": "rule_id is required"}
@@ -182,13 +174,6 @@ async def toggle_qos_rule_enabled(
         "message": "QoS rule 'VoIP Prioritization' (60d4e5f6a7b8c9d0e1f2a3b4) toggled to disabled."
     }
     """
-    if not parse_permission(config.permissions, "qos", "update"):
-        logger.warning(f"Permission denied for updating QoS rule state ({rule_id}).")
-        return {
-            "success": False,
-            "error": "Permission denied to update QoS rule state.",
-        }
-
     if not rule_id:
         return {"success": False, "error": "rule_id is required"}
 
@@ -201,7 +186,7 @@ async def toggle_qos_rule_enabled(
                 "error": f"QoS rule with ID '{rule_id}' not found.",
             }
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return toggle_preview(
                 resource_type="qos_rule",
                 resource_id=rule_id,
@@ -302,10 +287,6 @@ async def update_qos_rule(
             "details": { ... updated rule details ... }
         }
     """
-    if not parse_permission(config.permissions, "qos", "update"):
-        logger.warning(f"Permission denied for updating QoS rule ({rule_id}).")
-        return {"success": False, "error": "Permission denied to update QoS rule."}
-
     if not rule_id:
         return {"success": False, "error": "rule_id is required"}
     if not update_data:
@@ -333,7 +314,7 @@ async def update_qos_rule(
                 "error": f"QoS rule with ID '{rule_id}' not found.",
             }
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return update_preview(
                 resource_type="qos_rule",
                 resource_id=rule_id,
@@ -429,10 +410,6 @@ async def create_qos_rule(
     - details (object): Details of the created rule.
     - error (string): Error message if unsuccessful.
     """
-    if not parse_permission(config.permissions, "qos", "create"):
-        logger.warning("Permission denied for creating QoS rule.")
-        return {"success": False, "error": "Permission denied to create QoS rule."}
-
     # Validate the input data
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("qos_rule", qos_data)
     if not is_valid:
@@ -445,7 +422,7 @@ async def create_qos_rule(
         missing = [k for k in required if k not in validated_data]
         return {"success": False, "error": f"Missing required fields: {missing}"}
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return create_preview(
             resource_type="qos_rule",
             resource_data=validated_data,
@@ -526,9 +503,6 @@ async def create_simple_qos_rule(
     the rule and return the controller's response.
     """
 
-    if not parse_permission(config.permissions, "qos", "create"):
-        return {"success": False, "error": "Permission denied."}
-
     # --- Step 1: validate high-level schema --------------------------------
     is_valid, error_msg, validated = UniFiValidatorRegistry.validate("qos_rule_simple", rule)
     if not is_valid or validated is None:
@@ -560,7 +534,7 @@ async def create_simple_qos_rule(
             return {"success": False, "error": f"Unsupported target type '{t_type}'"}
 
     # --- Step 3: preview or commit -----------------------------------------
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         return {
             "success": True,
             "preview": payload,

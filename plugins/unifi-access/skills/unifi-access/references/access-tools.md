@@ -51,7 +51,7 @@ Always available, regardless of registration mode.
 - Lock/unlock requires the proxy session auth path (username + password, not API key alone)
 
 **Permission env vars:**
-- `UNIFI_PERMISSIONS_DOORS_UPDATE=true` — enables lock/unlock
+- `UNIFI_POLICY_ACCESS_DOORS_UPDATE=true` — enables lock/unlock
 
 ---
 
@@ -74,7 +74,7 @@ Always available, regardless of registration mode.
 - Policy updates require the proxy session auth path
 
 **Permission env vars:**
-- `UNIFI_PERMISSIONS_POLICIES_UPDATE=true`
+- `UNIFI_POLICY_ACCESS_POLICIES_UPDATE=true`
 
 ---
 
@@ -98,8 +98,8 @@ Always available, regardless of registration mode.
 - Both create and revoke require the proxy session auth path
 
 **Permission env vars:**
-- `UNIFI_PERMISSIONS_CREDENTIALS_CREATE=true`
-- `UNIFI_PERMISSIONS_CREDENTIALS_DELETE=true` (for revoke)
+- `UNIFI_POLICY_ACCESS_CREDENTIALS_CREATE=true`
+- `UNIFI_POLICY_ACCESS_CREDENTIALS_DELETE=true` (for revoke)
 
 ---
 
@@ -123,8 +123,8 @@ Always available, regardless of registration mode.
 - Both create and delete require the proxy session auth path
 
 **Permission env vars:**
-- `UNIFI_PERMISSIONS_VISITORS_CREATE=true`
-- `UNIFI_PERMISSIONS_VISITORS_DELETE=true`
+- `UNIFI_POLICY_ACCESS_VISITORS_CREATE=true`
+- `UNIFI_POLICY_ACCESS_VISITORS_DELETE=true`
 
 ---
 
@@ -169,7 +169,7 @@ Always available, regardless of registration mode.
 - Reboot requires the proxy session auth path
 
 **Permission env vars:**
-- `UNIFI_PERMISSIONS_DEVICES_UPDATE=true`
+- `UNIFI_POLICY_ACCESS_DEVICES_UPDATE=true`
 
 ---
 

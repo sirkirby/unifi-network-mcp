@@ -27,9 +27,9 @@ The server uses **lazy loading** by default — only meta-tools are registered i
 **Read operations** — always available. Listing cameras, events, snapshots, sensor readings — all work without permissions.
 
 **Mutations** require explicit opt-in via env vars:
-- `UNIFI_PERMISSIONS_CAMERAS_UPDATE=true` — camera settings, recording toggle, PTZ, reboot
-- `UNIFI_PERMISSIONS_LIGHTS_UPDATE=true` — light brightness, PIR sensitivity
-- `UNIFI_PERMISSIONS_CHIMES_UPDATE=true` — chime volume, trigger
+- `UNIFI_POLICY_PROTECT_CAMERAS_UPDATE=true` — camera settings, recording toggle, PTZ, reboot
+- `UNIFI_POLICY_PROTECT_LIGHTS_UPDATE=true` — light brightness, PIR sensitivity
+- `UNIFI_POLICY_PROTECT_CHIMES_UPDATE=true` — chime volume, trigger
 
 **Confirmation flow** — every mutation uses preview-then-confirm:
 1. Default call → returns preview of what would change

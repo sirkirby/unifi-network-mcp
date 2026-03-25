@@ -11,11 +11,10 @@ from typing import Annotated, Any, Dict, List, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, preview_response, should_auto_confirm, update_preview
-from unifi_network_mcp.categories import parse_permission
+from unifi_mcp_shared.confirmation import create_preview, preview_response, update_preview
 
 # Import the global FastMCP server instance, config, and managers
-from unifi_network_mcp.runtime import config, device_manager, server
+from unifi_network_mcp.runtime import device_manager, server
 
 logger = logging.getLogger(__name__)
 
@@ -305,10 +304,6 @@ async def reboot_device(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for rebooting a device."""
-    if not parse_permission(config.permissions, "device", "reboot"):
-        logger.warning(f"Permission denied for rebooting device ({mac_address}).")
-        return {"success": False, "error": "Permission denied to reboot device."}
-
     try:
         # Fetch device details to provide context in the preview
         device = await device_manager.get_device_details(mac_address)
@@ -335,7 +330,7 @@ async def reboot_device(
         }
         device_status = state_map.get(device_state, f"unknown_state ({device_state})")
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return preview_response(
                 action="reboot",
                 resource_type="device",
@@ -387,10 +382,6 @@ async def rename_device(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for renaming a device."""
-    if not parse_permission(config.permissions, "device", "update"):
-        logger.warning(f"Permission denied for renaming device ({mac_address}).")
-        return {"success": False, "error": "Permission denied to rename device."}
-
     try:
         # Fetch device details to provide context in the preview
         device = await device_manager.get_device_details(mac_address)
@@ -404,7 +395,7 @@ async def rename_device(
         device_raw = device.raw if hasattr(device, "raw") else device
         current_name = device_raw.get("name", device_raw.get("model", "Unknown"))
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return update_preview(
                 resource_type="device",
                 resource_id=mac_address,
@@ -451,10 +442,6 @@ async def adopt_device(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for adopting a device."""
-    if not parse_permission(config.permissions, "device", "adopt"):
-        logger.warning(f"Permission denied for adopting device ({mac_address}).")
-        return {"success": False, "error": "Permission denied to adopt device."}
-
     try:
         # Fetch device details to provide context in the preview
         device = await device_manager.get_device_details(mac_address)
@@ -469,7 +456,7 @@ async def adopt_device(
         device_name = device_raw.get("name", device_raw.get("model", "Unknown"))
         device_state = device_raw.get("state", 0)
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return create_preview(
                 resource_type="device_adoption",
                 resource_name=device_name,
@@ -521,10 +508,6 @@ async def upgrade_device(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for upgrading a device."""
-    if not parse_permission(config.permissions, "device", "upgrade"):
-        logger.warning(f"Permission denied for upgrading device ({mac_address}).")
-        return {"success": False, "error": "Permission denied to upgrade device."}
-
     try:
         # Fetch device details to provide context in the preview
         device = await device_manager.get_device_details(mac_address)
@@ -546,7 +529,7 @@ async def upgrade_device(
 
         upgrade_to_version = device_raw.get("upgrade_to_firmware", "latest available")
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return preview_response(
                 action="upgrade",
                 resource_type="device",
@@ -675,10 +658,6 @@ async def update_device_radio(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for updating AP radio settings."""
-    if not parse_permission(config.permissions, "device", "update"):
-        logger.warning(f"Permission denied for updating radio on device ({mac_address}).")
-        return {"success": False, "error": "Permission denied to update device radio settings."}
-
     if radio not in VALID_RADIOS and not radio.startswith("wifi"):
         return {
             "success": False,
@@ -743,7 +722,7 @@ async def update_device_radio(
 
         current_state = {k: target_radio.get(k) for k in updates}
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             preview = update_preview(
                 resource_type="device_radio",
                 resource_id=f"{mac_address}/{radio}",

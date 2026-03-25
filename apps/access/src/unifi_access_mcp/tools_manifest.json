@@ -35,6 +35,10 @@
   "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
   "tools": [
     {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Create a new access credential (NFC card, PIN, or mobile credential) and assign it to a user. Requires confirm=true to execute. Only available via local proxy session.",
       "name": "access_create_credential",
       "permission_action": "create",
@@ -64,6 +68,10 @@
       }
     },
     {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Create a new visitor pass with a name and access time range. Optionally assign specific doors and contact information. Requires confirm=true to execute. Only available via local proxy session.",
       "name": "access_create_visitor",
       "permission_action": "create",
@@ -106,6 +114,11 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Delete a visitor pass. This permanently removes the visitor's access. Requires confirm=true to execute. Only available via local proxy session.",
       "name": "access_delete_visitor",
       "permission_action": "delete",
@@ -572,6 +585,11 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Reboot an Access hardware device (hub, reader, relay, intercom). The device will be temporarily offline during reboot. Requires confirm=true to execute. Only available via local proxy session.",
       "name": "access_reboot_device",
       "permission_action": "update",
@@ -625,6 +643,11 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Revoke (delete) an access credential. This permanently removes the credential from the system. Requires confirm=true to execute. Only available via local proxy session.",
       "name": "access_revoke_credential",
       "permission_action": "delete",
@@ -698,6 +721,11 @@
       }
     },
     {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Update an access policy's configuration. Supported fields include name, doors, schedule_id, and user groups. Requires confirm=true to apply. Only available via local proxy session.",
       "name": "access_update_policy",
       "permission_action": "update",

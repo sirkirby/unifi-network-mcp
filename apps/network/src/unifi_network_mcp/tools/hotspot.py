@@ -10,7 +10,7 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, preview_response, should_auto_confirm
+from unifi_mcp_shared.confirmation import create_preview, preview_response
 from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
@@ -152,7 +152,7 @@ async def create_voucher(
     if count < 1 or count > 10000:
         return {"success": False, "error": "count must be between 1 and 10000."}
 
-    if not confirm and not should_auto_confirm():
+    if not confirm:
         resource_data = {
             "count": count,
             "expire_minutes": expire_minutes,
@@ -222,7 +222,7 @@ async def revoke_voucher(
         hotspot_manager = _get_hotspot_manager()
 
         # Fetch voucher details first for preview
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             voucher = await hotspot_manager.get_voucher_details(voucher_id)
             if not voucher:
                 return {"success": False, "error": f"Voucher not found with ID: {voucher_id}"}

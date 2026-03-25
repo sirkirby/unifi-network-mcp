@@ -1,138 +1,126 @@
-# Permission System
+# Permission System — Access Server
 
-Permissions control which mutating tools are available. All mutations are disabled by default; read-only tools are always available.
+All tools are always visible and discoverable. Authorization happens at call time through two concepts: **Permission Mode** and **Policy Gates**.
 
-## How It Works
+## Permission Mode
 
-1. Each mutating tool declares a **category** and **action** (create, update, or delete)
-2. At startup, the server checks permission config for that category/action
-3. Denied tools are **not registered** with the MCP server -- they cannot be called
-4. All tools remain discoverable via `access_tool_index` regardless of permission status
+Controls how the server handles mutating tool calls globally.
 
-## Priority Order
+| Variable | Scope | Values | Default |
+|----------|-------|--------|---------|
+| `UNIFI_TOOL_PERMISSION_MODE` | All servers | `confirm`, `bypass` | `confirm` |
+| `UNIFI_ACCESS_TOOL_PERMISSION_MODE` | Access only | `confirm`, `bypass` | inherits global |
 
-1. **Environment variables** (highest) -- `UNIFI_PERMISSIONS_<CATEGORY>_<ACTION>=true`
-2. **Config YAML** -- `permissions.<category>.<action>` in `config.yaml`
-3. **Default section** -- `permissions.default.<action>` in `config.yaml`
-4. **Hardcoded fallback** -- `read: true`, `delete: false`
+- **`confirm`** (default) — mutating tools require the preview-then-confirm flow before executing
+- **`bypass`** — skips confirmation for all mutations; intended for automation workflows
 
-## Category Defaults
+The server-specific variable takes priority over the global one.
 
-All mutation categories default to **disabled** for Access. This is conservative because Access operations control physical security hardware -- doors, locks, and credential assignments.
+## Policy Gates
 
-| Category | Create | Update | Delete | Rationale |
-|----------|--------|--------|--------|-----------|
-| `doors` | -- | no | -- | Lock/unlock controls physical door state |
-| `policies` | -- | no | -- | Policy changes affect who can enter |
-| `credentials` | no | -- | no | Creates/revokes physical access tokens |
-| `visitors` | no | -- | no | Creates/removes time-bounded visitor access |
-| `events` | -- | -- | -- | Events are system-generated (read-only) |
-| `devices` | -- | no | -- | Reboot interrupts access control hardware |
-| `system` | -- | -- | -- | System info is read-only |
+Fine-grained authorization over which mutations are permitted. Most specific rule wins.
 
-**Note:** Read-only tools (list, get, status, schedules) are always available and require no permission configuration.
+| Specificity | Pattern | Example |
+|-------------|---------|---------|
+| Global action | `UNIFI_POLICY_<ACTION>` | `UNIFI_POLICY_DELETE=false` |
+| Server + action | `UNIFI_POLICY_ACCESS_<ACTION>` | `UNIFI_POLICY_ACCESS_CREATE=true` |
+| Server + category + action | `UNIFI_POLICY_ACCESS_<CATEGORY>_<ACTION>` | `UNIFI_POLICY_ACCESS_DOORS_UPDATE=true` |
 
-## Enabling Permissions
+Actions: `CREATE`, `UPDATE`, `DELETE`
 
-### Environment Variables (Recommended)
+Accepted values: `true`, `1`, `yes`, `on` (case-insensitive). Unset means the next less-specific rule applies.
+
+## Access Categories
+
+Access defaults all mutations to denied. Operations control physical security hardware — doors, locks, and credential assignments — so explicit opt-in is required for every action.
+
+| Category | Create | Update | Delete | Notes |
+|----------|--------|--------|--------|-------|
+| `credentials` | `UNIFI_POLICY_ACCESS_CREDENTIALS_CREATE` | — | `UNIFI_POLICY_ACCESS_CREDENTIALS_DELETE` | NFC, PIN, mobile credentials |
+| `devices` | — | `UNIFI_POLICY_ACCESS_DEVICES_UPDATE` | — | Hub/reader reboot |
+| `doors` | — | `UNIFI_POLICY_ACCESS_DOORS_UPDATE` | — | Lock/unlock physical doors |
+| `events` | — | — | — | System-generated, read-only |
+| `policies` | — | `UNIFI_POLICY_ACCESS_POLICIES_UPDATE` | — | Access policy assignment |
+| `schedules` | `UNIFI_POLICY_ACCESS_SCHEDULES_CREATE` | `UNIFI_POLICY_ACCESS_SCHEDULES_UPDATE` | `UNIFI_POLICY_ACCESS_SCHEDULES_DELETE` | Time-based access schedules |
+| `system` | — | — | — | System info, read-only |
+| `visitors` | `UNIFI_POLICY_ACCESS_VISITORS_CREATE` | — | `UNIFI_POLICY_ACCESS_VISITORS_DELETE` | Time-bounded visitor passes |
+
+Read-only tools (list, get, status, activity summaries) are always available with no policy configuration required.
+
+## Common Scenarios
+
+### Zero config (default)
+
+No configuration needed. All tools work — reads execute immediately, mutations require confirmation (preview-then-confirm). This is the safest default.
+
+### Restrict to door control only
 
 ```bash
-# Enable door lock/unlock
-export UNIFI_PERMISSIONS_DOORS_UPDATE=true
-
-# Enable credential creation and revocation
-export UNIFI_PERMISSIONS_CREDENTIALS_CREATE=true
-export UNIFI_PERMISSIONS_CREDENTIALS_DELETE=true
-
-# Enable visitor pass management
-export UNIFI_PERMISSIONS_VISITORS_CREATE=true
-export UNIFI_PERMISSIONS_VISITORS_DELETE=true
-
-# Enable policy updates
-export UNIFI_PERMISSIONS_POLICIES_UPDATE=true
-
-# Enable device reboot
-export UNIFI_PERMISSIONS_DEVICES_UPDATE=true
+UNIFI_POLICY_ACCESS_CREATE=false
+UNIFI_POLICY_ACCESS_UPDATE=false
+UNIFI_POLICY_ACCESS_DELETE=false
+UNIFI_POLICY_ACCESS_DOORS_UPDATE=true
 ```
 
-For Claude Desktop, add to the `env` section:
+### Lock down everything except visitor and credential management
+
+```bash
+UNIFI_POLICY_ACCESS_CREATE=false
+UNIFI_POLICY_ACCESS_UPDATE=false
+UNIFI_POLICY_ACCESS_DELETE=false
+UNIFI_POLICY_ACCESS_VISITORS_CREATE=true
+UNIFI_POLICY_ACCESS_VISITORS_DELETE=true
+UNIFI_POLICY_ACCESS_CREDENTIALS_CREATE=true
+UNIFI_POLICY_ACCESS_CREDENTIALS_DELETE=true
+```
+
+### Full access management (doors, credentials, policies, visitors)
+
+```bash
+UNIFI_POLICY_ACCESS_DOORS_UPDATE=true
+UNIFI_POLICY_ACCESS_CREDENTIALS_CREATE=true
+UNIFI_POLICY_ACCESS_CREDENTIALS_DELETE=true
+UNIFI_POLICY_ACCESS_VISITORS_CREATE=true
+UNIFI_POLICY_ACCESS_VISITORS_DELETE=true
+UNIFI_POLICY_ACCESS_POLICIES_UPDATE=true
+```
+
+### Full bypass for automation
+
+```bash
+UNIFI_ACCESS_TOOL_PERMISSION_MODE=bypass
+UNIFI_POLICY_ACCESS_CREATE=true
+UNIFI_POLICY_ACCESS_UPDATE=true
+UNIFI_POLICY_ACCESS_DELETE=true
+```
+
+### Claude Desktop example
+
 ```json
 {
   "env": {
-    "UNIFI_PERMISSIONS_DOORS_UPDATE": "true",
-    "UNIFI_PERMISSIONS_CREDENTIALS_CREATE": "true"
+    "UNIFI_POLICY_ACCESS_DOORS_UPDATE": "true",
+    "UNIFI_POLICY_ACCESS_CREDENTIALS_CREATE": "true"
   }
 }
 ```
 
-For Docker:
-```bash
-docker run -e UNIFI_PERMISSIONS_DOORS_UPDATE=true ...
-```
+## Confirmation Flow
 
-Accepted values: `true`, `1`, `yes`, `on` (case-insensitive).
+When `UNIFI_ACCESS_TOOL_PERMISSION_MODE=confirm` (default), mutating tools follow a two-step pattern:
 
-### Config File
+1. Call without `confirm` — returns a preview of the change, no mutation occurs
+2. Call with `confirm=true` — executes the mutation
 
-Edit `src/unifi_access_mcp/config/config.yaml`:
+This applies even when a policy gate permits the action.
 
-```yaml
-permissions:
-  doors:
-    update: true
-  credentials:
-    create: true
-    delete: true
-```
+## Backwards Compatibility
 
-Then restart the server. No manifest rebuild is needed for permission changes.
+The following deprecated variables are still accepted but will be removed in a future release:
 
-## All Permission Variables
+| Deprecated | Equivalent |
+|------------|-----------|
+| `UNIFI_AUTO_CONFIRM=true` | `UNIFI_TOOL_PERMISSION_MODE=bypass` |
+| `UNIFI_PERMISSIONS_<CAT>_<ACTION>=true` | `UNIFI_POLICY_ACCESS_<CAT>_<ACTION>=true` |
 
-| Category | Create | Update | Delete |
-|----------|--------|--------|--------|
-| doors | `UNIFI_PERMISSIONS_DOORS_CREATE` | `UNIFI_PERMISSIONS_DOORS_UPDATE` | `UNIFI_PERMISSIONS_DOORS_DELETE` |
-| policies | `UNIFI_PERMISSIONS_POLICIES_CREATE` | `UNIFI_PERMISSIONS_POLICIES_UPDATE` | `UNIFI_PERMISSIONS_POLICIES_DELETE` |
-| credentials | `UNIFI_PERMISSIONS_CREDENTIALS_CREATE` | `UNIFI_PERMISSIONS_CREDENTIALS_UPDATE` | `UNIFI_PERMISSIONS_CREDENTIALS_DELETE` |
-| visitors | `UNIFI_PERMISSIONS_VISITORS_CREATE` | `UNIFI_PERMISSIONS_VISITORS_UPDATE` | `UNIFI_PERMISSIONS_VISITORS_DELETE` |
-| events | `UNIFI_PERMISSIONS_EVENTS_CREATE` | `UNIFI_PERMISSIONS_EVENTS_UPDATE` | `UNIFI_PERMISSIONS_EVENTS_DELETE` |
-| devices | `UNIFI_PERMISSIONS_DEVICES_CREATE` | `UNIFI_PERMISSIONS_DEVICES_UPDATE` | `UNIFI_PERMISSIONS_DEVICES_DELETE` |
-| system | `UNIFI_PERMISSIONS_SYSTEM_CREATE` | `UNIFI_PERMISSIONS_SYSTEM_UPDATE` | `UNIFI_PERMISSIONS_SYSTEM_DELETE` |
-
-## Tools Affected by Permissions
-
-| Tool | Category | Action | What it does |
-|------|----------|--------|-------------|
-| `access_unlock_door` | doors | update | Unlock a door for a specified duration |
-| `access_lock_door` | doors | update | Lock a door immediately |
-| `access_update_policy` | policies | update | Update policy name, doors, schedule, user groups |
-| `access_create_credential` | credentials | create | Create NFC card, PIN, or mobile credential |
-| `access_revoke_credential` | credentials | delete | Permanently revoke a credential |
-| `access_create_visitor` | visitors | create | Create a time-bounded visitor pass |
-| `access_delete_visitor` | visitors | delete | Permanently remove a visitor pass |
-| `access_reboot_device` | devices | update | Reboot an access hub, reader, relay, or intercom |
-
-## Behavior by Registration Mode
-
-| Mode | Denied tool visible? | Denied tool callable? |
-|------|---------------------|----------------------|
-| **eager** | Not in client tool list | No |
-| **lazy** | In `access_tool_index` | No (returns permission error) |
-| **meta_only** | In `access_tool_index` | No (returns permission error) |
-
-If a tool you expect is missing from your client's tool list, the most common cause is a disabled permission.
-
-## Confirmation System
-
-All mutating tools use a **preview-then-confirm** pattern:
-
-1. Call without `confirm` (default) -- returns a preview of the change
-2. Call with `confirm=true` -- executes the mutation
-
-Set `UNIFI_AUTO_CONFIRM=true` to skip previews for automation workflows (n8n, Make, Zapier).
-
-| Level | Method | Use Case |
-|-------|--------|----------|
-| Per-call | `confirm=true` in arguments | LLM explicitly confirms |
-| Per-session | System prompt instructs auto-confirm | Agent follows standing instructions |
-| Per-environment | `UNIFI_AUTO_CONFIRM=true` | Workflow automation |
+Deprecated variables are resolved before new-style variables and have lower priority if both are set.

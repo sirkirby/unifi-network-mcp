@@ -11,7 +11,7 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import preview_response, should_auto_confirm
+from unifi_mcp_shared.confirmation import preview_response
 from unifi_protect_mcp.runtime import camera_manager, server
 
 logger = logging.getLogger(__name__)
@@ -215,7 +215,7 @@ async def protect_update_camera_settings(
 
         preview_data = await camera_manager.update_camera_settings(camera_id, settings)
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return preview_response(
                 action="update",
                 resource_type="camera_settings",
@@ -263,7 +263,7 @@ async def protect_toggle_recording(
     try:
         preview_data = await camera_manager.toggle_recording(camera_id, enabled)
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return preview_response(
                 action="toggle",
                 resource_type="camera_recording",
@@ -385,7 +385,7 @@ async def protect_reboot_camera(
     try:
         preview_data = await camera_manager.reboot_camera(camera_id)
 
-        if not confirm and not should_auto_confirm():
+        if not confirm:
             return preview_response(
                 action="reboot",
                 resource_type="camera",

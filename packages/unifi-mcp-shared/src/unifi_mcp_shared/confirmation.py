@@ -7,31 +7,13 @@ will happen, giving LLM agents context to make informed decisions.
 Preview responses return success=True because a preview is itself a
 successful operation that requires further confirmation to execute.
 
-Environment Variables:
-    UNIFI_AUTO_CONFIRM: Set to "true" to skip confirmation previews and
-        execute operations directly. Useful for workflow automation (n8n, etc.)
-        where the two-step confirmation adds unnecessary complexity.
+Permission mode (confirm vs bypass) is controlled via:
+    UNIFI_TOOL_PERMISSION_MODE=confirm|bypass
+    UNIFI_<SERVER>_TOOL_PERMISSION_MODE=confirm|bypass
+See policy_gate.resolve_permission_mode() for details.
 """
 
-import os
 from typing import Any, Dict, List, Optional
-
-
-def should_auto_confirm() -> bool:
-    """Check if auto-confirm is enabled via environment variable.
-
-    When UNIFI_AUTO_CONFIRM=true, tools should skip the preview step
-    and execute operations directly, as if confirm=true was passed.
-
-    This is useful for:
-    - Workflow automation tools (n8n, Make, Zapier)
-    - Scripted/batch operations
-    - Environments where confirmation adds unnecessary friction
-
-    Returns:
-        True if auto-confirm is enabled, False otherwise.
-    """
-    return os.getenv("UNIFI_AUTO_CONFIRM", "").lower() in ("true", "1", "yes")
 
 
 def preview_response(

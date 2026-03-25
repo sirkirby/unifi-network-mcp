@@ -54,7 +54,7 @@ Always available, regardless of registration mode.
 - PTZ: only zoom works via the API. For pan/tilt, use preset positions
 
 **Permission env vars:**
-- `UNIFI_PERMISSIONS_CAMERAS_UPDATE=true` — enables settings, recording toggle, PTZ, reboot
+- `UNIFI_POLICY_PROTECT_CAMERAS_UPDATE=true` — enables settings, recording toggle, PTZ, reboot
 
 ---
 
@@ -120,8 +120,8 @@ Always available, regardless of registration mode.
 <!-- /AUTO:tools:devices -->
 
 **Permission env vars:**
-- `UNIFI_PERMISSIONS_LIGHTS_UPDATE=true`
-- `UNIFI_PERMISSIONS_CHIMES_UPDATE=true`
+- `UNIFI_POLICY_PROTECT_LIGHTS_UPDATE=true`
+- `UNIFI_POLICY_PROTECT_CHIMES_UPDATE=true`
 
 ---
 

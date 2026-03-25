@@ -10,7 +10,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_access_mcp.runtime import door_manager, server
-from unifi_mcp_shared.confirmation import preview_response, should_auto_confirm
+from unifi_mcp_shared.confirmation import preview_response
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ async def access_unlock_door(
     """Unlock a door with preview/confirm."""
     logger.info("access_unlock_door tool called for %s (duration=%s, confirm=%s)", door_id, duration, confirm)
     try:
-        if confirm or should_auto_confirm():
+        if confirm:
             result = await door_manager.apply_unlock_door(door_id, duration=duration)
             return {"success": True, "data": result}
 
@@ -136,7 +136,7 @@ async def access_lock_door(
     """Lock a door with preview/confirm."""
     logger.info("access_lock_door tool called for %s (confirm=%s)", door_id, confirm)
     try:
-        if confirm or should_auto_confirm():
+        if confirm:
             result = await door_manager.apply_lock_door(door_id)
             return {"success": True, "data": result}
 

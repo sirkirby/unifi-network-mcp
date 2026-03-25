@@ -1,16 +1,15 @@
-"""Access server category mappings, tool module map, and permission helpers.
+"""Access server category mappings and tool module map.
 
 Maps tool category shorthands to their config key names used in
-the permissions section of config.yaml. This mapping is injected into
-the shared PermissionChecker at startup.
+the policy gate system. This mapping is injected into the
+PolicyGateChecker at startup.
 
 Also provides:
-- ``parse_permission`` backward-compatible wrapper around PermissionChecker
 - ``TOOL_MODULE_MAP`` for lazy/on-demand tool loading
 """
 
 from pathlib import Path
-from typing import Any, Callable, Dict
+from typing import Callable, Dict
 
 from unifi_mcp_shared.lazy_tools import (
     LazyToolLoader,
@@ -19,7 +18,6 @@ from unifi_mcp_shared.lazy_tools import (
 from unifi_mcp_shared.lazy_tools import (
     setup_lazy_loading as _shared_setup_lazy_loading,
 )
-from unifi_mcp_shared.permissions import PermissionChecker
 
 # ---------------------------------------------------------------------------
 # Permission category mapping
@@ -37,17 +35,6 @@ ACCESS_CATEGORY_MAP = {
     "system": "system",
     "user": "system",
 }
-
-
-def parse_permission(permissions: Dict[str, Any], category: str, action: str) -> bool:
-    """Check if an action is permitted for a given category.
-
-    Backward-compatible wrapper around
-    :meth:`PermissionChecker.check <unifi_mcp_shared.permissions.PermissionChecker.check>`.
-    New code should use ``PermissionChecker`` directly.
-    """
-    checker = PermissionChecker(category_map=ACCESS_CATEGORY_MAP, permissions=permissions)
-    return checker.check(category, action)
 
 
 # ---------------------------------------------------------------------------

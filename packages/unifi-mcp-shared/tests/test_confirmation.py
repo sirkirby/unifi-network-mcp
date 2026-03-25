@@ -5,7 +5,6 @@ import pytest
 from unifi_mcp_shared.confirmation import (
     create_preview,
     preview_response,
-    should_auto_confirm,
     toggle_preview,
     update_preview,
 )
@@ -88,33 +87,6 @@ class TestPreviewResponse:
             proposed_changes={},
         )
         assert "confirm=true" in result["message"]
-
-
-class TestShouldAutoConfirm:
-    """Tests for should_auto_confirm."""
-
-    def test_default_false(self):
-        assert should_auto_confirm() is False
-
-    def test_env_true(self, monkeypatch):
-        monkeypatch.setenv("UNIFI_AUTO_CONFIRM", "true")
-        assert should_auto_confirm() is True
-
-    def test_env_1(self, monkeypatch):
-        monkeypatch.setenv("UNIFI_AUTO_CONFIRM", "1")
-        assert should_auto_confirm() is True
-
-    def test_env_yes(self, monkeypatch):
-        monkeypatch.setenv("UNIFI_AUTO_CONFIRM", "yes")
-        assert should_auto_confirm() is True
-
-    def test_env_false(self, monkeypatch):
-        monkeypatch.setenv("UNIFI_AUTO_CONFIRM", "false")
-        assert should_auto_confirm() is False
-
-    def test_env_empty(self, monkeypatch):
-        monkeypatch.setenv("UNIFI_AUTO_CONFIRM", "")
-        assert should_auto_confirm() is False
 
 
 class TestTogglePreview:

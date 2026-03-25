@@ -64,17 +64,23 @@ HTTP is disabled by default. The stdio transport is recommended for most MCP cli
 | `UNIFI_MCP_DIAG_LOG_TOOL_RESULT` | `true` | Include tool results in diagnostic logs |
 | `UNIFI_MCP_DIAG_MAX_PAYLOAD` | `2000` | Max characters for diagnostic payloads |
 
-## Permission Overrides
+## Permissions
 
-Permissions control which mutating tools are registered. See [permissions.md](permissions.md) for full details.
+Authorization is enforced at call time. All tools remain visible regardless of permission configuration. See [permissions.md](permissions.md) for full details.
 
-Pattern: `UNIFI_PERMISSIONS_<CATEGORY>_<ACTION>=true`
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `UNIFI_PROTECT_TOOL_PERMISSION_MODE` / `UNIFI_TOOL_PERMISSION_MODE` | `confirm` | `confirm` (preview-then-confirm flow) or `bypass` (skip confirmations) |
+
+Policy gates follow the pattern `UNIFI_POLICY_PROTECT_<CATEGORY>_<ACTION>` (most specific) down to `UNIFI_POLICY_<ACTION>` (global). Most specific wins.
 
 Examples:
 ```bash
-UNIFI_PERMISSIONS_CAMERAS_UPDATE=true
-UNIFI_PERMISSIONS_CHIMES_UPDATE=true
-UNIFI_PERMISSIONS_LIVEVIEWS_DELETE=true
+UNIFI_POLICY_PROTECT_CAMERAS_UPDATE=true
+UNIFI_POLICY_PROTECT_CHIMES_UPDATE=true
+UNIFI_POLICY_PROTECT_LIGHTS_UPDATE=true
+# Or server-wide:
+UNIFI_POLICY_PROTECT_UPDATE=true
 ```
 
 ## Tool Categories

@@ -73,10 +73,10 @@ unifi-network-mcp is **not**:
 ### 1.3 Key Definitions
 
 **"Secure by default"** means:
-- High-risk operations (network/device/client modification) are disabled unless explicitly enabled via environment variables or config
-- All mutations require a two-step preview-then-confirm flow
-- Delete operations are denied by default and require explicit opt-in via environment variable or config
-- Read-only actions are allowed by default
+- All mutations require a two-step preview-then-confirm flow (permission mode: `confirm`)
+- Policy gates can disable specific actions (CREATE/UPDATE/DELETE) at global, server, or category level
+- Read-only actions are always allowed regardless of permission mode or policy gates
+- Bypass mode (`UNIFI_TOOL_PERMISSION_MODE=bypass`) is available for automation but must be explicitly enabled
 
 **"Context-optimized"** means:
 - Lazy tool loading is the default mode (~200 tokens vs ~5,000 for eager)
@@ -130,11 +130,10 @@ If an anchor doesn't fit, ask. Do not invent new patterns.
 3. Create `apps/network/src/unifi_network_mcp/tools/<category>.py` importing from `unifi_network_mcp.runtime`
    - **Anchor:** `apps/network/src/unifi_network_mcp/tools/clients.py` (module structure, imports, decorator usage)
 4. Add tool names to `TOOL_MODULE_MAP` in `apps/network/src/unifi_network_mcp/categories.py`
-5. Add permission config block to `apps/network/src/unifi_network_mcp/config/config.yaml` under `permissions:`
-6. Add category mapping to `NETWORK_CATEGORY_MAP` in `apps/network/src/unifi_network_mcp/categories.py`
-7. Run `make network-manifest`
-8. Add tests, update `docs/` and README as needed
-9. Commit everything together
+5. Add category mapping to `NETWORK_CATEGORY_MAP` in `apps/network/src/unifi_network_mcp/categories.py`
+6. Run `make network-manifest`
+7. Add tests, update `docs/` and README as needed
+8. Commit everything together
 
 #### Add a configuration value
 
@@ -146,11 +145,11 @@ If an anchor doesn't fit, ask. Do not invent new patterns.
 
 #### Modify the permission system
 
-1. Shared permission logic lives in `packages/unifi-mcp-shared/src/unifi_mcp_shared/permissions.py`
-   - **Anchor:** `packages/unifi-mcp-shared/src/unifi_mcp_shared/permissions.py` (PermissionChecker class)
+1. Shared permission logic lives in `packages/unifi-mcp-shared/src/unifi_mcp_shared/policy_gate.py`
+   - **Anchor:** `packages/unifi-mcp-shared/src/unifi_mcp_shared/policy_gate.py` (PolicyGateChecker, resolve_permission_mode)
 2. Network-specific category mappings live in `NETWORK_CATEGORY_MAP` in `apps/network/src/unifi_network_mcp/categories.py`
-3. Enforcement happens in `apps/network/src/unifi_network_mcp/main.py:permissioned_tool` decorator
-4. Config defaults live in `apps/network/src/unifi_network_mcp/config/config.yaml` under `permissions:`
+3. Enforcement happens in `apps/network/src/unifi_network_mcp/main.py:permissioned_tool` decorator (call-time authorization + bypass injection)
+4. Policy gates are configured via `UNIFI_POLICY_*` env vars (no config.yaml section)
 5. Tests in `packages/unifi-mcp-shared/tests/` and `apps/network/tests/unit/` cover permission edge cases
 
 #### Add shared functionality
@@ -229,14 +228,31 @@ All tools MUST return a `Dict[str, Any]` with this structure:
 - Error messages MUST be specific and actionable, never raw tracebacks.
 - Error messages MUST include the operation that failed (e.g., "Failed to list devices: ..." not just `str(e)`).
 
-### 3.4 Permission Enforcement
+### 3.4 Permission System
 
-- Permissions are checked at **tool registration time** (fail-fast), not at call time
-- Priority order: Environment variable > config YAML > default section > hardcoded fallback
-- `delete` actions are **denied by default** and require explicit opt-in via `UNIFI_PERMISSIONS_<CATEGORY>_DELETE=true` or config
-- `read` actions are **allowed by default** when not explicitly configured
-- High-risk categories (networks, devices, clients, WLANs) default to `false` for create/update
-- Tools denied by permissions are still registered in the tool index (for discovery) but NOT callable via MCP
+The permission system has two concepts:
+
+**Permission Mode** controls how mutations are handled:
+- `confirm` (default) — all mutations require preview-then-confirm
+- `bypass` — mutations execute without confirmation
+- Read-only tools are always allowed regardless of mode
+
+Env vars (most specific wins):
+- `UNIFI_TOOL_PERMISSION_MODE=confirm|bypass` (global)
+- `UNIFI_<SERVER>_TOOL_PERMISSION_MODE=confirm|bypass` (per-server)
+
+**Policy Gates** are hard boundaries that disable specific actions:
+
+Three-level env var hierarchy using `UNIFI_POLICY_` prefix (most specific wins):
+- `UNIFI_POLICY_<ACTION>=true|false` (global — all servers)
+- `UNIFI_POLICY_<SERVER>_<ACTION>=true|false` (per-server)
+- `UNIFI_POLICY_<SERVER>_<CATEGORY>_<ACTION>=true|false` (per-category)
+
+Actions: `CREATE`, `UPDATE`, `DELETE`. If no policy gate is set, action is allowed.
+
+All tools are always visible and discoverable in the tool index regardless of policy gates. Authorization is checked at call time by the `permissioned_tool` decorator. Denied actions return `{"success": false, "error": "..."}` with guidance on how to enable.
+
+The decorator also handles bypass mode — when active, it injects `confirm=True` into tool kwargs so mutations execute without the preview step.
 
 ### 3.5 Confirmation System for Mutations
 
@@ -244,7 +260,8 @@ All state-changing tools MUST implement the preview-then-confirm pattern:
 
 - Default call (`confirm=False`): validate input, return preview payload
 - Explicit call (`confirm=True`): execute the mutation on the controller
-- `UNIFI_AUTO_CONFIRM=true` bypasses for automation workflows
+- `UNIFI_TOOL_PERMISSION_MODE=bypass` skips confirmation for automation workflows
+- `UNIFI_AUTO_CONFIRM=true` is deprecated (honored with warning, maps to bypass mode)
 - **Anchor:** `packages/unifi-mcp-shared/src/unifi_mcp_shared/confirmation.py`
 
 ### 3.6 MCP Tool Annotations
@@ -279,7 +296,7 @@ Hardcoding host, port, credentials, or feature flags in Python source is **banne
 
 All permission category strings MUST be defined in:
 - `NETWORK_CATEGORY_MAP` in `apps/network/src/unifi_network_mcp/categories.py` (tool shorthand to config key mapping)
-- `permissions:` section of `apps/network/src/unifi_network_mcp/config/config.yaml` (defaults)
+- Policy gates use these category strings in `UNIFI_POLICY_<SERVER>_<CATEGORY>_<ACTION>` env vars
 
 ### 4.3 Tool Registration
 
@@ -479,7 +496,7 @@ make run-meta    # Meta-only mode
 | `packages/unifi-core/src/unifi_core/detection.py` | UniFi OS vs standalone detection |
 | `packages/unifi-core/src/unifi_core/retry.py` | Retry policies for transient failures |
 | `packages/unifi-core/src/unifi_core/exceptions.py` | Core exception types |
-| `packages/unifi-mcp-shared/src/unifi_mcp_shared/permissions.py` | PermissionChecker class |
+| `packages/unifi-mcp-shared/src/unifi_mcp_shared/policy_gate.py` | PolicyGateChecker, permission mode resolver |
 | `packages/unifi-mcp-shared/src/unifi_mcp_shared/confirmation.py` | Preview-then-confirm helpers |
 | `packages/unifi-mcp-shared/src/unifi_mcp_shared/meta_tools.py` | Meta-tools: tool_index, execute, batch |
 | `packages/unifi-mcp-shared/src/unifi_mcp_shared/lazy_tools.py` | LazyToolLoader, TOOL_MODULE_MAP builder |
@@ -531,7 +548,17 @@ For single-controller setups, the shared `UNIFI_*` variables are all you need.
 | `UNIFI_MCP_HOST` | 0.0.0.0 | HTTP bind address |
 | `UNIFI_MCP_PORT` | 3000 | HTTP bind port |
 | `UNIFI_MCP_LOG_LEVEL` | INFO | Logging level |
-| `UNIFI_AUTO_CONFIRM` | false | Auto-confirm mutations |
 | `UNIFI_MCP_ALLOWED_HOSTS` | localhost,127.0.0.1 | Allowed HTTP hosts |
 | `UNIFI_MCP_ENABLE_DNS_REBINDING_PROTECTION` | true | DNS rebinding protection |
-| `UNIFI_PERMISSIONS_<CAT>_<ACTION>` | (varies) | Per-category permission override |
+
+### Permission and policy settings
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `UNIFI_TOOL_PERMISSION_MODE` | `confirm` | Permission mode: `confirm` or `bypass` |
+| `UNIFI_<SERVER>_TOOL_PERMISSION_MODE` | _(inherit global)_ | Per-server permission mode override |
+| `UNIFI_POLICY_<ACTION>` | _(unset = allowed)_ | Global policy gate (CREATE/UPDATE/DELETE) |
+| `UNIFI_POLICY_<SERVER>_<ACTION>` | _(unset = inherit)_ | Server-level policy gate |
+| `UNIFI_POLICY_<SERVER>_<CATEGORY>_<ACTION>` | _(unset = inherit)_ | Category-level policy gate |
+| `UNIFI_AUTO_CONFIRM` | `false` | **Deprecated** — use `UNIFI_TOOL_PERMISSION_MODE=bypass` |
+| `UNIFI_PERMISSIONS_<CAT>_<ACTION>` | — | **Deprecated** — use `UNIFI_POLICY_<SERVER>_<CAT>_<ACTION>` |

@@ -36,7 +36,7 @@ server:
   # enabled_tools: Only register these specific tools (use with enabled_categories or alone)
   #   Example: "access_list_doors,access_get_events" or ["access_list_doors", "access_get_events"]
   #
-  # Note: Tools may also be filtered by the permissions section below (e.g., update: false)
+  # Note: Tools may also be filtered by policy gates (UNIFI_POLICY_ env vars)
   # If neither is set, all tools are registered (default behavior)
   enabled_categories: ${oc.env:UNIFI_ENABLED_CATEGORIES,null}
   enabled_tools: ${oc.env:UNIFI_ENABLED_TOOLS,null}
@@ -58,52 +58,9 @@ access:
     buffer_ttl_seconds: ${oc.env:ACCESS_EVENT_BUFFER_TTL,300}
     websocket_enabled: ${oc.env:ACCESS_WEBSOCKET_ENABLED,true}
 
-permissions:
-
-  default:
-    read: true
-    create: false
-    update: false
-    delete: false
-
-  doors:
-    read: true
-    create: false
-    update: false
-    delete: false
-
-  policies:
-    read: true
-    create: false
-    update: false
-    delete: false
-
-  credentials:
-    read: true
-    create: false
-    update: false
-    delete: false
-
-  visitors:
-    read: true
-    create: false
-    update: false
-    delete: false
-
-  events:
-    read: true
-    create: false
-    update: false
-    delete: false
-
-  devices:
-    read: true
-    create: false
-    update: false
-    delete: false
-
-  system:
-    read: true
-    create: false
-    update: false
-    delete: false
+# Permissions are controlled via environment variables:
+#   UNIFI_TOOL_PERMISSION_MODE=confirm|bypass (default: confirm)
+#   UNIFI_POLICY_<ACTION>=true|false (global policy gates)
+#   UNIFI_POLICY_<SERVER>_<ACTION>=true|false (per-server)
+#   UNIFI_POLICY_<SERVER>_<CATEGORY>_<ACTION>=true|false (per-category)
+# See documentation for details.

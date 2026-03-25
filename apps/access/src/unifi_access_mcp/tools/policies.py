@@ -10,7 +10,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_access_mcp.runtime import policy_manager, server
-from unifi_mcp_shared.confirmation import should_auto_confirm, update_preview
+from unifi_mcp_shared.confirmation import update_preview
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ async def access_update_policy(
         if not changes:
             return {"success": False, "error": "No changes provided. Specify at least one field to update."}
 
-        if confirm or should_auto_confirm():
+        if confirm:
             result = await policy_manager.apply_update_policy(policy_id, changes)
             return {"success": True, "data": result}
 

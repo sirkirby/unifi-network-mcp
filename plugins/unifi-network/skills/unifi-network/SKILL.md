@@ -31,7 +31,7 @@ The server is "secure by default" because it controls real network infrastructur
 - **Disabled by default (high-risk):** networks, WLANs, devices, clients, routes, VPN servers
 - **Delete operations** — always disabled by default
 
-If a mutation fails with a permission error, tell the user the env var to set: `UNIFI_PERMISSIONS_<CATEGORY>_<ACTION>=true`
+If a mutation fails with a permission error, tell the user the env var to set: `UNIFI_POLICY_NETWORK_<CATEGORY>_<ACTION>=true`
 
 **Confirmation flow** — every mutation uses preview-then-confirm:
 1. Default call → returns preview of what would change

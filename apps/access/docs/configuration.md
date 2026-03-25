@@ -89,17 +89,23 @@ HTTP is disabled by default. The stdio transport is recommended for most MCP cli
 | `UNIFI_MCP_DIAG_LOG_TOOL_RESULT` | `true` | Include tool results in diagnostic logs |
 | `UNIFI_MCP_DIAG_MAX_PAYLOAD` | `2000` | Max characters for diagnostic payloads |
 
-## Permission Overrides
+## Permissions
 
-Permissions control which mutating tools are registered. See [permissions.md](permissions.md) for full details.
+Authorization is enforced at call time. All tools remain visible regardless of permission configuration. See [permissions.md](permissions.md) for full details.
 
-Pattern: `UNIFI_PERMISSIONS_<CATEGORY>_<ACTION>=true`
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `UNIFI_ACCESS_TOOL_PERMISSION_MODE` / `UNIFI_TOOL_PERMISSION_MODE` | `confirm` | `confirm` (preview-then-confirm flow) or `bypass` (skip confirmations) |
+
+Policy gates follow the pattern `UNIFI_POLICY_ACCESS_<CATEGORY>_<ACTION>` (most specific) down to `UNIFI_POLICY_<ACTION>` (global). Most specific wins.
 
 Examples:
 ```bash
-UNIFI_PERMISSIONS_DOORS_UPDATE=true
-UNIFI_PERMISSIONS_CREDENTIALS_CREATE=true
-UNIFI_PERMISSIONS_VISITORS_DELETE=true
+UNIFI_POLICY_ACCESS_DOORS_UPDATE=true
+UNIFI_POLICY_ACCESS_CREDENTIALS_CREATE=true
+UNIFI_POLICY_ACCESS_VISITORS_DELETE=true
+# Or server-wide:
+UNIFI_POLICY_ACCESS_UPDATE=true
 ```
 
 ## Tool Categories
