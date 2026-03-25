@@ -1,4 +1,4 @@
-# Network Server Tool Reference (97 tools)
+# Network Server Tool Reference (105 tools)
 
 Complete reference for `unifi_*` tools. All read tools are always available. Mutating tools require permissions (see main skill for details).
 
@@ -43,7 +43,7 @@ Always available, regardless of registration mode.
 
 | Tool | Type | Description |
 |------|------|-------------|
-| `unifi_get_client_details` | Read | Returns the full raw client object for one client by MAC address â€” includes all controller-reported fields: IP, hostname, connection stat... |
+| `unifi_get_client_details` | Read | Returns the full raw client object for one client by MAC address — includes all controller-reported fields: IP, hostname, connection stat... |
 | `unifi_list_blocked_clients` | Read | List clients/devices that are currently blocked from the network |
 | `unifi_list_clients` | Read | Returns connected clients with MAC, name, hostname, IP, connection type (wired/wireless), and for wireless clients: SSID, signal dBm, cha... |
 | `unifi_lookup_by_ip` | Read | Quick IP-to-hostname lookup. |
@@ -70,7 +70,7 @@ Always available, regardless of registration mode.
 
 | Tool | Type | Description |
 |------|------|-------------|
-| `unifi_get_device_details` | Read | Returns the full raw device object for one device by MAC address â€” includes radio tables, port tables, system stats, WAN info, firmware d... |
+| `unifi_get_device_details` | Read | Returns the full raw device object for one device by MAC address — includes radio tables, port tables, system stats, WAN info, firmware d... |
 | `unifi_get_device_radio` | Read | Get radio configuration and live statistics for an access point. |
 | `unifi_list_devices` | Read | Returns adopted device inventory with MAC, name, model, IP, firmware version, uptime, status (online/offline/upgrading/etc), device_categ... |
 | `unifi_adopt_device` | Mutate | Adopt a pending device into the Unifi Network by MAC address |
@@ -262,6 +262,48 @@ Always available, regardless of registration mode.
 
 ---
 
+## OON Policies
+
+<!-- AUTO:tools:oon -->
+6 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `unifi_get_oon_policy_details` | Read | Get detailed configuration for a specific OON policy by ID. |
+| `unifi_list_oon_policies` | Read | List OON (Object-Oriented Network) policies. |
+| `unifi_create_oon_policy` | Mutate | Create a new OON (Object-Oriented Network) policy. |
+| `unifi_delete_oon_policy` | Mutate | Delete an OON policy. |
+| `unifi_toggle_oon_policy` | Mutate | Toggle an OON policy on or off. |
+| `unifi_update_oon_policy` | Mutate | Update an existing OON policy. |
+<!-- /AUTO:tools:oon -->
+
+**Tips:**
+- OON policies control internet scheduling (bedtime blackouts), app blocking, QoS, and VPN routing
+- Policies can target specific MACs (target_type=CLIENTS) or client groups (target_type=GROUPS)
+- Use `unifi_toggle_oon_policy` for quick enable/disable without sending the full object
+- Delete requires `UNIFI_PERMISSIONS_OON_POLICIES_DELETE=true`
+
+---
+
+## DPI Application Lookup
+
+<!-- AUTO:tools:dpi -->
+2 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `unifi_list_dpi_applications` | Read | List DPI applications available for use in firewall rules and OON policies. |
+| `unifi_list_dpi_categories` | Read | List DPI application categories (e.g., 'Instant messengers', 'Peer-to-peer networks', 'Media streaming services'). |
+<!-- /AUTO:tools:dpi -->
+
+**Tips:**
+- Requires `UNIFI_API_KEY` or `UNIFI_NETWORK_API_KEY` (official integration API)
+- As of Network App 10.1.85, only categories 0-1 (IM, P2P) are populated (~2,100 apps)
+- Categories 4+ (streaming, social media) are not yet available â€” add via UI and read back IDs
+- Use `search` parameter on `unifi_list_dpi_applications` for name-based lookup
+
+---
+
 ## Events & Alarms
 
 <!-- AUTO:tools:events -->
@@ -345,7 +387,7 @@ Always available, regardless of registration mode.
 
 | Tool | Type | Description |
 |------|------|-------------|
-| `unifi_get_network_health` | Read | Returns per-subsystem health status for WAN, LAN, WLAN, and VPN â€” each with status, number of gateways/switches/APs, and active user counts. |
+| `unifi_get_network_health` | Read | Returns per-subsystem health status for WAN, LAN, WLAN, and VPN — each with status, number of gateways/switches/APs, and active user counts. |
 | `unifi_get_site_settings` | Read | Get current site settings (e.g., country code, timezone, connectivity monitoring). |
 | `unifi_get_snmp_settings` | Read | Get current SNMP settings for the site (enabled state, community string). |
 | `unifi_get_system_info` | Read | Returns controller version, uptime, hostname, memory/CPU usage, and update availability. |

@@ -31,7 +31,9 @@ server:
   #     - events         # Events and alarms
   #     - acl            # MAC ACL rules (Policy Engine, Layer 2 access control)
   #     - client_groups  # Client groups (network member groups for OON policies)
+  #     - dpi            # DPI application/category lookup (requires API key)
   #     - firewall       # Firewall rules and groups
+  #     - oon            # OON policies (internet scheduling, app blocking, QoS, routing)
   #     - hotspot        # Vouchers for guest network
   #     - network        # Network/VLAN management
   #     - port_forwards  # Port forwarding rules

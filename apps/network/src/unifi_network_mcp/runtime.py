@@ -31,11 +31,13 @@ from unifi_network_mcp.managers.acl_manager import AclManager
 from unifi_network_mcp.managers.client_group_manager import ClientGroupManager
 from unifi_network_mcp.managers.client_manager import ClientManager
 from unifi_network_mcp.managers.connection_manager import ConnectionManager
+from unifi_network_mcp.managers.dpi_manager import DpiManager
 from unifi_network_mcp.managers.device_manager import DeviceManager
 from unifi_network_mcp.managers.event_manager import EventManager
 from unifi_network_mcp.managers.firewall_manager import FirewallManager
 from unifi_network_mcp.managers.hotspot_manager import HotspotManager
 from unifi_network_mcp.managers.network_manager import NetworkManager
+from unifi_network_mcp.managers.oon_manager import OonManager
 from unifi_network_mcp.managers.qos_manager import QosManager
 from unifi_network_mcp.managers.routing_manager import RoutingManager
 from unifi_network_mcp.managers.stats_manager import StatsManager
@@ -169,6 +171,11 @@ def get_client_manager() -> ClientManager:
 
 
 @lru_cache
+def get_dpi_manager() -> DpiManager:
+    return DpiManager(get_connection_manager(), get_auth())
+
+
+@lru_cache
 def get_device_manager() -> DeviceManager:
     return DeviceManager(get_connection_manager())
 
@@ -191,6 +198,11 @@ def get_vpn_manager() -> VpnManager:
 @lru_cache
 def get_network_manager() -> NetworkManager:
     return NetworkManager(get_connection_manager())
+
+
+@lru_cache
+def get_oon_manager() -> OonManager:
+    return OonManager(get_connection_manager())
 
 
 @lru_cache
@@ -248,11 +260,13 @@ connection_manager = get_connection_manager()
 acl_manager = get_acl_manager()
 client_group_manager = get_client_group_manager()
 client_manager = get_client_manager()
+dpi_manager = get_dpi_manager()
 device_manager = get_device_manager()
 stats_manager = get_stats_manager()
 qos_manager = get_qos_manager()
 vpn_manager = get_vpn_manager()
 network_manager = get_network_manager()
+oon_manager = get_oon_manager()
 system_manager = get_system_manager()
 firewall_manager = get_firewall_manager()
 event_manager = get_event_manager()
