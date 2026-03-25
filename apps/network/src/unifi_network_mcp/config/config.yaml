@@ -47,7 +47,7 @@ server:
   # enabled_tools: Only register these specific tools (use with enabled_categories or alone)
   #   Example: "unifi_list_clients,unifi_list_devices" or ["unifi_list_clients", "unifi_list_devices"]
   #
-  # Note: Tools may also be filtered by the permissions section below (e.g., update: false)
+  # Note: Tools may also be filtered by policy gates (UNIFI_POLICY_ env vars)
   # If neither is set, all tools are registered (default behavior)
   enabled_categories: ${oc.env:UNIFI_ENABLED_CATEGORIES,null}
   enabled_tools: ${oc.env:UNIFI_ENABLED_TOOLS,null}
@@ -61,95 +61,10 @@ server:
     log_tool_args: ${oc.env:UNIFI_MCP_DIAG_LOG_TOOL_ARGS,true}
     log_tool_result: ${oc.env:UNIFI_MCP_DIAG_LOG_TOOL_RESULT,true}
     max_payload_chars: ${oc.env:UNIFI_MCP_DIAG_MAX_PAYLOAD,2000}
-  
-permissions:
 
-  default:
-    create: true
-    update: true
-    delete: false
-
-  acl_rules:
-    create: true
-    update: true
-    delete: false
-
-  client_groups:
-    create: true
-    update: true
-    delete: false
-
-  firewall_policies:
-    create: true
-    update: true
-    delete: false
-
-  traffic_routes:
-    create: true
-    update: true
-    delete: false
-
-  port_forwards:
-    create: true
-    update: true
-    delete: false
-
-  qos_rules:
-    create: true
-    update: true
-    delete: false
-
-  vpn_clients:
-    create: true
-    update: true
-    delete: false
-
-  networks:
-    create: false  # Provisioning a new network can disrupt traffic
-    update: false  # Changing subnets, VLANs, DHCP ranges requires care
-    delete: false
-
-  wlans:
-    create: false
-    update: false
-    delete: false
-
-  devices:
-    create: false  # Adoption / provisioning – normally handled by controller, not tools
-    update: false  # Firmware upgrade, rename, radio config, etc.
-    delete: false
-
-  clients:
-    create: false  # Not applicable, but kept for symmetry
-    update: false  # Block/unblock, rename, reconnect
-    delete: false
-
-  vpn_servers:
-    create: false
-    update: true
-    delete: false
-
-  events:
-    create: false  # Events are read-only
-    update: true   # Allow archiving alarms
-    delete: false
-
-  vouchers:
-    create: true   # Allow creating guest vouchers
-    update: true   # Allow revoking vouchers
-    delete: false
-
-  usergroups:
-    create: true   # Allow creating bandwidth profiles
-    update: true   # Allow modifying bandwidth limits
-    delete: false
-
-  routes:
-    create: false  # Static routes can disrupt connectivity
-    update: false  # Modifying routes requires careful planning
-    delete: false
-
-  snmp:
-    create: false  # Not applicable
-    update: true   # Allow enabling/disabling SNMP and changing community
-    delete: false
+# Permissions are controlled via environment variables:
+#   UNIFI_TOOL_PERMISSION_MODE=confirm|bypass (default: confirm)
+#   UNIFI_POLICY_<ACTION>=true|false (global policy gates)
+#   UNIFI_POLICY_<SERVER>_<ACTION>=true|false (per-server)
+#   UNIFI_POLICY_<SERVER>_<CATEGORY>_<ACTION>=true|false (per-category)
+# See documentation for details.
