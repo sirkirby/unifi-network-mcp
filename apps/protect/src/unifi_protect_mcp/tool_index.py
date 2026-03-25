@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from unifi_mcp_shared.permissions import PermissionChecker
 from unifi_mcp_shared.tool_index import (
     TOOL_REGISTRY,
     ToolMetadata,
@@ -20,8 +21,17 @@ def get_tool_index():
         registration_mode = UNIFI_TOOL_REGISTRATION_MODE
     except ImportError:
         registration_mode = "lazy"
+
+    from unifi_protect_mcp.categories import PROTECT_CATEGORY_MAP
+    from unifi_protect_mcp.runtime import config
+
+    checker = PermissionChecker(category_map=PROTECT_CATEGORY_MAP, permissions=config.permissions)
     manifest_path = Path(__file__).parent / "tools_manifest.json"
-    return _get_tool_index(registration_mode=registration_mode, manifest_path=manifest_path)
+    return _get_tool_index(
+        registration_mode=registration_mode,
+        manifest_path=manifest_path,
+        permission_checker=checker,
+    )
 
 
 async def tool_index_handler(args=None):
