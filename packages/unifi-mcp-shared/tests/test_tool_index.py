@@ -189,6 +189,81 @@ class TestGetToolIndex:
         index = get_tool_index(registration_mode="lazy", manifest_path=manifest_path)
         assert index["tools"][0]["annotations"] == {"readOnlyHint": True}
 
+    def test_eager_mode_filters_denied_tools(self):
+        """Tools denied by permission checker should be excluded from index."""
+        from unittest.mock import MagicMock
+
+        register_tool(name="read_tool", description="Read only")
+        register_tool(
+            name="update_tool",
+            description="Update network",
+            permission_category="networks",
+            permission_action="update",
+        )
+        register_tool(
+            name="create_tool",
+            description="Create network",
+            permission_category="networks",
+            permission_action="create",
+        )
+
+        checker = MagicMock()
+        checker.check = MagicMock(side_effect=lambda cat, act: act != "update")
+
+        index = get_tool_index(registration_mode="eager", permission_checker=checker)
+        names = {t["name"] for t in index["tools"]}
+        assert "read_tool" in names  # no permission metadata = always included
+        assert "create_tool" in names  # create allowed
+        assert "update_tool" not in names  # update denied
+        assert index["count"] == 2
+
+    def test_lazy_mode_filters_denied_tools_from_manifest(self, tmp_path):
+        """Manifest tools denied by permission checker should be excluded."""
+        from unittest.mock import MagicMock
+
+        manifest = {
+            "tools": [
+                {"name": "read_tool", "description": "Read only"},
+                {
+                    "name": "update_tool",
+                    "description": "Update network",
+                    "permission_category": "networks",
+                    "permission_action": "update",
+                },
+                {
+                    "name": "allowed_tool",
+                    "description": "Allowed mutation",
+                    "permission_category": "firewall",
+                    "permission_action": "create",
+                },
+            ],
+            "count": 3,
+        }
+        manifest_path = tmp_path / "tools_manifest.json"
+        manifest_path.write_text(json.dumps(manifest))
+
+        checker = MagicMock()
+        checker.check = MagicMock(side_effect=lambda cat, act: not (cat == "networks" and act == "update"))
+
+        index = get_tool_index(registration_mode="lazy", manifest_path=manifest_path, permission_checker=checker)
+        names = {t["name"] for t in index["tools"]}
+        assert "read_tool" in names
+        assert "allowed_tool" in names
+        assert "update_tool" not in names
+        assert index["count"] == 2
+
+    def test_no_permission_checker_returns_all(self):
+        """Without a permission checker, all tools are returned (backward compat)."""
+        register_tool(name="read_tool", description="Read only")
+        register_tool(
+            name="denied_tool",
+            description="Would be denied",
+            permission_category="networks",
+            permission_action="update",
+        )
+        index = get_tool_index(registration_mode="eager")
+        assert index["count"] == 2
+
 
 class TestToolMetadataAnnotations:
     """Tests for annotations field in ToolMetadata."""
