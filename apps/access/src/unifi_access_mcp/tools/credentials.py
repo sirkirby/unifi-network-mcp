@@ -11,7 +11,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_access_mcp.runtime import credential_manager, server
-from unifi_mcp_shared.confirmation import create_preview, preview_response, should_auto_confirm
+from unifi_mcp_shared.confirmation import create_preview, preview_response
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ async def access_create_credential(
         if not credential_data:
             return {"success": False, "error": "No credential data provided."}
 
-        if confirm or should_auto_confirm():
+        if confirm:
             result = await credential_manager.apply_create_credential(credential_type, credential_data)
             return {"success": True, "data": result}
 
@@ -141,7 +141,7 @@ async def access_revoke_credential(
     """Revoke a credential with preview/confirm."""
     logger.info("access_revoke_credential tool called for %s (confirm=%s)", credential_id, confirm)
     try:
-        if confirm or should_auto_confirm():
+        if confirm:
             result = await credential_manager.apply_revoke_credential(credential_id)
             return {"success": True, "data": result}
 

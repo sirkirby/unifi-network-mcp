@@ -11,7 +11,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_access_mcp.runtime import device_manager, server
-from unifi_mcp_shared.confirmation import preview_response, should_auto_confirm
+from unifi_mcp_shared.confirmation import preview_response
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ async def access_reboot_device(
     """Reboot a device with preview/confirm."""
     logger.info("access_reboot_device tool called for %s (confirm=%s)", device_id, confirm)
     try:
-        if confirm or should_auto_confirm():
+        if confirm:
             result = await device_manager.apply_reboot_device(device_id)
             return {"success": True, "data": result}
 

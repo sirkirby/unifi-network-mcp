@@ -10,7 +10,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_access_mcp.runtime import server, visitor_manager
-from unifi_mcp_shared.confirmation import create_preview, preview_response, should_auto_confirm
+from unifi_mcp_shared.confirmation import create_preview, preview_response
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ async def access_create_visitor(
         if phone:
             extra["phone"] = phone
 
-        if confirm or should_auto_confirm():
+        if confirm:
             result = await visitor_manager.apply_create_visitor(
                 name=name,
                 access_start=access_start,
@@ -152,7 +152,7 @@ async def access_delete_visitor(
     """Delete a visitor pass with preview/confirm."""
     logger.info("access_delete_visitor tool called for %s (confirm=%s)", visitor_id, confirm)
     try:
-        if confirm or should_auto_confirm():
+        if confirm:
             result = await visitor_manager.apply_delete_visitor(visitor_id)
             return {"success": True, "data": result}
 
