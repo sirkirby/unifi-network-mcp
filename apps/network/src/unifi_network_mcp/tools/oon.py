@@ -92,9 +92,6 @@ async def get_oon_policy_details(
     Returns:
         A dictionary containing the full policy configuration.
     """
-    if not parse_permission(config.permissions, "oon_policy", "read"):
-        return {"success": False, "error": "Permission denied to get OON policy details."}
-
     try:
         if not policy_id:
             return {"success": False, "error": "policy_id is required"}

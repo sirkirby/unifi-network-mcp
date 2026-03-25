@@ -111,8 +111,16 @@
   "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
   "tools": [
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Adopt a pending device into the Unifi Network by MAC address",
       "name": "unifi_adopt_device",
+      "permission_action": "create",
+      "permission_category": "devices",
       "schema": {
         "input": {
           "properties": {
@@ -141,6 +149,8 @@
       },
       "description": "Archive (resolve/dismiss) a specific alarm by its ID",
       "name": "unifi_archive_alarm",
+      "permission_action": "update",
+      "permission_category": "events",
       "schema": {
         "input": {
           "properties": {
@@ -169,6 +179,8 @@
       },
       "description": "Archive (resolve/dismiss) all active alarms",
       "name": "unifi_archive_all_alarms",
+      "permission_action": "update",
+      "permission_category": "events",
       "schema": {
         "input": {
           "properties": {
@@ -182,8 +194,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Authorize a guest client to access the guest network by MAC address",
       "name": "unifi_authorize_guest",
+      "permission_action": "update",
+      "permission_category": "clients",
       "schema": {
         "input": {
           "properties": {
@@ -220,8 +240,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Block a client/device from the network by MAC address",
       "name": "unifi_block_client",
+      "permission_action": "update",
+      "permission_category": "clients",
       "schema": {
         "input": {
           "properties": {
@@ -250,6 +278,8 @@
       },
       "description": "Create a new MAC ACL rule for Layer 2 access control within a VLAN. Requires confirmation. IMPORTANT: traffic_source and traffic_destination type MUST be 'CLIENT_MAC' (not 'ANY'). Use an empty specific_mac_addresses list to match any device.",
       "name": "unifi_create_acl_rule",
+      "permission_action": "create",
+      "permission_category": "acl_rules",
       "schema": {
         "input": {
           "properties": {
@@ -301,6 +331,8 @@
       },
       "description": "Create a new client group (network member group). Groups organize devices by MAC address for use in OON policies and firewall rules. Requires confirmation.",
       "name": "unifi_create_client_group",
+      "permission_action": "create",
+      "permission_category": "client_group",
       "schema": {
         "input": {
           "properties": {
@@ -334,6 +366,8 @@
       },
       "description": "Create a new firewall policy with schema validation. Supports both legacy ruleset-based policies (action: accept/drop/reject) and zone-based policies (action: ALLOW/BLOCK/REJECT with source/destination zone_id targeting). Format is auto-detected from the policy_data structure.",
       "name": "unifi_create_firewall_policy",
+      "permission_action": "create",
+      "permission_category": "firewall_policies",
       "schema": {
         "input": {
           "properties": {
@@ -354,8 +388,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Create a new network (LAN/VLAN) with schema validation. Requires confirmation.",
       "name": "unifi_create_network",
+      "permission_action": "create",
+      "permission_category": "networks",
       "schema": {
         "input": {
           "properties": {
@@ -384,6 +426,8 @@
       },
       "description": "Create a new OON (Object-Oriented Network) policy. Policies can block internet access on a schedule, block specific apps, apply QoS limits, or route traffic via VPN. Targets can be specific client MACs (target_type='CLIENTS') or client group IDs (target_type='GROUPS'). IMPORTANT: The policy_data must include complete qos and route objects (including mode, apps, domains, ip_addresses, regions fields) even if disabled. Use unifi_get_oon_policy_details on an existing policy as a template. Requires confirmation.",
       "name": "unifi_create_oon_policy",
+      "permission_action": "create",
+      "permission_category": "oon_policy",
       "schema": {
         "input": {
           "properties": {
@@ -412,6 +456,8 @@
       },
       "description": "Create a new port forwarding rule on your Unifi Network controller using schema validation.",
       "name": "unifi_create_port_forward",
+      "permission_action": "create",
+      "permission_category": "port_forwards",
       "schema": {
         "input": {
           "properties": {
@@ -436,6 +482,8 @@
       },
       "description": "Create a new QoS rule on the Unifi Network controller. Requires confirmation.",
       "name": "unifi_create_qos_rule",
+      "permission_action": "create",
+      "permission_category": "qos_rules",
       "schema": {
         "input": {
           "properties": {
@@ -456,8 +504,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Create a new static route for advanced routing configuration.\n\nSpecify destination network in CIDR format (e.g., \"10.0.0.0/24\") and\nnext-hop IP address (e.g., \"192.168.1.1\").",
       "name": "unifi_create_route",
+      "permission_action": "create",
+      "permission_category": "routes",
       "schema": {
         "input": {
           "properties": {
@@ -504,6 +560,8 @@
       },
       "description": "Create a firewall policy using a simplified high-level schema. Accepts friendly src/dst selectors and returns a preview unless confirm=true.",
       "name": "unifi_create_simple_firewall_policy",
+      "permission_action": "create",
+      "permission_category": "firewall_policies",
       "schema": {
         "input": {
           "properties": {
@@ -532,6 +590,8 @@
       },
       "description": "Create a port forward using a simplified schema. Returns a preview unless confirm=true.",
       "name": "unifi_create_simple_port_forward",
+      "permission_action": "create",
+      "permission_category": "port_forwards",
       "schema": {
         "input": {
           "properties": {
@@ -560,6 +620,8 @@
       },
       "description": "Create a QoS rule using a simplified high-level schema. Returns a preview unless confirm=true.",
       "name": "unifi_create_simple_qos_rule",
+      "permission_action": "create",
+      "permission_category": "qos_rules",
       "schema": {
         "input": {
           "properties": {
@@ -588,6 +650,8 @@
       },
       "description": "Create a new user group (bandwidth profile) with optional speed limits.\n\nBandwidth limits are specified in Kbps. Use -1 for unlimited.\nUser groups can be assigned to clients to enforce bandwidth policies.",
       "name": "unifi_create_usergroup",
+      "permission_action": "create",
+      "permission_category": "usergroups",
       "schema": {
         "input": {
           "properties": {
@@ -624,6 +688,8 @@
       },
       "description": "Create hotspot voucher(s) for guest network access.\n\nVouchers can have:\n- Time limits: How long the voucher is valid after activation\n- Usage quota: Single-use (1), multi-use (0), or n-times usable\n- Bandwidth limits: Upload/download speed caps in Kbps\n- Data caps: Total data transfer limit in MB",
       "name": "unifi_create_voucher",
+      "permission_action": "create",
+      "permission_category": "vouchers",
       "schema": {
         "input": {
           "properties": {
@@ -665,8 +731,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Create a new Wireless LAN (WLAN/SSID) with schema validation. Requires confirmation.",
       "name": "unifi_create_wlan",
+      "permission_action": "create",
+      "permission_category": "wlans",
       "schema": {
         "input": {
           "properties": {
@@ -687,8 +761,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Delete a MAC ACL rule. Requires confirmation. WARNING: Removing an ALLOW rule may block device communication. Removing a BLOCK rule may open access.",
       "name": "unifi_delete_acl_rule",
+      "permission_action": "delete",
+      "permission_category": "acl_rules",
       "schema": {
         "input": {
           "properties": {
@@ -709,8 +791,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Delete a client group. Requires confirmation. WARNING: Deleting a group may affect OON policies and firewall rules that reference it.",
       "name": "unifi_delete_client_group",
+      "permission_action": "delete",
+      "permission_category": "client_group",
       "schema": {
         "input": {
           "properties": {
@@ -731,8 +821,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Delete a firewall policy by ID. Requires confirmation. WARNING: Removing an ALLOW rule may block traffic. Removing a BLOCK rule may open access.",
       "name": "unifi_delete_firewall_policy",
+      "permission_action": "delete",
+      "permission_category": "firewall_policies",
       "schema": {
         "input": {
           "properties": {
@@ -753,8 +851,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Delete an OON policy. Requires confirmation. WARNING: This will remove the policy and all associated firewall rules that were auto-generated from it.",
       "name": "unifi_delete_oon_policy",
+      "permission_action": "delete",
+      "permission_category": "oon_policy",
       "schema": {
         "input": {
           "properties": {
@@ -775,8 +881,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Force a client to reconnect to the network (kick) by MAC address",
       "name": "unifi_force_reconnect_client",
+      "permission_action": "update",
+      "permission_category": "clients",
       "schema": {
         "input": {
           "properties": {
@@ -1814,8 +1928,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Reboot a specific device by MAC address",
       "name": "unifi_reboot_device",
+      "permission_action": "update",
+      "permission_category": "devices",
       "schema": {
         "input": {
           "properties": {
@@ -1844,6 +1966,8 @@
       },
       "description": "Rename a client/device in the Unifi Network controller by MAC address",
       "name": "unifi_rename_client",
+      "permission_action": "update",
+      "permission_category": "clients",
       "schema": {
         "input": {
           "properties": {
@@ -1869,8 +1993,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Rename a device in the Unifi Network controller by MAC address",
       "name": "unifi_rename_device",
+      "permission_action": "update",
+      "permission_category": "devices",
       "schema": {
         "input": {
           "properties": {
@@ -1896,8 +2028,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Revoke/delete a hotspot voucher by its ID, preventing further use",
       "name": "unifi_revoke_voucher",
+      "permission_action": "delete",
+      "permission_category": "vouchers",
       "schema": {
         "input": {
           "properties": {
@@ -1918,8 +2058,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Set fixed IP address and/or local DNS record for a client device.\n\nAllows configuring:\n- Fixed IP: Assign a static IP address to a client (DHCP reservation)\n- Local DNS: Create a local DNS hostname for the client (UniFi Network 7.2+)\n\nEither setting can be enabled/disabled independently.",
       "name": "unifi_set_client_ip_settings",
+      "permission_action": "update",
+      "permission_category": "clients",
       "schema": {
         "input": {
           "properties": {
@@ -1964,6 +2112,8 @@
       },
       "description": "Enable or disable a specific firewall policy by ID.",
       "name": "unifi_toggle_firewall_policy",
+      "permission_action": "update",
+      "permission_category": "firewall_policies",
       "schema": {
         "input": {
           "properties": {
@@ -1992,6 +2142,8 @@
       },
       "description": "Toggle an OON policy on or off. Fetches the current state, flips the enabled flag, and sends the update. Requires confirmation.",
       "name": "unifi_toggle_oon_policy",
+      "permission_action": "update",
+      "permission_category": "oon_policy",
       "schema": {
         "input": {
           "properties": {
@@ -2020,6 +2172,8 @@
       },
       "description": "Toggle a port forwarding rule on or off on your Unifi Network controller.",
       "name": "unifi_toggle_port_forward",
+      "permission_action": "update",
+      "permission_category": "port_forwards",
       "schema": {
         "input": {
           "properties": {
@@ -2048,6 +2202,8 @@
       },
       "description": "Enable or disable a specific QoS rule by ID. Requires confirmation.",
       "name": "unifi_toggle_qos_rule_enabled",
+      "permission_action": "update",
+      "permission_category": "qos_rules",
       "schema": {
         "input": {
           "properties": {
@@ -2076,6 +2232,8 @@
       },
       "description": "Toggle a traffic route on/off by ID.",
       "name": "unifi_toggle_traffic_route",
+      "permission_action": "update",
+      "permission_category": "traffic_routes",
       "schema": {
         "input": {
           "properties": {
@@ -2096,8 +2254,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Revoke authorization for a guest client by MAC address",
       "name": "unifi_unauthorize_guest",
+      "permission_action": "update",
+      "permission_category": "clients",
       "schema": {
         "input": {
           "properties": {
@@ -2118,8 +2284,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Unblock a previously blocked client/device by MAC address",
       "name": "unifi_unblock_client",
+      "permission_action": "update",
+      "permission_category": "clients",
       "schema": {
         "input": {
           "properties": {
@@ -2148,6 +2322,8 @@
       },
       "description": "Update an existing MAC ACL rule. Requires the full rule object (PUT replaces entire resource). Requires confirmation. IMPORTANT: traffic source/destination type MUST be 'CLIENT_MAC' (not 'ANY').",
       "name": "unifi_update_acl_rule",
+      "permission_action": "update",
+      "permission_category": "acl_rules",
       "schema": {
         "input": {
           "properties": {
@@ -2181,6 +2357,8 @@
       },
       "description": "Update an existing client group. Requires the full group object (PUT replaces entire resource). Requires confirmation.",
       "name": "unifi_update_client_group",
+      "permission_action": "update",
+      "permission_category": "client_group",
       "schema": {
         "input": {
           "properties": {
@@ -2206,8 +2384,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Update radio settings for a specific band on an access point. Supports tx_power_mode, tx_power (custom dBm), channel, ht (channel width), min_rssi_enabled, and min_rssi. Use unifi_get_device_radio first to see current settings.",
       "name": "unifi_update_device_radio",
+      "permission_action": "update",
+      "permission_category": "devices",
       "schema": {
         "input": {
           "properties": {
@@ -2265,6 +2451,8 @@
       },
       "description": "Update specific fields of an existing firewall policy by ID. Supports both legacy fields (ruleset, action as accept/drop/reject) and zone-based fields (source, destination, action as ALLOW/BLOCK/REJECT, ip_version, etc.).",
       "name": "unifi_update_firewall_policy",
+      "permission_action": "update",
+      "permission_category": "firewall_policies",
       "schema": {
         "input": {
           "properties": {
@@ -2290,8 +2478,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Update specific fields of an existing network (LAN/VLAN). Requires confirmation. Note: Network isolation is only supported on 'corporate' networks, not 'guest' networks.",
       "name": "unifi_update_network",
+      "permission_action": "update",
+      "permission_category": "networks",
       "schema": {
         "input": {
           "properties": {
@@ -2325,6 +2521,8 @@
       },
       "description": "Update an existing OON policy. Requires the full policy object (PUT replaces entire resource). Use unifi_get_oon_policy_details to fetch the current object, modify it, and send back. Requires confirmation.",
       "name": "unifi_update_oon_policy",
+      "permission_action": "update",
+      "permission_category": "oon_policy",
       "schema": {
         "input": {
           "properties": {
@@ -2358,6 +2556,8 @@
       },
       "description": "Update specific fields of an existing port forwarding rule using schema validation. Requires confirmation.",
       "name": "unifi_update_port_forward",
+      "permission_action": "update",
+      "permission_category": "port_forwards",
       "schema": {
         "input": {
           "properties": {
@@ -2391,6 +2591,8 @@
       },
       "description": "Update specific fields of an existing QoS rule. Requires confirmation.",
       "name": "unifi_update_qos_rule",
+      "permission_action": "update",
+      "permission_category": "qos_rules",
       "schema": {
         "input": {
           "properties": {
@@ -2416,8 +2618,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Update an existing static route's properties.\n\nCan modify name, destination network, next-hop, distance, or enabled status.",
       "name": "unifi_update_route",
+      "permission_action": "update",
+      "permission_category": "routes",
       "schema": {
         "input": {
           "properties": {
@@ -2466,6 +2676,8 @@
       },
       "description": "Update SNMP settings for the site (enable/disable, set community string). Requires confirm=true to apply changes.",
       "name": "unifi_update_snmp_settings",
+      "permission_action": "update",
+      "permission_category": "snmp",
       "schema": {
         "input": {
           "properties": {
@@ -2498,6 +2710,8 @@
       },
       "description": "Update a traffic route's settings.\n\nCan update:\n- enabled: Enable or disable the traffic route\n- kill_switch_enabled: Enable/disable the kill switch (blocks traffic if VPN is down)\n\nAt least one parameter must be provided.",
       "name": "unifi_update_traffic_route",
+      "permission_action": "update",
+      "permission_category": "traffic_routes",
       "schema": {
         "input": {
           "properties": {
@@ -2534,6 +2748,8 @@
       },
       "description": "Update an existing user group's name or bandwidth limits.\n\nUse -1 for unlimited bandwidth. Changes affect all clients assigned to this group.",
       "name": "unifi_update_usergroup",
+      "permission_action": "update",
+      "permission_category": "usergroups",
       "schema": {
         "input": {
           "properties": {
@@ -2574,6 +2790,8 @@
       },
       "description": "Enable or disable a specific VPN client by ID.",
       "name": "unifi_update_vpn_client_state",
+      "permission_action": "update",
+      "permission_category": "vpn_clients",
       "schema": {
         "input": {
           "properties": {
@@ -2603,6 +2821,8 @@
       },
       "description": "Enable or disable a specific VPN server by ID.",
       "name": "unifi_update_vpn_server_state",
+      "permission_action": "update",
+      "permission_category": "vpn_servers",
       "schema": {
         "input": {
           "properties": {
@@ -2624,8 +2844,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Update specific fields of an existing WLAN (SSID). Requires confirmation.",
       "name": "unifi_update_wlan",
+      "permission_action": "update",
+      "permission_category": "wlans",
       "schema": {
         "input": {
           "properties": {
@@ -2651,8 +2879,16 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Initiate a firmware upgrade for a device by MAC address (uses cached firmware by default)",
       "name": "unifi_upgrade_device",
+      "permission_action": "update",
+      "permission_category": "devices",
       "schema": {
         "input": {
           "properties": {
