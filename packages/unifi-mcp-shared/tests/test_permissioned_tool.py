@@ -171,6 +171,26 @@ class TestCreatePermissionedTool:
         assert result == {"success": True}
         assert received_kwargs["confirm"] is True
 
+    def test_bypass_mode_respects_explicit_confirm_false(self, mock_deps):
+        """In bypass mode, explicit confirm=False from caller is NOT overridden."""
+        mock_deps["policy_gate_checker"].check.return_value = True
+        pt = _create_pt(mock_deps)
+
+        received_kwargs = {}
+
+        @pt(name="mut_tool", description="test", permission_category="cat", permission_action="create")
+        async def mut_tool(name: str, confirm: bool = False):
+            received_kwargs.update({"confirm": confirm, "name": name})
+            return {"success": True}
+
+        with patch("unifi_mcp_shared.permissioned_tool.resolve_permission_mode", return_value="bypass"):
+            result = asyncio.run(
+                mock_deps["mcp_registered"]["mut_tool"](name="test", confirm=False)
+            )
+
+        assert result == {"success": True}
+        assert received_kwargs["confirm"] is False  # Explicit False preserved
+
     def test_confirm_mode_does_not_inject(self, mock_deps):
         """In confirm mode, confirm is NOT modified."""
         mock_deps["policy_gate_checker"].check.return_value = True

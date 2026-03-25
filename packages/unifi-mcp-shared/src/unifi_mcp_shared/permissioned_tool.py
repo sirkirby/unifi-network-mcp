@@ -145,11 +145,12 @@ def create_permissioned_tool(
                     return {"success": False, "error": policy_gate_checker.denial_message(category, action)}
 
                 # 2. Bypass injection — only for mutation actions with confirm param
+                #    Only inject if caller didn't explicitly provide confirm
                 if action.lower() != "read":
                     mode = resolve_permission_mode(server_prefix)
                     if mode == "bypass":
                         sig = inspect.signature(func)
-                        if "confirm" in sig.parameters:
+                        if "confirm" in sig.parameters and "confirm" not in kwargs:
                             kwargs["confirm"] = True
 
                 return await func(*args, **kwargs)

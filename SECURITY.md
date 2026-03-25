@@ -53,11 +53,11 @@ unifi-network-mcp is designed with a **secure-by-default** posture:
 
 ### Permission System
 
-- **Deny-by-default** for all mutations (create, update, delete)
-- **Delete operations require explicit opt-in** via environment variable or config
-- Read-only operations are allowed by default
-- Permissions are enforced at call time — all tools are always visible and discoverable in the tool index
-- Tools denied by permissions return an authorization error when called
+- **Confirm-by-default** for all mutations (create, update, delete) — human approval required before execution
+- **Policy gates** (`UNIFI_POLICY_*` env vars) provide hard boundaries to disable specific actions when needed
+- Read-only operations are always allowed
+- All tools are always visible and discoverable in the tool index — authorization is enforced at call time
+- Tools denied by policy gates return a clear error with guidance on how to enable
 
 ### Preview-Before-Confirm
 

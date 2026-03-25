@@ -49,22 +49,26 @@ Read-only tools (list, get, snapshots, streams, analytics) are always available 
 
 ## Common Scenarios
 
-### Read-only (default)
+### Zero config (default)
 
-No configuration needed. All read tools work without any policy variables set. Mutating tools are visible but blocked at call time.
+No configuration needed. All tools work — reads execute immediately, mutations require confirmation (preview-then-confirm). This is the safest default.
 
-### Camera and device control
+### Restrict to camera and device control only
 
 ```bash
+UNIFI_POLICY_PROTECT_CREATE=false
+UNIFI_POLICY_PROTECT_UPDATE=false
+UNIFI_POLICY_PROTECT_DELETE=false
 UNIFI_POLICY_PROTECT_CAMERAS_UPDATE=true
 UNIFI_POLICY_PROTECT_LIGHTS_UPDATE=true
 UNIFI_POLICY_PROTECT_CHIMES_UPDATE=true
 ```
 
-### Event acknowledgment only
+### Lock down deletes and creates
 
 ```bash
-UNIFI_POLICY_PROTECT_EVENTS_UPDATE=true
+UNIFI_POLICY_PROTECT_DELETE=false
+UNIFI_POLICY_PROTECT_CREATE=false
 ```
 
 ### Full bypass for automation

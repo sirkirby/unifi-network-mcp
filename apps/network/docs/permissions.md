@@ -54,13 +54,16 @@ Accepted values: `true`, `1`, `yes`, `on` (case-insensitive). Unset means the ne
 
 ## Common Scenarios
 
-### Read-only (default)
+### Zero config (default)
 
-No configuration needed. All read tools work without any policy variables set. Mutating tools are visible but blocked at call time.
+No configuration needed. All tools work — reads execute immediately, mutations require confirmation (preview-then-confirm). This is the safest default.
 
-### Allow firewall and routing changes, deny everything else
+### Restrict to firewall and routing changes only
 
 ```bash
+UNIFI_POLICY_NETWORK_CREATE=false
+UNIFI_POLICY_NETWORK_UPDATE=false
+UNIFI_POLICY_NETWORK_DELETE=false
 UNIFI_POLICY_NETWORK_FIREWALL_POLICIES_CREATE=true
 UNIFI_POLICY_NETWORK_FIREWALL_POLICIES_UPDATE=true
 UNIFI_POLICY_NETWORK_TRAFFIC_ROUTES_CREATE=true
@@ -69,12 +72,10 @@ UNIFI_POLICY_NETWORK_PORT_FORWARDS_CREATE=true
 UNIFI_POLICY_NETWORK_PORT_FORWARDS_UPDATE=true
 ```
 
-### Allow all network mutations except delete
+### Lock down deletes only
 
 ```bash
-UNIFI_POLICY_NETWORK_CREATE=true
-UNIFI_POLICY_NETWORK_UPDATE=true
-# UNIFI_POLICY_NETWORK_DELETE is intentionally unset (denied by default)
+UNIFI_POLICY_NETWORK_DELETE=false
 ```
 
 ### Full bypass for automation (no confirmations, all mutations)

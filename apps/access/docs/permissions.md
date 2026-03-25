@@ -49,19 +49,25 @@ Read-only tools (list, get, status, activity summaries) are always available wit
 
 ## Common Scenarios
 
-### Read-only (default)
+### Zero config (default)
 
-No configuration needed. All read tools work without any policy variables set. Mutating tools are visible but blocked at call time.
+No configuration needed. All tools work — reads execute immediately, mutations require confirmation (preview-then-confirm). This is the safest default.
 
-### Door control only
+### Restrict to door control only
 
 ```bash
+UNIFI_POLICY_ACCESS_CREATE=false
+UNIFI_POLICY_ACCESS_UPDATE=false
+UNIFI_POLICY_ACCESS_DELETE=false
 UNIFI_POLICY_ACCESS_DOORS_UPDATE=true
 ```
 
-### Visitor and credential management
+### Lock down everything except visitor and credential management
 
 ```bash
+UNIFI_POLICY_ACCESS_CREATE=false
+UNIFI_POLICY_ACCESS_UPDATE=false
+UNIFI_POLICY_ACCESS_DELETE=false
 UNIFI_POLICY_ACCESS_VISITORS_CREATE=true
 UNIFI_POLICY_ACCESS_VISITORS_DELETE=true
 UNIFI_POLICY_ACCESS_CREDENTIALS_CREATE=true
