@@ -145,8 +145,8 @@ If an anchor doesn't fit, ask. Do not invent new patterns.
 
 #### Modify the permission system
 
-1. Shared permission logic lives in `packages/unifi-mcp-shared/src/unifi_mcp_shared/permissions.py`
-   - **Anchor:** `packages/unifi-mcp-shared/src/unifi_mcp_shared/permissions.py` (PolicyGateChecker, resolve_permission_mode)
+1. Shared permission logic lives in `packages/unifi-mcp-shared/src/unifi_mcp_shared/policy_gate.py`
+   - **Anchor:** `packages/unifi-mcp-shared/src/unifi_mcp_shared/policy_gate.py` (PolicyGateChecker, resolve_permission_mode)
 2. Network-specific category mappings live in `NETWORK_CATEGORY_MAP` in `apps/network/src/unifi_network_mcp/categories.py`
 3. Enforcement happens in `apps/network/src/unifi_network_mcp/main.py:permissioned_tool` decorator (call-time authorization + bypass injection)
 4. Policy gates are configured via `UNIFI_POLICY_*` env vars (no config.yaml section)
@@ -496,7 +496,7 @@ make run-meta    # Meta-only mode
 | `packages/unifi-core/src/unifi_core/detection.py` | UniFi OS vs standalone detection |
 | `packages/unifi-core/src/unifi_core/retry.py` | Retry policies for transient failures |
 | `packages/unifi-core/src/unifi_core/exceptions.py` | Core exception types |
-| `packages/unifi-mcp-shared/src/unifi_mcp_shared/permissions.py` | PermissionChecker class |
+| `packages/unifi-mcp-shared/src/unifi_mcp_shared/policy_gate.py` | PolicyGateChecker, permission mode resolver |
 | `packages/unifi-mcp-shared/src/unifi_mcp_shared/confirmation.py` | Preview-then-confirm helpers |
 | `packages/unifi-mcp-shared/src/unifi_mcp_shared/meta_tools.py` | Meta-tools: tool_index, execute, batch |
 | `packages/unifi-mcp-shared/src/unifi_mcp_shared/lazy_tools.py` | LazyToolLoader, TOOL_MODULE_MAP builder |
