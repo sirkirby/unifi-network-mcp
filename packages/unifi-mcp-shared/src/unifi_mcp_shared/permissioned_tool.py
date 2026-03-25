@@ -124,7 +124,12 @@ def create_permissioned_tool(
                     output_schema=output_schema,
                     auth_method=resolved_auth,
                 )
-                return original_tool_decorator(*d_args, **d_kwargs)(func)
+                wrapped = (
+                    wrap_tool_fn(func, tool_name or getattr(func, "__name__", "<tool>"))
+                    if diagnostics_enabled_fn()
+                    else func
+                )
+                return original_tool_decorator(*d_args, **d_kwargs)(wrapped)
 
             # ALWAYS register in tool index (for discovery)
             register_tool_fn(

@@ -262,6 +262,24 @@ class TestCreatePermissionedTool:
 
         assert "diag_tool" in wrap_calls
 
+    def test_diagnostics_wrapping_applied_fast_path(self, mock_deps):
+        """When diagnostics enabled, wrap_tool_fn is also applied on the fast path (no permissions)."""
+        mock_deps["diagnostics_enabled_fn"] = lambda: True
+        wrap_calls = []
+
+        def tracking_wrap(func, name):
+            wrap_calls.append(name)
+            return func
+
+        mock_deps["wrap_tool_fn"] = tracking_wrap
+        pt = _create_pt(mock_deps)
+
+        @pt(name="simple_tool", description="test")
+        async def simple_tool():
+            return {"success": True}
+
+        assert "simple_tool" in wrap_calls
+
 
 class TestInferInputSchema:
     """Tests for _infer_input_schema."""
