@@ -33,7 +33,7 @@ _original_tool_decorator = getattr(server, "_original_tool", server.tool)
 setup_permissioned_tool(
     server=server,
     category_map=PROTECT_CATEGORY_MAP,
-    permissions=config.permissions,
+    server_prefix="protect",
     register_tool_fn=register_tool,
     diagnostics_enabled_fn=diagnostics_enabled,
     wrap_tool_fn=wrap_tool,
