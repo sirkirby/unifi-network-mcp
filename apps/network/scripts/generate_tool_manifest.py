@@ -168,6 +168,12 @@ def generate_manifest() -> dict[str, Any]:
         if tool_name in annotations_map:
             tool_data["annotations"] = annotations_map[tool_name]
 
+        # Include permission metadata for lazy-mode filtering
+        if meta.permission_category:
+            tool_data["permission_category"] = meta.permission_category
+        if meta.permission_action:
+            tool_data["permission_action"] = meta.permission_action
+
         tools.append(tool_data)
 
     # Build module map for fallback lazy loading

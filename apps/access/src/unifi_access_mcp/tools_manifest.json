@@ -37,6 +37,8 @@
     {
       "description": "Create a new access credential (NFC card, PIN, or mobile credential) and assign it to a user. Requires confirm=true to execute. Only available via local proxy session.",
       "name": "access_create_credential",
+      "permission_action": "create",
+      "permission_category": "credential",
       "schema": {
         "input": {
           "properties": {
@@ -64,6 +66,8 @@
     {
       "description": "Create a new visitor pass with a name and access time range. Optionally assign specific doors and contact information. Requires confirm=true to execute. Only available via local proxy session.",
       "name": "access_create_visitor",
+      "permission_action": "create",
+      "permission_category": "visitor",
       "schema": {
         "input": {
           "properties": {
@@ -104,6 +108,8 @@
     {
       "description": "Delete a visitor pass. This permanently removes the visitor's access. Requires confirm=true to execute. Only available via local proxy session.",
       "name": "access_delete_visitor",
+      "permission_action": "delete",
+      "permission_category": "visitor",
       "schema": {
         "input": {
           "properties": {
@@ -130,6 +136,8 @@
       },
       "description": "Get an aggregated activity summary for Access events over a time period. Shows event counts, breakdowns by type, and trends. Optionally scope to a single door. Only available via local proxy session.",
       "name": "access_get_activity_summary",
+      "permission_action": "read",
+      "permission_category": "event",
       "schema": {
         "input": {
           "properties": {
@@ -153,6 +161,8 @@
       },
       "description": "Returns detailed information for a single access credential including type, status, assigned user, and creation date.",
       "name": "access_get_credential",
+      "permission_action": "read",
+      "permission_category": "credential",
       "schema": {
         "input": {
           "properties": {
@@ -175,6 +185,8 @@
       },
       "description": "Returns detailed information for a single Access device including name, type, connection state, firmware version, MAC, and IP address.",
       "name": "access_get_device",
+      "permission_action": "read",
+      "permission_category": "device",
       "schema": {
         "input": {
           "properties": {
@@ -197,6 +209,8 @@
       },
       "description": "Returns detailed information for a single door including lock state, configuration, and connected devices.",
       "name": "access_get_door",
+      "permission_action": "read",
+      "permission_category": "door",
       "schema": {
         "input": {
           "properties": {
@@ -219,6 +233,8 @@
       },
       "description": "Returns the current lock and position status for a single door. Lightweight alternative to access_get_door when you only need state info.",
       "name": "access_get_door_status",
+      "permission_action": "read",
+      "permission_category": "door",
       "schema": {
         "input": {
           "properties": {
@@ -241,6 +257,8 @@
       },
       "description": "Returns detailed information for a single access event including event type, door, user, timestamp, and result.",
       "name": "access_get_event",
+      "permission_action": "read",
+      "permission_category": "event",
       "schema": {
         "input": {
           "properties": {
@@ -263,6 +281,8 @@
       },
       "description": "Returns Access system health summary including API client and proxy session status. Use to verify connectivity and diagnose auth path issues.",
       "name": "access_get_health",
+      "permission_action": "read",
+      "permission_category": "system",
       "schema": {
         "input": {
           "properties": {},
@@ -277,6 +297,8 @@
       },
       "description": "Returns detailed information for a single access policy including assigned doors, schedule, user groups, and configuration.",
       "name": "access_get_policy",
+      "permission_action": "read",
+      "permission_category": "policy",
       "schema": {
         "input": {
           "properties": {
@@ -299,6 +321,8 @@
       },
       "description": "Returns Access controller model, firmware version, uptime, and connected device counts. Use for basic health checks and capacity overview.",
       "name": "access_get_system_info",
+      "permission_action": "read",
+      "permission_category": "system",
       "schema": {
         "input": {
           "properties": {},
@@ -313,6 +337,8 @@
       },
       "description": "Returns detailed information for a single visitor pass including name, access time range, assigned doors, and status.",
       "name": "access_get_visitor",
+      "permission_action": "read",
+      "permission_category": "visitor",
       "schema": {
         "input": {
           "properties": {
@@ -335,6 +361,8 @@
       },
       "description": "Lists all access credentials (NFC cards, PINs, mobile credentials) with their type, status, and assigned user.",
       "name": "access_list_credentials",
+      "permission_action": "read",
+      "permission_category": "credential",
       "schema": {
         "input": {
           "properties": {},
@@ -349,6 +377,8 @@
       },
       "description": "Lists all Access hardware devices (hubs, readers, relays, intercoms) with their name, type, connection state, and firmware version.",
       "name": "access_list_devices",
+      "permission_action": "read",
+      "permission_category": "device",
       "schema": {
         "input": {
           "properties": {
@@ -368,6 +398,8 @@
       },
       "description": "Lists all door groups configured on the Access controller. Door groups organize doors for policy assignment. Only available via local proxy session.",
       "name": "access_list_door_groups",
+      "permission_action": "read",
+      "permission_category": "door",
       "schema": {
         "input": {
           "properties": {},
@@ -382,6 +414,8 @@
       },
       "description": "Lists all doors managed by the Access controller with their name, lock state, and connection status. Use to get an overview of all doors.",
       "name": "access_list_doors",
+      "permission_action": "read",
+      "permission_category": "door",
       "schema": {
         "input": {
           "properties": {
@@ -401,6 +435,8 @@
       },
       "description": "Query access events from the controller with optional filters. Returns events such as door unlocks, access denials, and system events. Supports filtering by time range, door, user, and result limit. For real-time buffer events use access_recent_events.",
       "name": "access_list_events",
+      "permission_action": "read",
+      "permission_category": "event",
       "schema": {
         "input": {
           "properties": {
@@ -440,6 +476,8 @@
       },
       "description": "Lists all access policies configured on the Access controller. Shows policy name, assigned doors, schedules, and user groups.",
       "name": "access_list_policies",
+      "permission_action": "read",
+      "permission_category": "policy",
       "schema": {
         "input": {
           "properties": {},
@@ -454,6 +492,8 @@
       },
       "description": "Lists all access schedules configured on the Access controller.",
       "name": "access_list_schedules",
+      "permission_action": "read",
+      "permission_category": "schedule",
       "schema": {
         "input": {
           "properties": {},
@@ -468,6 +508,8 @@
       },
       "description": "Lists all users registered in the Access controller with their access credentials and groups. Use to audit who has physical access or to look up a specific user.",
       "name": "access_list_users",
+      "permission_action": "read",
+      "permission_category": "system",
       "schema": {
         "input": {
           "properties": {
@@ -491,6 +533,8 @@
       },
       "description": "Lists all visitor passes with their name, status, valid time range, and assigned doors.",
       "name": "access_list_visitors",
+      "permission_action": "read",
+      "permission_category": "visitor",
       "schema": {
         "input": {
           "properties": {},
@@ -506,6 +550,8 @@
       },
       "description": "Lock a door immediately. This is a physical real-world action. Requires confirm=true to execute. Only available via local proxy session.",
       "name": "access_lock_door",
+      "permission_action": "update",
+      "permission_category": "door",
       "schema": {
         "input": {
           "properties": {
@@ -528,6 +574,8 @@
     {
       "description": "Reboot an Access hardware device (hub, reader, relay, intercom). The device will be temporarily offline during reboot. Requires confirm=true to execute. Only available via local proxy session.",
       "name": "access_reboot_device",
+      "permission_action": "update",
+      "permission_category": "device",
       "schema": {
         "input": {
           "properties": {
@@ -554,6 +602,8 @@
       },
       "description": "Get recent events from the in-memory websocket buffer. Fast (no API call). Supports filtering by event type and door. Use for real-time monitoring; use access_list_events for historical queries.",
       "name": "access_recent_events",
+      "permission_action": "read",
+      "permission_category": "event",
       "schema": {
         "input": {
           "properties": {
@@ -577,6 +627,8 @@
     {
       "description": "Revoke (delete) an access credential. This permanently removes the credential from the system. Requires confirm=true to execute. Only available via local proxy session.",
       "name": "access_revoke_credential",
+      "permission_action": "delete",
+      "permission_category": "credential",
       "schema": {
         "input": {
           "properties": {
@@ -603,6 +655,8 @@
       },
       "description": "Returns instructions for subscribing to real-time Access events. Provides the MCP resource URI for the event stream and guidance on polling intervals. Use this to set up continuous event monitoring.",
       "name": "access_subscribe_events",
+      "permission_action": "read",
+      "permission_category": "event",
       "schema": {
         "input": {
           "properties": {},
@@ -618,6 +672,8 @@
       },
       "description": "Unlock a door for a specified duration. This is a physical real-world action. Requires confirm=true to execute. Default duration is 2 seconds.",
       "name": "access_unlock_door",
+      "permission_action": "update",
+      "permission_category": "door",
       "schema": {
         "input": {
           "properties": {
@@ -644,6 +700,8 @@
     {
       "description": "Update an access policy's configuration. Supported fields include name, doors, schedule_id, and user groups. Requires confirm=true to apply. Only available via local proxy session.",
       "name": "access_update_policy",
+      "permission_action": "update",
+      "permission_category": "policy",
       "schema": {
         "input": {
           "properties": {
