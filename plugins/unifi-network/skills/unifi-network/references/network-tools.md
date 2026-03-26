@@ -281,7 +281,7 @@ Always available, regardless of registration mode.
 - OON policies control internet scheduling (bedtime blackouts), app blocking, QoS, and VPN routing
 - Policies can target specific MACs (target_type=CLIENTS) or client groups (target_type=GROUPS)
 - Use `unifi_toggle_oon_policy` for quick enable/disable without sending the full object
-- Delete requires `UNIFI_PERMISSIONS_OON_POLICIES_DELETE=true`
+- Delete requires `UNIFI_POLICY_NETWORK_OON_POLICIES_DELETE=true`
 
 ---
 

@@ -84,7 +84,7 @@ async def list_dpi_applications(
 
         return response
     except Exception as e:
-        logger.error(f"Error listing DPI applications: {e}", exc_info=True)
+        logger.error("Error listing DPI applications: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list DPI applications: {e}"}
 
 
@@ -128,5 +128,5 @@ async def list_dpi_categories(
             "categories": formatted,
         }
     except Exception as e:
-        logger.error(f"Error listing DPI categories: {e}", exc_info=True)
+        logger.error("Error listing DPI categories: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list DPI categories: {e}"}

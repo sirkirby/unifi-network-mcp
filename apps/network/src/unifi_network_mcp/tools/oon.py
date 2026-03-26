@@ -70,7 +70,7 @@ async def list_oon_policies() -> Dict[str, Any]:
             "policies": formatted,
         }
     except Exception as e:
-        logger.error(f"Error listing OON policies: {e}", exc_info=True)
+        logger.error("Error listing OON policies: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list OON policies: {e}"}
 
 
@@ -98,11 +98,6 @@ async def get_oon_policy_details(
 
         policy = await oon_manager.get_oon_policy_by_id(policy_id)
         if not policy:
-            # Fallback: search in list
-            policies = await oon_manager.get_oon_policies()
-            policy = next((p for p in policies if p.get("id", p.get("_id")) == policy_id), None)
-
-        if not policy:
             return {"success": False, "error": f"OON policy '{policy_id}' not found."}
 
         return {
@@ -111,7 +106,7 @@ async def get_oon_policy_details(
             "details": json.loads(json.dumps(policy, default=str)),
         }
     except Exception as e:
-        logger.error(f"Error getting OON policy {policy_id}: {e}", exc_info=True)
+        logger.error("Error getting OON policy %s: %s", policy_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get OON policy {policy_id}: {e}"}
 
 
@@ -172,7 +167,7 @@ async def create_oon_policy(
             }
         return {"success": False, "error": f"Failed to create OON policy '{policy_data.get('name', '')}'."}
     except Exception as e:
-        logger.error(f"Error creating OON policy: {e}", exc_info=True)
+        logger.error("Error creating OON policy: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to create OON policy: {e}"}
 
 
@@ -220,7 +215,7 @@ async def update_oon_policy(
             return {"success": True, "message": f"OON policy '{policy_id}' updated successfully."}
         return {"success": False, "error": f"Failed to update OON policy '{policy_id}'."}
     except Exception as e:
-        logger.error(f"Error updating OON policy {policy_id}: {e}", exc_info=True)
+        logger.error("Error updating OON policy %s: %s", policy_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update OON policy '{policy_id}': {e}"}
 
 
@@ -264,8 +259,8 @@ async def toggle_oon_policy(
                     "proposed_changes": {"enabled": not current},
                     "message": f"Will {'disable' if current else 'enable'} OON policy '{policy.get('name', policy_id)}'. Set confirm=true to execute.",
                 }
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Could not fetch policy %s for toggle preview: %s", policy_id, e)
         return create_preview(
             resource_type="oon_policy",
             resource_data={"policy_id": policy_id, "action": "toggle"},
@@ -283,7 +278,7 @@ async def toggle_oon_policy(
             }
         return {"success": False, "error": f"Failed to toggle OON policy '{policy_id}'."}
     except Exception as e:
-        logger.error(f"Error toggling OON policy {policy_id}: {e}", exc_info=True)
+        logger.error("Error toggling OON policy %s: %s", policy_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to toggle OON policy '{policy_id}': {e}"}
 
 
@@ -327,5 +322,5 @@ async def delete_oon_policy(
             return {"success": True, "message": f"OON policy '{policy_id}' deleted successfully."}
         return {"success": False, "error": f"Failed to delete OON policy '{policy_id}'."}
     except Exception as e:
-        logger.error(f"Error deleting OON policy {policy_id}: {e}", exc_info=True)
+        logger.error("Error deleting OON policy %s: %s", policy_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to delete OON policy '{policy_id}': {e}"}

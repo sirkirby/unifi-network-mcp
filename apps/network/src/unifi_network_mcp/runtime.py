@@ -31,8 +31,8 @@ from unifi_network_mcp.managers.acl_manager import AclManager
 from unifi_network_mcp.managers.client_group_manager import ClientGroupManager
 from unifi_network_mcp.managers.client_manager import ClientManager
 from unifi_network_mcp.managers.connection_manager import ConnectionManager
-from unifi_network_mcp.managers.dpi_manager import DpiManager
 from unifi_network_mcp.managers.device_manager import DeviceManager
+from unifi_network_mcp.managers.dpi_manager import DpiManager
 from unifi_network_mcp.managers.event_manager import EventManager
 from unifi_network_mcp.managers.firewall_manager import FirewallManager
 from unifi_network_mcp.managers.hotspot_manager import HotspotManager

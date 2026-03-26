@@ -69,12 +69,12 @@ class DpiManager:
                     if resp.status == 200:
                         return await resp.json()
                     else:
-                        logger.error(f"Integration API returned {resp.status} for {path}")
+                        logger.error("Integration API returned %s for %s", resp.status, path)
                         return None
             finally:
                 await session.close()
         except Exception as e:
-            logger.error(f"Error calling integration API {path}: {e}")
+            logger.error("Error calling integration API %s: %s", path, e)
             return None
 
     async def get_dpi_applications(

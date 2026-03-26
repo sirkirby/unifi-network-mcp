@@ -71,9 +71,9 @@ class OonManager:
         except Exception as e:
             error_str = str(e).lower()
             if "404" in error_str or "not found" in error_str:
-                logger.debug(f"OON policies not available (controller may not support them): {e}")
+                logger.debug("OON policies not available (controller may not support them): %s", e)
                 return []
-            logger.error(f"Error getting OON policies: {e}")
+            logger.error("Error getting OON policies: %s", e)
             return []
 
     async def get_oon_policy_by_id(self, policy_id: str) -> Optional[Dict[str, Any]]:
@@ -101,7 +101,7 @@ class OonManager:
             policies = await self.get_oon_policies()
             return next((p for p in policies if p.get("id", p.get("_id")) == policy_id), None)
         except Exception as e:
-            logger.error(f"Error getting OON policy {policy_id}: {e}")
+            logger.error("Error getting OON policy %s: %s", policy_id, e)
             return None
 
     async def create_oon_policy(self, policy_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -156,10 +156,10 @@ class OonManager:
                 )
                 return created
             else:
-                logger.error(f"Unexpected response creating OON policy: {type(response)} {response}")
+                logger.error("Unexpected response creating OON policy: %s %s", type(response), response)
                 return None
         except Exception as e:
-            logger.error(f"Error creating OON policy: {e}", exc_info=True)
+            logger.error("Error creating OON policy: %s", e, exc_info=True)
             return None
 
     async def update_oon_policy(self, policy_id: str, policy_data: Dict[str, Any]) -> bool:
@@ -182,7 +182,7 @@ class OonManager:
             self._invalidate_cache()
             return True
         except Exception as e:
-            logger.error(f"Error updating OON policy {policy_id}: {e}", exc_info=True)
+            logger.error("Error updating OON policy %s: %s", policy_id, e, exc_info=True)
             return False
 
     async def toggle_oon_policy(self, policy_id: str) -> Optional[bool]:
@@ -203,7 +203,7 @@ class OonManager:
         try:
             policy = await self.get_oon_policy_by_id(policy_id)
             if not policy:
-                logger.error(f"OON policy {policy_id} not found for toggle")
+                logger.error("OON policy %s not found for toggle", policy_id)
                 return None
 
             new_state = not policy.get("enabled", False)
@@ -215,7 +215,7 @@ class OonManager:
             self._invalidate_cache()
             return new_state
         except Exception as e:
-            logger.error(f"Error toggling OON policy {policy_id}: {e}", exc_info=True)
+            logger.error("Error toggling OON policy %s: %s", policy_id, e, exc_info=True)
             return None
 
     async def delete_oon_policy(self, policy_id: str) -> bool:
@@ -238,7 +238,7 @@ class OonManager:
             self._invalidate_cache()
             return True
         except Exception as e:
-            logger.error(f"Error deleting OON policy {policy_id}: {e}", exc_info=True)
+            logger.error("Error deleting OON policy %s: %s", policy_id, e, exc_info=True)
             return False
 
     def _invalidate_cache(self):
