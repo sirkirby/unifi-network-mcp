@@ -24,6 +24,24 @@ These are always registered regardless of mode:
 - `unifi_list_firewall_zones` — List firewall zones (V2 API)
 - `unifi_list_ip_groups` — List IP groups (V2 API)
 
+## OON Policies (6 tools)
+
+- `unifi_list_oon_policies` — List OON policies with schedule and targeting summary
+- `unifi_get_oon_policy_details` — Get full policy config (secure, qos, route, targets)
+- `unifi_create_oon_policy` — Create a new OON policy
+- `unifi_update_oon_policy` — Update an existing policy (full object replacement)
+- `unifi_toggle_oon_policy` — Toggle a policy on/off
+- `unifi_delete_oon_policy` — Delete a policy (requires delete permission)
+
+## DPI Application Lookup (2 tools)
+
+- `unifi_list_dpi_applications` — List/search DPI applications by name (requires API key)
+- `unifi_list_dpi_categories` — List DPI application categories (requires API key)
+
+> **Note:** DPI lookup requires `UNIFI_API_KEY` or `UNIFI_NETWORK_API_KEY`. As of Network App 10.1.85,
+> the official API only returns categories 0-1 (~2,100 apps). Categories 4+ (streaming, social media)
+> are not yet populated by Ubiquiti.
+
 ## Client Groups (5 tools)
 
 - `unifi_list_client_groups` — List all client groups (network member groups)

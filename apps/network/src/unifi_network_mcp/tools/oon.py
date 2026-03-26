@@ -1,0 +1,326 @@
+"""
+OON (Object-Oriented Network) policy tools for UniFi Network MCP server.
+
+OON policies provide high-level network access control including internet
+scheduling, application blocking, QoS, and policy-based routing. Policies
+can target specific client MACs or client groups.
+"""
+
+import json
+import logging
+from typing import Annotated, Any, Dict
+
+from mcp.types import ToolAnnotations
+from pydantic import Field
+
+from unifi_mcp_shared.confirmation import create_preview
+from unifi_network_mcp.runtime import oon_manager, server
+
+logger = logging.getLogger(__name__)
+
+
+@server.tool(
+    name="unifi_list_oon_policies",
+    description="List OON (Object-Oriented Network) policies. "
+    "These policies control internet access schedules (bedtime blackouts), "
+    "application blocking (social media, streaming), QoS, and policy-based routing.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def list_oon_policies() -> Dict[str, Any]:
+    """
+    Lists all OON policies configured on the controller.
+
+    Returns:
+        A dictionary containing:
+        - success (bool): Indicates if the operation was successful.
+        - count (int): Number of policies found.
+        - policies (List[Dict]): List of policies with summary info.
+    """
+    try:
+        policies = await oon_manager.get_oon_policies()
+        formatted = []
+        for p in policies:
+            secure = p.get("secure", {})
+            internet = secure.get("internet", {}) if secure.get("enabled") else {}
+            schedule = internet.get("schedule", {})
+
+            summary = {
+                "id": p.get("id", p.get("_id")),
+                "name": p.get("name"),
+                "enabled": p.get("enabled"),
+                "target_type": p.get("target_type"),
+                "target_count": len(p.get("targets", [])),
+                "secure_enabled": secure.get("enabled", False),
+                "secure_mode": internet.get("mode") if secure.get("enabled") else None,
+                "schedule_mode": schedule.get("mode") if schedule else None,
+                "qos_enabled": p.get("qos", {}).get("enabled", False),
+                "route_enabled": p.get("route", {}).get("enabled", False),
+            }
+
+            if schedule.get("mode") in ("EVERY_DAY", "EVERY_WEEK"):
+                summary["schedule_start"] = schedule.get("time_range_start")
+                summary["schedule_end"] = schedule.get("time_range_end")
+
+            formatted.append(summary)
+
+        return {
+            "success": True,
+            "site": oon_manager._connection.site,
+            "count": len(formatted),
+            "policies": formatted,
+        }
+    except Exception as e:
+        logger.error("Error listing OON policies: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to list OON policies: {e}"}
+
+
+@server.tool(
+    name="unifi_get_oon_policy_details",
+    description="Get detailed configuration for a specific OON policy by ID. "
+    "Returns the full policy object including secure, qos, route sections and targets.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def get_oon_policy_details(
+    policy_id: Annotated[str, Field(description="The unique identifier of the OON policy")],
+) -> Dict[str, Any]:
+    """
+    Gets the detailed configuration of a specific OON policy.
+
+    Args:
+        policy_id (str): The unique identifier of the OON policy.
+
+    Returns:
+        A dictionary containing the full policy configuration.
+    """
+    try:
+        if not policy_id:
+            return {"success": False, "error": "policy_id is required"}
+
+        policy = await oon_manager.get_oon_policy_by_id(policy_id)
+        if not policy:
+            return {"success": False, "error": f"OON policy '{policy_id}' not found."}
+
+        return {
+            "success": True,
+            "policy_id": policy_id,
+            "details": json.loads(json.dumps(policy, default=str)),
+        }
+    except Exception as e:
+        logger.error("Error getting OON policy %s: %s", policy_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to get OON policy {policy_id}: {e}"}
+
+
+@server.tool(
+    name="unifi_create_oon_policy",
+    description="Create a new OON (Object-Oriented Network) policy. "
+    "Policies can block internet access on a schedule, block specific apps, "
+    "apply QoS limits, or route traffic via VPN. "
+    "Targets can be specific client MACs (target_type='CLIENTS') or "
+    "client group IDs (target_type='GROUPS'). "
+    "IMPORTANT: The policy_data must include complete qos and route objects "
+    "(including mode, apps, domains, ip_addresses, regions fields) even if disabled. "
+    "Use unifi_get_oon_policy_details on an existing policy as a template. "
+    "Requires confirmation.",
+    permission_category="oon_policy",
+    permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+async def create_oon_policy(
+    policy_data: Annotated[
+        dict,
+        Field(
+            description="Complete OON policy object. Required fields: name (str), enabled (bool), "
+            "target_type ('CLIENTS' or 'GROUPS'), targets (list of MACs or group IDs). "
+            "Configure at least one of: secure (internet access/app blocking), "
+            "qos (bandwidth limits), route (VPN routing)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the policy. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """
+    Creates a new OON policy.
+
+    Args:
+        policy_data (dict): Complete policy configuration.
+        confirm (bool): Must be True to execute. False returns a preview.
+
+    Returns:
+        Preview of changes or the created policy.
+    """
+    if not confirm:
+        return create_preview(
+            resource_type="oon_policy",
+            resource_data=policy_data,
+            resource_name=policy_data.get("name", "unnamed"),
+        )
+
+    try:
+        result = await oon_manager.create_oon_policy(policy_data)
+        if result:
+            return {
+                "success": True,
+                "message": f"OON policy '{policy_data.get('name', '')}' created successfully.",
+                "policy": json.loads(json.dumps(result, default=str)),
+            }
+        return {"success": False, "error": f"Failed to create OON policy '{policy_data.get('name', '')}'."}
+    except Exception as e:
+        logger.error("Error creating OON policy: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to create OON policy: {e}"}
+
+
+@server.tool(
+    name="unifi_update_oon_policy",
+    description="Update an existing OON policy. Requires the full policy object "
+    "(PUT replaces entire resource). Use unifi_get_oon_policy_details to fetch "
+    "the current object, modify it, and send back. Requires confirmation.",
+    permission_category="oon_policy",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+async def update_oon_policy(
+    policy_id: Annotated[str, Field(description="The ID of the policy to update")],
+    policy_data: Annotated[
+        dict,
+        Field(description="The complete updated policy object with all fields"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, updates the policy. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """
+    Updates an existing OON policy.
+
+    Args:
+        policy_id (str): The ID of the policy to update.
+        policy_data (dict): The complete updated policy object.
+        confirm (bool): Must be True to execute.
+
+    Returns:
+        Preview of changes or success/failure status.
+    """
+    if not confirm:
+        return create_preview(
+            resource_type="oon_policy",
+            resource_data=policy_data,
+            resource_name=policy_id,
+        )
+
+    try:
+        success = await oon_manager.update_oon_policy(policy_id, policy_data)
+        if success:
+            return {"success": True, "message": f"OON policy '{policy_id}' updated successfully."}
+        return {"success": False, "error": f"Failed to update OON policy '{policy_id}'."}
+    except Exception as e:
+        logger.error("Error updating OON policy %s: %s", policy_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to update OON policy '{policy_id}': {e}"}
+
+
+@server.tool(
+    name="unifi_toggle_oon_policy",
+    description="Toggle an OON policy on or off. Fetches the current state, "
+    "flips the enabled flag, and sends the update. Requires confirmation.",
+    permission_category="oon_policy",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+async def toggle_oon_policy(
+    policy_id: Annotated[str, Field(description="The ID of the policy to toggle")],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, toggles the policy. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """
+    Toggles an OON policy's enabled state.
+
+    Args:
+        policy_id (str): The ID of the policy to toggle.
+        confirm (bool): Must be True to execute.
+
+    Returns:
+        Preview or the new enabled state.
+    """
+    if not confirm:
+        # Fetch current state for preview
+        try:
+            policy = await oon_manager.get_oon_policy_by_id(policy_id)
+            if policy:
+                current = policy.get("enabled", False)
+                return {
+                    "success": True,
+                    "requires_confirmation": True,
+                    "action": "toggle",
+                    "resource_type": "oon_policy",
+                    "current_state": {"enabled": current},
+                    "proposed_changes": {"enabled": not current},
+                    "message": f"Will {'disable' if current else 'enable'} OON policy '{policy.get('name', policy_id)}'. Set confirm=true to execute.",
+                }
+        except Exception as e:
+            logger.debug("Could not fetch policy %s for toggle preview: %s", policy_id, e)
+        return create_preview(
+            resource_type="oon_policy",
+            resource_data={"policy_id": policy_id, "action": "toggle"},
+            resource_name=policy_id,
+        )
+
+    try:
+        new_state = await oon_manager.toggle_oon_policy(policy_id)
+        if new_state is not None:
+            state_str = "enabled" if new_state else "disabled"
+            return {
+                "success": True,
+                "message": f"OON policy '{policy_id}' is now {state_str}.",
+                "enabled": new_state,
+            }
+        return {"success": False, "error": f"Failed to toggle OON policy '{policy_id}'."}
+    except Exception as e:
+        logger.error("Error toggling OON policy %s: %s", policy_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to toggle OON policy '{policy_id}': {e}"}
+
+
+@server.tool(
+    name="unifi_delete_oon_policy",
+    description="Delete an OON policy. Requires confirmation. "
+    "WARNING: This will remove the policy and all associated firewall rules "
+    "that were auto-generated from it.",
+    permission_category="oon_policy",
+    permission_action="delete",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
+)
+async def delete_oon_policy(
+    policy_id: Annotated[str, Field(description="The ID of the policy to delete")],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, deletes the policy. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """
+    Deletes an OON policy.
+
+    Args:
+        policy_id (str): The ID of the policy to delete.
+        confirm (bool): Must be True to execute.
+
+    Returns:
+        Preview or success/failure status.
+    """
+    if not confirm:
+        return create_preview(
+            resource_type="oon_policy",
+            resource_data={"policy_id": policy_id},
+            resource_name=policy_id,
+            warnings=["Deleting an OON policy removes all auto-generated firewall rules associated with it."],
+        )
+
+    try:
+        success = await oon_manager.delete_oon_policy(policy_id)
+        if success:
+            return {"success": True, "message": f"OON policy '{policy_id}' deleted successfully."}
+        return {"success": False, "error": f"Failed to delete OON policy '{policy_id}'."}
+    except Exception as e:
+        logger.error("Error deleting OON policy %s: %s", policy_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to delete OON policy '{policy_id}': {e}"}

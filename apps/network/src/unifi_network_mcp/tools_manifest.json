@@ -1,5 +1,5 @@
 {
-  "count": 97,
+  "count": 105,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "unifi_network_mcp.tools.devices",
@@ -11,6 +11,7 @@
     "unifi_create_client_group": "unifi_network_mcp.tools.client_groups",
     "unifi_create_firewall_policy": "unifi_network_mcp.tools.firewall",
     "unifi_create_network": "unifi_network_mcp.tools.network",
+    "unifi_create_oon_policy": "unifi_network_mcp.tools.oon",
     "unifi_create_port_forward": "unifi_network_mcp.tools.port_forwards",
     "unifi_create_qos_rule": "unifi_network_mcp.tools.qos",
     "unifi_create_route": "unifi_network_mcp.tools.routing",
@@ -23,6 +24,7 @@
     "unifi_delete_acl_rule": "unifi_network_mcp.tools.acl",
     "unifi_delete_client_group": "unifi_network_mcp.tools.client_groups",
     "unifi_delete_firewall_policy": "unifi_network_mcp.tools.firewall",
+    "unifi_delete_oon_policy": "unifi_network_mcp.tools.oon",
     "unifi_force_reconnect_client": "unifi_network_mcp.tools.clients",
     "unifi_get_acl_rule_details": "unifi_network_mcp.tools.acl",
     "unifi_get_alerts": "unifi_network_mcp.tools.stats",
@@ -38,10 +40,11 @@
     "unifi_get_network_details": "unifi_network_mcp.tools.network",
     "unifi_get_network_health": "unifi_network_mcp.tools.system",
     "unifi_get_network_stats": "unifi_network_mcp.tools.stats",
+    "unifi_get_oon_policy_details": "unifi_network_mcp.tools.oon",
     "unifi_get_port_forward": "unifi_network_mcp.tools.port_forwards",
     "unifi_get_qos_rule_details": "unifi_network_mcp.tools.qos",
     "unifi_get_route_details": "unifi_network_mcp.tools.routing",
-    "unifi_get_site_settings": "unifi_network_mcp.tools.config",
+    "unifi_get_site_settings": "unifi_network_mcp.tools.system",
     "unifi_get_snmp_settings": "unifi_network_mcp.tools.system",
     "unifi_get_system_info": "unifi_network_mcp.tools.system",
     "unifi_get_top_clients": "unifi_network_mcp.tools.stats",
@@ -58,11 +61,14 @@
     "unifi_list_client_groups": "unifi_network_mcp.tools.client_groups",
     "unifi_list_clients": "unifi_network_mcp.tools.clients",
     "unifi_list_devices": "unifi_network_mcp.tools.devices",
+    "unifi_list_dpi_applications": "unifi_network_mcp.tools.dpi",
+    "unifi_list_dpi_categories": "unifi_network_mcp.tools.dpi",
     "unifi_list_events": "unifi_network_mcp.tools.events",
     "unifi_list_firewall_policies": "unifi_network_mcp.tools.firewall",
     "unifi_list_firewall_zones": "unifi_network_mcp.tools.firewall",
     "unifi_list_ip_groups": "unifi_network_mcp.tools.firewall",
     "unifi_list_networks": "unifi_network_mcp.tools.network",
+    "unifi_list_oon_policies": "unifi_network_mcp.tools.oon",
     "unifi_list_port_forwards": "unifi_network_mcp.tools.port_forwards",
     "unifi_list_qos_rules": "unifi_network_mcp.tools.qos",
     "unifi_list_routes": "unifi_network_mcp.tools.routing",
@@ -79,6 +85,7 @@
     "unifi_revoke_voucher": "unifi_network_mcp.tools.hotspot",
     "unifi_set_client_ip_settings": "unifi_network_mcp.tools.clients",
     "unifi_toggle_firewall_policy": "unifi_network_mcp.tools.firewall",
+    "unifi_toggle_oon_policy": "unifi_network_mcp.tools.oon",
     "unifi_toggle_port_forward": "unifi_network_mcp.tools.port_forwards",
     "unifi_toggle_qos_rule_enabled": "unifi_network_mcp.tools.qos",
     "unifi_toggle_traffic_route": "unifi_network_mcp.tools.traffic_routes",
@@ -89,6 +96,7 @@
     "unifi_update_device_radio": "unifi_network_mcp.tools.devices",
     "unifi_update_firewall_policy": "unifi_network_mcp.tools.firewall",
     "unifi_update_network": "unifi_network_mcp.tools.network",
+    "unifi_update_oon_policy": "unifi_network_mcp.tools.oon",
     "unifi_update_port_forward": "unifi_network_mcp.tools.port_forwards",
     "unifi_update_qos_rule": "unifi_network_mcp.tools.qos",
     "unifi_update_route": "unifi_network_mcp.tools.routing",
@@ -404,6 +412,36 @@
           },
           "required": [
             "network_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Create a new OON (Object-Oriented Network) policy. Policies can block internet access on a schedule, block specific apps, apply QoS limits, or route traffic via VPN. Targets can be specific client MACs (target_type='CLIENTS') or client group IDs (target_type='GROUPS'). IMPORTANT: The policy_data must include complete qos and route objects (including mode, apps, domains, ip_addresses, regions fields) even if disabled. Use unifi_get_oon_policy_details on an existing policy as a template. Requires confirmation.",
+      "name": "unifi_create_oon_policy",
+      "permission_action": "create",
+      "permission_category": "oon_policy",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, creates the policy. When false (default), returns a preview",
+              "type": "boolean"
+            },
+            "policy_data": {
+              "description": "Complete OON policy object. Required fields: name (str), enabled (bool), target_type ('CLIENTS' or 'GROUPS'), targets (list of MACs or group IDs). Configure at least one of: secure (internet access/app blocking), qos (bandwidth limits), route (VPN routing)",
+              "type": "object"
+            }
+          },
+          "required": [
+            "policy_data"
           ],
           "type": "object"
         }
@@ -815,6 +853,36 @@
     {
       "annotations": {
         "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Delete an OON policy. Requires confirmation. WARNING: This will remove the policy and all associated firewall rules that were auto-generated from it.",
+      "name": "unifi_delete_oon_policy",
+      "permission_action": "delete",
+      "permission_category": "oon_policy",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, deletes the policy. When false (default), returns a preview",
+              "type": "boolean"
+            },
+            "policy_id": {
+              "description": "The ID of the policy to delete",
+              "type": "string"
+            }
+          },
+          "required": [
+            "policy_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -1128,6 +1196,28 @@
               "type": "string"
             }
           },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Get detailed configuration for a specific OON policy by ID. Returns the full policy object including secure, qos, route sections and targets.",
+      "name": "unifi_get_oon_policy_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "policy_id": {
+              "description": "The unique identifier of the OON policy",
+              "type": "string"
+            }
+          },
+          "required": [
+            "policy_id"
+          ],
           "type": "object"
         }
       }
@@ -1538,6 +1628,56 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
+      "description": "List DPI applications available for use in firewall rules and OON policies. Returns application names and their compound IDs. Supports name-based search. NOTE: The official API currently only returns categories 0-1 (IM, P2P). Streaming, social media, and other categories are not yet populated by Ubiquiti. For apps not found here, add via the UniFi UI and read back the IDs from the policy. Requires UNIFI_API_KEY or UNIFI_NETWORK_API_KEY.",
+      "name": "unifi_list_dpi_applications",
+      "schema": {
+        "input": {
+          "properties": {
+            "limit": {
+              "description": "Max results per page (default 100, max 2500)",
+              "type": "integer"
+            },
+            "offset": {
+              "description": "Pagination offset (default 0)",
+              "type": "integer"
+            },
+            "search": {
+              "description": "Search for apps by name (case-insensitive, client-side filter). E.g., 'slack', 'telegram'",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List DPI application categories (e.g., 'Instant messengers', 'Peer-to-peer networks', 'Media streaming services'). Categories group applications for DPI classification. Requires UNIFI_API_KEY or UNIFI_NETWORK_API_KEY.",
+      "name": "unifi_list_dpi_categories",
+      "schema": {
+        "input": {
+          "properties": {
+            "limit": {
+              "description": "Max results per page (default 100)",
+              "type": "integer"
+            },
+            "offset": {
+              "description": "Pagination offset (default 0)",
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Returns timestamped event log entries (client connects/disconnects, device state changes, firmware updates, config changes) sorted newest-first. Filter by within_hours (default 24), event_type prefix (use unifi_get_event_types for valid prefixes), and paginate with start/limit. For critical alerts specifically, use unifi_list_alarms instead.",
       "name": "unifi_list_events",
       "schema": {
@@ -1618,6 +1758,20 @@
       },
       "description": "Returns all configured networks (LAN, WAN, VLAN-only) with name, purpose, IP subnet, VLAN ID, DHCP settings, and enabled state. Use to understand network topology and VLAN layout. For a single network's full config, use unifi_get_network_details. For wireless SSIDs, use unifi_list_wlans.",
       "name": "unifi_list_networks",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List OON (Object-Oriented Network) policies. These policies control internet access schedules (bedtime blackouts), application blocking (social media, streaming), QoS, and policy-based routing.",
+      "name": "unifi_list_oon_policies",
       "schema": {
         "input": {
           "properties": {},
@@ -1986,6 +2140,36 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
+      "description": "Toggle an OON policy on or off. Fetches the current state, flips the enabled flag, and sends the update. Requires confirmation.",
+      "name": "unifi_toggle_oon_policy",
+      "permission_action": "update",
+      "permission_category": "oon_policy",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, toggles the policy. When false (default), returns a preview",
+              "type": "boolean"
+            },
+            "policy_id": {
+              "description": "The ID of the policy to toggle",
+              "type": "string"
+            }
+          },
+          "required": [
+            "policy_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Toggle a port forwarding rule on or off on your Unifi Network controller.",
       "name": "unifi_toggle_port_forward",
       "permission_action": "update",
@@ -2323,6 +2507,41 @@
           "required": [
             "network_id",
             "update_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Update an existing OON policy. Requires the full policy object (PUT replaces entire resource). Use unifi_get_oon_policy_details to fetch the current object, modify it, and send back. Requires confirmation.",
+      "name": "unifi_update_oon_policy",
+      "permission_action": "update",
+      "permission_category": "oon_policy",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, updates the policy. When false (default), returns a preview",
+              "type": "boolean"
+            },
+            "policy_data": {
+              "description": "The complete updated policy object with all fields",
+              "type": "object"
+            },
+            "policy_id": {
+              "description": "The ID of the policy to update",
+              "type": "string"
+            }
+          },
+          "required": [
+            "policy_id",
+            "policy_data"
           ],
           "type": "object"
         }

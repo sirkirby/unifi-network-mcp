@@ -1,4 +1,4 @@
-# Network Server Tool Reference (97 tools)
+# Network Server Tool Reference (105 tools)
 
 Complete reference for `unifi_*` tools. All read tools are always available. Mutating tools require permissions (see main skill for details).
 
@@ -259,6 +259,48 @@ Always available, regardless of registration mode.
 **Tips:**
 - Client groups organize devices by MAC address for use in OON policies and firewall rules
 - Delete requires `UNIFI_POLICY_NETWORK_CLIENT_GROUPS_DELETE=true`
+
+---
+
+## OON Policies
+
+<!-- AUTO:tools:oon -->
+6 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `unifi_get_oon_policy_details` | Read | Get detailed configuration for a specific OON policy by ID. |
+| `unifi_list_oon_policies` | Read | List OON (Object-Oriented Network) policies. |
+| `unifi_create_oon_policy` | Mutate | Create a new OON (Object-Oriented Network) policy. |
+| `unifi_delete_oon_policy` | Mutate | Delete an OON policy. |
+| `unifi_toggle_oon_policy` | Mutate | Toggle an OON policy on or off. |
+| `unifi_update_oon_policy` | Mutate | Update an existing OON policy. |
+<!-- /AUTO:tools:oon -->
+
+**Tips:**
+- OON policies control internet scheduling (bedtime blackouts), app blocking, QoS, and VPN routing
+- Policies can target specific MACs (target_type=CLIENTS) or client groups (target_type=GROUPS)
+- Use `unifi_toggle_oon_policy` for quick enable/disable without sending the full object
+- Delete requires `UNIFI_POLICY_NETWORK_OON_POLICIES_DELETE=true`
+
+---
+
+## DPI Application Lookup
+
+<!-- AUTO:tools:dpi -->
+2 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `unifi_list_dpi_applications` | Read | List DPI applications available for use in firewall rules and OON policies. |
+| `unifi_list_dpi_categories` | Read | List DPI application categories (e.g., 'Instant messengers', 'Peer-to-peer networks', 'Media streaming services'). |
+<!-- /AUTO:tools:dpi -->
+
+**Tips:**
+- Requires `UNIFI_API_KEY` or `UNIFI_NETWORK_API_KEY` (official integration API)
+- As of Network App 10.1.85, only categories 0-1 (IM, P2P) are populated (~2,100 apps)
+- Categories 4+ (streaming, social media) are not yet available — add via UI and read back IDs
+- Use `search` parameter on `unifi_list_dpi_applications` for name-based lookup
 
 ---
 

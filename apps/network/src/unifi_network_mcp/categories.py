@@ -44,6 +44,8 @@ NETWORK_CATEGORY_MAP = {
     "snmp": "snmp",
     "acl": "acl_rules",
     "client_group": "client_groups",
+    "oon_policy": "oon_policies",
+    "dpi": "dpi",
 }
 
 # Backward-compatible alias
