@@ -80,12 +80,8 @@ class ContentFilterManager:
         Returns:
             The profile dictionary, or None if not found.
         """
-        try:
-            filters = await self.get_content_filters()
-            return next((f for f in filters if f.get("_id", f.get("id")) == filter_id), None)
-        except Exception as e:
-            logger.error("Error getting content filter %s: %s", filter_id, e)
-            return None
+        filters = await self.get_content_filters()
+        return next((f for f in filters if f.get("_id", f.get("id")) == filter_id), None)
 
     async def update_content_filter(self, filter_id: str, filter_data: Dict[str, Any]) -> bool:
         """Update an existing content filtering profile.
