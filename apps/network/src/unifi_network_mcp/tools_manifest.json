@@ -1,5 +1,5 @@
 {
-  "count": 105,
+  "count": 109,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "unifi_network_mcp.tools.devices",
@@ -23,6 +23,7 @@
     "unifi_create_wlan": "unifi_network_mcp.tools.network",
     "unifi_delete_acl_rule": "unifi_network_mcp.tools.acl",
     "unifi_delete_client_group": "unifi_network_mcp.tools.client_groups",
+    "unifi_delete_content_filter": "unifi_network_mcp.tools.content_filtering",
     "unifi_delete_firewall_policy": "unifi_network_mcp.tools.firewall",
     "unifi_delete_oon_policy": "unifi_network_mcp.tools.oon",
     "unifi_force_reconnect_client": "unifi_network_mcp.tools.clients",
@@ -31,6 +32,7 @@
     "unifi_get_client_details": "unifi_network_mcp.tools.clients",
     "unifi_get_client_group_details": "unifi_network_mcp.tools.client_groups",
     "unifi_get_client_stats": "unifi_network_mcp.tools.stats",
+    "unifi_get_content_filter_details": "unifi_network_mcp.tools.content_filtering",
     "unifi_get_device_details": "unifi_network_mcp.tools.devices",
     "unifi_get_device_radio": "unifi_network_mcp.tools.devices",
     "unifi_get_device_stats": "unifi_network_mcp.tools.stats",
@@ -60,6 +62,7 @@
     "unifi_list_blocked_clients": "unifi_network_mcp.tools.clients",
     "unifi_list_client_groups": "unifi_network_mcp.tools.client_groups",
     "unifi_list_clients": "unifi_network_mcp.tools.clients",
+    "unifi_list_content_filters": "unifi_network_mcp.tools.content_filtering",
     "unifi_list_devices": "unifi_network_mcp.tools.devices",
     "unifi_list_dpi_applications": "unifi_network_mcp.tools.dpi",
     "unifi_list_dpi_categories": "unifi_network_mcp.tools.dpi",
@@ -93,6 +96,7 @@
     "unifi_unblock_client": "unifi_network_mcp.tools.clients",
     "unifi_update_acl_rule": "unifi_network_mcp.tools.acl",
     "unifi_update_client_group": "unifi_network_mcp.tools.client_groups",
+    "unifi_update_content_filter": "unifi_network_mcp.tools.content_filtering",
     "unifi_update_device_radio": "unifi_network_mcp.tools.devices",
     "unifi_update_firewall_policy": "unifi_network_mcp.tools.firewall",
     "unifi_update_network": "unifi_network_mcp.tools.network",
@@ -827,6 +831,36 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
+      "description": "Delete a content filtering profile. Requires confirmation. WARNING: Deleting a profile removes DNS-based blocking for all targeted clients/networks.",
+      "name": "unifi_delete_content_filter",
+      "permission_action": "delete",
+      "permission_category": "content_filter",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, deletes the profile. When false (default), returns a preview",
+              "type": "boolean"
+            },
+            "filter_id": {
+              "description": "The ID of the profile to delete",
+              "type": "string"
+            }
+          },
+          "required": [
+            "filter_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Delete a firewall policy by ID. Requires confirmation. WARNING: Removing an ALLOW rule may block traffic. Removing a BLOCK rule may open access.",
       "name": "unifi_delete_firewall_policy",
       "permission_action": "delete",
@@ -1020,6 +1054,28 @@
           },
           "required": [
             "client_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Get detailed configuration for a specific content filtering profile by ID. Returns the full profile including categories, client MACs, network IDs, safe search settings, and allow/block lists.",
+      "name": "unifi_get_content_filter_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "filter_id": {
+              "description": "The unique identifier (_id) of the content filtering profile",
+              "type": "string"
+            }
+          },
+          "required": [
+            "filter_id"
           ],
           "type": "object"
         }
@@ -1592,6 +1648,20 @@
               "type": "integer"
             }
           },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List content filtering profiles. Profiles control DNS-based category blocking, safe search enforcement (GOOGLE, YOUTUBE, BING), and domain allow/block lists. Profiles can target specific clients by MAC or entire networks by ID. NOTE: Profiles must be created in the UniFi UI \u2014 the API only supports list, update, and delete. Common categories: FAMILY, ADVERTISEMENT, MALWARE, PHISHING, BOTNETS, SPAM, SPYWARE, HACKING, ANONYMIZERS, DNS_TUNNELING, ADULT, ALCOHOL, DRUGS, GAMBLING, VIOLENCE, PORNOGRAPHY, NUDITY, WEAPONS, DATING, HATE_SPEECH_AND_EXTREMISM, CHILD_ABUSE, CIPA, EMPTY_DOMAINS, NEWLY_DISCOVERED_DOMAINS, PARKED_DOMAINS, UNREACHABLE_DOMAINS.",
+      "name": "unifi_list_content_filters",
+      "schema": {
+        "input": {
+          "properties": {},
           "type": "object"
         }
       }
@@ -2378,6 +2448,41 @@
           "required": [
             "group_id",
             "group_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Update an existing content filtering profile. Requires the full profile object (PUT replaces entire resource). Use unifi_get_content_filter_details to fetch the current object, modify it, and send back. client_macs and network_ids are additive \u2014 both can be set and the filter applies to all. Safe search valid values: GOOGLE, YOUTUBE, BING (only these three are supported). Requires confirmation.",
+      "name": "unifi_update_content_filter",
+      "permission_action": "update",
+      "permission_category": "content_filter",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, updates the profile. When false (default), returns a preview",
+              "type": "boolean"
+            },
+            "filter_data": {
+              "description": "The complete updated profile object with all fields",
+              "type": "object"
+            },
+            "filter_id": {
+              "description": "The ID of the profile to update",
+              "type": "string"
+            }
+          },
+          "required": [
+            "filter_id",
+            "filter_data"
           ],
           "type": "object"
         }

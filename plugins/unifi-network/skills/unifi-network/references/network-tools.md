@@ -1,4 +1,4 @@
-# Network Server Tool Reference (105 tools)
+# Network Server Tool Reference (109 tools)
 
 Complete reference for `unifi_*` tools. All read tools are always available. Mutating tools require permissions (see main skill for details).
 
@@ -239,6 +239,26 @@ Always available, regardless of registration mode.
 
 **Tips:**
 - This is the only category with a delete tool — requires `UNIFI_POLICY_NETWORK_ACL_RULES_DELETE=true`
+
+---
+
+## Content Filtering
+
+<!-- AUTO:tools:content_filtering -->
+4 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `unifi_get_content_filter_details` | Read | Get detailed configuration for a specific content filtering profile by ID. |
+| `unifi_list_content_filters` | Read | List content filtering profiles. |
+| `unifi_delete_content_filter` | Mutate | Delete a content filtering profile. |
+| `unifi_update_content_filter` | Mutate | Update an existing content filtering profile. |
+<!-- /AUTO:tools:content_filtering -->
+
+**Tips:**
+- Profiles apply DNS-based category blocking (FAMILY, MALWARE, PHISHING, etc.) and safe search
+- Target by client MACs (per-device) or network IDs (per-VLAN)
+- Use `unifi_get_content_filter_details` to fetch the current profile before updating
 
 ---
 
