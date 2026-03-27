@@ -31,6 +31,7 @@ from unifi_network_mcp.managers.acl_manager import AclManager
 from unifi_network_mcp.managers.client_group_manager import ClientGroupManager
 from unifi_network_mcp.managers.client_manager import ClientManager
 from unifi_network_mcp.managers.connection_manager import ConnectionManager
+from unifi_network_mcp.managers.content_filter_manager import ContentFilterManager
 from unifi_network_mcp.managers.device_manager import DeviceManager
 from unifi_network_mcp.managers.dpi_manager import DpiManager
 from unifi_network_mcp.managers.event_manager import EventManager
@@ -171,6 +172,11 @@ def get_client_manager() -> ClientManager:
 
 
 @lru_cache
+def get_content_filter_manager() -> ContentFilterManager:
+    return ContentFilterManager(get_connection_manager())
+
+
+@lru_cache
 def get_dpi_manager() -> DpiManager:
     return DpiManager(get_connection_manager(), get_auth())
 
@@ -260,6 +266,7 @@ connection_manager = get_connection_manager()
 acl_manager = get_acl_manager()
 client_group_manager = get_client_group_manager()
 client_manager = get_client_manager()
+content_filter_manager = get_content_filter_manager()
 dpi_manager = get_dpi_manager()
 device_manager = get_device_manager()
 stats_manager = get_stats_manager()

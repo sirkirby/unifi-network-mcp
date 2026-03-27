@@ -24,6 +24,16 @@ These are always registered regardless of mode:
 - `unifi_list_firewall_zones` — List firewall zones (V2 API)
 - `unifi_list_ip_groups` — List IP groups (V2 API)
 
+## Content Filtering (4 tools)
+
+- `unifi_list_content_filters` — List content filtering profiles with category/targeting summary
+- `unifi_get_content_filter_details` — Get full profile config (categories, MACs, networks, safe search)
+- `unifi_update_content_filter` — Update an existing profile (full object replacement)
+- `unifi_delete_content_filter` — Delete a profile (requires delete permission)
+
+> **Note:** The UniFi API does not support creating content filtering profiles (POST returns 405).
+> Profiles must be created in the UniFi UI first, then managed via these tools.
+
 ## OON Policies (6 tools)
 
 - `unifi_list_oon_policies` — List OON policies with schedule and targeting summary

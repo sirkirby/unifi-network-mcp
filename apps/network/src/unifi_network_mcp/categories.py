@@ -44,6 +44,7 @@ NETWORK_CATEGORY_MAP = {
     "snmp": "snmp",
     "acl": "acl_rules",
     "client_group": "client_groups",
+    "content_filter": "content_filters",
     "oon_policy": "oon_policies",
     "dpi": "dpi",
 }

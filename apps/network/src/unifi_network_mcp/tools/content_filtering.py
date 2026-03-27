@@ -1,0 +1,207 @@
+"""
+Content filtering tools for UniFi Network MCP server.
+
+Content filtering uses DNS-based category blocking and safe search
+enforcement. Profiles can target specific clients (by MAC address)
+or entire networks (by network ID).
+
+NOTE: The UniFi API does not support creating content filtering profiles
+via POST (returns 405). Profiles must be created through the UniFi UI
+first, then managed (list, update, delete) via these tools.
+"""
+
+import json
+import logging
+from typing import Annotated, Any, Dict
+
+from mcp.types import ToolAnnotations
+from pydantic import Field
+
+from unifi_mcp_shared.confirmation import create_preview
+from unifi_network_mcp.runtime import content_filter_manager, server
+
+logger = logging.getLogger(__name__)
+
+
+@server.tool(
+    name="unifi_list_content_filters",
+    description="List content filtering profiles. "
+    "Profiles control DNS-based category blocking, safe search enforcement "
+    "(GOOGLE, YOUTUBE, BING), and domain allow/block lists. "
+    "Profiles can target specific clients by MAC or entire networks by ID. "
+    "NOTE: Profiles must be created in the UniFi UI — the API only supports list, update, and delete. "
+    "Common categories: FAMILY, ADVERTISEMENT, MALWARE, PHISHING, BOTNETS, SPAM, SPYWARE, "
+    "HACKING, ANONYMIZERS, DNS_TUNNELING, ADULT, ALCOHOL, DRUGS, GAMBLING, VIOLENCE, "
+    "PORNOGRAPHY, NUDITY, WEAPONS, DATING, HATE_SPEECH_AND_EXTREMISM, CHILD_ABUSE, CIPA, "
+    "EMPTY_DOMAINS, NEWLY_DISCOVERED_DOMAINS, PARKED_DOMAINS, UNREACHABLE_DOMAINS.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def list_content_filters() -> Dict[str, Any]:
+    """
+    Lists all content filtering profiles configured on the controller.
+
+    Returns:
+        A dictionary containing:
+        - success (bool): Indicates if the operation was successful.
+        - count (int): Number of profiles found.
+        - filters (List[Dict]): List of profiles with summary info.
+    """
+    try:
+        filters = await content_filter_manager.get_content_filters()
+        formatted = [
+            {
+                "id": f.get("_id", f.get("id")),
+                "name": f.get("name"),
+                "enabled": f.get("enabled"),
+                "categories": f.get("categories", []),
+                "category_count": len(f.get("categories", [])),
+                "client_mac_count": len(f.get("client_macs", [])),
+                "network_ids": f.get("network_ids", []),
+                "network_id_count": len(f.get("network_ids", [])),
+                "safe_search": f.get("safe_search", []),
+                "allow_list_count": len(f.get("allow_list", [])),
+                "block_list_count": len(f.get("block_list", [])),
+                "schedule_mode": f.get("schedule", {}).get("mode"),
+            }
+            for f in filters
+        ]
+        return {
+            "success": True,
+            "site": content_filter_manager._connection.site,
+            "count": len(formatted),
+            "filters": formatted,
+        }
+    except Exception as e:
+        logger.error("Error listing content filters: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to list content filters: {e}"}
+
+
+@server.tool(
+    name="unifi_get_content_filter_details",
+    description="Get detailed configuration for a specific content filtering profile by ID. "
+    "Returns the full profile including categories, client MACs, network IDs, "
+    "safe search settings, and allow/block lists.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def get_content_filter_details(
+    filter_id: Annotated[str, Field(description="The unique identifier (_id) of the content filtering profile")],
+) -> Dict[str, Any]:
+    """
+    Gets the detailed configuration of a specific content filtering profile.
+
+    Args:
+        filter_id (str): The unique identifier of the profile.
+
+    Returns:
+        A dictionary containing the full profile configuration.
+    """
+    try:
+        if not filter_id:
+            return {"success": False, "error": "filter_id is required"}
+
+        profile = await content_filter_manager.get_content_filter_by_id(filter_id)
+        if not profile:
+            return {"success": False, "error": f"Content filter '{filter_id}' not found."}
+
+        return {
+            "success": True,
+            "filter_id": filter_id,
+            "details": json.loads(json.dumps(profile, default=str)),
+        }
+    except Exception as e:
+        logger.error("Error getting content filter %s: %s", filter_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to get content filter {filter_id}: {e}"}
+
+
+@server.tool(
+    name="unifi_update_content_filter",
+    description="Update an existing content filtering profile. Requires the full profile object "
+    "(PUT replaces entire resource). Use unifi_get_content_filter_details to fetch the current "
+    "object, modify it, and send back. "
+    "client_macs and network_ids are additive — both can be set and the filter applies to all. "
+    "Safe search valid values: GOOGLE, YOUTUBE, BING (only these three are supported). "
+    "Requires confirmation.",
+    permission_category="content_filter",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+async def update_content_filter(
+    filter_id: Annotated[str, Field(description="The ID of the profile to update")],
+    filter_data: Annotated[
+        dict,
+        Field(description="The complete updated profile object with all fields"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, updates the profile. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """
+    Updates an existing content filtering profile.
+
+    Args:
+        filter_id (str): The ID of the profile to update.
+        filter_data (dict): The complete updated profile object.
+        confirm (bool): Must be True to execute.
+
+    Returns:
+        Preview of changes or success/failure status.
+    """
+    if not confirm:
+        return create_preview(
+            resource_type="content_filter",
+            resource_data=filter_data,
+            resource_name=filter_id,
+        )
+
+    try:
+        success = await content_filter_manager.update_content_filter(filter_id, filter_data)
+        if success:
+            return {"success": True, "message": f"Content filter '{filter_id}' updated successfully."}
+        return {"success": False, "error": f"Failed to update content filter '{filter_id}'."}
+    except Exception as e:
+        logger.error("Error updating content filter %s: %s", filter_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to update content filter '{filter_id}': {e}"}
+
+
+@server.tool(
+    name="unifi_delete_content_filter",
+    description="Delete a content filtering profile. Requires confirmation. "
+    "WARNING: Deleting a profile removes DNS-based blocking for all targeted clients/networks.",
+    permission_category="content_filter",
+    permission_action="delete",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
+)
+async def delete_content_filter(
+    filter_id: Annotated[str, Field(description="The ID of the profile to delete")],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, deletes the profile. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """
+    Deletes a content filtering profile.
+
+    Args:
+        filter_id (str): The ID of the profile to delete.
+        confirm (bool): Must be True to execute.
+
+    Returns:
+        Preview or success/failure status.
+    """
+    if not confirm:
+        return create_preview(
+            resource_type="content_filter",
+            resource_data={"filter_id": filter_id},
+            resource_name=filter_id,
+            warnings=["Deleting a content filter removes DNS-based blocking for all targeted clients/networks."],
+        )
+
+    try:
+        success = await content_filter_manager.delete_content_filter(filter_id)
+        if success:
+            return {"success": True, "message": f"Content filter '{filter_id}' deleted successfully."}
+        return {"success": False, "error": f"Failed to delete content filter '{filter_id}'."}
+    except Exception as e:
+        logger.error("Error deleting content filter %s: %s", filter_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to delete content filter '{filter_id}': {e}"}
