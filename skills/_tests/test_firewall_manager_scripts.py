@@ -107,9 +107,9 @@ EXPORT_TOOL_RESULTS = {
             {"_id": "n2", "name": "IoT VLAN", "purpose": "corporate"},
         ],
     },
-    "unifi_list_ip_groups": {
+    "unifi_list_firewall_groups": {
         "success": True,
-        "ip_groups": [{"_id": "g1", "name": "Servers"}],
+        "groups": [{"_id": "g1", "name": "Servers"}],
     },
     "detail_p1": {
         "success": True,
@@ -171,7 +171,7 @@ def test_export_parallel_collection(tmp_path):
     assert "unifi_list_firewall_policies" in tool_names
     assert "unifi_list_firewall_zones" in tool_names
     assert "unifi_list_networks" in tool_names
-    assert "unifi_list_ip_groups" in tool_names
+    assert "unifi_list_firewall_groups" in tool_names
 
 
 def test_export_fetches_policy_details(tmp_path):
@@ -201,11 +201,11 @@ def test_export_snapshot_structure(tmp_path):
     assert "policies" in snapshot
     assert "zones" in snapshot
     assert "networks" in snapshot
-    assert "ip_groups" in snapshot
+    assert "firewall_groups" in snapshot
     assert len(snapshot["policies"]) == 2
     assert len(snapshot["zones"]) == 2
     assert len(snapshot["networks"]) == 2
-    assert len(snapshot["ip_groups"]) == 1
+    assert len(snapshot["firewall_groups"]) == 1
 
 
 def test_export_saves_file(tmp_path):
@@ -257,7 +257,7 @@ def test_export_summary_counts(tmp_path):
     assert result["summary"]["policies"] == 2
     assert result["summary"]["zones"] == 2
     assert result["summary"]["networks"] == 2
-    assert result["summary"]["ip_groups"] == 1
+    assert result["summary"]["firewall_groups"] == 1
 
 
 def test_export_extract_list_success():
@@ -305,7 +305,7 @@ SNAPSHOT_V1 = {
     ],
     "zones": [{"_id": "z1", "name": "LAN"}, {"_id": "z2", "name": "WAN"}],
     "networks": [{"_id": "n1", "name": "Main LAN"}, {"_id": "n2", "name": "IoT VLAN"}],
-    "ip_groups": [{"_id": "g1", "name": "Servers"}],
+    "firewall_groups": [{"_id": "g1", "name": "Servers"}],
 }
 
 SNAPSHOT_V2 = {
@@ -317,7 +317,7 @@ SNAPSHOT_V2 = {
     ],
     "zones": [{"_id": "z1", "name": "LAN"}, {"_id": "z2", "name": "WAN"}],
     "networks": [{"_id": "n1", "name": "Main LAN"}, {"_id": "n2", "name": "IoT VLAN"}, {"_id": "n3", "name": "Guest"}],
-    "ip_groups": [{"_id": "g1", "name": "Servers"}],
+    "firewall_groups": [{"_id": "g1", "name": "Servers"}],
 }
 
 

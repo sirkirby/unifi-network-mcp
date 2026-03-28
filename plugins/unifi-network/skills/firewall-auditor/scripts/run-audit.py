@@ -322,12 +322,12 @@ def check_hygiene(
     policies: list[dict],
     policy_details: dict[str, dict],
     networks: list[dict],
-    ip_groups: list[dict],
+    firewall_groups: list[dict],
 ) -> list[dict]:
     """Check for conflicts, redundancies, stale references, naming, ordering."""
     findings: list[dict] = []
     network_ids = {n.get("_id") for n in networks}
-    ip_group_ids = {g.get("_id") for g in ip_groups}
+    firewall_group_ids = {g.get("_id") for g in firewall_groups}
 
     enabled_policies = [p for p in policies if p.get("enabled")]
     disabled_policies = [p for p in policies if not p.get("enabled")]
@@ -369,7 +369,7 @@ def check_hygiene(
                     )
                 )
             ref_gid = ep.get("ip_group_id")
-            if ref_gid and ref_gid not in ip_group_ids:
+            if ref_gid and ref_gid not in firewall_group_ids:
                 findings.append(
                     _finding(
                         "HYG-03",
@@ -714,18 +714,18 @@ def run_audit(mcp_url: str, state_dir: Path) -> dict:
             ("unifi_list_firewall_policies", {}),
             ("unifi_list_firewall_zones", {}),
             ("unifi_list_networks", {}),
-            ("unifi_list_ip_groups", {}),
+            ("unifi_list_firewall_groups", {}),
             ("unifi_list_devices", {}),
         ])
     except (MCPConnectionError, MCPToolError) as e:
         return {"success": False, "error": f"Failed to collect data: {e}"}
 
-    policies_result, zones_result, networks_result, ip_groups_result, devices_result = results
+    policies_result, zones_result, networks_result, firewall_groups_result, devices_result = results
 
     policies = _extract_list(policies_result, "policies")
     zones = _extract_list(zones_result, "zones")
     networks = _extract_list(networks_result, "networks")
-    ip_groups = _extract_list(ip_groups_result, "ip_groups")
+    firewall_groups = _extract_list(firewall_groups_result, "groups")
     devices = _extract_list(devices_result, "devices")
 
     # Step 2: Fetch details for each policy.
@@ -751,7 +751,7 @@ def run_audit(mcp_url: str, state_dir: Path) -> dict:
     # Step 3: Run benchmark checks.
     seg_findings = check_segmentation(policies, policy_details, networks, zones)
     egress_findings = check_egress(policies, policy_details, networks)
-    hygiene_findings = check_hygiene(policies, policy_details, networks, ip_groups)
+    hygiene_findings = check_hygiene(policies, policy_details, networks, firewall_groups)
     topology_findings = check_topology(devices)
 
     # Step 4: Score each category.
