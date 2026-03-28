@@ -1,6 +1,6 @@
 # Tool Catalog
 
-The UniFi Network MCP server exposes 91 tools, all prefixed with `unifi_`. Read-only tools are always available. Mutating tools are controlled by the [permission system](permissions.md).
+The UniFi Network MCP server exposes 130 tools, all prefixed with `unifi_`. Read-only tools are always available. Mutating tools are controlled by the [permission system](permissions.md).
 
 For machine-readable tool metadata, call the `unifi_tool_index` meta-tool at runtime, or inspect `src/unifi_network_mcp/tools_manifest.json`.
 
