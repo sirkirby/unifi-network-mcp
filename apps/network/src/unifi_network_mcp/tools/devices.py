@@ -821,3 +821,64 @@ async def force_provision_device(
     except Exception as e:
         logger.error("Error force provisioning %s: %s", device_mac, e, exc_info=True)
         return {"success": False, "error": f"Failed to force provision device {device_mac}: {e}"}
+
+
+# ---- Speedtest Commands ----
+
+
+@server.tool(
+    name="unifi_trigger_speedtest",
+    description="Trigger a speedtest on the gateway device. Returns immediately; "
+    "use unifi_get_speedtest_status to poll for results.",
+    permission_category="devices",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+async def trigger_speedtest(
+    gateway_mac: Annotated[str, Field(description="MAC address of the gateway device")],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, triggers the speedtest. When false (default), returns a preview."),
+    ] = False,
+) -> Dict[str, Any]:
+    """Triggers a speedtest on the gateway."""
+    if not confirm:
+        return create_preview(
+            resource_type="speedtest",
+            resource_data={"gateway_mac": gateway_mac},
+            resource_name=gateway_mac,
+        )
+
+    try:
+        success = await device_manager.trigger_speedtest(gateway_mac)
+        if success:
+            return {
+                "success": True,
+                "message": f"Speedtest triggered on gateway '{gateway_mac}'. Use unifi_get_speedtest_status to check progress.",
+            }
+        return {"success": False, "error": f"Failed to trigger speedtest on '{gateway_mac}'."}
+    except Exception as e:
+        logger.error("Error triggering speedtest on %s: %s", gateway_mac, e, exc_info=True)
+        return {"success": False, "error": f"Failed to trigger speedtest on {gateway_mac}: {e}"}
+
+
+@server.tool(
+    name="unifi_get_speedtest_status",
+    description="Check the status of a running speedtest on the gateway.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def get_speedtest_status(
+    gateway_mac: Annotated[str, Field(description="MAC address of the gateway device")],
+) -> Dict[str, Any]:
+    """Checks speedtest status on the gateway."""
+    try:
+        status = await device_manager.get_speedtest_status(gateway_mac)
+        return {
+            "success": True,
+            "site": device_manager._connection.site,
+            "gateway_mac": gateway_mac,
+            "status": status,
+        }
+    except Exception as e:
+        logger.error("Error getting speedtest status for %s: %s", gateway_mac, e, exc_info=True)
+        return {"success": False, "error": f"Failed to get speedtest status for {gateway_mac}: {e}"}

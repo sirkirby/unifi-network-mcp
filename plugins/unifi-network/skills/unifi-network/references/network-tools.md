@@ -1,4 +1,4 @@
-# Network Server Tool Reference (130 tools)
+# Network Server Tool Reference (141 tools)
 
 Complete reference for `unifi_*` tools. All read tools are always available. Mutating tools require permissions (see main skill for details).
 
@@ -66,18 +66,20 @@ Always available, regardless of registration mode.
 ## Devices
 
 <!-- AUTO:tools:devices -->
-10 tools.
+12 tools.
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `unifi_get_device_details` | Read | Returns the full raw device object for one device by MAC address — includes radio tables, port tables, system stats, WAN info, firmware d... |
 | `unifi_get_device_radio` | Read | Get radio configuration and live statistics for an access point. |
+| `unifi_get_speedtest_status` | Read | Check the status of a running speedtest on the gateway. |
 | `unifi_list_devices` | Read | Returns adopted device inventory with MAC, name, model, IP, firmware version, uptime, status (online/offline/upgrading/etc), device_categ... |
 | `unifi_adopt_device` | Mutate | Adopt a pending device into the Unifi Network by MAC address |
 | `unifi_force_provision_device` | Mutate | Force re-provision a device, pushing the current configuration from the controller to the device. |
 | `unifi_locate_device` | Mutate | Toggle device locate mode (LED blinking) to physically identify a device. |
 | `unifi_reboot_device` | Mutate | Reboot a specific device by MAC address |
 | `unifi_rename_device` | Mutate | Rename a device in the Unifi Network controller by MAC address |
+| `unifi_trigger_speedtest` | Mutate | Trigger a speedtest on the gateway device. |
 | `unifi_update_device_radio` | Mutate | Update radio settings for a specific band on an access point. |
 | `unifi_upgrade_device` | Mutate | Initiate a firmware upgrade for a device by MAC address (uses cached firmware by default) |
 <!-- /AUTO:tools:devices -->
@@ -386,15 +388,24 @@ Always available, regardless of registration mode.
 ## Statistics
 
 <!-- AUTO:tools:stats -->
-6 tools.
+15 tools.
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `unifi_get_alerts` | Read | Get recent alerts from the Unifi Network controller |
+| `unifi_get_anomalies` | Read | Get network anomaly detection events. |
+| `unifi_get_client_dpi_traffic` | Read | Get per-client DPI traffic data by application or category. |
+| `unifi_get_client_sessions` | Read | Get client session history. |
 | `unifi_get_client_stats` | Read | Get statistics for a specific client/device |
+| `unifi_get_client_wifi_details` | Read | Get detailed WiFi statistics for a single wireless client including signal, noise, satisfaction, tx/rx rates, retries, roam count, channe... |
+| `unifi_get_dashboard` | Read | Get the pre-aggregated site dashboard summary (health, device counts, client counts, ISP status). |
 | `unifi_get_device_stats` | Read | Returns historical traffic time-series (rx/tx bytes, client counts) for one device by MAC or _id. |
 | `unifi_get_dpi_stats` | Read | Get Deep Packet Inspection (DPI) statistics (applications and categories) |
+| `unifi_get_gateway_stats` | Read | Get gateway WAN/LAN performance history including bandwidth, CPU, and memory utilization. |
+| `unifi_get_ips_events` | Read | Get IPS/IDS security events (intrusion detection/prevention alerts). |
 | `unifi_get_network_stats` | Read | Get network statistics from the Unifi Network controller |
+| `unifi_get_site_dpi_traffic` | Read | Get actual DPI traffic data by application or category for the entire site. |
+| `unifi_get_speedtest_results` | Read | Get historical speedtest results including download, upload (Mbps), and latency (ms). |
 | `unifi_get_top_clients` | Read | Get a list of top clients by usage (sorted by total bytes) |
 <!-- /AUTO:tools:stats -->
 
