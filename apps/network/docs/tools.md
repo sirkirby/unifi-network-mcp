@@ -106,7 +106,7 @@ These are always registered regardless of mode:
 - `unifi_create_wlan` — Create a WLAN/SSID
 - `unifi_update_wlan` — Update WLAN fields
 
-## Switch Management (19 tools)
+## Switch Management (15 tools)
 
 ### Port Profiles
 - `unifi_list_port_profiles` — List all port profiles (VLAN, isolation, PoE, STP settings)
@@ -129,10 +129,6 @@ These are always registered regardless of mode:
 - `unifi_update_switch_stp` — Update STP priority and version
 - `unifi_set_jumbo_frames` — Enable/disable jumbo frames
 
-### Device Commands
-- `unifi_locate_device` — Toggle LED blinking to locate a device
-- `unifi_force_provision_device` — Force re-provision device configuration
-
 ## VPN (6 tools)
 
 - `unifi_list_vpn_clients` — List VPN clients (WireGuard, OpenVPN)
@@ -142,7 +138,7 @@ These are always registered regardless of mode:
 - `unifi_get_vpn_server_details` — Get server details by ID
 - `unifi_update_vpn_server_state` — Enable/disable a VPN server
 
-## Devices (8 tools)
+## Devices (10 tools)
 
 - `unifi_list_devices` — List all adopted devices
 - `unifi_get_device_details` — Get full device object by MAC
@@ -152,6 +148,8 @@ These are always registered regardless of mode:
 - `unifi_rename_device` — Rename a device by MAC
 - `unifi_adopt_device` — Adopt a pending device
 - `unifi_upgrade_device` — Initiate firmware upgrade
+- `unifi_locate_device` — Toggle LED blinking to locate any device
+- `unifi_force_provision_device` — Force re-provision device configuration
 
 ## Clients (11 tools)
 

@@ -30,7 +30,7 @@
     "unifi_delete_firewall_policy": "unifi_network_mcp.tools.firewall",
     "unifi_delete_oon_policy": "unifi_network_mcp.tools.oon",
     "unifi_delete_port_profile": "unifi_network_mcp.tools.switch",
-    "unifi_force_provision_device": "unifi_network_mcp.tools.switch",
+    "unifi_force_provision_device": "unifi_network_mcp.tools.devices",
     "unifi_force_reconnect_client": "unifi_network_mcp.tools.clients",
     "unifi_get_acl_rule_details": "unifi_network_mcp.tools.acl",
     "unifi_get_alerts": "unifi_network_mcp.tools.stats",
@@ -54,7 +54,7 @@
     "unifi_get_port_stats": "unifi_network_mcp.tools.switch",
     "unifi_get_qos_rule_details": "unifi_network_mcp.tools.qos",
     "unifi_get_route_details": "unifi_network_mcp.tools.routing",
-    "unifi_get_site_settings": "unifi_network_mcp.tools.system",
+    "unifi_get_site_settings": "unifi_network_mcp.tools.config",
     "unifi_get_snmp_settings": "unifi_network_mcp.tools.system",
     "unifi_get_switch_capabilities": "unifi_network_mcp.tools.switch",
     "unifi_get_switch_ports": "unifi_network_mcp.tools.switch",
@@ -92,7 +92,7 @@
     "unifi_list_vpn_clients": "unifi_network_mcp.tools.vpn",
     "unifi_list_vpn_servers": "unifi_network_mcp.tools.vpn",
     "unifi_list_wlans": "unifi_network_mcp.tools.network",
-    "unifi_locate_device": "unifi_network_mcp.tools.switch",
+    "unifi_locate_device": "unifi_network_mcp.tools.devices",
     "unifi_lookup_by_ip": "unifi_network_mcp.tools.clients",
     "unifi_power_cycle_port": "unifi_network_mcp.tools.switch",
     "unifi_reboot_device": "unifi_network_mcp.tools.devices",
@@ -1097,10 +1097,10 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Force re-provision a device, pushing the current configuration from the controller to the device. Useful after manual changes or to resolve config drift. Requires confirmation.",
+      "description": "Force re-provision a device, pushing the current configuration from the controller to the device. Works on any UniFi device (switches, APs, gateways). Useful after manual changes or to resolve config drift. Requires confirmation.",
       "name": "unifi_force_provision_device",
       "permission_action": "update",
-      "permission_category": "switch",
+      "permission_category": "devices",
       "schema": {
         "input": {
           "properties": {
@@ -1109,7 +1109,7 @@
               "type": "boolean"
             },
             "device_mac": {
-              "description": "MAC address of the device",
+              "description": "MAC address of the device (from unifi_list_devices)",
               "type": "string"
             }
           },
@@ -2312,10 +2312,10 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Toggle device locate mode (LED blinking) to physically identify a switch. Requires confirmation.",
+      "description": "Toggle device locate mode (LED blinking) to physically identify a device. Works on any UniFi device (switches, APs, gateways). Requires confirmation.",
       "name": "unifi_locate_device",
       "permission_action": "update",
-      "permission_category": "switch",
+      "permission_category": "devices",
       "schema": {
         "input": {
           "properties": {
@@ -2324,7 +2324,7 @@
               "type": "boolean"
             },
             "device_mac": {
-              "description": "MAC address of the device",
+              "description": "MAC address of the device (from unifi_list_devices)",
               "type": "string"
             },
             "enabled": {

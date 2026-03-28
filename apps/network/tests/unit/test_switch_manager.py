@@ -273,39 +273,6 @@ class TestSwitchManager:
         assert api_request.data["cmd"] == "power-cycle"
         assert api_request.data["port_idx"] == 3
 
-    @pytest.mark.asyncio
-    async def test_locate_device_enable(self, switch_manager, mock_connection):
-        """Test locate_device sends set-locate command."""
-        mock_connection.request.return_value = {}
-
-        result = await switch_manager.locate_device("aa:bb:cc:dd:ee:ff", True)
-
-        assert result is True
-        call_args = mock_connection.request.call_args
-        assert call_args[0][0].data["cmd"] == "set-locate"
-
-    @pytest.mark.asyncio
-    async def test_locate_device_disable(self, switch_manager, mock_connection):
-        """Test locate_device sends unset-locate command."""
-        mock_connection.request.return_value = {}
-
-        result = await switch_manager.locate_device("aa:bb:cc:dd:ee:ff", False)
-
-        assert result is True
-        call_args = mock_connection.request.call_args
-        assert call_args[0][0].data["cmd"] == "unset-locate"
-
-    @pytest.mark.asyncio
-    async def test_force_provision_success(self, switch_manager, mock_connection):
-        """Test force_provision sends correct command."""
-        mock_connection.request.return_value = {}
-
-        result = await switch_manager.force_provision("aa:bb:cc:dd:ee:ff")
-
-        assert result is True
-        call_args = mock_connection.request.call_args
-        assert call_args[0][0].data["cmd"] == "force-provision"
-
     # ---- API Path Verification ----
 
     @pytest.mark.asyncio
@@ -374,22 +341,6 @@ class TestSwitchManager:
 
         with pytest.raises(ConnectionError, match="Not connected"):
             await switch_manager.power_cycle_port("aa:bb:cc:dd:ee:ff", 1)
-
-    @pytest.mark.asyncio
-    async def test_locate_device_not_connected(self, switch_manager, mock_connection):
-        """Test locate_device raises when not connected."""
-        mock_connection.ensure_connected.return_value = False
-
-        with pytest.raises(ConnectionError, match="Not connected"):
-            await switch_manager.locate_device("aa:bb:cc:dd:ee:ff", True)
-
-    @pytest.mark.asyncio
-    async def test_force_provision_not_connected(self, switch_manager, mock_connection):
-        """Test force_provision raises when not connected."""
-        mock_connection.ensure_connected.return_value = False
-
-        with pytest.raises(ConnectionError, match="Not connected"):
-            await switch_manager.force_provision("aa:bb:cc:dd:ee:ff")
 
     # ---- Device Not Found Tests ----
 

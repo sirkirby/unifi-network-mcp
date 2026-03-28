@@ -66,7 +66,7 @@ Always available, regardless of registration mode.
 ## Devices
 
 <!-- AUTO:tools:devices -->
-8 tools.
+10 tools.
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -74,6 +74,8 @@ Always available, regardless of registration mode.
 | `unifi_get_device_radio` | Read | Get radio configuration and live statistics for an access point. |
 | `unifi_list_devices` | Read | Returns adopted device inventory with MAC, name, model, IP, firmware version, uptime, status (online/offline/upgrading/etc), device_categ... |
 | `unifi_adopt_device` | Mutate | Adopt a pending device into the Unifi Network by MAC address |
+| `unifi_force_provision_device` | Mutate | Force re-provision a device, pushing the current configuration from the controller to the device. |
+| `unifi_locate_device` | Mutate | Toggle device locate mode (LED blinking) to physically identify a device. |
 | `unifi_reboot_device` | Mutate | Reboot a specific device by MAC address |
 | `unifi_rename_device` | Mutate | Rename a device in the Unifi Network controller by MAC address |
 | `unifi_update_device_radio` | Mutate | Update radio settings for a specific band on an access point. |
@@ -265,7 +267,7 @@ Always available, regardless of registration mode.
 ## Switch Management
 
 <!-- AUTO:tools:switch -->
-17 tools.
+15 tools.
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -279,8 +281,6 @@ Always available, regardless of registration mode.
 | `unifi_configure_port_mirror` | Mutate | Configure port mirroring on a switch. |
 | `unifi_create_port_profile` | Mutate | Create a new port profile. |
 | `unifi_delete_port_profile` | Mutate | Delete a port profile. |
-| `unifi_force_provision_device` | Mutate | Force re-provision a device, pushing the current configuration from the controller to the device. |
-| `unifi_locate_device` | Mutate | Toggle device locate mode (LED blinking) to physically identify a switch. |
 | `unifi_power_cycle_port` | Mutate | Power cycle PoE on a specific switch port. |
 | `unifi_set_jumbo_frames` | Mutate | Enable or disable jumbo frames on a switch. |
 | `unifi_set_switch_port_profile` | Mutate | Assign a port profile to a specific switch port. |

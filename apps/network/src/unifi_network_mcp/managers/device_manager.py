@@ -116,6 +116,52 @@ class DeviceManager:
             logger.error(f"Error upgrading device {device_mac}: {e}")
             return False
 
+    async def locate_device(self, device_mac: str, enabled: bool = True) -> bool:
+        """Enable or disable device locate (LED blinking).
+
+        Args:
+            device_mac: MAC address of the device.
+            enabled: True to start blinking, False to stop.
+
+        Returns:
+            True on success, False on failure.
+        """
+        try:
+            cmd = "set-locate" if enabled else "unset-locate"
+            api_request = ApiRequest(
+                method="post",
+                path="/cmd/devmgr",
+                data={"cmd": cmd, "mac": device_mac},
+            )
+            await self._connection.request(api_request)
+            logger.info(f"Locate {'enabled' if enabled else 'disabled'} for device {device_mac}")
+            return True
+        except Exception as e:
+            logger.error(f"Error setting locate mode on device {device_mac}: {e}")
+            return False
+
+    async def force_provision(self, device_mac: str) -> bool:
+        """Force re-provision a device.
+
+        Args:
+            device_mac: MAC address of the device.
+
+        Returns:
+            True on success, False on failure.
+        """
+        try:
+            api_request = ApiRequest(
+                method="post",
+                path="/cmd/devmgr",
+                data={"cmd": "force-provision", "mac": device_mac},
+            )
+            await self._connection.request(api_request)
+            logger.info(f"Force provision command sent for device {device_mac}")
+            return True
+        except Exception as e:
+            logger.error(f"Error force provisioning device {device_mac}: {e}")
+            return False
+
     async def get_device_radio(self, device_mac: str) -> Optional[Dict[str, Any]]:
         """Get focused radio configuration and live stats for an AP.
 
