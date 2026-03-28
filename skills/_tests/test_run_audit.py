@@ -472,9 +472,9 @@ CLEAN_TOOL_RESULTS = {
             {"_id": "n2", "name": "IoT VLAN", "purpose": "corporate", "vlan_enabled": True, "vlan": 20},
         ],
     },
-    "unifi_list_ip_groups": {
+    "unifi_list_firewall_groups": {
         "success": True,
-        "ip_groups": [{"_id": "g1", "name": "Servers"}],
+        "groups": [{"_id": "g1", "name": "Servers"}],
     },
     "unifi_list_devices": {
         "success": True,
@@ -578,7 +578,7 @@ def test_run_audit_with_issues(tmp_path):
                 {"_id": "n3", "name": "Guest WiFi", "purpose": "guest"},
             ],
         },
-        "unifi_list_ip_groups": {"success": True, "ip_groups": []},
+        "unifi_list_firewall_groups": {"success": True, "groups": []},
         "unifi_list_devices": {
             "success": True,
             "devices": [

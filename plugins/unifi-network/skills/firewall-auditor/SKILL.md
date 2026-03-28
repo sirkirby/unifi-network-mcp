@@ -167,7 +167,7 @@ Call via `unifi_batch`:
 - `unifi_list_firewall_policies` — all policies
 - `unifi_list_firewall_zones` — zone definitions
 - `unifi_list_networks` — all networks/VLANs
-- `unifi_list_ip_groups` — IP groups referenced by rules
+- `unifi_list_firewall_groups` — Firewall groups (address/port) referenced by rules
 - `unifi_get_dpi_stats` — DPI data (shows what traffic is actually flowing)
 
 ### Step 2: Policy analysis

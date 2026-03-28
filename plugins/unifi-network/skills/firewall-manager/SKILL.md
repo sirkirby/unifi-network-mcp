@@ -183,7 +183,7 @@ Use these direct tool calls when scripts are unavailable (e.g., no Python runtim
 - `unifi_list_firewall_policies` — all firewall policies
 - `unifi_get_firewall_policy_details` — full details for one policy by ID
 - `unifi_list_firewall_zones` — available zones (Internal, External, DMZ, etc.)
-- `unifi_list_ip_groups` — IP groups for use in rules
+- `unifi_list_firewall_groups` — Firewall groups (address/port) for use in rules
 - `unifi_list_networks` — networks/VLANs (needed for targeting specific segments)
 - `unifi_get_dpi_stats` — DPI categories available on this controller
 

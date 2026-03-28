@@ -15,7 +15,7 @@ This document defines deterministic checks for the firewall auditor skill. Each 
 **MCP tools needed:**
 - `list_firewall_rules` — retrieve all firewall rules
 - `list_networks` — identify IoT VLAN subnet and VLAN ID
-- `list_ip_groups` — check if RFC 1918 ranges are grouped
+- `list_firewall_groups` — check if RFC 1918 ranges are grouped
 
 **Severity:** critical
 
@@ -67,7 +67,7 @@ create_simple_firewall_policy:
 **MCP tools needed:**
 - `list_firewall_rules` — find rules referencing management VLAN as destination
 - `list_networks` — identify management VLAN subnet and VLAN ID
-- `list_ip_groups` — check for admin workstation IP group definitions
+- `list_firewall_groups` — check for admin workstation IP group definitions
 
 **Severity:** critical
 
@@ -93,7 +93,7 @@ create_simple_firewall_policy:
 **MCP tools needed:**
 - `list_networks` — enumerate all VLANs and their subnets
 - `list_firewall_rules` — enumerate all rules and map coverage
-- `list_ip_groups` — resolve group memberships for rule sources/destinations
+- `list_firewall_groups` — resolve group memberships for rule sources/destinations
 
 **Severity:** warning
 
@@ -169,7 +169,7 @@ create_simple_firewall_policy:
 **What to check:** Verify at least one IP group exists named with a threat/block indicator (e.g., contains "threat", "block", "malicious", or "blacklist" in the name). Verify that IP group is referenced in at least one enabled WAN_OUT or LAN_IN drop rule. An empty IP group with no associated rule is also a finding.
 
 **MCP tools needed:**
-- `list_ip_groups` — find threat-related groups, check member count
+- `list_firewall_groups` — find threat-related groups, check member count
 - `list_firewall_rules` — verify group is referenced in enabled drop rules
 
 **Severity:** informational
@@ -233,12 +233,12 @@ update_firewall_rule:
 
 **Name:** All rule references resolve to valid objects
 
-**What to check:** For every firewall rule that references a network ID or IP group ID in its source or destination, verify that the referenced object exists in `list_networks` or `list_ip_groups` respectively. Also verify that referenced IP groups have at least one member. Report any rule with a dangling reference.
+**What to check:** For every firewall rule that references a network ID or IP group ID in its source or destination, verify that the referenced object exists in `list_networks` or `list_firewall_groups` respectively. Also verify that referenced IP groups have at least one member. Report any rule with a dangling reference.
 
 **MCP tools needed:**
 - `list_firewall_rules` — extract network and IP group references from each rule
 - `list_networks` — validate network IDs exist
-- `list_ip_groups` — validate group IDs exist and are non-empty
+- `list_firewall_groups` — validate group IDs exist and are non-empty
 
 **Severity:** warning
 

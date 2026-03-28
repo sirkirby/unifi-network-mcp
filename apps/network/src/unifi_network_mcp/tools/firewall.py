@@ -696,14 +696,191 @@ async def list_firewall_zones() -> Dict[str, Any]:
     return {"success": True, "count": len(zones), "zones": zones}
 
 
+# ---- Firewall Groups (address-group, port-group) ----
+
+
 @server.tool(
-    name="unifi_list_ip_groups",
-    description="List IP groups configured on the controller (V2 API).",
+    name="unifi_list_firewall_groups",
+    description="List firewall groups (address and port groups) used as reusable objects in firewall policies. "
+    "Address groups contain IP addresses/CIDRs, port groups contain port numbers/ranges. "
+    "These are referenced by firewall policies via ip_group_id and port_group_id fields.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def list_ip_groups() -> Dict[str, Any]:
-    groups = await firewall_manager.get_ip_groups()
-    return {"success": True, "count": len(groups), "ip_groups": groups}
+async def list_firewall_groups() -> Dict[str, Any]:
+    """Lists all firewall groups."""
+    try:
+        groups = await firewall_manager.get_firewall_groups()
+        formatted = [
+            {
+                "id": g.get("_id"),
+                "name": g.get("name"),
+                "group_type": g.get("group_type"),
+                "member_count": len(g.get("group_members", [])),
+                "group_members": g.get("group_members", []),
+            }
+            for g in groups
+        ]
+        return {
+            "success": True,
+            "site": firewall_manager._connection.site,
+            "count": len(formatted),
+            "groups": formatted,
+        }
+    except Exception as e:
+        logger.error("Error listing firewall groups: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to list firewall groups: {e}"}
+
+
+@server.tool(
+    name="unifi_get_firewall_group_details",
+    description="Get detailed configuration for a specific firewall group by ID.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def get_firewall_group_details(
+    group_id: Annotated[str, Field(description="The unique identifier (_id) of the firewall group")],
+) -> Dict[str, Any]:
+    """Gets a specific firewall group."""
+    try:
+        if not group_id:
+            return {"success": False, "error": "group_id is required"}
+
+        group = await firewall_manager.get_firewall_group_by_id(group_id)
+        if not group:
+            return {"success": False, "error": f"Firewall group '{group_id}' not found."}
+
+        return {
+            "success": True,
+            "group_id": group_id,
+            "details": json.loads(json.dumps(group, default=str)),
+        }
+    except Exception as e:
+        logger.error("Error getting firewall group %s: %s", group_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to get firewall group {group_id}: {e}"}
+
+
+@server.tool(
+    name="unifi_create_firewall_group",
+    description="Create a new firewall group (address or port group). "
+    "group_type must be 'address-group' (for IPs/CIDRs), 'ipv6-address-group', or 'port-group' (for port numbers/ranges). "
+    "IMPORTANT: group_type cannot be changed after creation. "
+    "group_members format: addresses use ['10.0.0.1', '10.0.0.0/24'], ports use ['80', '443', '8080-8090']. "
+    "Requires confirmation.",
+    permission_category="firewall",
+    permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+async def create_firewall_group(
+    name: Annotated[str, Field(description="Name of the firewall group")],
+    group_type: Annotated[
+        str,
+        Field(description="Type: 'address-group' (IPv4), 'ipv6-address-group' (IPv6), or 'port-group'"),
+    ],
+    group_members: Annotated[
+        list[str],
+        Field(description="List of IPs/CIDRs (for address groups) or port numbers/ranges (for port groups)"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the group. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Creates a new firewall group."""
+    group_data = {
+        "name": name,
+        "group_type": group_type,
+        "group_members": group_members,
+    }
+
+    if not confirm:
+        return create_preview(
+            resource_type="firewall_group",
+            resource_data=group_data,
+            resource_name=name,
+        )
+
+    try:
+        result = await firewall_manager.create_firewall_group(group_data)
+        if result:
+            return {
+                "success": True,
+                "message": f"Firewall group '{name}' created successfully.",
+                "group": json.loads(json.dumps(result, default=str)),
+            }
+        return {"success": False, "error": f"Failed to create firewall group '{name}'."}
+    except Exception as e:
+        logger.error("Error creating firewall group: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to create firewall group: {e}"}
+
+
+@server.tool(
+    name="unifi_update_firewall_group",
+    description="Update an existing firewall group. Requires the full group object "
+    "(PUT replaces entire resource). group_type cannot be changed. Requires confirmation.",
+    permission_category="firewall",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+async def update_firewall_group(
+    group_id: Annotated[str, Field(description="The ID of the group to update")],
+    group_data: Annotated[
+        dict,
+        Field(description="The complete updated group object with all fields"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, updates the group. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Updates an existing firewall group."""
+    if not confirm:
+        return create_preview(
+            resource_type="firewall_group",
+            resource_data=group_data,
+            resource_name=group_id,
+        )
+
+    try:
+        success = await firewall_manager.update_firewall_group(group_id, group_data)
+        if success:
+            return {"success": True, "message": f"Firewall group '{group_id}' updated successfully."}
+        return {"success": False, "error": f"Failed to update firewall group '{group_id}'."}
+    except Exception as e:
+        logger.error("Error updating firewall group %s: %s", group_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to update firewall group '{group_id}': {e}"}
+
+
+@server.tool(
+    name="unifi_delete_firewall_group",
+    description="Delete a firewall group. Requires confirmation. "
+    "WARNING: Firewall policies referencing this group via ip_group_id or port_group_id may break.",
+    permission_category="firewall",
+    permission_action="delete",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
+)
+async def delete_firewall_group(
+    group_id: Annotated[str, Field(description="The ID of the group to delete")],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, deletes the group. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Deletes a firewall group."""
+    if not confirm:
+        return create_preview(
+            resource_type="firewall_group",
+            resource_data={"group_id": group_id},
+            resource_name=group_id,
+            warnings=["Firewall policies referencing this group via ip_group_id or port_group_id may break."],
+        )
+
+    try:
+        success = await firewall_manager.delete_firewall_group(group_id)
+        if success:
+            return {"success": True, "message": f"Firewall group '{group_id}' deleted successfully."}
+        return {"success": False, "error": f"Failed to delete firewall group '{group_id}'."}
+    except Exception as e:
+        logger.error("Error deleting firewall group %s: %s", group_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to delete firewall group '{group_id}': {e}"}
 
 
 @server.tool(
