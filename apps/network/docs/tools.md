@@ -106,6 +106,33 @@ These are always registered regardless of mode:
 - `unifi_create_wlan` — Create a WLAN/SSID
 - `unifi_update_wlan` — Update WLAN fields
 
+## Switch Management (19 tools)
+
+### Port Profiles
+- `unifi_list_port_profiles` — List all port profiles (VLAN, isolation, PoE, STP settings)
+- `unifi_get_port_profile_details` — Get full profile configuration by ID
+- `unifi_create_port_profile` — Create a new port profile
+- `unifi_update_port_profile` — Update an existing profile
+- `unifi_delete_port_profile` — Delete a profile (system profiles protected)
+
+### Switch Port Operations
+- `unifi_get_switch_ports` — Get port assignments (which profile on which port)
+- `unifi_get_port_stats` — Get live port statistics (speed, PoE, errors, MAC count)
+- `unifi_get_lldp_neighbors` — Get LLDP neighbor discovery table
+- `unifi_get_switch_capabilities` — Get hardware capabilities (max ACLs, VLANs, etc.)
+- `unifi_set_switch_port_profile` — Assign port profiles to switch ports
+- `unifi_power_cycle_port` — Power cycle PoE on a specific port
+
+### Advanced Configuration
+- `unifi_configure_port_mirror` — Configure port mirroring for packet capture
+- `unifi_configure_port_aggregation` — Configure link aggregation (LACP/LAG)
+- `unifi_update_switch_stp` — Update STP priority and version
+- `unifi_set_jumbo_frames` — Enable/disable jumbo frames
+
+### Device Commands
+- `unifi_locate_device` — Toggle LED blinking to locate a device
+- `unifi_force_provision_device` — Force re-provision device configuration
+
 ## VPN (6 tools)
 
 - `unifi_list_vpn_clients` — List VPN clients (WireGuard, OpenVPN)

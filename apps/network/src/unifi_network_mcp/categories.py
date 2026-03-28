@@ -47,6 +47,7 @@ NETWORK_CATEGORY_MAP = {
     "content_filter": "content_filters",
     "oon_policy": "oon_policies",
     "dpi": "dpi",
+    "switch": "switch",
 }
 
 # Backward-compatible alias

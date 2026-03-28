@@ -1,4 +1,4 @@
-# Network Server Tool Reference (109 tools)
+# Network Server Tool Reference (126 tools)
 
 Complete reference for `unifi_*` tools. All read tools are always available. Mutating tools require permissions (see main skill for details).
 
@@ -259,6 +259,41 @@ Always available, regardless of registration mode.
 - Profiles apply DNS-based category blocking (FAMILY, MALWARE, PHISHING, etc.) and safe search
 - Target by client MACs (per-device) or network IDs (per-VLAN)
 - Use `unifi_get_content_filter_details` to fetch the current profile before updating
+
+---
+
+## Switch Management
+
+<!-- AUTO:tools:switch -->
+17 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `unifi_get_lldp_neighbors` | Read | Get LLDP neighbor discovery table for a switch. |
+| `unifi_get_port_profile_details` | Read | Get detailed configuration for a specific port profile by ID. |
+| `unifi_get_port_stats` | Read | Get live port statistics for a switch. |
+| `unifi_get_switch_capabilities` | Read | Get switch hardware capabilities including max ACL rules, max VLANs, max aggregation sessions, max mirror sessions, STP config, and jumbo... |
+| `unifi_get_switch_ports` | Read | Get port assignments for a specific switch. |
+| `unifi_list_port_profiles` | Read | List all port profiles (port configurations) on the controller. |
+| `unifi_configure_port_aggregation` | Mutate | Configure link aggregation (LACP/LAG) on a switch. |
+| `unifi_configure_port_mirror` | Mutate | Configure port mirroring on a switch. |
+| `unifi_create_port_profile` | Mutate | Create a new port profile. |
+| `unifi_delete_port_profile` | Mutate | Delete a port profile. |
+| `unifi_force_provision_device` | Mutate | Force re-provision a device, pushing the current configuration from the controller to the device. |
+| `unifi_locate_device` | Mutate | Toggle device locate mode (LED blinking) to physically identify a switch. |
+| `unifi_power_cycle_port` | Mutate | Power cycle PoE on a specific switch port. |
+| `unifi_set_jumbo_frames` | Mutate | Enable or disable jumbo frames on a switch. |
+| `unifi_set_switch_port_profile` | Mutate | Assign a port profile to a specific switch port. |
+| `unifi_update_port_profile` | Mutate | Update an existing port profile. |
+| `unifi_update_switch_stp` | Mutate | Update STP (Spanning Tree Protocol) configuration for a switch. |
+<!-- /AUTO:tools:switch -->
+
+**Tips:**
+- Use `unifi_list_devices` to find switch MAC addresses (required for most switch tools)
+- Port overrides are a FULL REPLACEMENT — always fetch existing with `unifi_get_switch_ports` before modifying
+- System profiles (`attr_no_delete=true`) cannot be deleted
+- Port mirroring is limited by `switch_caps.max_mirror_sessions` (typically 1)
+- Link aggregation requires consecutive ports at the same speed
 
 ---
 
