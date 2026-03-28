@@ -106,17 +106,17 @@ def export_policies(mcp_url: str, state_dir: Path) -> dict[str, Any]:
             ("unifi_list_firewall_policies", {}),
             ("unifi_list_firewall_zones", {}),
             ("unifi_list_networks", {}),
-            ("unifi_list_ip_groups", {}),
+            ("unifi_list_firewall_groups", {}),
         ])
     except (MCPConnectionError, MCPToolError) as e:
         return {"success": False, "error": f"Failed to collect firewall data: {e}"}
 
-    policies_result, zones_result, networks_result, ip_groups_result = results
+    policies_result, zones_result, networks_result, firewall_groups_result = results
 
     policies = _extract_list(policies_result, "policies")
     zones = _extract_list(zones_result, "zones")
     networks = _extract_list(networks_result, "networks")
-    ip_groups = _extract_list(ip_groups_result, "ip_groups")
+    firewall_groups = _extract_list(firewall_groups_result, "groups")
 
     # Step 2: Fetch details for each policy.
     detailed_policies: list[dict] = []
@@ -153,7 +153,7 @@ def export_policies(mcp_url: str, state_dir: Path) -> dict[str, Any]:
         "policies": detailed_policies,
         "zones": zones,
         "networks": networks,
-        "ip_groups": ip_groups,
+        "firewall_groups": firewall_groups,
     }
 
     # Step 4: Save to disk.
@@ -168,7 +168,7 @@ def export_policies(mcp_url: str, state_dir: Path) -> dict[str, Any]:
             "policies": len(detailed_policies),
             "zones": len(zones),
             "networks": len(networks),
-            "ip_groups": len(ip_groups),
+            "firewall_groups": len(firewall_groups),
         },
     }
 

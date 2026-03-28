@@ -1,5 +1,5 @@
 {
-  "count": 114,
+  "count": 113,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "unifi_network_mcp.tools.devices",
@@ -49,7 +49,7 @@
     "unifi_get_port_forward": "unifi_network_mcp.tools.port_forwards",
     "unifi_get_qos_rule_details": "unifi_network_mcp.tools.qos",
     "unifi_get_route_details": "unifi_network_mcp.tools.routing",
-    "unifi_get_site_settings": "unifi_network_mcp.tools.system",
+    "unifi_get_site_settings": "unifi_network_mcp.tools.config",
     "unifi_get_snmp_settings": "unifi_network_mcp.tools.system",
     "unifi_get_system_info": "unifi_network_mcp.tools.system",
     "unifi_get_top_clients": "unifi_network_mcp.tools.stats",
@@ -73,7 +73,6 @@
     "unifi_list_firewall_groups": "unifi_network_mcp.tools.firewall",
     "unifi_list_firewall_policies": "unifi_network_mcp.tools.firewall",
     "unifi_list_firewall_zones": "unifi_network_mcp.tools.firewall",
-    "unifi_list_ip_groups": "unifi_network_mcp.tools.firewall",
     "unifi_list_networks": "unifi_network_mcp.tools.network",
     "unifi_list_oon_policies": "unifi_network_mcp.tools.oon",
     "unifi_list_port_forwards": "unifi_network_mcp.tools.port_forwards",
@@ -1876,7 +1875,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "List firewall groups (address and port groups) used as reusable objects in firewall policies. Address groups contain IP addresses/CIDRs, port groups contain port numbers/ranges. These are referenced by firewall policies via ip_group_id and port_group_id fields. Note: This is different from unifi_list_ip_groups which queries the v2 IP groups endpoint.",
+      "description": "List firewall groups (address and port groups) used as reusable objects in firewall policies. Address groups contain IP addresses/CIDRs, port groups contain port numbers/ranges. These are referenced by firewall policies via ip_group_id and port_group_id fields.",
       "name": "unifi_list_firewall_groups",
       "schema": {
         "input": {
@@ -1911,20 +1910,6 @@
       },
       "description": "List controller firewall zones (V2 API).",
       "name": "unifi_list_firewall_zones",
-      "schema": {
-        "input": {
-          "properties": {},
-          "type": "object"
-        }
-      }
-    },
-    {
-      "annotations": {
-        "openWorldHint": false,
-        "readOnlyHint": true
-      },
-      "description": "List IP groups configured on the controller (V2 API).",
-      "name": "unifi_list_ip_groups",
       "schema": {
         "input": {
           "properties": {},

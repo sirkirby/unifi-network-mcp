@@ -696,16 +696,6 @@ async def list_firewall_zones() -> Dict[str, Any]:
     return {"success": True, "count": len(zones), "zones": zones}
 
 
-@server.tool(
-    name="unifi_list_ip_groups",
-    description="List IP groups configured on the controller (V2 API).",
-    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
-)
-async def list_ip_groups() -> Dict[str, Any]:
-    groups = await firewall_manager.get_ip_groups()
-    return {"success": True, "count": len(groups), "ip_groups": groups}
-
-
 # ---- Firewall Groups (address-group, port-group) ----
 
 
@@ -713,8 +703,7 @@ async def list_ip_groups() -> Dict[str, Any]:
     name="unifi_list_firewall_groups",
     description="List firewall groups (address and port groups) used as reusable objects in firewall policies. "
     "Address groups contain IP addresses/CIDRs, port groups contain port numbers/ranges. "
-    "These are referenced by firewall policies via ip_group_id and port_group_id fields. "
-    "Note: This is different from unifi_list_ip_groups which queries the v2 IP groups endpoint.",
+    "These are referenced by firewall policies via ip_group_id and port_group_id fields.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_firewall_groups() -> Dict[str, Any]:

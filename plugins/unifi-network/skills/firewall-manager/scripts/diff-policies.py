@@ -192,7 +192,7 @@ COLLECTION_CONFIG = {
     "policies": ("id", "name"),
     "networks": ("_id", "name"),
     "zones": ("_id", "name"),
-    "ip_groups": ("_id", "name"),
+    "firewall_groups": ("_id", "name"),
 }
 
 

@@ -16,7 +16,6 @@ CACHE_PREFIX_FIREWALL_POLICIES = "firewall_policies"
 CACHE_PREFIX_TRAFFIC_ROUTES = "traffic_routes"
 CACHE_PREFIX_PORT_FORWARDS = "port_forwards"
 CACHE_PREFIX_FIREWALL_ZONES = "firewall_zones"
-CACHE_PREFIX_IP_GROUPS = "ip_groups"
 CACHE_PREFIX_FIREWALL_GROUPS = "firewall_groups"
 
 
@@ -702,24 +701,6 @@ class FirewallManager:
             return data
         except Exception as e:
             logger.error(f"Error fetching firewall zones: {e}")
-            return []
-
-    async def get_ip_groups(self) -> List[Dict[str, Any]]:
-        """Return list of IP groups via V2 API."""
-        cache_key = f"{CACHE_PREFIX_IP_GROUPS}_{self._connection.site}"
-        cached = self._connection.get_cached(cache_key)
-        if cached is not None:
-            return cached
-        if not await self._connection.ensure_connected():
-            return []
-        try:
-            api_request = ApiRequestV2(method="get", path="/ip-groups")
-            resp = await self._connection.request(api_request)
-            data = resp if isinstance(resp, list) else resp.get("data", []) if isinstance(resp, dict) else []
-            self._connection._update_cache(cache_key, data)
-            return data
-        except Exception as e:
-            logger.error(f"Error fetching ip groups: {e}")
             return []
 
     # ---- Firewall Groups (v1 REST: address-group, port-group) ----
