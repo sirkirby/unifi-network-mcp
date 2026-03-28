@@ -1,6 +1,6 @@
 {
   "name": "unifi-network",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "UniFi Network MCP server \u2014 manage network devices, clients, firewall, VPN, and more",
   "author": {
     "name": "sirkirby",
@@ -18,7 +18,7 @@
     "unifi-network": {
       "command": "uvx",
       "args": [
-        "unifi-network-mcp==0.9.1"
+        "unifi-network-mcp==0.10.0"
       ],
       "env": {
         "UNIFI_HOST": "${UNIFI_NETWORK_HOST}",
