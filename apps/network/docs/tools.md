@@ -13,7 +13,7 @@ These are always registered regardless of mode:
 - `unifi_batch` — Execute multiple tools in parallel
 - `unifi_batch_status` — Check batch job status
 
-## Firewall (8 tools)
+## Firewall (13 tools)
 
 - `unifi_list_firewall_policies` — List all firewall policies
 - `unifi_get_firewall_policy_details` — Get policy details by ID
@@ -23,6 +23,11 @@ These are always registered regardless of mode:
 - `unifi_update_firewall_policy` — Update policy fields
 - `unifi_list_firewall_zones` — List firewall zones (V2 API)
 - `unifi_list_ip_groups` — List IP groups (V2 API)
+- `unifi_list_firewall_groups` — List firewall groups (address and port groups)
+- `unifi_get_firewall_group_details` — Get firewall group details by ID
+- `unifi_create_firewall_group` — Create a new address or port group
+- `unifi_update_firewall_group` — Update an existing group
+- `unifi_delete_firewall_group` — Delete a group
 
 ## Content Filtering (4 tools)
 

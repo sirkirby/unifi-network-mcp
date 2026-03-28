@@ -17,6 +17,7 @@ CACHE_PREFIX_TRAFFIC_ROUTES = "traffic_routes"
 CACHE_PREFIX_PORT_FORWARDS = "port_forwards"
 CACHE_PREFIX_FIREWALL_ZONES = "firewall_zones"
 CACHE_PREFIX_IP_GROUPS = "ip_groups"
+CACHE_PREFIX_FIREWALL_GROUPS = "firewall_groups"
 
 
 class FirewallManager:
@@ -720,3 +721,147 @@ class FirewallManager:
         except Exception as e:
             logger.error(f"Error fetching ip groups: {e}")
             return []
+
+    # ---- Firewall Groups (v1 REST: address-group, port-group) ----
+
+    async def get_firewall_groups(self) -> List[Dict[str, Any]]:
+        """Get all firewall groups (address and port groups).
+
+        These are reusable objects referenced by firewall policies via
+        ip_group_id and port_group_id fields.
+
+        Returns:
+            List of firewall group dictionaries.
+        """
+        cache_key = f"{CACHE_PREFIX_FIREWALL_GROUPS}_{self._connection.site}"
+        cached = self._connection.get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        if not await self._connection.ensure_connected():
+            return []
+
+        try:
+            api_request = ApiRequest(method="get", path="/rest/firewallgroup")
+            response = await self._connection.request(api_request)
+            data = (
+                response
+                if isinstance(response, list)
+                else response.get("data", [])
+                if isinstance(response, dict)
+                else []
+            )
+            self._connection._update_cache(cache_key, data)
+            return data
+        except Exception as e:
+            logger.error("Error getting firewall groups: %s", e)
+            return []
+
+    async def get_firewall_group_by_id(self, group_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific firewall group by ID.
+
+        Args:
+            group_id: The ID of the firewall group.
+
+        Returns:
+            The firewall group dictionary, or None if not found.
+        """
+        if not await self._connection.ensure_connected():
+            return None
+
+        try:
+            api_request = ApiRequest(method="get", path=f"/rest/firewallgroup/{group_id}")
+            response = await self._connection.request(api_request)
+            data = (
+                response
+                if isinstance(response, list)
+                else response.get("data", [])
+                if isinstance(response, dict)
+                else []
+            )
+            return data[0] if data else None
+        except Exception as e:
+            logger.error("Error getting firewall group %s: %s", group_id, e)
+            return None
+
+    async def create_firewall_group(self, group_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Create a new firewall group.
+
+        Args:
+            group_data: Dictionary with name, group_type, and group_members.
+                group_type must be 'address-group', 'ipv6-address-group', or 'port-group'.
+                group_type cannot be changed after creation.
+
+        Returns:
+            The created firewall group dictionary, or None on failure.
+        """
+        if not await self._connection.ensure_connected():
+            return None
+
+        if not group_data.get("name") or not group_data.get("group_type"):
+            logger.error("Missing required fields 'name' and/or 'group_type' for firewall group")
+            return None
+
+        try:
+            api_request = ApiRequest(method="post", path="/rest/firewallgroup", data=group_data)
+            response = await self._connection.request(api_request)
+
+            self._connection._invalidate_cache(CACHE_PREFIX_FIREWALL_GROUPS)
+
+            data = (
+                response
+                if isinstance(response, list)
+                else response.get("data", [])
+                if isinstance(response, dict)
+                else []
+            )
+            return data[0] if data else None
+        except Exception as e:
+            logger.error("Error creating firewall group: %s", e, exc_info=True)
+            return None
+
+    async def update_firewall_group(self, group_id: str, group_data: Dict[str, Any]) -> bool:
+        """Update an existing firewall group.
+
+        Args:
+            group_id: The ID of the group to update.
+            group_data: Complete group data (PUT replaces the entire object).
+                Note: group_type cannot be changed after creation.
+
+        Returns:
+            True on success, False on failure.
+        """
+        if not await self._connection.ensure_connected():
+            return False
+
+        try:
+            api_request = ApiRequest(method="put", path=f"/rest/firewallgroup/{group_id}", data=group_data)
+            await self._connection.request(api_request)
+
+            self._connection._invalidate_cache(CACHE_PREFIX_FIREWALL_GROUPS)
+            return True
+        except Exception as e:
+            logger.error("Error updating firewall group %s: %s", group_id, e, exc_info=True)
+            return False
+
+    async def delete_firewall_group(self, group_id: str) -> bool:
+        """Delete a firewall group.
+
+        Args:
+            group_id: The ID of the group to delete.
+
+        Returns:
+            True on success, False on failure.
+        """
+        if not await self._connection.ensure_connected():
+            return False
+
+        try:
+            api_request = ApiRequest(method="delete", path=f"/rest/firewallgroup/{group_id}")
+            await self._connection.request(api_request)
+
+            self._connection._invalidate_cache(CACHE_PREFIX_FIREWALL_GROUPS)
+            return True
+        except Exception as e:
+            logger.error("Error deleting firewall group %s: %s", group_id, e, exc_info=True)
+            return False
