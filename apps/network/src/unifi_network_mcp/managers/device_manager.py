@@ -255,3 +255,46 @@ class DeviceManager:
         except Exception as e:
             logger.error(f"Error updating radio '{radio_id}' on device {device_mac}: {e}")
             return False
+
+    async def trigger_speedtest(self, gateway_mac: str) -> bool:
+        """Trigger a speed test on the gateway.
+
+        Args:
+            gateway_mac: MAC address of the gateway device.
+
+        Returns:
+            True on success.
+
+        Raises:
+            Exception: On API error.
+        """
+        if not await self._connection.ensure_connected():
+            raise ConnectionError("Not connected to controller")
+
+        api_request = ApiRequest(
+            method="post",
+            path="/cmd/devmgr",
+            data={"mac": gateway_mac, "cmd": "speedtest"},
+        )
+        await self._connection.request(api_request)
+        return True
+
+    async def get_speedtest_status(self, gateway_mac: str) -> Dict[str, Any]:
+        """Get the status of a running speed test.
+
+        Args:
+            gateway_mac: MAC address of the gateway device.
+
+        Returns:
+            Dict with speedtest status fields.
+        """
+        if not await self._connection.ensure_connected():
+            raise ConnectionError("Not connected to controller")
+
+        api_request = ApiRequest(
+            method="post",
+            path="/cmd/devmgr",
+            data={"mac": gateway_mac, "cmd": "speedtest-status"},
+        )
+        response = await self._connection.request(api_request)
+        return response if isinstance(response, dict) else {}

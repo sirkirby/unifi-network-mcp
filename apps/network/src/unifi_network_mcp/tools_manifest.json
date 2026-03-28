@@ -1,5 +1,5 @@
 {
-  "count": 130,
+  "count": 141,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "unifi_network_mcp.tools.devices",
@@ -36,10 +36,15 @@
     "unifi_force_reconnect_client": "unifi_network_mcp.tools.clients",
     "unifi_get_acl_rule_details": "unifi_network_mcp.tools.acl",
     "unifi_get_alerts": "unifi_network_mcp.tools.stats",
+    "unifi_get_anomalies": "unifi_network_mcp.tools.stats",
     "unifi_get_client_details": "unifi_network_mcp.tools.clients",
+    "unifi_get_client_dpi_traffic": "unifi_network_mcp.tools.stats",
     "unifi_get_client_group_details": "unifi_network_mcp.tools.client_groups",
+    "unifi_get_client_sessions": "unifi_network_mcp.tools.stats",
     "unifi_get_client_stats": "unifi_network_mcp.tools.stats",
+    "unifi_get_client_wifi_details": "unifi_network_mcp.tools.stats",
     "unifi_get_content_filter_details": "unifi_network_mcp.tools.content_filtering",
+    "unifi_get_dashboard": "unifi_network_mcp.tools.stats",
     "unifi_get_device_details": "unifi_network_mcp.tools.devices",
     "unifi_get_device_radio": "unifi_network_mcp.tools.devices",
     "unifi_get_device_stats": "unifi_network_mcp.tools.stats",
@@ -47,6 +52,8 @@
     "unifi_get_event_types": "unifi_network_mcp.tools.events",
     "unifi_get_firewall_group_details": "unifi_network_mcp.tools.firewall",
     "unifi_get_firewall_policy_details": "unifi_network_mcp.tools.firewall",
+    "unifi_get_gateway_stats": "unifi_network_mcp.tools.stats",
+    "unifi_get_ips_events": "unifi_network_mcp.tools.stats",
     "unifi_get_lldp_neighbors": "unifi_network_mcp.tools.switch",
     "unifi_get_network_details": "unifi_network_mcp.tools.network",
     "unifi_get_network_health": "unifi_network_mcp.tools.system",
@@ -57,8 +64,11 @@
     "unifi_get_port_stats": "unifi_network_mcp.tools.switch",
     "unifi_get_qos_rule_details": "unifi_network_mcp.tools.qos",
     "unifi_get_route_details": "unifi_network_mcp.tools.routing",
-    "unifi_get_site_settings": "unifi_network_mcp.tools.config",
+    "unifi_get_site_dpi_traffic": "unifi_network_mcp.tools.stats",
+    "unifi_get_site_settings": "unifi_network_mcp.tools.system",
     "unifi_get_snmp_settings": "unifi_network_mcp.tools.system",
+    "unifi_get_speedtest_results": "unifi_network_mcp.tools.stats",
+    "unifi_get_speedtest_status": "unifi_network_mcp.tools.devices",
     "unifi_get_switch_capabilities": "unifi_network_mcp.tools.switch",
     "unifi_get_switch_ports": "unifi_network_mcp.tools.switch",
     "unifi_get_system_info": "unifi_network_mcp.tools.system",
@@ -110,6 +120,7 @@
     "unifi_toggle_port_forward": "unifi_network_mcp.tools.port_forwards",
     "unifi_toggle_qos_rule_enabled": "unifi_network_mcp.tools.qos",
     "unifi_toggle_traffic_route": "unifi_network_mcp.tools.traffic_routes",
+    "unifi_trigger_speedtest": "unifi_network_mcp.tools.devices",
     "unifi_unauthorize_guest": "unifi_network_mcp.tools.clients",
     "unifi_unblock_client": "unifi_network_mcp.tools.clients",
     "unifi_update_acl_rule": "unifi_network_mcp.tools.acl",
@@ -1274,6 +1285,25 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
+      "description": "Get network anomaly detection events.",
+      "name": "unifi_get_anomalies",
+      "schema": {
+        "input": {
+          "properties": {
+            "duration": {
+              "description": "Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Returns the full raw client object for one client by MAC address \u2014 includes all controller-reported fields: IP, hostname, connection stats, DHCP info, network/WLAN associations, traffic counters, and fixed-IP settings. For a summary of all clients, use unifi_list_clients.",
       "name": "unifi_get_client_details",
       "schema": {
@@ -1286,6 +1316,32 @@
           },
           "required": [
             "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Get per-client DPI traffic data by application or category. Note: requires Traffic Identification to be enabled on the controller, which is separate from Device Identification.",
+      "name": "unifi_get_client_dpi_traffic",
+      "schema": {
+        "input": {
+          "properties": {
+            "client_mac": {
+              "description": "Client MAC address",
+              "type": "string"
+            },
+            "group_by": {
+              "description": "Group results: 'by_app' (default) for per-application or 'by_cat' for per-category",
+              "type": "string"
+            }
+          },
+          "required": [
+            "client_mac"
           ],
           "type": "object"
         }
@@ -1318,6 +1374,33 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
+      "description": "Get client session history. Note: this endpoint tracks hotspot/captive portal authorization sessions, not general WiFi connect/disconnect events. Returns empty without a guest portal configured. For WiFi roaming events, use the event log instead.",
+      "name": "unifi_get_client_sessions",
+      "schema": {
+        "input": {
+          "properties": {
+            "client_mac": {
+              "description": "Client MAC address. If omitted, returns sessions for all clients.",
+              "type": "string"
+            },
+            "duration": {
+              "description": "Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Maximum number of sessions to return (default 50)",
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Get statistics for a specific client/device",
       "name": "unifi_get_client_stats",
       "schema": {
@@ -1330,10 +1413,36 @@
             "duration": {
               "description": "Time period for stats: 'hourly' (last 1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)",
               "type": "string"
+            },
+            "granularity": {
+              "description": "Time resolution: '5minutes' (~12h retention), 'hourly' (default, ~7d), 'daily' (~1yr), 'monthly' (~1yr)",
+              "type": "string"
             }
           },
           "required": [
             "client_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Get detailed WiFi statistics for a single wireless client including signal, noise, satisfaction, tx/rx rates, retries, roam count, channel, radio, ESSID, and more.",
+      "name": "unifi_get_client_wifi_details",
+      "schema": {
+        "input": {
+          "properties": {
+            "client_mac": {
+              "description": "Client MAC address",
+              "type": "string"
+            }
+          },
+          "required": [
+            "client_mac"
           ],
           "type": "object"
         }
@@ -1357,6 +1466,20 @@
           "required": [
             "filter_id"
           ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Get the pre-aggregated site dashboard summary (health, device counts, client counts, ISP status).",
+      "name": "unifi_get_dashboard",
+      "schema": {
+        "input": {
+          "properties": {},
           "type": "object"
         }
       }
@@ -1410,7 +1533,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Returns historical traffic time-series (rx/tx bytes, client counts) for one device by MAC or _id. Duration: hourly/daily/weekly/monthly. For APs, includes avg/max client counts. For current device status instead of stats, use unifi_get_device_details.",
+      "description": "Returns historical traffic time-series (rx/tx bytes, client counts) for one device by MAC or _id. Duration: hourly/daily/weekly/monthly. For APs, includes avg/max client counts and WiFi quality metrics. For current device status instead of stats, use unifi_get_device_details.",
       "name": "unifi_get_device_stats",
       "schema": {
         "input": {
@@ -1421,6 +1544,10 @@
             },
             "duration": {
               "description": "Time period for stats: 'hourly' (last 1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)",
+              "type": "string"
+            },
+            "granularity": {
+              "description": "Time resolution: '5minutes' (~12h retention), 'hourly' (default, ~7d), 'daily' (~1yr), 'monthly' (~1yr)",
               "type": "string"
             }
           },
@@ -1508,6 +1635,52 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
+      "description": "Get gateway WAN/LAN performance history including bandwidth, CPU, and memory utilization.",
+      "name": "unifi_get_gateway_stats",
+      "schema": {
+        "input": {
+          "properties": {
+            "duration": {
+              "description": "Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)",
+              "type": "string"
+            },
+            "granularity": {
+              "description": "Time resolution: '5minutes' (~12h retention), 'hourly' (default, ~7d), 'daily' (~1yr), 'monthly' (~1yr)",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Get IPS/IDS security events (intrusion detection/prevention alerts). Note: on newer UniFi OS / Network Application versions, IPS events may not populate this legacy endpoint. Check the controller's traffic flows for threat data instead.",
+      "name": "unifi_get_ips_events",
+      "schema": {
+        "input": {
+          "properties": {
+            "duration": {
+              "description": "Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Maximum number of events to return (default 50)",
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Get LLDP neighbor discovery table for a switch. Shows what devices are connected to each port by their LLDP-advertised chassis ID and descriptions. Use unifi_list_devices to find switch MAC addresses.",
       "name": "unifi_get_lldp_neighbors",
       "schema": {
@@ -1573,6 +1746,10 @@
           "properties": {
             "duration": {
               "description": "Time period for stats: 'hourly' (last 1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)",
+              "type": "string"
+            },
+            "granularity": {
+              "description": "Time resolution: '5minutes' (~12h retention), 'hourly' (default, ~7d), 'daily' (~1yr), 'monthly' (~1yr)",
               "type": "string"
             }
           },
@@ -1717,6 +1894,25 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
+      "description": "Get actual DPI traffic data by application or category for the entire site. Shows real bandwidth usage per app/category, NOT restriction configuration. Use unifi_get_dpi_stats for restriction config instead. Note: requires Traffic Identification to be enabled on the controller, which is separate from Device Identification.",
+      "name": "unifi_get_site_dpi_traffic",
+      "schema": {
+        "input": {
+          "properties": {
+            "group_by": {
+              "description": "Group results: 'by_app' (default) for per-application or 'by_cat' for per-category",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Get current site settings (e.g., country code, timezone, connectivity monitoring).",
       "name": "unifi_get_site_settings",
       "schema": {
@@ -1736,6 +1932,47 @@
       "schema": {
         "input": {
           "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Get historical speedtest results including download, upload (Mbps), and latency (ms).",
+      "name": "unifi_get_speedtest_results",
+      "schema": {
+        "input": {
+          "properties": {
+            "duration": {
+              "description": "Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Check the status of a running speedtest on the gateway.",
+      "name": "unifi_get_speedtest_status",
+      "schema": {
+        "input": {
+          "properties": {
+            "gateway_mac": {
+              "description": "MAC address of the gateway device",
+              "type": "string"
+            }
+          },
+          "required": [
+            "gateway_mac"
+          ],
           "type": "object"
         }
       }
@@ -2884,6 +3121,36 @@
           },
           "required": [
             "route_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Trigger a speedtest on the gateway device. Returns immediately; use unifi_get_speedtest_status to poll for results.",
+      "name": "unifi_trigger_speedtest",
+      "permission_action": "update",
+      "permission_category": "devices",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, triggers the speedtest. When false (default), returns a preview.",
+              "type": "boolean"
+            },
+            "gateway_mac": {
+              "description": "MAC address of the gateway device",
+              "type": "string"
+            }
+          },
+          "required": [
+            "gateway_mac"
           ],
           "type": "object"
         }
