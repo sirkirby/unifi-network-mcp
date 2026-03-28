@@ -263,21 +263,20 @@ class DeviceManager:
             gateway_mac: MAC address of the gateway device.
 
         Returns:
-            True on success.
-
-        Raises:
-            Exception: On API error.
+            True on success, False on failure.
         """
-        if not await self._connection.ensure_connected():
-            raise ConnectionError("Not connected to controller")
-
-        api_request = ApiRequest(
-            method="post",
-            path="/cmd/devmgr",
-            data={"mac": gateway_mac, "cmd": "speedtest"},
-        )
-        await self._connection.request(api_request)
-        return True
+        try:
+            api_request = ApiRequest(
+                method="post",
+                path="/cmd/devmgr",
+                data={"mac": gateway_mac, "cmd": "speedtest"},
+            )
+            await self._connection.request(api_request)
+            logger.info(f"Speedtest triggered on gateway {gateway_mac}")
+            return True
+        except Exception as e:
+            logger.error(f"Error triggering speedtest on {gateway_mac}: {e}")
+            return False
 
     async def get_speedtest_status(self, gateway_mac: str) -> Dict[str, Any]:
         """Get the status of a running speed test.
@@ -286,15 +285,16 @@ class DeviceManager:
             gateway_mac: MAC address of the gateway device.
 
         Returns:
-            Dict with speedtest status fields.
+            Dict with speedtest status fields, or empty dict on failure.
         """
-        if not await self._connection.ensure_connected():
-            raise ConnectionError("Not connected to controller")
-
-        api_request = ApiRequest(
-            method="post",
-            path="/cmd/devmgr",
-            data={"mac": gateway_mac, "cmd": "speedtest-status"},
-        )
-        response = await self._connection.request(api_request)
-        return response if isinstance(response, dict) else {}
+        try:
+            api_request = ApiRequest(
+                method="post",
+                path="/cmd/devmgr",
+                data={"mac": gateway_mac, "cmd": "speedtest-status"},
+            )
+            response = await self._connection.request(api_request)
+            return response if isinstance(response, dict) else {}
+        except Exception as e:
+            logger.error(f"Error getting speedtest status for {gateway_mac}: {e}")
+            return {}

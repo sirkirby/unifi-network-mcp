@@ -461,12 +461,13 @@ class TestDeviceManagerSpeedtest:
         assert api_request.data["mac"] == "aa:bb:cc:dd:ee:ff"
 
     @pytest.mark.asyncio
-    async def test_trigger_speedtest_not_connected(self, device_manager, mock_connection):
-        """Test trigger_speedtest raises when not connected."""
-        mock_connection.ensure_connected.return_value = False
+    async def test_trigger_speedtest_handles_error(self, device_manager, mock_connection):
+        """Test trigger_speedtest returns False on error."""
+        mock_connection.request.side_effect = Exception("API error")
 
-        with pytest.raises(ConnectionError, match="Not connected"):
-            await device_manager.trigger_speedtest("aa:bb:cc:dd:ee:ff")
+        result = await device_manager.trigger_speedtest("aa:bb:cc:dd:ee:ff")
+
+        assert result is False
 
     @pytest.mark.asyncio
     async def test_get_speedtest_status(self, device_manager, mock_connection):
@@ -481,9 +482,10 @@ class TestDeviceManagerSpeedtest:
         assert api_request.data["cmd"] == "speedtest-status"
 
     @pytest.mark.asyncio
-    async def test_get_speedtest_status_not_connected(self, device_manager, mock_connection):
-        """Test get_speedtest_status raises when not connected."""
-        mock_connection.ensure_connected.return_value = False
+    async def test_get_speedtest_status_handles_error(self, device_manager, mock_connection):
+        """Test get_speedtest_status returns empty dict on error."""
+        mock_connection.request.side_effect = Exception("API error")
 
-        with pytest.raises(ConnectionError, match="Not connected"):
-            await device_manager.get_speedtest_status("aa:bb:cc:dd:ee:ff")
+        result = await device_manager.get_speedtest_status("aa:bb:cc:dd:ee:ff")
+
+        assert result == {}
