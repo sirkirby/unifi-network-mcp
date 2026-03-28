@@ -42,6 +42,7 @@ from unifi_network_mcp.managers.oon_manager import OonManager
 from unifi_network_mcp.managers.qos_manager import QosManager
 from unifi_network_mcp.managers.routing_manager import RoutingManager
 from unifi_network_mcp.managers.stats_manager import StatsManager
+from unifi_network_mcp.managers.switch_manager import SwitchManager
 from unifi_network_mcp.managers.system_manager import SystemManager
 from unifi_network_mcp.managers.traffic_route_manager import TrafficRouteManager
 from unifi_network_mcp.managers.usergroup_manager import UsergroupManager
@@ -212,6 +213,11 @@ def get_oon_manager() -> OonManager:
 
 
 @lru_cache
+def get_switch_manager() -> SwitchManager:
+    return SwitchManager(get_connection_manager())
+
+
+@lru_cache
 def get_system_manager() -> SystemManager:
     return SystemManager(get_connection_manager())
 
@@ -270,6 +276,7 @@ content_filter_manager = get_content_filter_manager()
 dpi_manager = get_dpi_manager()
 device_manager = get_device_manager()
 stats_manager = get_stats_manager()
+switch_manager = get_switch_manager()
 qos_manager = get_qos_manager()
 vpn_manager = get_vpn_manager()
 network_manager = get_network_manager()
