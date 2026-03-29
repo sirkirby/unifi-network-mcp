@@ -332,7 +332,7 @@ Always available, regardless of registration mode.
 |------|------|-------------|
 | `unifi_get_oon_policy_details` | Read | Get detailed configuration for a specific OON policy by ID. |
 | `unifi_list_oon_policies` | Read | List OON (Object-Oriented Network) policies. |
-| `unifi_create_oon_policy` | Mutate | Create a new OON (Object-Oriented Network) policy. |
+| `unifi_create_oon_policy` | Mutate | Create a new OON (Object-Oriented Network) policy for internet access scheduling, app blocking, bandwidth limiting, or VPN routing. |
 | `unifi_delete_oon_policy` | Mutate | Delete an OON policy. |
 | `unifi_toggle_oon_policy` | Mutate | Toggle an OON policy on or off. |
 | `unifi_update_oon_policy` | Mutate | Update an existing OON policy. |
