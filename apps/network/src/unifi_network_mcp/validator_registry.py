@@ -1,6 +1,9 @@
 from typing import Any, Dict, Optional, Tuple
 
 from .schemas import (
+    ACL_RULE_UPDATE_SCHEMA,
+    CLIENT_GROUP_UPDATE_SCHEMA,
+    CONTENT_FILTER_UPDATE_SCHEMA,
     FIREWALL_POLICY_CREATE_SCHEMA,
     FIREWALL_POLICY_SCHEMA,
     FIREWALL_POLICY_SIMPLE_SCHEMA,
@@ -8,9 +11,11 @@ from .schemas import (
     FIREWALL_POLICY_V2_CREATE_SCHEMA,
     NETWORK_SCHEMA,
     NETWORK_UPDATE_SCHEMA,
+    OON_POLICY_UPDATE_SCHEMA,
     PORT_FORWARD_SCHEMA,
     PORT_FORWARD_SIMPLE_SCHEMA,
     PORT_FORWARD_UPDATE_SCHEMA,
+    PORT_PROFILE_UPDATE_SCHEMA,
     QOS_RULE_SIMPLE_SCHEMA,
     TRAFFIC_ROUTE_SCHEMA,
     TRAFFIC_ROUTE_SIMPLE_SCHEMA,
@@ -45,6 +50,11 @@ class UniFiValidatorRegistry:
         "firewall_policy_v2_create": ResourceValidator(
             FIREWALL_POLICY_V2_CREATE_SCHEMA, "V2 Zone-Based Firewall Policy Create"
         ),
+        "acl_rule_update": ResourceValidator(ACL_RULE_UPDATE_SCHEMA, "ACL Rule Update"),
+        "port_profile_update": ResourceValidator(PORT_PROFILE_UPDATE_SCHEMA, "Port Profile Update"),
+        "client_group_update": ResourceValidator(CLIENT_GROUP_UPDATE_SCHEMA, "Client Group Update"),
+        "content_filter_update": ResourceValidator(CONTENT_FILTER_UPDATE_SCHEMA, "Content Filter Update"),
+        "oon_policy_update": ResourceValidator(OON_POLICY_UPDATE_SCHEMA, "OON Policy Update"),
     }
 
     @classmethod

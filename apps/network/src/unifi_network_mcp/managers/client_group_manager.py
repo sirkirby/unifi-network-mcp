@@ -73,11 +73,13 @@ class ClientGroupManager:
             api_request = ApiRequestV2(method="get", path=f"/network-members-group/{group_id}")
             response = await self._connection.request(api_request)
 
+            if isinstance(response, list):
+                return response[0] if response else None
             if isinstance(response, dict):
                 return response if "id" in response or "_id" in response else response.get("data", None)
             return None
         except Exception as e:
-            logger.error(f"Error getting client group {group_id}: {e}")
+            logger.error("Error getting client group %s: %s", group_id, e)
             return None
 
     async def create_client_group(self, group_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -129,27 +131,38 @@ class ClientGroupManager:
             logger.error(f"Error creating client group: {e}", exc_info=True)
             return None
 
-    async def update_client_group(self, group_id: str, group_data: Dict[str, Any]) -> bool:
-        """Update an existing client group.
+    async def update_client_group(self, group_id: str, update_data: Dict[str, Any]) -> bool:
+        """Update an existing client group by merging updates with current state.
 
         Args:
             group_id: The ID of the client group to update.
-            group_data: Complete group data (PUT replaces the entire object).
+            update_data: Dictionary of fields to update (partial is fine).
 
         Returns:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
             return False
+        if not update_data:
+            return True
 
         try:
-            api_request = ApiRequestV2(method="put", path=f"/network-members-group/{group_id}", data=group_data)
+            existing = await self.get_client_group_by_id(group_id)
+            if not existing:
+                logger.error("Client group %s not found for update", group_id)
+                return False
+
+            merged_data = existing.copy()
+            for key, value in update_data.items():
+                merged_data[key] = value
+
+            api_request = ApiRequestV2(method="put", path=f"/network-members-group/{group_id}", data=merged_data)
             await self._connection.request(api_request)
 
             self._invalidate_cache()
             return True
         except Exception as e:
-            logger.error(f"Error updating client group {group_id}: {e}", exc_info=True)
+            logger.error("Error updating client group %s: %s", group_id, e, exc_info=True)
             return False
 
     async def delete_client_group(self, group_id: str) -> bool:

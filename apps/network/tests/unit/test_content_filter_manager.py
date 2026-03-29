@@ -127,11 +127,13 @@ class TestContentFilterManager:
     @pytest.mark.asyncio
     async def test_update_content_filter_success(self, content_filter_manager, mock_connection):
         """Test update_content_filter with valid data."""
-        mock_connection.request.return_value = {}
+        existing = {"_id": "f1", "name": "Original", "categories": ["FAMILY"]}
+        mock_connection.request.side_effect = [
+            [existing],  # GET list (used by get_content_filter_by_id)
+            {},  # PUT
+        ]
 
-        result = await content_filter_manager.update_content_filter(
-            "f1", {"_id": "f1", "name": "Updated", "categories": ["FAMILY"]}
-        )
+        result = await content_filter_manager.update_content_filter("f1", {"name": "Updated"})
 
         assert result is True
         mock_connection._invalidate_cache.assert_called()
@@ -153,6 +155,51 @@ class TestContentFilterManager:
         result = await content_filter_manager.update_content_filter("f1", {"name": "Test"})
 
         assert result is False
+
+    @pytest.mark.asyncio
+    async def test_update_content_filter_fetches_and_merges(self, content_filter_manager, mock_connection):
+        """Test update_content_filter fetches current profile, merges, PUTs full object."""
+        existing_filter = {
+            "_id": "cf1",
+            "name": "Kids Filter",
+            "enabled": True,
+            "blocked_categories": ["adult", "gambling"],
+            "safe_search": ["GOOGLE", "YOUTUBE"],
+            "client_macs": ["aa:bb:cc:dd:ee:ff"],
+        }
+        mock_connection.request.side_effect = [
+            [existing_filter],  # GET list (used by get_content_filter_by_id)
+            {},  # PUT
+        ]
+
+        result = await content_filter_manager.update_content_filter(
+            "cf1", {"name": "Family Filter", "safe_search": ["GOOGLE", "YOUTUBE", "BING"]}
+        )
+
+        assert result is True
+        put_call = mock_connection.request.call_args_list[1]
+        put_request = put_call[0][0]
+        assert put_request.method == "put"
+        assert put_request.data["name"] == "Family Filter"
+        assert put_request.data["safe_search"] == ["GOOGLE", "YOUTUBE", "BING"]
+        assert put_request.data["blocked_categories"] == ["adult", "gambling"]
+
+    @pytest.mark.asyncio
+    async def test_update_content_filter_not_found(self, content_filter_manager, mock_connection):
+        """Test update_content_filter returns False when filter not found."""
+        mock_connection.request.return_value = []
+
+        result = await content_filter_manager.update_content_filter("nonexistent", {"name": "Test"})
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_update_content_filter_empty_update(self, content_filter_manager, mock_connection):
+        """Test update_content_filter with empty data is a no-op."""
+        result = await content_filter_manager.update_content_filter("cf1", {})
+
+        assert result is True
+        mock_connection.request.assert_not_called()
 
     # ---- delete_content_filter ----
 
@@ -212,12 +259,16 @@ class TestContentFilterManager:
     @pytest.mark.asyncio
     async def test_update_uses_correct_path_and_method(self, content_filter_manager, mock_connection):
         """Test update_content_filter uses PUT to the correct endpoint."""
-        mock_connection.request.return_value = {}
+        existing = {"_id": "f1", "name": "Original"}
+        mock_connection.request.side_effect = [
+            [existing],  # GET list
+            {},  # PUT
+        ]
 
         await content_filter_manager.update_content_filter("f1", {"name": "Updated"})
 
-        call_args = mock_connection.request.call_args
-        api_request = call_args[0][0]
+        put_call = mock_connection.request.call_args_list[1]
+        api_request = put_call[0][0]
         assert api_request.path == "/content-filtering/f1"
         assert api_request.method == "put"
 

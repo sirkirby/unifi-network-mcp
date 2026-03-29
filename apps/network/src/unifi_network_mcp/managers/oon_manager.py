@@ -92,6 +92,8 @@ class OonManager:
             api_request = ApiRequestV2(method="get", path=f"{OON_PATH_SINGLE}/{policy_id}")
             response = await self._connection.request(api_request)
 
+            if isinstance(response, list) and response:
+                return response[0]
             if isinstance(response, dict):
                 result = response if ("id" in response or "_id" in response) else response.get("data", None)
                 if result:
@@ -162,21 +164,32 @@ class OonManager:
             logger.error("Error creating OON policy: %s", e, exc_info=True)
             return None
 
-    async def update_oon_policy(self, policy_id: str, policy_data: Dict[str, Any]) -> bool:
-        """Update an existing OON policy.
+    async def update_oon_policy(self, policy_id: str, update_data: Dict[str, Any]) -> bool:
+        """Update an existing OON policy by merging updates with current state.
 
         Args:
             policy_id: The ID of the OON policy to update.
-            policy_data: Complete policy data (PUT replaces the entire object).
+            update_data: Dictionary of fields to update (partial is fine).
 
         Returns:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
             return False
+        if not update_data:
+            return True
 
         try:
-            api_request = ApiRequestV2(method="put", path=f"{OON_PATH_SINGLE}/{policy_id}", data=policy_data)
+            existing = await self.get_oon_policy_by_id(policy_id)
+            if not existing:
+                logger.error("OON policy %s not found for update", policy_id)
+                return False
+
+            merged_data = existing.copy()
+            for key, value in update_data.items():
+                merged_data[key] = value
+
+            api_request = ApiRequestV2(method="put", path=f"{OON_PATH_SINGLE}/{policy_id}", data=merged_data)
             await self._connection.request(api_request)
 
             self._invalidate_cache()

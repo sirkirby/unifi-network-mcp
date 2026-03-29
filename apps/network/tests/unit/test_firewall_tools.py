@@ -204,6 +204,7 @@ class TestCreateFirewallPolicyAutoDetect:
 
         assert result["success"] is True
 
+
 # ---------------------------------------------------------------------------
 # create_firewall_policy — zone targeting validation
 # ---------------------------------------------------------------------------

@@ -217,7 +217,11 @@ class TestAclManager:
     @pytest.mark.asyncio
     async def test_update_acl_rule_success(self, acl_manager, mock_connection):
         """Test update_acl_rule with valid data."""
-        mock_connection.request.return_value = {}
+        existing_rule = {"_id": "r1", "name": "Original"}
+        mock_connection.request.side_effect = [
+            existing_rule,  # GET (fetch current)
+            {},  # PUT (update)
+        ]
 
         result = await acl_manager.update_acl_rule("r1", {"_id": "r1", "name": "Updated"})
 
@@ -241,6 +245,56 @@ class TestAclManager:
         result = await acl_manager.update_acl_rule("r1", {"name": "Test"})
 
         assert result is False
+
+    @pytest.mark.asyncio
+    async def test_update_acl_rule_fetches_and_merges(self, acl_manager, mock_connection):
+        """Test update_acl_rule fetches current rule, merges updates, PUTs full object."""
+        existing_rule = {
+            "_id": "r1",
+            "name": "Original",
+            "acl_index": 5,
+            "action": "ALLOW",
+            "enabled": True,
+            "mac_acl_network_id": "net1",
+            "type": "MAC",
+            "traffic_source": {"type": "CLIENT_MAC", "specific_mac_addresses": []},
+            "traffic_destination": {"type": "CLIENT_MAC", "specific_mac_addresses": []},
+        }
+        mock_connection.request.side_effect = [
+            existing_rule,  # GET (fetch current)
+            {},  # PUT (update)
+        ]
+
+        result = await acl_manager.update_acl_rule("r1", {"name": "Renamed", "enabled": False})
+
+        assert result is True
+        # Verify PUT was called with merged data
+        put_call = mock_connection.request.call_args_list[1]
+        put_request = put_call[0][0]
+        assert put_request.method == "put"
+        assert put_request.data["name"] == "Renamed"
+        assert put_request.data["enabled"] is False
+        # Original fields preserved
+        assert put_request.data["acl_index"] == 5
+        assert put_request.data["action"] == "ALLOW"
+        assert put_request.data["mac_acl_network_id"] == "net1"
+
+    @pytest.mark.asyncio
+    async def test_update_acl_rule_not_found(self, acl_manager, mock_connection):
+        """Test update_acl_rule returns False when rule not found."""
+        mock_connection.request.return_value = None
+
+        result = await acl_manager.update_acl_rule("nonexistent", {"name": "Test"})
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_update_acl_rule_empty_update(self, acl_manager, mock_connection):
+        """Test update_acl_rule with empty update data returns True (no-op)."""
+        result = await acl_manager.update_acl_rule("r1", {})
+
+        assert result is True
+        mock_connection.request.assert_not_called()
 
     # ---- delete_acl_rule ----
 
@@ -319,10 +373,15 @@ class TestAclManager:
     @pytest.mark.asyncio
     async def test_update_uses_correct_path_and_method(self, acl_manager, mock_connection):
         """Test update_acl_rule uses PUT to the correct endpoint."""
-        mock_connection.request.return_value = {}
+        existing_rule = {"_id": "r1", "name": "Original"}
+        mock_connection.request.side_effect = [
+            existing_rule,  # GET (fetch current)
+            {},  # PUT (update)
+        ]
 
         await acl_manager.update_acl_rule("r1", {"name": "Updated"})
 
+        # call_args returns the most recent call, which is the PUT
         call_args = mock_connection.request.call_args
         api_request = call_args[0][0]
         assert api_request.path == "/acl-rules/r1"

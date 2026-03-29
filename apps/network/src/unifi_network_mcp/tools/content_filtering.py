@@ -17,8 +17,9 @@ from typing import Annotated, Any, Dict
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview
+from unifi_mcp_shared.confirmation import create_preview, update_preview
 from unifi_network_mcp.runtime import content_filter_manager, server
+from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -115,9 +116,8 @@ async def get_content_filter_details(
 
 @server.tool(
     name="unifi_update_content_filter",
-    description="Update an existing content filtering profile. Requires the full profile object "
-    "(PUT replaces entire resource). Use unifi_get_content_filter_details to fetch the current "
-    "object, modify it, and send back. "
+    description="Update an existing content filtering profile. Pass only the fields you want to change — "
+    "current values are automatically preserved. "
     "client_macs and network_ids are additive — both can be set and the filter applies to all. "
     "Safe search valid values: GOOGLE, YOUTUBE, BING (only these three are supported). "
     "Requires confirmation.",
@@ -129,33 +129,46 @@ async def update_content_filter(
     filter_id: Annotated[str, Field(description="The ID of the profile to update")],
     filter_data: Annotated[
         dict,
-        Field(description="The complete updated profile object with all fields"),
+        Field(
+            description="Dictionary of fields to update. Pass only the fields you want to change — "
+            "current values are automatically preserved. "
+            "Allowed keys: name, enabled (bool), blocked_categories (list), "
+            "safe_search (list: 'GOOGLE'/'YOUTUBE'/'BING'), "
+            "client_macs (list of MACs), network_ids (list)"
+        ),
     ],
     confirm: Annotated[
         bool,
         Field(description="When true, updates the profile. When false (default), returns a preview"),
     ] = False,
 ) -> Dict[str, Any]:
-    """
-    Updates an existing content filtering profile.
+    """Updates an existing content filtering profile with partial data."""
+    if not filter_id:
+        return {"success": False, "error": "filter_id is required"}
+    if not filter_data:
+        return {"success": False, "error": "filter_data cannot be empty"}
 
-    Args:
-        filter_id (str): The ID of the profile to update.
-        filter_data (dict): The complete updated profile object.
-        confirm (bool): Must be True to execute.
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("content_filter_update", filter_data)
+    if not is_valid:
+        return {"success": False, "error": f"Invalid update data: {error_msg}"}
+    if not validated_data:
+        return {"success": False, "error": "Update data is effectively empty or invalid."}
 
-    Returns:
-        Preview of changes or success/failure status.
-    """
+    current = await content_filter_manager.get_content_filter_by_id(filter_id)
+    if not current:
+        return {"success": False, "error": f"Content filter '{filter_id}' not found."}
+
     if not confirm:
-        return create_preview(
+        return update_preview(
             resource_type="content_filter",
-            resource_data=filter_data,
-            resource_name=filter_id,
+            resource_id=filter_id,
+            resource_name=current.get("name"),
+            current_state=current,
+            updates=validated_data,
         )
 
     try:
-        success = await content_filter_manager.update_content_filter(filter_id, filter_data)
+        success = await content_filter_manager.update_content_filter(filter_id, validated_data)
         if success:
             return {"success": True, "message": f"Content filter '{filter_id}' updated successfully."}
         return {"success": False, "error": f"Failed to update content filter '{filter_id}'."}

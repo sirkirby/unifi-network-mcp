@@ -14,8 +14,9 @@ from typing import Annotated, Any, Dict, List
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview
+from unifi_mcp_shared.confirmation import create_preview, update_preview
 from unifi_network_mcp.runtime import server, switch_manager
+from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -97,17 +98,17 @@ async def get_port_profile_details(
 )
 async def create_port_profile(
     name: Annotated[str, Field(description="Profile name")],
-    forward: Annotated[str, Field(description="Forward mode: 'native' (access), 'all' (trunk), 'customize', or 'disabled'")],
-    native_networkconf_id: Annotated[
-        str, Field(description="Network/VLAN ID for native (untagged) traffic")
-    ] = "",
-    voice_networkconf_id: Annotated[
-        str, Field(description="Network/VLAN ID for voice traffic")
-    ] = "",
+    forward: Annotated[
+        str, Field(description="Forward mode: 'native' (access), 'all' (trunk), 'customize', or 'disabled'")
+    ],
+    native_networkconf_id: Annotated[str, Field(description="Network/VLAN ID for native (untagged) traffic")] = "",
+    voice_networkconf_id: Annotated[str, Field(description="Network/VLAN ID for voice traffic")] = "",
     isolation: Annotated[bool, Field(description="Enable port isolation (block inter-client traffic)")] = False,
     poe_mode: Annotated[str, Field(description="PoE mode: 'auto' or 'off'")] = "auto",
     stp_port_mode: Annotated[bool, Field(description="Enable STP on this port")] = True,
-    dot1x_ctrl: Annotated[str, Field(description="802.1X control: 'force_authorized', 'auto', 'force_unauthorized'")] = "",
+    dot1x_ctrl: Annotated[
+        str, Field(description="802.1X control: 'force_authorized', 'auto', 'force_unauthorized'")
+    ] = "",
     confirm: Annotated[
         bool,
         Field(description="When true, creates the profile. When false (default), returns a preview"),
@@ -151,31 +152,58 @@ async def create_port_profile(
 
 @server.tool(
     name="unifi_update_port_profile",
-    description="Update an existing port profile. Requires the full profile object "
-    "(PUT replaces entire resource). Note: system profiles with attr_no_edit=true cannot be modified. "
-    "Requires confirmation.",
+    description="Update an existing port profile. Pass only the fields you want to change — "
+    "current values are automatically preserved. "
+    "Note: system profiles with attr_no_edit=true cannot be modified. Requires confirmation.",
     permission_category="switch",
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_port_profile(
     profile_id: Annotated[str, Field(description="The ID of the profile to update")],
-    profile_data: Annotated[dict, Field(description="The complete updated profile object")],
+    profile_data: Annotated[
+        dict,
+        Field(
+            description="Dictionary of fields to update. Pass only the fields you want to change — "
+            "current values are automatically preserved. "
+            "Allowed keys: name, forward ('all'/'native'/'customize'/'disabled'), "
+            "native_networkconf_id, voice_networkconf_id, isolation (bool), "
+            "poe_mode ('auto'/'off'/'pasv24'/'passthrough'), stp_port_mode (bool), "
+            "dot1x_ctrl ('force_authorized'/'auto'/'force_unauthorized'/'mac_based'/'multi_host')"
+        ),
+    ],
     confirm: Annotated[
         bool,
         Field(description="When true, updates the profile. When false (default), returns a preview"),
     ] = False,
 ) -> Dict[str, Any]:
-    """Updates an existing port profile."""
+    """Updates an existing port profile with partial data."""
+    if not profile_id:
+        return {"success": False, "error": "profile_id is required"}
+    if not profile_data:
+        return {"success": False, "error": "profile_data cannot be empty"}
+
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("port_profile_update", profile_data)
+    if not is_valid:
+        return {"success": False, "error": f"Invalid update data: {error_msg}"}
+    if not validated_data:
+        return {"success": False, "error": "Update data is effectively empty or invalid."}
+
+    current = await switch_manager.get_port_profile_by_id(profile_id)
+    if not current:
+        return {"success": False, "error": f"Port profile '{profile_id}' not found."}
+
     if not confirm:
-        return create_preview(
+        return update_preview(
             resource_type="port_profile",
-            resource_data=profile_data,
-            resource_name=profile_id,
+            resource_id=profile_id,
+            resource_name=current.get("name"),
+            current_state=current,
+            updates=validated_data,
         )
 
     try:
-        success = await switch_manager.update_port_profile(profile_id, profile_data)
+        success = await switch_manager.update_port_profile(profile_id, validated_data)
         if success:
             return {"success": True, "message": f"Port profile '{profile_id}' updated successfully."}
         return {"success": False, "error": f"Failed to update port profile '{profile_id}'."}

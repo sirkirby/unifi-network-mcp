@@ -13,8 +13,9 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview
+from unifi_mcp_shared.confirmation import create_preview, update_preview
 from unifi_network_mcp.runtime import acl_manager, server
+from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +215,8 @@ async def create_acl_rule(
 
 @server.tool(
     name="unifi_update_acl_rule",
-    description="Update an existing MAC ACL rule. Requires the full rule object (PUT replaces entire resource). "
+    description="Update an existing MAC ACL rule. Pass only the fields you want to change — "
+    "current values are automatically preserved. "
     "Requires confirmation. IMPORTANT: traffic source/destination type MUST be 'CLIENT_MAC' (not 'ANY').",
     permission_category="acl_rules",
     permission_action="update",
@@ -227,7 +229,10 @@ async def update_acl_rule(
     rule_data: Annotated[
         dict,
         Field(
-            description="Complete updated rule object (PUT replaces entire resource). Must include all fields: name, acl_index, action, enabled, mac_acl_network_id, traffic_source, traffic_destination, type"
+            description="Dictionary of fields to update. Pass only the fields you want to change — "
+            "current values are automatically preserved. "
+            "Allowed keys: name, acl_index, action ('ALLOW'/'BLOCK'), enabled (bool), "
+            "mac_acl_network_id, traffic_source (dict), traffic_destination (dict)"
         ),
     ],
     confirm: Annotated[
@@ -235,31 +240,38 @@ async def update_acl_rule(
         Field(description="When true, applies the update. When false (default), returns a preview of the changes"),
     ] = False,
 ) -> Dict[str, Any]:
-    """
-    Updates an existing MAC ACL rule.
+    """Updates an existing MAC ACL rule with partial data."""
+    if not rule_id:
+        return {"success": False, "error": "rule_id is required"}
+    if not rule_data:
+        return {"success": False, "error": "rule_data cannot be empty"}
 
-    Args:
-        rule_id (str): The ID of the rule to update.
-        rule_data (dict): The complete updated rule object (PUT replaces the entire resource).
-        confirm (bool): Must be True to execute.
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("acl_rule_update", rule_data)
+    if not is_valid:
+        return {"success": False, "error": f"Invalid update data: {error_msg}"}
+    if not validated_data:
+        return {"success": False, "error": "Update data is effectively empty or invalid."}
 
-    Returns:
-        Preview of changes or success/failure status.
-    """
+    current = await acl_manager.get_acl_rule_by_id(rule_id)
+    if not current:
+        return {"success": False, "error": f"ACL rule '{rule_id}' not found."}
+
     if not confirm:
-        return create_preview(
+        return update_preview(
             resource_type="acl_rule",
-            resource_data=rule_data,
-            resource_name=rule_id,
+            resource_id=rule_id,
+            resource_name=current.get("name"),
+            current_state=current,
+            updates=validated_data,
         )
 
     try:
-        success = await acl_manager.update_acl_rule(rule_id, rule_data)
+        success = await acl_manager.update_acl_rule(rule_id, validated_data)
         if success:
             return {"success": True, "message": f"ACL rule '{rule_id}' updated successfully."}
         return {"success": False, "error": f"Failed to update ACL rule '{rule_id}'."}
     except Exception as e:
-        logger.error(f"Error updating ACL rule {rule_id}: {e}", exc_info=True)
+        logger.error("Error updating ACL rule %s: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update ACL rule {rule_id}: {e}"}
 
 

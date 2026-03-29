@@ -83,21 +83,32 @@ class ContentFilterManager:
         filters = await self.get_content_filters()
         return next((f for f in filters if f.get("_id", f.get("id")) == filter_id), None)
 
-    async def update_content_filter(self, filter_id: str, filter_data: Dict[str, Any]) -> bool:
-        """Update an existing content filtering profile.
+    async def update_content_filter(self, filter_id: str, update_data: Dict[str, Any]) -> bool:
+        """Update an existing content filtering profile by merging updates with current state.
 
         Args:
             filter_id: The ID of the profile to update.
-            filter_data: Complete profile data (PUT replaces the entire object).
+            update_data: Dictionary of fields to update (partial is fine).
 
         Returns:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
             return False
+        if not update_data:
+            return True
 
         try:
-            api_request = ApiRequestV2(method="put", path=f"/content-filtering/{filter_id}", data=filter_data)
+            existing = await self.get_content_filter_by_id(filter_id)
+            if not existing:
+                logger.error("Content filter %s not found for update", filter_id)
+                return False
+
+            merged_data = existing.copy()
+            for key, value in update_data.items():
+                merged_data[key] = value
+
+            api_request = ApiRequestV2(method="put", path=f"/content-filtering/{filter_id}", data=merged_data)
             await self._connection.request(api_request)
 
             self._invalidate_cache()

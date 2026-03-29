@@ -188,9 +188,13 @@ class TestOonManager:
     @pytest.mark.asyncio
     async def test_update_oon_policy_success(self, oon_manager, mock_connection):
         """Test update_oon_policy with valid data."""
-        mock_connection.request.return_value = {}
+        existing = {"id": "p1", "name": "Original", "enabled": True}
+        mock_connection.request.side_effect = [
+            existing,  # GET
+            {},  # PUT
+        ]
 
-        result = await oon_manager.update_oon_policy("p1", {"id": "p1", "name": "Updated"})
+        result = await oon_manager.update_oon_policy("p1", {"name": "Updated"})
 
         assert result is True
         mock_connection._invalidate_cache.assert_called()
@@ -212,6 +216,52 @@ class TestOonManager:
         result = await oon_manager.update_oon_policy("p1", {"name": "Test"})
 
         assert result is False
+
+    @pytest.mark.asyncio
+    async def test_update_oon_policy_fetches_and_merges(self, oon_manager, mock_connection):
+        """Test update_oon_policy fetches current policy, merges, PUTs full object."""
+        existing_policy = {
+            "id": "p1",
+            "name": "Kids Bedtime",
+            "enabled": True,
+            "target_type": "CLIENTS",
+            "targets": ["aa:bb:cc:dd:ee:ff"],
+            "secure": {"internet_access_enabled": True},
+            "qos": {"mode": "OFF"},
+            "route": {"mode": "OFF"},
+        }
+        mock_connection.request.side_effect = [
+            existing_policy,  # GET
+            {},  # PUT
+        ]
+
+        result = await oon_manager.update_oon_policy("p1", {"name": "Kids Bedtime v2", "enabled": False})
+
+        assert result is True
+        put_call = mock_connection.request.call_args_list[1]
+        put_request = put_call[0][0]
+        assert put_request.method == "put"
+        assert put_request.data["name"] == "Kids Bedtime v2"
+        assert put_request.data["enabled"] is False
+        assert put_request.data["targets"] == ["aa:bb:cc:dd:ee:ff"]
+        assert put_request.data["secure"] == {"internet_access_enabled": True}
+
+    @pytest.mark.asyncio
+    async def test_update_oon_policy_not_found(self, oon_manager, mock_connection):
+        """Test update_oon_policy returns False when policy not found."""
+        mock_connection.request.side_effect = Exception("Not found")
+
+        result = await oon_manager.update_oon_policy("nonexistent", {"name": "Test"})
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_update_oon_policy_empty_update(self, oon_manager, mock_connection):
+        """Test update_oon_policy with empty data is a no-op."""
+        result = await oon_manager.update_oon_policy("p1", {})
+
+        assert result is True
+        mock_connection.request.assert_not_called()
 
     # ---- toggle_oon_policy ----
 
@@ -339,12 +389,16 @@ class TestOonManager:
     @pytest.mark.asyncio
     async def test_update_uses_singular_path(self, oon_manager, mock_connection):
         """Test update_oon_policy uses singular PUT path."""
-        mock_connection.request.return_value = {}
+        existing = {"id": "p1", "name": "Original"}
+        mock_connection.request.side_effect = [
+            existing,  # GET
+            {},  # PUT
+        ]
 
         await oon_manager.update_oon_policy("p1", {"name": "Updated"})
 
-        call_args = mock_connection.request.call_args
-        api_request = call_args[0][0]
+        put_call = mock_connection.request.call_args_list[1]
+        api_request = put_call[0][0]
         assert api_request.path == "/object-oriented-network-config/p1"
         assert api_request.method == "put"
 

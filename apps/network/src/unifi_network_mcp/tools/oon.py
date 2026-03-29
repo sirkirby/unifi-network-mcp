@@ -8,13 +8,14 @@ can target specific client MACs or client groups.
 
 import json
 import logging
-from typing import Annotated, Any, Dict
+from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview
+from unifi_mcp_shared.confirmation import create_preview, update_preview
 from unifi_network_mcp.runtime import oon_manager, server
+from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -112,49 +113,79 @@ async def get_oon_policy_details(
 
 @server.tool(
     name="unifi_create_oon_policy",
-    description="Create a new OON (Object-Oriented Network) policy. "
-    "Policies can block internet access on a schedule, block specific apps, "
-    "apply QoS limits, or route traffic via VPN. "
-    "Targets can be specific client MACs (target_type='CLIENTS') or "
-    "client group IDs (target_type='GROUPS'). "
-    "IMPORTANT: The policy_data must include complete qos and route objects "
-    "(including mode, apps, domains, ip_addresses, regions fields) even if disabled. "
-    "Use unifi_get_oon_policy_details on an existing policy as a template. "
+    description="Create a new OON (Object-Oriented Network) policy for internet access scheduling, "
+    "app blocking, bandwidth limiting, or VPN routing. "
+    "IMPORTANT: qos and route objects (including mode, apps, domains, ip_addresses, regions fields) "
+    "must be complete even if disabled — use unifi_get_oon_policy_details on an existing policy as a template. "
     "Requires confirmation.",
     permission_category="oon_policy",
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def create_oon_policy(
-    policy_data: Annotated[
-        dict,
-        Field(
-            description="Complete OON policy object. Required fields: name (str), enabled (bool), "
-            "target_type ('CLIENTS' or 'GROUPS'), targets (list of MACs or group IDs). "
-            "Configure at least one of: secure (internet access/app blocking), "
-            "qos (bandwidth limits), route (VPN routing)"
-        ),
+    name: Annotated[str, Field(description="Policy name")],
+    target_type: Annotated[
+        str, Field(description="Target type: 'CLIENTS' (target by MAC) or 'GROUPS' (target by group ID)")
     ],
+    targets: Annotated[list, Field(description="List of target MAC addresses (if CLIENTS) or group IDs (if GROUPS)")],
+    enabled: Annotated[bool, Field(description="Whether the policy is active")] = True,
+    secure: Annotated[
+        Optional[dict],
+        Field(
+            description="Internet access and app blocking config. Keys: internet_access_enabled (bool), "
+            "apps (list of blocked app objects), schedule (access schedule)"
+        ),
+    ] = None,
+    qos: Annotated[
+        Optional[dict],
+        Field(
+            description="Bandwidth limiting config. Must include mode ('OFF' or 'LIMIT') and related fields "
+            "even if disabled"
+        ),
+    ] = None,
+    route: Annotated[
+        Optional[dict],
+        Field(
+            description="VPN routing config. Must include mode ('OFF' or a VPN interface) and related fields "
+            "even if disabled"
+        ),
+    ] = None,
     confirm: Annotated[
         bool,
         Field(description="When true, creates the policy. When false (default), returns a preview"),
     ] = False,
 ) -> Dict[str, Any]:
-    """
-    Creates a new OON policy.
+    """Creates a new OON policy with individual parameters."""
+    # Validate target_type
+    target_type_upper = target_type.upper()
+    if target_type_upper not in ("CLIENTS", "GROUPS"):
+        return {"success": False, "error": f"target_type must be 'CLIENTS' or 'GROUPS', got '{target_type}'"}
+    if not targets:
+        return {"success": False, "error": "targets must be a non-empty list"}
+    if secure is None and qos is None and route is None:
+        return {
+            "success": False,
+            "error": "At least one of secure, qos, or route must be provided",
+        }
 
-    Args:
-        policy_data (dict): Complete policy configuration.
-        confirm (bool): Must be True to execute. False returns a preview.
+    policy_data = {
+        "name": name,
+        "enabled": enabled,
+        "target_type": target_type_upper,
+        "targets": targets,
+    }
+    if secure is not None:
+        policy_data["secure"] = secure
+    if qos is not None:
+        policy_data["qos"] = qos
+    if route is not None:
+        policy_data["route"] = route
 
-    Returns:
-        Preview of changes or the created policy.
-    """
     if not confirm:
         return create_preview(
             resource_type="oon_policy",
             resource_data=policy_data,
-            resource_name=policy_data.get("name", "unnamed"),
+            resource_name=name,
         )
 
     try:
@@ -162,10 +193,10 @@ async def create_oon_policy(
         if result:
             return {
                 "success": True,
-                "message": f"OON policy '{policy_data.get('name', '')}' created successfully.",
+                "message": f"OON policy '{name}' created successfully.",
                 "policy": json.loads(json.dumps(result, default=str)),
             }
-        return {"success": False, "error": f"Failed to create OON policy '{policy_data.get('name', '')}'."}
+        return {"success": False, "error": f"Failed to create OON policy '{name}'."}
     except Exception as e:
         logger.error("Error creating OON policy: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to create OON policy: {e}"}
@@ -173,9 +204,8 @@ async def create_oon_policy(
 
 @server.tool(
     name="unifi_update_oon_policy",
-    description="Update an existing OON policy. Requires the full policy object "
-    "(PUT replaces entire resource). Use unifi_get_oon_policy_details to fetch "
-    "the current object, modify it, and send back. Requires confirmation.",
+    description="Update an existing OON policy. Pass only the fields you want to change — "
+    "current values are automatically preserved. Requires confirmation.",
     permission_category="oon_policy",
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
@@ -184,33 +214,45 @@ async def update_oon_policy(
     policy_id: Annotated[str, Field(description="The ID of the policy to update")],
     policy_data: Annotated[
         dict,
-        Field(description="The complete updated policy object with all fields"),
+        Field(
+            description="Dictionary of fields to update. Pass only the fields you want to change — "
+            "current values are automatically preserved. "
+            "Allowed keys: name (str), enabled (bool), target_type ('CLIENTS'/'GROUPS'), "
+            "targets (list of MACs or group IDs), secure (dict), qos (dict), route (dict)"
+        ),
     ],
     confirm: Annotated[
         bool,
         Field(description="When true, updates the policy. When false (default), returns a preview"),
     ] = False,
 ) -> Dict[str, Any]:
-    """
-    Updates an existing OON policy.
+    """Updates an existing OON policy with partial data."""
+    if not policy_id:
+        return {"success": False, "error": "policy_id is required"}
+    if not policy_data:
+        return {"success": False, "error": "policy_data cannot be empty"}
 
-    Args:
-        policy_id (str): The ID of the policy to update.
-        policy_data (dict): The complete updated policy object.
-        confirm (bool): Must be True to execute.
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("oon_policy_update", policy_data)
+    if not is_valid:
+        return {"success": False, "error": f"Invalid update data: {error_msg}"}
+    if not validated_data:
+        return {"success": False, "error": "Update data is effectively empty or invalid."}
 
-    Returns:
-        Preview of changes or success/failure status.
-    """
+    current = await oon_manager.get_oon_policy_by_id(policy_id)
+    if not current:
+        return {"success": False, "error": f"OON policy '{policy_id}' not found."}
+
     if not confirm:
-        return create_preview(
+        return update_preview(
             resource_type="oon_policy",
-            resource_data=policy_data,
-            resource_name=policy_id,
+            resource_id=policy_id,
+            resource_name=current.get("name"),
+            current_state=current,
+            updates=validated_data,
         )
 
     try:
-        success = await oon_manager.update_oon_policy(policy_id, policy_data)
+        success = await oon_manager.update_oon_policy(policy_id, validated_data)
         if success:
             return {"success": True, "message": f"OON policy '{policy_id}' updated successfully."}
         return {"success": False, "error": f"Failed to update OON policy '{policy_id}'."}

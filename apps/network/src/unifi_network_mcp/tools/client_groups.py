@@ -12,8 +12,9 @@ from typing import Annotated, Any, Dict
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview
+from unifi_mcp_shared.confirmation import create_preview, update_preview
 from unifi_network_mcp.runtime import client_group_manager, server
+from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -159,8 +160,8 @@ async def create_client_group(
 
 @server.tool(
     name="unifi_update_client_group",
-    description="Update an existing client group. Requires the full group object (PUT replaces entire resource). "
-    "Requires confirmation.",
+    description="Update an existing client group. Pass only the fields you want to change — "
+    "current values are automatically preserved. Requires confirmation.",
     permission_category="client_group",
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
@@ -169,38 +170,49 @@ async def update_client_group(
     group_id: Annotated[str, Field(description="The ID of the group to update")],
     group_data: Annotated[
         dict,
-        Field(description="The complete updated group object with id, name, members, and type fields"),
+        Field(
+            description="Dictionary of fields to update. Pass only the fields you want to change — "
+            "current values are automatically preserved. "
+            "Allowed keys: name (str), members (list of MAC addresses)"
+        ),
     ],
     confirm: Annotated[
         bool,
         Field(description="When true, updates the group. When false (default), returns a preview of the changes"),
     ] = False,
 ) -> Dict[str, Any]:
-    """
-    Updates an existing client group.
+    """Updates an existing client group with partial data."""
+    if not group_id:
+        return {"success": False, "error": "group_id is required"}
+    if not group_data:
+        return {"success": False, "error": "group_data cannot be empty"}
 
-    Args:
-        group_id (str): The ID of the group to update.
-        group_data (dict): The complete updated group object (PUT replaces the entire resource).
-        confirm (bool): Must be True to execute.
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("client_group_update", group_data)
+    if not is_valid:
+        return {"success": False, "error": f"Invalid update data: {error_msg}"}
+    if not validated_data:
+        return {"success": False, "error": "Update data is effectively empty or invalid."}
 
-    Returns:
-        Preview of changes or success/failure status.
-    """
+    current = await client_group_manager.get_client_group_by_id(group_id)
+    if not current:
+        return {"success": False, "error": f"Client group '{group_id}' not found."}
+
     if not confirm:
-        return create_preview(
+        return update_preview(
             resource_type="client_group",
-            resource_data=group_data,
-            resource_name=group_id,
+            resource_id=group_id,
+            resource_name=current.get("name"),
+            current_state=current,
+            updates=validated_data,
         )
 
     try:
-        success = await client_group_manager.update_client_group(group_id, group_data)
+        success = await client_group_manager.update_client_group(group_id, validated_data)
         if success:
             return {"success": True, "message": f"Client group '{group_id}' updated successfully."}
         return {"success": False, "error": f"Failed to update client group '{group_id}'."}
     except Exception as e:
-        logger.error(f"Error updating client group {group_id}: {e}", exc_info=True)
+        logger.error("Error updating client group %s: %s", group_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update client group '{group_id}': {e}"}
 
 

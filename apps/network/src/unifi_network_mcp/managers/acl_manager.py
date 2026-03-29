@@ -80,11 +80,13 @@ class AclManager:
             api_request = ApiRequestV2(method="get", path=f"/acl-rules/{rule_id}")
             response = await self._connection.request(api_request)
 
+            if isinstance(response, list):
+                return response[0] if response else None
             if isinstance(response, dict):
                 return response if "_id" in response else response.get("data", None)
             return None
         except Exception as e:
-            logger.error(f"Error getting ACL rule {rule_id}: {e}")
+            logger.error("Error getting ACL rule %s: %s", rule_id, e)
             return None
 
     async def create_acl_rule(self, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -141,27 +143,41 @@ class AclManager:
             logger.error(f"Error creating ACL rule: {e}", exc_info=True)
             return None
 
-    async def update_acl_rule(self, rule_id: str, rule_data: Dict[str, Any]) -> bool:
-        """Update an existing MAC ACL rule.
+    async def update_acl_rule(self, rule_id: str, update_data: Dict[str, Any]) -> bool:
+        """Update an existing MAC ACL rule by merging updates with current state.
+
+        Fetches the current rule, merges the caller's partial updates on top,
+        and PUTs the full merged object back.
 
         Args:
             rule_id: The ID of the ACL rule to update.
-            rule_data: Complete rule data (PUT replaces the entire object).
+            update_data: Dictionary of fields to update (partial is fine).
 
         Returns:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
             return False
+        if not update_data:
+            return True  # No action needed
 
         try:
-            api_request = ApiRequestV2(method="put", path=f"/acl-rules/{rule_id}", data=rule_data)
+            existing = await self.get_acl_rule_by_id(rule_id)
+            if not existing:
+                logger.error("ACL rule %s not found for update", rule_id)
+                return False
+
+            merged_data = existing.copy()
+            for key, value in update_data.items():
+                merged_data[key] = value
+
+            api_request = ApiRequestV2(method="put", path=f"/acl-rules/{rule_id}", data=merged_data)
             await self._connection.request(api_request)
 
             self._invalidate_cache()
             return True
         except Exception as e:
-            logger.error(f"Error updating ACL rule {rule_id}: {e}", exc_info=True)
+            logger.error("Error updating ACL rule %s: %s", rule_id, e, exc_info=True)
             return False
 
     async def delete_acl_rule(self, rule_id: str) -> bool:

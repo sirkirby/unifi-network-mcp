@@ -570,7 +570,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Create a new OON (Object-Oriented Network) policy. Policies can block internet access on a schedule, block specific apps, apply QoS limits, or route traffic via VPN. Targets can be specific client MACs (target_type='CLIENTS') or client group IDs (target_type='GROUPS'). IMPORTANT: The policy_data must include complete qos and route objects (including mode, apps, domains, ip_addresses, regions fields) even if disabled. Use unifi_get_oon_policy_details on an existing policy as a template. Requires confirmation.",
+      "description": "Create a new OON (Object-Oriented Network) policy for internet access scheduling, app blocking, bandwidth limiting, or VPN routing. IMPORTANT: qos and route objects (including mode, apps, domains, ip_addresses, regions fields) must be complete even if disabled \u2014 use unifi_get_oon_policy_details on an existing policy as a template. Requires confirmation.",
       "name": "unifi_create_oon_policy",
       "permission_action": "create",
       "permission_category": "oon_policy",
@@ -581,13 +581,39 @@
               "description": "When true, creates the policy. When false (default), returns a preview",
               "type": "boolean"
             },
-            "policy_data": {
-              "description": "Complete OON policy object. Required fields: name (str), enabled (bool), target_type ('CLIENTS' or 'GROUPS'), targets (list of MACs or group IDs). Configure at least one of: secure (internet access/app blocking), qos (bandwidth limits), route (VPN routing)",
+            "enabled": {
+              "description": "Whether the policy is active",
+              "type": "boolean"
+            },
+            "name": {
+              "description": "Policy name",
+              "type": "string"
+            },
+            "qos": {
+              "description": "Bandwidth limiting config. Must include mode ('OFF' or 'LIMIT') and related fields even if disabled",
               "type": "object"
+            },
+            "route": {
+              "description": "VPN routing config. Must include mode ('OFF' or a VPN interface) and related fields even if disabled",
+              "type": "object"
+            },
+            "secure": {
+              "description": "Internet access and app blocking config. Keys: internet_access_enabled (bool), apps (list of blocked app objects), schedule (access schedule)",
+              "type": "object"
+            },
+            "target_type": {
+              "description": "Target type: 'CLIENTS' (target by MAC) or 'GROUPS' (target by group ID)",
+              "type": "string"
+            },
+            "targets": {
+              "description": "List of target MAC addresses (if CLIENTS) or group IDs (if GROUPS)",
+              "type": "array"
             }
           },
           "required": [
-            "policy_data"
+            "name",
+            "target_type",
+            "targets"
           ],
           "type": "object"
         }
@@ -3223,7 +3249,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Update an existing MAC ACL rule. Requires the full rule object (PUT replaces entire resource). Requires confirmation. IMPORTANT: traffic source/destination type MUST be 'CLIENT_MAC' (not 'ANY').",
+      "description": "Update an existing MAC ACL rule. Pass only the fields you want to change \u2014 current values are automatically preserved. Requires confirmation. IMPORTANT: traffic source/destination type MUST be 'CLIENT_MAC' (not 'ANY').",
       "name": "unifi_update_acl_rule",
       "permission_action": "update",
       "permission_category": "acl_rules",
@@ -3235,7 +3261,7 @@
               "type": "boolean"
             },
             "rule_data": {
-              "description": "Complete updated rule object (PUT replaces entire resource). Must include all fields: name, acl_index, action, enabled, mac_acl_network_id, traffic_source, traffic_destination, type",
+              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name, acl_index, action ('ALLOW'/'BLOCK'), enabled (bool), mac_acl_network_id, traffic_source (dict), traffic_destination (dict)",
               "type": "object"
             },
             "rule_id": {
@@ -3258,7 +3284,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Update an existing client group. Requires the full group object (PUT replaces entire resource). Requires confirmation.",
+      "description": "Update an existing client group. Pass only the fields you want to change \u2014 current values are automatically preserved. Requires confirmation.",
       "name": "unifi_update_client_group",
       "permission_action": "update",
       "permission_category": "client_group",
@@ -3270,7 +3296,7 @@
               "type": "boolean"
             },
             "group_data": {
-              "description": "The complete updated group object with id, name, members, and type fields",
+              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name (str), members (list of MAC addresses)",
               "type": "object"
             },
             "group_id": {
@@ -3293,7 +3319,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Update an existing content filtering profile. Requires the full profile object (PUT replaces entire resource). Use unifi_get_content_filter_details to fetch the current object, modify it, and send back. client_macs and network_ids are additive \u2014 both can be set and the filter applies to all. Safe search valid values: GOOGLE, YOUTUBE, BING (only these three are supported). Requires confirmation.",
+      "description": "Update an existing content filtering profile. Pass only the fields you want to change \u2014 current values are automatically preserved. client_macs and network_ids are additive \u2014 both can be set and the filter applies to all. Safe search valid values: GOOGLE, YOUTUBE, BING (only these three are supported). Requires confirmation.",
       "name": "unifi_update_content_filter",
       "permission_action": "update",
       "permission_category": "content_filter",
@@ -3305,7 +3331,7 @@
               "type": "boolean"
             },
             "filter_data": {
-              "description": "The complete updated profile object with all fields",
+              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name, enabled (bool), blocked_categories (list), safe_search (list: 'GOOGLE'/'YOUTUBE'/'BING'), client_macs (list of MACs), network_ids (list)",
               "type": "object"
             },
             "filter_id": {
@@ -3473,7 +3499,7 @@
               "type": "string"
             },
             "update_data": {
-              "description": "Dictionary of fields to update. Allowed keys: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), vlan (1-4094), ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), enabled (bool), network_isolation_enabled (bool, corporate networks only)",
+              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), vlan (1-4094), ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), enabled (bool), network_isolation_enabled (bool, corporate networks only)",
               "type": "object"
             }
           },
@@ -3492,7 +3518,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Update an existing OON policy. Requires the full policy object (PUT replaces entire resource). Use unifi_get_oon_policy_details to fetch the current object, modify it, and send back. Requires confirmation.",
+      "description": "Update an existing OON policy. Pass only the fields you want to change \u2014 current values are automatically preserved. Requires confirmation.",
       "name": "unifi_update_oon_policy",
       "permission_action": "update",
       "permission_category": "oon_policy",
@@ -3504,7 +3530,7 @@
               "type": "boolean"
             },
             "policy_data": {
-              "description": "The complete updated policy object with all fields",
+              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name (str), enabled (bool), target_type ('CLIENTS'/'GROUPS'), targets (list of MACs or group IDs), secure (dict), qos (dict), route (dict)",
               "type": "object"
             },
             "policy_id": {
@@ -3562,7 +3588,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Update an existing port profile. Requires the full profile object (PUT replaces entire resource). Note: system profiles with attr_no_edit=true cannot be modified. Requires confirmation.",
+      "description": "Update an existing port profile. Pass only the fields you want to change \u2014 current values are automatically preserved. Note: system profiles with attr_no_edit=true cannot be modified. Requires confirmation.",
       "name": "unifi_update_port_profile",
       "permission_action": "update",
       "permission_category": "switch",
@@ -3574,7 +3600,7 @@
               "type": "boolean"
             },
             "profile_data": {
-              "description": "The complete updated profile object",
+              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name, forward ('all'/'native'/'customize'/'disabled'), native_networkconf_id, voice_networkconf_id, isolation (bool), poe_mode ('auto'/'off'/'pasv24'/'passthrough'), stp_port_mode (bool), dot1x_ctrl ('force_authorized'/'auto'/'force_unauthorized'/'mac_based'/'multi_host')",
               "type": "object"
             },
             "profile_id": {
@@ -3908,7 +3934,7 @@
               "type": "boolean"
             },
             "update_data": {
-              "description": "Dictionary of fields to update. Allowed keys: name (SSID), security ('open'/'wpapsk'/'wpa2-psk'), x_passphrase (password), enabled (bool), hide_ssid (bool), guest_policy (bool), usergroup_id (str), networkconf_id (network ID to associate)",
+              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name (SSID), security ('open'/'wpapsk'/'wpa2-psk'), x_passphrase (password), enabled (bool), hide_ssid (bool), guest_policy (bool), usergroup_id (str), networkconf_id (network ID to associate)",
               "type": "object"
             },
             "wlan_id": {

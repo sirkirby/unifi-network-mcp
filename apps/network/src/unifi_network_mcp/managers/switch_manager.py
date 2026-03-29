@@ -122,21 +122,32 @@ class SwitchManager:
             logger.error("Error creating port profile: %s", e, exc_info=True)
             return None
 
-    async def update_port_profile(self, profile_id: str, profile_data: Dict[str, Any]) -> bool:
-        """Update an existing port profile.
+    async def update_port_profile(self, profile_id: str, update_data: Dict[str, Any]) -> bool:
+        """Update an existing port profile by merging updates with current state.
 
         Args:
             profile_id: The ID of the port profile to update.
-            profile_data: Complete profile data (PUT replaces the entire object).
+            update_data: Dictionary of fields to update (partial is fine).
 
         Returns:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
             return False
+        if not update_data:
+            return True
 
         try:
-            api_request = ApiRequest(method="put", path=f"/rest/portconf/{profile_id}", data=profile_data)
+            existing = await self.get_port_profile_by_id(profile_id)
+            if not existing:
+                logger.error("Port profile %s not found for update", profile_id)
+                return False
+
+            merged_data = existing.copy()
+            for key, value in update_data.items():
+                merged_data[key] = value
+
+            api_request = ApiRequest(method="put", path=f"/rest/portconf/{profile_id}", data=merged_data)
             await self._connection.request(api_request)
 
             self._connection._invalidate_cache(CACHE_PREFIX_PORT_PROFILES)
@@ -345,4 +356,3 @@ class SwitchManager:
         )
         await self._connection.request(api_request)
         return True
-
