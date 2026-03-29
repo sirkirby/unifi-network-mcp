@@ -12,6 +12,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from aiounifi.models.api import ApiRequest
+from unifi_core.merge import deep_merge
 
 from .connection_manager import ConnectionManager
 
@@ -219,9 +220,8 @@ class VpnManager:
                 logger.error(f"VPN configuration {config_id} not found")
                 return False
 
-            # Merge updates into existing config
-            merged_data = existing.copy()
-            merged_data.update(update_data)
+            # Merge updates into existing config (deep merge preserves nested sub-objects)
+            merged_data = deep_merge(existing, update_data)
 
             api_request = ApiRequest(
                 method="put",

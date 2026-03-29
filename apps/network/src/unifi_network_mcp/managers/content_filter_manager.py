@@ -22,6 +22,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequestV2
+from unifi_core.merge import deep_merge
 
 from .connection_manager import ConnectionManager
 
@@ -104,9 +105,7 @@ class ContentFilterManager:
                 logger.error("Content filter %s not found for update", filter_id)
                 return False
 
-            merged_data = existing.copy()
-            for key, value in update_data.items():
-                merged_data[key] = value
+            merged_data = deep_merge(existing, update_data)
 
             api_request = ApiRequestV2(method="put", path=f"/content-filtering/{filter_id}", data=merged_data)
             await self._connection.request(api_request)

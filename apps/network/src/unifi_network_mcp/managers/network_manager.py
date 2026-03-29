@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequest
 from aiounifi.models.wlan import Wlan
+from unifi_core.merge import deep_merge
 
 from .connection_manager import ConnectionManager
 
@@ -137,10 +138,8 @@ class NetworkManager:
                 logger.error(f"Network {network_id} not found for update.")
                 return False
 
-            # 2. Merge updates into existing data
-            merged_data = existing_network.copy()
-            for key, value in update_data.items():
-                merged_data[key] = value
+            # 2. Merge updates into existing data (deep merge preserves nested sub-objects)
+            merged_data = deep_merge(existing_network, update_data)
 
             # 3. Send the full merged data
             api_request = ApiRequest(
@@ -272,10 +271,8 @@ class NetworkManager:
                 logger.error(f"WLAN {wlan_id} not found for update.")
                 return False
 
-            # 2. Merge updates
-            merged_data = existing_wlan.copy()
-            for key, value in update_data.items():
-                merged_data[key] = value
+            # 2. Merge updates (deep merge preserves nested sub-objects)
+            merged_data = deep_merge(existing_wlan, update_data)
 
             # Ensure required fields from original object are preserved if not updated
             # (The API might require certain fields even on update)

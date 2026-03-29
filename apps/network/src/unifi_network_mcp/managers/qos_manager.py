@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequestV2
+from unifi_core.merge import deep_merge
 
 from .connection_manager import ConnectionManager
 
@@ -79,10 +80,8 @@ class QosManager:
                 logger.error(f"QoS rule {rule_id} not found for update.")
                 return False
 
-            # 2. Merge updates into existing data
-            merged_data = existing_rule.copy()
-            for key, value in update_data.items():
-                merged_data[key] = value
+            # 2. Merge updates into existing data (deep merge preserves nested sub-objects)
+            merged_data = deep_merge(existing_rule, update_data)
 
             # 3. Send the full merged data using V2 PUT
             api_request = ApiRequestV2(
