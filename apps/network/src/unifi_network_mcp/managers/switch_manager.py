@@ -15,6 +15,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequest
+from unifi_core.merge import deep_merge
 
 from .connection_manager import ConnectionManager
 
@@ -143,9 +144,7 @@ class SwitchManager:
                 logger.error("Port profile %s not found for update", profile_id)
                 return False
 
-            merged_data = existing.copy()
-            for key, value in update_data.items():
-                merged_data[key] = value
+            merged_data = deep_merge(existing, update_data)
 
             api_request = ApiRequest(method="put", path=f"/rest/portconf/{profile_id}", data=merged_data)
             await self._connection.request(api_request)
