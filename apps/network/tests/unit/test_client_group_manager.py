@@ -192,11 +192,13 @@ class TestClientGroupManager:
     @pytest.mark.asyncio
     async def test_update_client_group_success(self, client_group_manager, mock_connection):
         """Test update_client_group with valid data."""
-        mock_connection.request.return_value = {}
+        existing = {"id": "g1", "name": "Original", "members": [], "type": "CLIENTS"}
+        mock_connection.request.side_effect = [
+            existing,  # GET
+            {},  # PUT
+        ]
 
-        result = await client_group_manager.update_client_group(
-            "g1", {"id": "g1", "name": "Updated", "members": [], "type": "CLIENTS"}
-        )
+        result = await client_group_manager.update_client_group("g1", {"name": "Updated"})
 
         assert result is True
         mock_connection._invalidate_cache.assert_called()
@@ -218,6 +220,47 @@ class TestClientGroupManager:
         result = await client_group_manager.update_client_group("g1", {"name": "Test"})
 
         assert result is False
+
+    @pytest.mark.asyncio
+    async def test_update_client_group_fetches_and_merges(self, client_group_manager, mock_connection):
+        """Test update_client_group fetches current group, merges, PUTs full object."""
+        existing_group = {
+            "id": "g1",
+            "name": "IoT Devices",
+            "members": ["aa:bb:cc:dd:ee:ff"],
+            "type": "CLIENTS",
+        }
+        mock_connection.request.side_effect = [
+            existing_group,  # GET
+            {},  # PUT
+        ]
+
+        result = await client_group_manager.update_client_group("g1", {"name": "Smart Home Devices"})
+
+        assert result is True
+        put_call = mock_connection.request.call_args_list[1]
+        put_request = put_call[0][0]
+        assert put_request.method == "put"
+        assert put_request.data["name"] == "Smart Home Devices"
+        assert put_request.data["members"] == ["aa:bb:cc:dd:ee:ff"]
+        assert put_request.data["type"] == "CLIENTS"
+
+    @pytest.mark.asyncio
+    async def test_update_client_group_not_found(self, client_group_manager, mock_connection):
+        """Test update_client_group returns False when group not found."""
+        mock_connection.request.return_value = None
+
+        result = await client_group_manager.update_client_group("nonexistent", {"name": "Test"})
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_update_client_group_empty_update(self, client_group_manager, mock_connection):
+        """Test update_client_group with empty data is a no-op."""
+        result = await client_group_manager.update_client_group("g1", {})
+
+        assert result is True
+        mock_connection.request.assert_not_called()
 
     # ---- delete_client_group ----
 
@@ -294,12 +337,16 @@ class TestClientGroupManager:
     @pytest.mark.asyncio
     async def test_update_uses_correct_path_and_method(self, client_group_manager, mock_connection):
         """Test update_client_group uses PUT to the correct endpoint."""
-        mock_connection.request.return_value = {}
+        existing = {"id": "g1", "name": "Original", "members": [], "type": "CLIENTS"}
+        mock_connection.request.side_effect = [
+            existing,  # GET
+            {},  # PUT
+        ]
 
         await client_group_manager.update_client_group("g1", {"name": "Updated"})
 
-        call_args = mock_connection.request.call_args
-        api_request = call_args[0][0]
+        put_call = mock_connection.request.call_args_list[1]
+        api_request = put_call[0][0]
         assert api_request.path == "/network-members-group/g1"
         assert api_request.method == "put"
 

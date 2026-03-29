@@ -115,12 +115,58 @@ class TestSwitchManager:
     @pytest.mark.asyncio
     async def test_update_port_profile_success(self, switch_manager, mock_connection):
         """Test update_port_profile with valid data."""
-        mock_connection.request.return_value = {"data": []}
+        existing = {"_id": "p1", "name": "Original", "forward": "all"}
+        mock_connection.request.side_effect = [
+            [existing],  # GET returns list
+            {},  # PUT
+        ]
 
         result = await switch_manager.update_port_profile("p1", {"name": "Updated"})
 
         assert result is True
         mock_connection._invalidate_cache.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_update_port_profile_fetches_and_merges(self, switch_manager, mock_connection):
+        """Test update_port_profile fetches current profile, merges, PUTs full object."""
+        existing_profile = {
+            "_id": "pp1",
+            "name": "Custom Profile",
+            "forward": "customize",
+            "native_networkconf_id": "net1",
+            "poe_mode": "auto",
+        }
+        mock_connection.request.side_effect = [
+            [existing_profile],  # GET returns list
+            {},  # PUT
+        ]
+
+        result = await switch_manager.update_port_profile("pp1", {"name": "Renamed", "poe_mode": "off"})
+
+        assert result is True
+        put_call = mock_connection.request.call_args_list[1]
+        put_request = put_call[0][0]
+        assert put_request.method == "put"
+        assert put_request.data["name"] == "Renamed"
+        assert put_request.data["poe_mode"] == "off"
+        assert put_request.data["forward"] == "customize"
+
+    @pytest.mark.asyncio
+    async def test_update_port_profile_not_found(self, switch_manager, mock_connection):
+        """Test update_port_profile returns False when profile not found."""
+        mock_connection.request.return_value = []
+
+        result = await switch_manager.update_port_profile("nonexistent", {"name": "Test"})
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_update_port_profile_empty_update(self, switch_manager, mock_connection):
+        """Test update_port_profile with empty data is a no-op."""
+        result = await switch_manager.update_port_profile("p1", {})
+
+        assert result is True
+        mock_connection.request.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_delete_port_profile_success(self, switch_manager, mock_connection):
