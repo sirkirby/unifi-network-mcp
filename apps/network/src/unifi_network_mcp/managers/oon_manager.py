@@ -92,6 +92,8 @@ class OonManager:
             api_request = ApiRequestV2(method="get", path=f"{OON_PATH_SINGLE}/{policy_id}")
             response = await self._connection.request(api_request)
 
+            if isinstance(response, list) and response:
+                return response[0]
             if isinstance(response, dict):
                 result = response if ("id" in response or "_id" in response) else response.get("data", None)
                 if result:

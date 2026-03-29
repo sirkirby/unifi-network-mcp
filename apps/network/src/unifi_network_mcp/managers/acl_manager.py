@@ -80,11 +80,13 @@ class AclManager:
             api_request = ApiRequestV2(method="get", path=f"/acl-rules/{rule_id}")
             response = await self._connection.request(api_request)
 
+            if isinstance(response, list):
+                return response[0] if response else None
             if isinstance(response, dict):
                 return response if "_id" in response else response.get("data", None)
             return None
         except Exception as e:
-            logger.error(f"Error getting ACL rule {rule_id}: {e}")
+            logger.error("Error getting ACL rule %s: %s", rule_id, e)
             return None
 
     async def create_acl_rule(self, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

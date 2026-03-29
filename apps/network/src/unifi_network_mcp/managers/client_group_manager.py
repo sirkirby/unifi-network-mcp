@@ -73,11 +73,13 @@ class ClientGroupManager:
             api_request = ApiRequestV2(method="get", path=f"/network-members-group/{group_id}")
             response = await self._connection.request(api_request)
 
+            if isinstance(response, list):
+                return response[0] if response else None
             if isinstance(response, dict):
                 return response if "id" in response or "_id" in response else response.get("data", None)
             return None
         except Exception as e:
-            logger.error(f"Error getting client group {group_id}: {e}")
+            logger.error("Error getting client group %s: %s", group_id, e)
             return None
 
     async def create_client_group(self, group_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
