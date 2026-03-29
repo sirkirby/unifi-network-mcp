@@ -127,9 +127,7 @@ async def create_oon_policy(
     target_type: Annotated[
         str, Field(description="Target type: 'CLIENTS' (target by MAC) or 'GROUPS' (target by group ID)")
     ],
-    targets: Annotated[
-        list, Field(description="List of target MAC addresses (if CLIENTS) or group IDs (if GROUPS)")
-    ],
+    targets: Annotated[list, Field(description="List of target MAC addresses (if CLIENTS) or group IDs (if GROUPS)")],
     enabled: Annotated[bool, Field(description="Whether the policy is active")] = True,
     secure: Annotated[
         Optional[dict],
@@ -158,10 +156,22 @@ async def create_oon_policy(
     ] = False,
 ) -> Dict[str, Any]:
     """Creates a new OON policy with individual parameters."""
+    # Validate target_type
+    target_type_upper = target_type.upper()
+    if target_type_upper not in ("CLIENTS", "GROUPS"):
+        return {"success": False, "error": f"target_type must be 'CLIENTS' or 'GROUPS', got '{target_type}'"}
+    if not targets:
+        return {"success": False, "error": "targets must be a non-empty list"}
+    if secure is None and qos is None and route is None:
+        return {
+            "success": False,
+            "error": "At least one of secure, qos, or route must be provided",
+        }
+
     policy_data = {
         "name": name,
         "enabled": enabled,
-        "target_type": target_type.upper(),
+        "target_type": target_type_upper,
         "targets": targets,
     }
     if secure is not None:
