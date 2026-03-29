@@ -140,6 +140,20 @@ All changes MUST follow a golden path. If no path applies, ask before inventing 
 2. Add env var to `.env.example` with a comment
 3. Document in README.md configuration section
 
+### Add or modify an update tool
+
+Update tools MUST use the fetch-merge-put pattern. The manager fetches current state, merges the caller's partial updates, and PUTs the full object. The tool layer accepts a partial dict, validates via schema, and shows a before/after preview.
+
+1. Manager method: fetch existing → copy → merge updates → PUT full object
+   - **Anchor:** `apps/network/src/unifi_network_mcp/managers/network_manager.py:update_network`
+2. Add update schema in `<pkg>/schemas.py` — all properties optional, no `required` key
+3. Register schema in `<pkg>/validator_registry.py`
+4. Tool function: validate via `UniFiValidatorRegistry`, fetch for preview, use `update_preview`
+   - **Anchor:** `apps/network/src/unifi_network_mcp/tools/network.py:update_network`
+5. Tool description MUST include: "Pass only the fields you want to change — current values are automatically preserved."
+6. Run `make manifest`
+7. Add tests covering: partial merge preserves unmentioned fields, not-found returns False, empty update is a no-op
+
 ### Modify the permission system
 
 1. Shared logic: `packages/unifi-mcp-shared/src/unifi_mcp_shared/policy_gate.py`

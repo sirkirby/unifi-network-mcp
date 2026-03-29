@@ -188,7 +188,11 @@ async def update_network(
     update_data: Annotated[
         Dict[str, Any],
         Field(
-            description="Dictionary of fields to update. Allowed keys: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), vlan (1-4094), ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), enabled (bool), network_isolation_enabled (bool, corporate networks only)"
+            description="Dictionary of fields to update. Pass only the fields you want to change — "
+            "current values are automatically preserved. "
+            "Allowed keys: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), "
+            "vlan (1-4094), ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), "
+            "enabled (bool), network_isolation_enabled (bool, corporate networks only)"
         ),
     ],
     confirm: Annotated[
@@ -628,7 +632,11 @@ async def update_wlan(
     update_data: Annotated[
         Dict[str, Any],
         Field(
-            description="Dictionary of fields to update. Allowed keys: name (SSID), security ('open'/'wpapsk'/'wpa2-psk'), x_passphrase (password), enabled (bool), hide_ssid (bool), guest_policy (bool), usergroup_id (str), networkconf_id (network ID to associate)"
+            description="Dictionary of fields to update. Pass only the fields you want to change — "
+            "current values are automatically preserved. "
+            "Allowed keys: name (SSID), security ('open'/'wpapsk'/'wpa2-psk'), x_passphrase (password), "
+            "enabled (bool), hide_ssid (bool), guest_policy (bool), usergroup_id (str), "
+            "networkconf_id (network ID to associate)"
         ),
     ],
     confirm: Annotated[
