@@ -1,7 +1,4 @@
 {
-  "env": {
-    "MYCO_VAULT_DIR": "/Users/chris/.myco/vaults/unifi-mcp"
-  },
   "hooks": {
     "SessionStart": [
       {

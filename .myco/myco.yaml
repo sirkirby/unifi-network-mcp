@@ -1,5 +1,5 @@
 version: 3
-config_version: 2
+config_version: 3
 embedding:
   provider: ollama
   model: bge-m3:latest
@@ -9,7 +9,9 @@ daemon:
   log_retention_days: 30
 capture:
   transcript_paths: []
-  plan_dirs: []
+  plan_dirs:
+    - docs/superpowers/plans/
+    - docs/superpowers/specs/
   artifact_extensions:
     - .md
   buffer_max_events: 500
@@ -19,6 +21,8 @@ agent:
   summary_batch_interval: 5
   provider:
     type: cloud
+  tasks:
+    full-intelligence: {}
 context:
   digest_tier: 5000
   prompt_search: true
