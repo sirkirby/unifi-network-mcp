@@ -265,9 +265,7 @@ class TestSwitchManager:
             {},  # PUT response
         ]
 
-        result = await switch_manager.set_port_overrides(
-            "aa:bb:cc:dd:ee:ff", [{"port_idx": 1, "portconf_id": "p1"}]
-        )
+        result = await switch_manager.set_port_overrides("aa:bb:cc:dd:ee:ff", [{"port_idx": 1, "portconf_id": "p1"}])
 
         assert result is True
         put_call = mock_connection.request.call_args_list[1]
@@ -292,9 +290,7 @@ class TestSwitchManager:
             {},  # PUT response
         ]
 
-        result = await switch_manager.update_device_config(
-            "aa:bb:cc:dd:ee:ff", {"stp_priority": "32768"}
-        )
+        result = await switch_manager.update_device_config("aa:bb:cc:dd:ee:ff", {"stp_priority": "32768"})
 
         assert result is True
         # Verify PUT payload includes port_overrides

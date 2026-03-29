@@ -111,9 +111,7 @@ async def get_client_stats(
         client_name = client_raw.get("name") or client_raw.get("hostname") or client_mac
 
         # Stats endpoint expects MAC, not _id
-        stats = await stats_manager.get_client_stats(
-            client_mac, duration_hours=duration_hours, granularity=granularity
-        )
+        stats = await stats_manager.get_client_stats(client_mac, duration_hours=duration_hours, granularity=granularity)
         summary = {
             "total_rx_bytes": sum(e.get("rx_bytes", 0) for e in stats),
             "total_tx_bytes": sum(e.get("tx_bytes", 0) for e in stats),
@@ -325,9 +323,7 @@ async def get_alerts(
 async def get_gateway_stats(
     duration: Annotated[
         str,
-        Field(
-            description="Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"
-        ),
+        Field(description="Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"),
     ] = "hourly",
     granularity: Annotated[
         str,
@@ -372,9 +368,7 @@ async def get_gateway_stats(
 async def get_speedtest_results(
     duration: Annotated[
         str,
-        Field(
-            description="Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"
-        ),
+        Field(description="Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"),
     ] = "daily",
 ) -> Dict[str, Any]:
     """Implementation for getting historical speedtest results."""
@@ -487,9 +481,7 @@ async def get_client_dpi_traffic(
 async def get_ips_events(
     duration: Annotated[
         str,
-        Field(
-            description="Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"
-        ),
+        Field(description="Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"),
     ] = "daily",
     limit: Annotated[int, Field(description="Maximum number of events to return (default 50)")] = 50,
 ) -> Dict[str, Any]:
@@ -527,9 +519,7 @@ async def get_client_sessions(
     ] = None,
     duration: Annotated[
         str,
-        Field(
-            description="Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"
-        ),
+        Field(description="Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"),
     ] = "daily",
     limit: Annotated[int, Field(description="Maximum number of sessions to return (default 50)")] = 50,
 ) -> Dict[str, Any]:
@@ -582,9 +572,7 @@ async def get_dashboard() -> Dict[str, Any]:
 async def get_anomalies(
     duration: Annotated[
         str,
-        Field(
-            description="Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"
-        ),
+        Field(description="Time period: 'hourly' (1h, default), 'daily' (24h), 'weekly' (7d), or 'monthly' (30d)"),
     ] = "daily",
 ) -> Dict[str, Any]:
     """Implementation for getting anomaly events."""

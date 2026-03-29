@@ -66,14 +66,10 @@ class StatsManager:
         self._connection = connection_manager
         self._client_manager = client_manager
 
-    async def get_network_stats(
-        self, duration_hours: int = 1, granularity: str = "hourly"
-    ) -> List[Dict[str, Any]]:
+    async def get_network_stats(self, duration_hours: int = 1, granularity: str = "hourly") -> List[Dict[str, Any]]:
         """Get network statistics (e.g., hourly site stats)."""
         granularity = _resolve_granularity(granularity)
-        cache_key = (
-            f"{CACHE_PREFIX_STATS_NETWORK}_{duration_hours}_{granularity}_{self._connection.site}"
-        )
+        cache_key = f"{CACHE_PREFIX_STATS_NETWORK}_{duration_hours}_{granularity}_{self._connection.site}"
         cached_data = self._connection.get_cached(cache_key, timeout=300)  # 5 minute cache
         if cached_data is not None:
             return cached_data
@@ -114,10 +110,7 @@ class StatsManager:
     ) -> List[Dict[str, Any]]:
         """Get statistics for a specific client."""
         granularity = _resolve_granularity(granularity)
-        cache_key = (
-            f"{CACHE_PREFIX_STATS_CLIENT}_{client_mac}_{duration_hours}_{granularity}"
-            f"_{self._connection.site}"
-        )
+        cache_key = f"{CACHE_PREFIX_STATS_CLIENT}_{client_mac}_{duration_hours}_{granularity}_{self._connection.site}"
         cached_data = self._connection.get_cached(cache_key, timeout=300)  # 5 minute cache
         if cached_data is not None:
             return cached_data
@@ -330,14 +323,10 @@ class StatsManager:
             logger.error("Error getting alerts: %s", e)
             return []
 
-    async def get_gateway_stats(
-        self, duration_hours: int = 24, granularity: str = "hourly"
-    ) -> List[Dict[str, Any]]:
+    async def get_gateway_stats(self, duration_hours: int = 24, granularity: str = "hourly") -> List[Dict[str, Any]]:
         """Get gateway statistics."""
         granularity = _resolve_granularity(granularity)
-        cache_key = (
-            f"{CACHE_PREFIX_STATS_GATEWAY}_{duration_hours}_{granularity}_{self._connection.site}"
-        )
+        cache_key = f"{CACHE_PREFIX_STATS_GATEWAY}_{duration_hours}_{granularity}_{self._connection.site}"
         cached_data = self._connection.get_cached(cache_key, timeout=300)  # 5 minute cache
         if cached_data is not None:
             return cached_data
@@ -425,9 +414,7 @@ class StatsManager:
             logger.error("Error getting site DPI traffic: %s", e)
             return []
 
-    async def get_client_dpi_traffic(
-        self, client_mac: str, by: str = "by_app"
-    ) -> List[Dict[str, Any]]:
+    async def get_client_dpi_traffic(self, client_mac: str, by: str = "by_app") -> List[Dict[str, Any]]:
         """Get DPI traffic statistics for a specific client.
 
         Args:
@@ -451,18 +438,14 @@ class StatsManager:
             logger.error("Error getting DPI traffic for client %s: %s", client_mac, e)
             return []
 
-    async def get_ips_events(
-        self, duration_hours: int = 24, limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    async def get_ips_events(self, duration_hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
         """Get IPS/IDS events.
 
         Args:
             duration_hours: Number of hours to look back.
             limit: Maximum number of events to return.
         """
-        cache_key = (
-            f"{CACHE_PREFIX_STATS_IPS}_{duration_hours}_{limit}_{self._connection.site}"
-        )
+        cache_key = f"{CACHE_PREFIX_STATS_IPS}_{duration_hours}_{limit}_{self._connection.site}"
         cached_data = self._connection.get_cached(cache_key, timeout=300)  # 5 minute cache
         if cached_data is not None:
             return cached_data
@@ -500,10 +483,7 @@ class StatsManager:
             limit: Maximum number of sessions to return.
         """
         mac_part = client_mac or "all"
-        cache_key = (
-            f"{CACHE_PREFIX_STATS_SESSIONS}_{mac_part}_{duration_hours}_{limit}"
-            f"_{self._connection.site}"
-        )
+        cache_key = f"{CACHE_PREFIX_STATS_SESSIONS}_{mac_part}_{duration_hours}_{limit}_{self._connection.site}"
         cached_data = self._connection.get_cached(cache_key, timeout=300)  # 5 minute cache
         if cached_data is not None:
             return cached_data

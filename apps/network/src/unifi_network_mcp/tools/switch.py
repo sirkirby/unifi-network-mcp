@@ -98,17 +98,17 @@ async def get_port_profile_details(
 )
 async def create_port_profile(
     name: Annotated[str, Field(description="Profile name")],
-    forward: Annotated[str, Field(description="Forward mode: 'native' (access), 'all' (trunk), 'customize', or 'disabled'")],
-    native_networkconf_id: Annotated[
-        str, Field(description="Network/VLAN ID for native (untagged) traffic")
-    ] = "",
-    voice_networkconf_id: Annotated[
-        str, Field(description="Network/VLAN ID for voice traffic")
-    ] = "",
+    forward: Annotated[
+        str, Field(description="Forward mode: 'native' (access), 'all' (trunk), 'customize', or 'disabled'")
+    ],
+    native_networkconf_id: Annotated[str, Field(description="Network/VLAN ID for native (untagged) traffic")] = "",
+    voice_networkconf_id: Annotated[str, Field(description="Network/VLAN ID for voice traffic")] = "",
     isolation: Annotated[bool, Field(description="Enable port isolation (block inter-client traffic)")] = False,
     poe_mode: Annotated[str, Field(description="PoE mode: 'auto' or 'off'")] = "auto",
     stp_port_mode: Annotated[bool, Field(description="Enable STP on this port")] = True,
-    dot1x_ctrl: Annotated[str, Field(description="802.1X control: 'force_authorized', 'auto', 'force_unauthorized'")] = "",
+    dot1x_ctrl: Annotated[
+        str, Field(description="802.1X control: 'force_authorized', 'auto', 'force_unauthorized'")
+    ] = "",
     confirm: Annotated[
         bool,
         Field(description="When true, creates the profile. When false (default), returns a preview"),

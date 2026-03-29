@@ -356,4 +356,3 @@ class SwitchManager:
         )
         await self._connection.request(api_request)
         return True
-

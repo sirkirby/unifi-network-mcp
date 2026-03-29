@@ -142,9 +142,7 @@ class TestFirewallGroups:
     @pytest.mark.asyncio
     async def test_create_firewall_group_missing_name(self, firewall_manager, mock_connection):
         """Test create_firewall_group returns None when name is missing."""
-        result = await firewall_manager.create_firewall_group(
-            {"group_type": "address-group", "group_members": []}
-        )
+        result = await firewall_manager.create_firewall_group({"group_type": "address-group", "group_members": []})
 
         assert result is None
         mock_connection.request.assert_not_called()
@@ -152,9 +150,7 @@ class TestFirewallGroups:
     @pytest.mark.asyncio
     async def test_create_firewall_group_missing_type(self, firewall_manager, mock_connection):
         """Test create_firewall_group returns None when group_type is missing."""
-        result = await firewall_manager.create_firewall_group(
-            {"name": "Test", "group_members": []}
-        )
+        result = await firewall_manager.create_firewall_group({"name": "Test", "group_members": []})
 
         assert result is None
         mock_connection.request.assert_not_called()
