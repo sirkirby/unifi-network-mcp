@@ -1,0 +1,67 @@
+{
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "node .agents/myco-hook.cjs hook session-start",
+        "type": "command",
+        "timeout": 10
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "node .agents/myco-hook.cjs hook user-prompt-submit",
+        "type": "command",
+        "timeout": 5
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "node .agents/myco-hook.cjs hook post-tool-use",
+        "type": "command",
+        "timeout": 5
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "command": "node .agents/myco-hook.cjs hook post-tool-use-failure",
+        "type": "command",
+        "timeout": 5
+      }
+    ],
+    "stop": [
+      {
+        "command": "node .agents/myco-hook.cjs hook stop",
+        "type": "command",
+        "timeout": 30
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "node .agents/myco-hook.cjs hook session-end",
+        "type": "command",
+        "timeout": 10
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "node .agents/myco-hook.cjs hook subagent-start",
+        "type": "command",
+        "timeout": 5
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": "node .agents/myco-hook.cjs hook subagent-stop",
+        "type": "command",
+        "timeout": 10
+      }
+    ],
+    "preCompact": [
+      {
+        "command": "node .agents/myco-hook.cjs hook pre-compact",
+        "type": "command",
+        "timeout": 5
+      }
+    ]
+  }
+}

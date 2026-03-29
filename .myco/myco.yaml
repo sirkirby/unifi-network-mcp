@@ -1,0 +1,30 @@
+version: 3
+config_version: 2
+embedding:
+  provider: ollama
+  model: bge-m3:latest
+daemon:
+  port: 28221
+  log_level: info
+  log_retention_days: 30
+capture:
+  transcript_paths: []
+  plan_dirs: []
+  artifact_extensions:
+    - .md
+  buffer_max_events: 500
+agent:
+  auto_run: true
+  interval_seconds: 300
+  summary_batch_interval: 5
+  provider:
+    type: cloud
+context:
+  digest_tier: 5000
+  prompt_search: true
+  prompt_max_spores: 3
+backup:
+  dir: ~/myco_backups/unifi-mcp
+team:
+  enabled: false
+  interval_minutes: 15

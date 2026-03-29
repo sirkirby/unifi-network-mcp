@@ -88,3 +88,15 @@ docs/specs/
 .superpowers/
 
 .mcpregistry_*
+
+.claude/skills/myco
+.claude/skills/myco-curate
+.claude/skills/rules
+
+# Myco skill symlinks (machine-specific)
+.agents/skills/myco
+.agents/skills/myco-curate
+.agents/skills/rules
+.cursor/skills/myco
+.cursor/skills/myco-curate
+.cursor/skills/rules

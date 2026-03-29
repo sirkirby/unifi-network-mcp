@@ -1,0 +1,207 @@
+# Project Rules
+
+## Non-Goals
+
+This project is **not**:
+
+- a general-purpose network management framework
+- a UniFi controller replacement or admin dashboard
+- a real-time monitoring or alerting service
+- a CI/CD pipeline runner or deployment tool
+- a web application with a frontend UI (dev consoles are debugging REPLs only)
+- a database or persistent storage layer (all state lives on UniFi controllers)
+
+## Architecture Rules
+
+### Layering
+
+- Tool functions MUST NOT contain business logic beyond argument validation and response formatting
+- Tool functions MUST delegate to manager methods for all controller interactions
+- Manager methods MUST NOT import from `<app>.tools` (no circular dependencies)
+- All controller communication MUST flow through `ConnectionManager`
+- Tool modules MUST import singletons from `<app>.runtime`, never instantiate directly
+- Shared packages MUST NOT import from app packages (dependency flows downward only)
+- App packages MUST NOT import from each other (no cross-app dependencies)
+
+### Singletons
+
+- All shared objects (server, config, managers) MUST be created via `@lru_cache` factories in `<app>/runtime.py`
+- Tests MUST monkey-patch the factory or alias before importing tool modules
+- There MUST be exactly one `ConnectionManager` instance per server process
+
+### Tool Response Contract
+
+All tools MUST return `Dict[str, Any]`:
+
+```python
+{"success": True, "data": <result>}                                    # Success
+{"success": False, "error": "<specific, actionable message>"}          # Error
+{"success": True, "requires_confirmation": True, "preview": <payload>} # Mutation preview
+```
+
+- Exceptions MUST NOT escape tool functions. Catch, log with `exc_info=True`, return error dict.
+- Error messages MUST include the operation that failed (e.g., `"Failed to list devices: ..."` not just `str(e)`).
+- Raw tracebacks MUST NOT be exposed to MCP clients.
+
+### Confirmation System
+
+All state-changing tools MUST implement preview-then-confirm:
+- `confirm=False` (default): validate input, return preview payload
+- `confirm=True`: execute the mutation on the controller
+- Bypass mode injects `confirm=True` automatically
+- **Anchor:** `packages/unifi-mcp-shared/src/unifi_mcp_shared/confirmation.py`
+
+### MCP Tool Annotations
+
+All tools MUST include `annotations=ToolAnnotations(...)` in `@server.tool()`:
+- Read-only: `readOnlyHint=True, openWorldHint=False`
+- Mutating: `readOnlyHint=False, destructiveHint=<bool>, idempotentHint=<bool>, openWorldHint=False`
+- `destructiveHint=True` for delete, block, reboot, revoke operations
+- `idempotentHint=True` for update/rename (same args = same result)
+- All tools: `openWorldHint=False` (closed UniFi controller domain)
+
+### Async
+
+- All I/O-bound operations MUST use `async`/`await`
+- No synchronous blocking calls in tool implementations or managers
+- `asyncio.run()` MUST NOT be called from within an async context
+
+### Logging
+
+- All log output MUST go to stderr (stdout is reserved for JSON-RPC in stdio mode)
+- Use `%s` format strings in logger calls, not f-strings, for lazy evaluation
+- Configuration errors SHOULD fail fast at startup with clear guidance
+
+### Hard Bans
+
+- Hardcoding host, port, credentials, or feature flags in Python source is **banned** — use `config.yaml` with `${oc.env:VAR,default}` or `UNIFI_`-prefixed env vars
+- Permission category strings MUST be defined in `<app>/categories.py` (`NETWORK_CATEGORY_MAP`, etc.)
+- Tool-to-module mappings MUST be in `TOOL_MODULE_MAP` in `<app>/categories.py`
+- Validation schemas MUST be in `<app>/schemas.py` — never inline JSON schema dicts in tool functions
+- No monkey-patches in production code
+- **Anchor:** `apps/network/src/unifi_network_mcp/config/config.yaml`
+
+## Permission System
+
+Two concepts:
+
+**Permission Mode** — controls mutation handling:
+- `confirm` (default): mutations require preview-then-confirm
+- `bypass`: mutations execute without confirmation
+- Read-only tools are always allowed
+
+Env var precedence (most specific wins): `UNIFI_<SERVER>_TOOL_PERMISSION_MODE` > `UNIFI_TOOL_PERMISSION_MODE`
+
+**Policy Gates** — hard boundaries that disable actions:
+
+Three-level hierarchy (most specific wins): `UNIFI_POLICY_<SERVER>_<CATEGORY>_<ACTION>` > `UNIFI_POLICY_<SERVER>_<ACTION>` > `UNIFI_POLICY_<ACTION>`
+
+Actions: `CREATE`, `UPDATE`, `DELETE`. Unset = allowed.
+
+All tools MUST remain visible and discoverable regardless of policy gates. Authorization is checked at call time by the `permissioned_tool` decorator.
+
+- **Anchor:** `packages/unifi-mcp-shared/src/unifi_mcp_shared/policy_gate.py`
+
+## Golden Paths
+
+All changes MUST follow a golden path. If no path applies, ask before inventing a new pattern.
+
+### Add a new tool to an existing category
+
+1. Add manager method in `apps/<server>/src/<pkg>/managers/<domain>_manager.py`
+   - **Anchor (read-only):** `apps/network/src/unifi_network_mcp/managers/client_manager.py`
+   - **Anchor (mutating):** `apps/network/src/unifi_network_mcp/managers/firewall_manager.py`
+2. Add tool function in `apps/<server>/src/<pkg>/tools/<category>.py`
+   - **Anchor (read-only):** `apps/network/src/unifi_network_mcp/tools/clients.py:lookup_by_ip`
+   - **Anchor (mutating):** `apps/network/src/unifi_network_mcp/tools/firewall.py:create_simple_firewall_policy`
+3. Add tool name to `TOOL_MODULE_MAP` in `<pkg>/categories.py`
+4. Run `make manifest`
+5. Add tests in `apps/<server>/tests/unit/test_<category>.py`
+6. Add `ToolAnnotations` to the `@server.tool()` decorator
+7. Commit code + manifest + tests together
+
+### Add a new tool category
+
+1. Create manager: `apps/<server>/src/<pkg>/managers/<domain>_manager.py`
+   - **Anchor:** `apps/network/src/unifi_network_mcp/managers/routing_manager.py`
+2. Add `@lru_cache` factory + alias in `<pkg>/runtime.py`
+3. Create tool module: `apps/<server>/src/<pkg>/tools/<category>.py`
+   - **Anchor:** `apps/network/src/unifi_network_mcp/tools/clients.py`
+4. Add tool names to `TOOL_MODULE_MAP` in `<pkg>/categories.py`
+5. Add category to the server's `CATEGORY_MAP` in `<pkg>/categories.py`
+6. Run `make manifest`
+7. Add tests, update docs and README as needed
+8. Commit everything together
+
+### Add a configuration value
+
+1. Add default to `apps/<server>/src/<pkg>/config/config.yaml` with `${oc.env:VAR,default}` syntax
+   - **Anchor:** `apps/network/src/unifi_network_mcp/config/config.yaml`
+2. Add env var to `.env.example` with a comment
+3. Document in README.md configuration section
+
+### Modify the permission system
+
+1. Shared logic: `packages/unifi-mcp-shared/src/unifi_mcp_shared/policy_gate.py`
+2. Server-specific categories: `CATEGORY_MAP` in the app's `categories.py`
+3. Enforcement: `permissioned_tool` decorator in the app's `main.py`
+4. Policy gates configured via `UNIFI_POLICY_*` env vars (no config.yaml section)
+5. Tests in `packages/unifi-mcp-shared/tests/` and `apps/<server>/tests/unit/`
+
+### Add shared functionality
+
+1. Choose package: `unifi-core` (controller abstractions, no MCP dependency) or `unifi-mcp-shared` (MCP utilities)
+2. Add module to `packages/<pkg>/src/<pkg_name>/`
+3. Add tests in `packages/<pkg>/tests/`
+4. Run `make core-test` or `make shared-test`
+
+## Quality Gates
+
+A change is not done unless ALL pass:
+
+```bash
+make pre-commit   # format + lint + sync-skills + test
+```
+
+### Tool Changes Checklist
+
+- [ ] Follows anchor pattern (thin wrapper, delegates to manager)
+- [ ] Returns standardized `{"success": bool, ...}` response
+- [ ] Added to `TOOL_MODULE_MAP` in `categories.py`
+- [ ] `make manifest` run and manifest committed
+- [ ] Mutating tools implement preview-then-confirm
+- [ ] Permission category and action set via decorator kwargs
+- [ ] `ToolAnnotations` added
+- [ ] Tests cover success, error, and permission denial paths
+- [ ] Works in all three registration modes (lazy, eager, meta_only)
+
+### Configuration Changes Checklist
+
+- [ ] Default in `config.yaml` with `${oc.env:VAR,default}`
+- [ ] `.env.example` updated
+- [ ] README.md configuration table updated
+
+### Version and Manifest Rules
+
+- Version is derived from git tags via `hatch-vcs`. MUST NOT manually edit version in `pyproject.toml`.
+- Each app's `tools_manifest.json` MUST be regenerated (`make manifest`) and committed before release.
+
+## Patterns
+
+### Extension Over Patching
+
+- Prefer adding new tool modules and managers over modifying existing ones
+- New tool categories get their own manager + tool module (vertical slice)
+- Fix root causes, not symptoms
+
+### Conflict Resolution
+
+- Consult the anchor files in Golden Paths when unsure which pattern to follow
+- If no anchor applies, ask before inventing a new pattern
+- If adopting a genuinely new pattern, update this rules file first
+
+### Plan First
+
+Before non-trivial changes, produce a short plan covering: approach, impacted files, which anchors apply, new tests needed, verification steps.
+
+**Skip the plan only when all are true:** single-file edit, no new behavior or tools, no config/permission/schema changes, no new tests.

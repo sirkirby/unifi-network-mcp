@@ -1,0 +1,20 @@
+# SQLite database
+myco.db*
+vectors.db*
+
+# Daemon state — per-machine, ephemeral
+daemon.json
+buffer/
+logs/
+
+# Secrets — API keys for cloud providers
+secrets.env
+
+# Machine ID
+machine_id
+
+# Binary attachments — screenshots captured from transcripts
+attachments/
+
+# Team worker deployment — patched wrangler.toml + source copy
+.team-worker/
