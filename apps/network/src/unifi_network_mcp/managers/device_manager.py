@@ -10,6 +10,10 @@ from .connection_manager import ConnectionManager
 logger = logging.getLogger("unifi-network-mcp")
 
 CACHE_PREFIX_DEVICES = "devices"
+CACHE_PREFIX_ROGUE_APS = "rogue_aps"
+CACHE_PREFIX_KNOWN_ROGUE_APS = "known_rogue_aps"
+CACHE_PREFIX_RF_SCAN = "rf_scan"
+CACHE_PREFIX_CHANNELS = "available_channels"
 
 
 class DeviceManager:
@@ -298,3 +302,210 @@ class DeviceManager:
         except Exception as e:
             logger.error(f"Error getting speedtest status for {gateway_mac}: {e}")
             return {}
+
+    async def list_rogue_aps(self, within_hours: int = 24) -> List[Dict[str, Any]]:
+        """List detected rogue access points.
+
+        Args:
+            within_hours: Only return rogue APs seen within this many hours.
+
+        Returns:
+            List of rogue AP dicts, or empty list on failure.
+        """
+        cache_key = f"{CACHE_PREFIX_ROGUE_APS}_{self._connection.site}"
+        cached_data: Optional[List[Dict[str, Any]]] = self._connection.get_cached(cache_key)
+        if cached_data is not None:
+            return cached_data
+
+        try:
+            api_request = ApiRequest(
+                method="post",
+                path="/stat/rogueap",
+                data={"within": within_hours},
+            )
+            response = await self._connection.request(api_request)
+            result = response if isinstance(response, list) else []
+            self._connection._update_cache(cache_key, result, timeout=300)
+            return result
+        except Exception as e:
+            logger.error(f"Error listing rogue APs: {e}")
+            return []
+
+    async def trigger_rf_scan(self, ap_mac: str) -> bool:
+        """Trigger an RF spectrum scan on an access point.
+
+        Args:
+            ap_mac: MAC address of the AP to scan.
+
+        Returns:
+            True on success, False on failure.
+        """
+        try:
+            api_request = ApiRequest(
+                method="post",
+                path="/cmd/devmgr",
+                data={"cmd": "spectrum-scan", "mac": ap_mac},
+            )
+            await self._connection.request(api_request)
+            logger.info(f"RF scan triggered on AP {ap_mac}")
+            return True
+        except Exception as e:
+            logger.error(f"Error triggering RF scan on {ap_mac}: {e}")
+            return False
+
+    async def get_rf_scan_results(self, ap_mac: str) -> List[Dict[str, Any]]:
+        """Get RF spectrum scan results for an access point.
+
+        Args:
+            ap_mac: MAC address of the AP.
+
+        Returns:
+            List of scan result dicts, or empty list on failure.
+        """
+        cache_key = f"{CACHE_PREFIX_RF_SCAN}_{ap_mac}"
+        cached_data: Optional[List[Dict[str, Any]]] = self._connection.get_cached(cache_key)
+        if cached_data is not None:
+            return cached_data
+
+        try:
+            api_request = ApiRequest(
+                method="get",
+                path=f"/stat/spectrumscan/{ap_mac}",
+            )
+            response = await self._connection.request(api_request)
+            result = response if isinstance(response, list) else []
+            self._connection._update_cache(cache_key, result, timeout=60)
+            return result
+        except Exception as e:
+            logger.error(f"Error getting RF scan results for {ap_mac}: {e}")
+            return []
+
+    async def list_available_channels(self) -> List[Dict[str, Any]]:
+        """List available wireless channels for the current site.
+
+        Returns:
+            List of channel info dicts, or empty list on failure.
+        """
+        cache_key = f"{CACHE_PREFIX_CHANNELS}_{self._connection.site}"
+        cached_data: Optional[List[Dict[str, Any]]] = self._connection.get_cached(cache_key)
+        if cached_data is not None:
+            return cached_data
+
+        try:
+            api_request = ApiRequest(
+                method="get",
+                path="/stat/current-channel",
+            )
+            response = await self._connection.request(api_request)
+            result = response if isinstance(response, list) else []
+            self._connection._update_cache(cache_key, result, timeout=3600)
+            return result
+        except Exception as e:
+            logger.error(f"Error listing available channels: {e}")
+            return []
+
+    async def list_known_rogue_aps(self) -> List[Dict[str, Any]]:
+        """List APs previously classified as known/acknowledged.
+
+        Returns:
+            List of known rogue AP dicts, or empty list on failure.
+        """
+        cache_key = f"{CACHE_PREFIX_KNOWN_ROGUE_APS}_{self._connection.site}"
+        cached_data: Optional[List[Dict[str, Any]]] = self._connection.get_cached(cache_key)
+        if cached_data is not None:
+            return cached_data
+
+        try:
+            api_request = ApiRequest(
+                method="get",
+                path="/rest/rogueknown",
+            )
+            response = await self._connection.request(api_request)
+            result = response if isinstance(response, list) else []
+            self._connection._update_cache(cache_key, result, timeout=300)
+            return result
+        except Exception as e:
+            logger.error(f"Error listing known rogue APs: {e}")
+            return []
+
+    async def set_device_led_override(self, device_mac: str, led_override: str) -> bool:
+        """Set LED override state on a device.
+
+        Args:
+            device_mac: MAC address of the device.
+            led_override: LED state - "on", "off", or "default".
+
+        Returns:
+            True on success, False on failure.
+        """
+        try:
+            device = await self.get_device_details(device_mac)
+            if not device or "_id" not in device.raw:
+                logger.error(f"Cannot set LED override for {device_mac}: Not found or missing ID.")
+                return False
+            device_id = device.raw["_id"]
+
+            api_request = ApiRequest(
+                method="put",
+                path=f"/rest/device/{device_id}",
+                data={"led_override": led_override},
+            )
+            await self._connection.request(api_request)
+            logger.info(f"LED override set to '{led_override}' for device {device_mac}")
+            self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
+            return True
+        except Exception as e:
+            logger.error(f"Error setting LED override on device {device_mac}: {e}")
+            return False
+
+    async def set_device_disabled(self, device_mac: str, disabled: bool) -> bool:
+        """Enable or disable a device without unadopting it.
+
+        Args:
+            device_mac: MAC address of the device.
+            disabled: True to disable, False to enable.
+
+        Returns:
+            True on success, False on failure.
+        """
+        try:
+            device = await self.get_device_details(device_mac)
+            if not device or "_id" not in device.raw:
+                logger.error(f"Cannot set disabled state for {device_mac}: Not found or missing ID.")
+                return False
+            device_id = device.raw["_id"]
+
+            api_request = ApiRequest(
+                method="put",
+                path=f"/rest/device/{device_id}",
+                data={"disabled": disabled},
+            )
+            await self._connection.request(api_request)
+            logger.info(f"Device {device_mac} {'disabled' if disabled else 'enabled'}")
+            self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
+            return True
+        except Exception as e:
+            logger.error(f"Error setting disabled state on device {device_mac}: {e}")
+            return False
+
+    async def set_site_led_enabled(self, enabled: bool) -> bool:
+        """Toggle all device LEDs site-wide.
+
+        Args:
+            enabled: True to enable LEDs, False to disable.
+
+        Returns:
+            True on success, False on failure.
+        """
+        try:
+            api_request = ApiRequest(
+                method="put",
+                path="/set/setting/mgmt",
+                data={"led_enabled": enabled},
+            )
+            await self._connection.request(api_request)
+            logger.info(f"Site LEDs {'enabled' if enabled else 'disabled'}")
+            return True
+        except Exception as e:
+            logger.error(f"Error setting site LED state: {e}")
+            return False

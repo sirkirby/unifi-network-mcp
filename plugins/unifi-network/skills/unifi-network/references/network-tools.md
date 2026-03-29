@@ -1,4 +1,4 @@
-# Network Server Tool Reference (141 tools)
+# Network Server Tool Reference (156 tools)
 
 Complete reference for `unifi_*` tools. All read tools are always available. Mutating tools require permissions (see main skill for details).
 
@@ -66,19 +66,27 @@ Always available, regardless of registration mode.
 ## Devices
 
 <!-- AUTO:tools:devices -->
-12 tools.
+20 tools.
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `unifi_get_device_details` | Read | Returns the full raw device object for one device by MAC address — includes radio tables, port tables, system stats, WAN info, firmware d... |
 | `unifi_get_device_radio` | Read | Get radio configuration and live statistics for an access point. |
+| `unifi_get_rf_scan_results` | Read | Get RF spectrum scan results for an access point. |
 | `unifi_get_speedtest_status` | Read | Check the status of a running speedtest on the gateway. |
+| `unifi_list_available_channels` | Read | List allowed RF channels for the site's regulatory domain. |
 | `unifi_list_devices` | Read | Returns adopted device inventory with MAC, name, model, IP, firmware version, uptime, status (online/offline/upgrading/etc), device_categ... |
+| `unifi_list_known_rogue_aps` | Read | List APs you have previously classified as known/acknowledged. |
+| `unifi_list_rogue_aps` | Read | List neighboring/rogue APs detected by your access points. |
 | `unifi_adopt_device` | Mutate | Adopt a pending device into the Unifi Network by MAC address |
 | `unifi_force_provision_device` | Mutate | Force re-provision a device, pushing the current configuration from the controller to the device. |
 | `unifi_locate_device` | Mutate | Toggle device locate mode (LED blinking) to physically identify a device. |
 | `unifi_reboot_device` | Mutate | Reboot a specific device by MAC address |
 | `unifi_rename_device` | Mutate | Rename a device in the Unifi Network controller by MAC address |
+| `unifi_set_device_led` | Mutate | Set the LED override state on a specific device. |
+| `unifi_set_site_leds` | Mutate | Toggle all device LEDs site-wide on or off. |
+| `unifi_toggle_device` | Mutate | Enable or disable a device without unadopting it. |
+| `unifi_trigger_rf_scan` | Mutate | Trigger an RF spectrum scan on an access point. |
 | `unifi_trigger_speedtest` | Mutate | Trigger a speedtest on the gateway device. |
 | `unifi_update_device_radio` | Mutate | Update radio settings for a specific band on an access point. |
 | `unifi_upgrade_device` | Mutate | Initiate a firmware upgrade for a device by MAC address (uses cached firmware by default) |
@@ -124,16 +132,23 @@ Always available, regardless of registration mode.
 ## Networks & WLANs
 
 <!-- AUTO:tools:network -->
-8 tools.
+15 tools.
 
 | Tool | Type | Description |
 |------|------|-------------|
+| `unifi_get_ap_group_details` | Read | Get details of a specific AP group by ID, including member APs and WLANs. |
 | `unifi_get_network_details` | Read | Get details for a specific network by ID. |
 | `unifi_get_wlan_details` | Read | Get details for a specific WLAN by ID. |
+| `unifi_list_ap_groups` | Read | List all AP groups configured on the controller. |
 | `unifi_list_networks` | Read | Returns all configured networks (LAN, WAN, VLAN-only) with name, purpose, IP subnet, VLAN ID, DHCP settings, and enabled state. |
 | `unifi_list_wlans` | Read | List all configured Wireless LANs (WLANs) on the Unifi Network controller. |
+| `unifi_create_ap_group` | Mutate | Create a new AP group to control which APs broadcast which SSIDs. |
 | `unifi_create_network` | Mutate | Create a new network (LAN/VLAN) with schema validation. |
 | `unifi_create_wlan` | Mutate | Create a new Wireless LAN (WLAN/SSID) with schema validation. |
+| `unifi_delete_ap_group` | Mutate | Delete an AP group by ID. |
+| `unifi_delete_wlan` | Mutate | Delete a WLAN/SSID by ID. |
+| `unifi_toggle_wlan` | Mutate | Toggle a WLAN/SSID on or off. |
+| `unifi_update_ap_group` | Mutate | Update an existing AP group's configuration. |
 | `unifi_update_network` | Mutate | Update specific fields of an existing network (LAN/VLAN). |
 | `unifi_update_wlan` | Mutate | Update specific fields of an existing WLAN (SSID). |
 <!-- /AUTO:tools:network -->
