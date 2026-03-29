@@ -764,6 +764,136 @@ QOS_RULE_SIMPLE_SCHEMA = {
     },
 }
 
+# ACL Rule update schema
+ACL_RULE_UPDATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "description": "Rule name"},
+        "acl_index": {
+            "type": "integer",
+            "description": "Position in the rule chain (lower numbers evaluated first)",
+        },
+        "action": {
+            "type": "string",
+            "enum": ["ALLOW", "BLOCK"],
+            "description": "Rule action",
+        },
+        "enabled": {"type": "boolean", "description": "Whether the rule is active"},
+        "mac_acl_network_id": {
+            "type": "string",
+            "description": "Network/VLAN ID this rule applies to",
+        },
+        "traffic_source": {
+            "type": "object",
+            "description": "Source config: type must be 'CLIENT_MAC', specific_mac_addresses is a list of MACs (empty = any)",
+        },
+        "traffic_destination": {
+            "type": "object",
+            "description": "Destination config: same structure as traffic_source",
+        },
+    },
+}
+
+# Port Profile update schema
+PORT_PROFILE_UPDATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "description": "Profile name"},
+        "forward": {
+            "type": "string",
+            "enum": ["all", "native", "customize", "disabled"],
+            "description": "Forwarding mode",
+        },
+        "native_networkconf_id": {
+            "type": "string",
+            "description": "Native network/VLAN ID",
+        },
+        "voice_networkconf_id": {
+            "type": "string",
+            "description": "Voice VLAN network ID",
+        },
+        "isolation": {"type": "boolean", "description": "Port isolation"},
+        "poe_mode": {
+            "type": "string",
+            "enum": ["auto", "off", "pasv24", "passthrough"],
+            "description": "PoE mode",
+        },
+        "stp_port_mode": {"type": "boolean", "description": "STP port mode"},
+        "dot1x_ctrl": {
+            "type": "string",
+            "enum": ["force_authorized", "auto", "force_unauthorized", "mac_based", "multi_host"],
+            "description": "802.1X control mode",
+        },
+    },
+}
+
+# Client Group update schema
+CLIENT_GROUP_UPDATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "description": "Group name"},
+        "members": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of member MAC addresses",
+        },
+    },
+}
+
+# Content Filter update schema
+CONTENT_FILTER_UPDATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "description": "Profile name"},
+        "enabled": {"type": "boolean", "description": "Whether the filter is active"},
+        "blocked_categories": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of blocked content categories",
+        },
+        "safe_search": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["GOOGLE", "YOUTUBE", "BING"]},
+            "description": "Safe search enforcement (valid: GOOGLE, YOUTUBE, BING)",
+        },
+        "client_macs": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Client MAC addresses this filter applies to",
+        },
+        "network_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Network IDs this filter applies to",
+        },
+    },
+}
+
+# OON Policy update schema
+OON_POLICY_UPDATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "description": "Policy name"},
+        "enabled": {"type": "boolean", "description": "Whether the policy is active"},
+        "target_type": {
+            "type": "string",
+            "enum": ["CLIENTS", "GROUPS"],
+            "description": "Target type",
+        },
+        "targets": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Target MAC addresses or group IDs",
+        },
+        "secure": {
+            "type": "object",
+            "description": "Internet access and app blocking configuration",
+        },
+        "qos": {"type": "object", "description": "Bandwidth limiting configuration"},
+        "route": {"type": "object", "description": "VPN routing configuration"},
+    },
+}
+
 # Simplified (high-level) Firewall Policy schema used by the LLM-friendly create tool
 FIREWALL_POLICY_SIMPLE_SCHEMA = {
     "type": "object",
