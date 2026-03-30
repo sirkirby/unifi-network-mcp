@@ -962,7 +962,7 @@ async def toggle_wlan(
                 },
             )
 
-        logger.info(f"Attempting to toggle WLAN '{wlan_name}' ({wlan_id}) to {new_state}")
+        logger.info("Attempting to toggle WLAN '%s' (%s) to %s", wlan_name, wlan_id, new_state)
 
         success = await network_manager.toggle_wlan(wlan_id)
 
@@ -971,7 +971,7 @@ async def toggle_wlan(
             updated_wlan = await network_manager.get_wlan_details(wlan_id)
             final_state = updated_wlan.get("enabled", new_state) if updated_wlan else new_state
             state_str = "enabled" if final_state else "disabled"
-            logger.info(f"Successfully toggled WLAN '{wlan_name}' ({wlan_id}) to {state_str}")
+            logger.info("Successfully toggled WLAN '%s' (%s) to %s", wlan_name, wlan_id, state_str)
             return {
                 "success": True,
                 "wlan_id": wlan_id,
@@ -1058,15 +1058,20 @@ async def create_ap_group(
     ] = False,
 ) -> Dict[str, Any]:
     """Create a new AP group."""
+    # Validate the input
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("ap_group", group_data)
+    if not is_valid:
+        return {"success": False, "error": f"Invalid AP group data: {error_msg}"}
+
     if not confirm:
         return create_preview(
             resource_type="ap_group",
-            resource_data=group_data,
-            resource_name=group_data.get("name", "unnamed"),
+            resource_data=validated_data,
+            resource_name=validated_data.get("name", "unnamed"),
         )
 
     try:
-        created = await network_manager.create_ap_group(group_data)
+        created = await network_manager.create_ap_group(validated_data)
         if created:
             group_id = created.get("_id") or created.get("id")
             return {
@@ -1114,6 +1119,11 @@ async def update_ap_group(
     if not update_data:
         return {"success": False, "error": "update_data cannot be empty"}
 
+    # Validate the update data
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("ap_group_update", update_data)
+    if not is_valid:
+        return {"success": False, "error": f"Invalid AP group update data: {error_msg}"}
+
     # Fetch current state for preview
     current = await network_manager.get_ap_group_details(group_id)
     if not current:
@@ -1125,17 +1135,17 @@ async def update_ap_group(
             resource_id=group_id,
             resource_name=current.get("name", group_id),
             current_state=current,
-            updates=update_data,
+            updates=validated_data,
         )
 
     try:
-        success = await network_manager.update_ap_group(group_id, update_data)
+        success = await network_manager.update_ap_group(group_id, validated_data)
         if success:
             updated = await network_manager.get_ap_group_details(group_id)
             return {
                 "success": True,
                 "group_id": group_id,
-                "updated_fields": list(update_data.keys()),
+                "updated_fields": list(validated_data.keys()),
                 "details": json.loads(json.dumps(updated, default=str)),
             }
         return {"success": False, "error": f"Failed to update AP group '{group_id}'."}

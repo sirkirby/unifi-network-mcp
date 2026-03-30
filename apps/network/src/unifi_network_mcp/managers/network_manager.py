@@ -366,7 +366,7 @@ class NetworkManager:
             self._connection._update_cache(cache_key, groups, timeout=300)
             return groups
         except Exception as e:
-            logger.error(f"Error listing AP groups: {e}")
+            logger.error("Error listing AP groups: %s", e)
             return []
 
     async def get_ap_group_details(self, group_id: str) -> Optional[Dict[str, Any]]:
@@ -386,7 +386,7 @@ class NetworkManager:
                     return group
             return None
         except Exception as e:
-            logger.error(f"Error getting AP group {group_id}: {e}")
+            logger.error("Error getting AP group %s: %s", group_id, e)
             return None
 
     async def create_ap_group(self, group_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -419,10 +419,10 @@ class NetworkManager:
                 )
                 return created
             else:
-                logger.error(f"Unexpected response creating AP group: {type(response)} {response}")
+                logger.error("Unexpected response creating AP group: %s %s", type(response), response)
                 return None
         except Exception as e:
-            logger.error(f"Error creating AP group: {e}", exc_info=True)
+            logger.error("Error creating AP group: %s", e, exc_info=True)
             return None
 
     async def update_ap_group(self, group_id: str, update_data: Dict[str, Any]) -> bool:
@@ -441,7 +441,7 @@ class NetworkManager:
         try:
             existing = await self.get_ap_group_details(group_id)
             if not existing:
-                logger.error(f"AP group {group_id} not found for update.")
+                logger.error("AP group %s not found for update.", group_id)
                 return False
 
             merged_data = deep_merge(existing, update_data)
@@ -452,7 +452,7 @@ class NetworkManager:
             self._connection._invalidate_cache(CACHE_PREFIX_AP_GROUPS)
             return True
         except Exception as e:
-            logger.error(f"Error updating AP group {group_id}: {e}", exc_info=True)
+            logger.error("Error updating AP group %s: %s", group_id, e, exc_info=True)
             return False
 
     async def delete_ap_group(self, group_id: str) -> bool:
@@ -471,5 +471,5 @@ class NetworkManager:
             self._connection._invalidate_cache(CACHE_PREFIX_AP_GROUPS)
             return True
         except Exception as e:
-            logger.error(f"Error deleting AP group {group_id}: {e}", exc_info=True)
+            logger.error("Error deleting AP group %s: %s", group_id, e, exc_info=True)
             return False

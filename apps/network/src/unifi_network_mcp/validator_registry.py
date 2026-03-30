@@ -2,6 +2,8 @@ from typing import Any, Dict, Optional, Tuple
 
 from .schemas import (
     ACL_RULE_UPDATE_SCHEMA,
+    AP_GROUP_SCHEMA,
+    AP_GROUP_UPDATE_SCHEMA,
     CLIENT_GROUP_UPDATE_SCHEMA,
     CONTENT_FILTER_UPDATE_SCHEMA,
     FIREWALL_POLICY_CREATE_SCHEMA,
@@ -55,6 +57,8 @@ class UniFiValidatorRegistry:
         "client_group_update": ResourceValidator(CLIENT_GROUP_UPDATE_SCHEMA, "Client Group Update"),
         "content_filter_update": ResourceValidator(CONTENT_FILTER_UPDATE_SCHEMA, "Content Filter Update"),
         "oon_policy_update": ResourceValidator(OON_POLICY_UPDATE_SCHEMA, "OON Policy Update"),
+        "ap_group": ResourceValidator(AP_GROUP_SCHEMA, "AP Group"),
+        "ap_group_update": ResourceValidator(AP_GROUP_UPDATE_SCHEMA, "AP Group Update"),
     }
 
     @classmethod

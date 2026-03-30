@@ -989,6 +989,43 @@ OON_POLICY_UPDATE_SCHEMA = {
     },
 }
 
+# AP Group create schema
+AP_GROUP_SCHEMA = {
+    "type": "object",
+    "required": ["name"],
+    "properties": {
+        "name": {"type": "string", "description": "AP group name"},
+        "device_macs": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of AP MAC addresses to include in this group",
+        },
+        "wlan_group_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of WLAN group IDs to assign to this AP group",
+        },
+    },
+}
+
+# AP Group update schema
+AP_GROUP_UPDATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "description": "AP group name"},
+        "device_macs": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of AP MAC addresses to include in this group",
+        },
+        "wlan_group_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of WLAN group IDs to assign to this AP group",
+        },
+    },
+}
+
 # Simplified (high-level) Firewall Policy schema used by the LLM-friendly create tool
 FIREWALL_POLICY_SIMPLE_SCHEMA = {
     "type": "object",

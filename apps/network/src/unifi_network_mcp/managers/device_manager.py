@@ -328,7 +328,7 @@ class DeviceManager:
             self._connection._update_cache(cache_key, result, timeout=300)
             return result
         except Exception as e:
-            logger.error(f"Error listing rogue APs: {e}")
+            logger.error("Error listing rogue APs: %s", e)
             return []
 
     async def trigger_rf_scan(self, ap_mac: str) -> bool:
@@ -347,10 +347,10 @@ class DeviceManager:
                 data={"cmd": "spectrum-scan", "mac": ap_mac},
             )
             await self._connection.request(api_request)
-            logger.info(f"RF scan triggered on AP {ap_mac}")
+            logger.info("RF scan triggered on AP %s", ap_mac)
             return True
         except Exception as e:
-            logger.error(f"Error triggering RF scan on {ap_mac}: {e}")
+            logger.error("Error triggering RF scan on %s: %s", ap_mac, e)
             return False
 
     async def get_rf_scan_results(self, ap_mac: str) -> List[Dict[str, Any]]:
@@ -362,7 +362,7 @@ class DeviceManager:
         Returns:
             List of scan result dicts, or empty list on failure.
         """
-        cache_key = f"{CACHE_PREFIX_RF_SCAN}_{ap_mac}"
+        cache_key = f"{CACHE_PREFIX_RF_SCAN}_{ap_mac}_{self._connection.site}"
         cached_data: Optional[List[Dict[str, Any]]] = self._connection.get_cached(cache_key)
         if cached_data is not None:
             return cached_data
@@ -377,7 +377,7 @@ class DeviceManager:
             self._connection._update_cache(cache_key, result, timeout=60)
             return result
         except Exception as e:
-            logger.error(f"Error getting RF scan results for {ap_mac}: {e}")
+            logger.error("Error getting RF scan results for %s: %s", ap_mac, e)
             return []
 
     async def list_available_channels(self) -> List[Dict[str, Any]]:
@@ -401,7 +401,7 @@ class DeviceManager:
             self._connection._update_cache(cache_key, result, timeout=3600)
             return result
         except Exception as e:
-            logger.error(f"Error listing available channels: {e}")
+            logger.error("Error listing available channels: %s", e)
             return []
 
     async def list_known_rogue_aps(self) -> List[Dict[str, Any]]:
@@ -425,7 +425,7 @@ class DeviceManager:
             self._connection._update_cache(cache_key, result, timeout=300)
             return result
         except Exception as e:
-            logger.error(f"Error listing known rogue APs: {e}")
+            logger.error("Error listing known rogue APs: %s", e)
             return []
 
     async def set_device_led_override(self, device_mac: str, led_override: str) -> bool:
@@ -441,7 +441,7 @@ class DeviceManager:
         try:
             device = await self.get_device_details(device_mac)
             if not device or "_id" not in device.raw:
-                logger.error(f"Cannot set LED override for {device_mac}: Not found or missing ID.")
+                logger.error("Cannot set LED override for %s: Not found or missing ID.", device_mac)
                 return False
             device_id = device.raw["_id"]
 
@@ -451,11 +451,11 @@ class DeviceManager:
                 data={"led_override": led_override},
             )
             await self._connection.request(api_request)
-            logger.info(f"LED override set to '{led_override}' for device {device_mac}")
+            logger.info("LED override set to '%s' for device %s", led_override, device_mac)
             self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
             return True
         except Exception as e:
-            logger.error(f"Error setting LED override on device {device_mac}: {e}")
+            logger.error("Error setting LED override on device %s: %s", device_mac, e)
             return False
 
     async def set_device_disabled(self, device_mac: str, disabled: bool) -> bool:
@@ -471,7 +471,7 @@ class DeviceManager:
         try:
             device = await self.get_device_details(device_mac)
             if not device or "_id" not in device.raw:
-                logger.error(f"Cannot set disabled state for {device_mac}: Not found or missing ID.")
+                logger.error("Cannot set disabled state for %s: Not found or missing ID.", device_mac)
                 return False
             device_id = device.raw["_id"]
 
@@ -481,11 +481,11 @@ class DeviceManager:
                 data={"disabled": disabled},
             )
             await self._connection.request(api_request)
-            logger.info(f"Device {device_mac} {'disabled' if disabled else 'enabled'}")
+            logger.info("Device %s %s", device_mac, "disabled" if disabled else "enabled")
             self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
             return True
         except Exception as e:
-            logger.error(f"Error setting disabled state on device {device_mac}: {e}")
+            logger.error("Error setting disabled state on device %s: %s", device_mac, e)
             return False
 
     async def set_site_led_enabled(self, enabled: bool) -> bool:
@@ -504,8 +504,8 @@ class DeviceManager:
                 data={"led_enabled": enabled},
             )
             await self._connection.request(api_request)
-            logger.info(f"Site LEDs {'enabled' if enabled else 'disabled'}")
+            logger.info("Site LEDs %s", "enabled" if enabled else "disabled")
             return True
         except Exception as e:
-            logger.error(f"Error setting site LED state: {e}")
+            logger.error("Error setting site LED state: %s", e)
             return False
