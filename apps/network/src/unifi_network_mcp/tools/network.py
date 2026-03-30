@@ -12,7 +12,7 @@ from typing import Annotated, Any, Dict
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, update_preview
+from unifi_mcp_shared.confirmation import create_preview, toggle_preview, update_preview
 from unifi_network_mcp.runtime import network_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
@@ -866,3 +866,343 @@ async def create_wlan(
             exc_info=True,
         )
         return {"success": False, "error": str(e)}
+
+
+@server.tool(
+    name="unifi_delete_wlan",
+    description=(
+        "Delete a WLAN/SSID by ID. Requires confirmation. "
+        "WARNING: All devices using this SSID will be disconnected."
+    ),
+    permission_category="wlans",
+    permission_action="delete",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
+)
+async def delete_wlan(
+    wlan_id: Annotated[str, Field(description="Unique identifier (_id) of the WLAN/SSID to delete (from unifi_list_wlans)")],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, deletes the WLAN. When false (default), returns a preview. "
+            "WARNING: All devices using this SSID will be disconnected"
+        ),
+    ] = False,
+) -> Dict[str, Any]:
+    """Delete a WLAN/SSID. All devices using this SSID will be disconnected."""
+    if not confirm:
+        # Fetch current WLAN details to show what will be deleted
+        try:
+            wlan = await network_manager.get_wlan_details(wlan_id)
+            resource_data = (
+                {
+                    "wlan_id": wlan_id,
+                    "name": wlan.get("name", "Unknown"),
+                    "enabled": wlan.get("enabled"),
+                    "security": wlan.get("security"),
+                }
+                if wlan
+                else {"wlan_id": wlan_id}
+            )
+            resource_name = wlan.get("name", wlan_id) if wlan else wlan_id
+        except Exception:
+            resource_data = {"wlan_id": wlan_id}
+            resource_name = wlan_id
+
+        return create_preview(
+            resource_type="wlan",
+            resource_data=resource_data,
+            resource_name=resource_name,
+            warnings=["All devices using this SSID will be disconnected"],
+        )
+
+    try:
+        success = await network_manager.delete_wlan(wlan_id)
+        if success:
+            return {"success": True, "message": f"WLAN '{wlan_id}' deleted successfully."}
+        return {"success": False, "error": f"Failed to delete WLAN '{wlan_id}'."}
+    except Exception as e:
+        logger.error("Error deleting WLAN %s: %s", wlan_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to delete WLAN '{wlan_id}': {e}"}
+
+
+@server.tool(
+    name="unifi_toggle_wlan",
+    description="Toggle a WLAN/SSID on or off. Requires confirmation.",
+    permission_category="wlans",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+async def toggle_wlan(
+    wlan_id: Annotated[str, Field(description="Unique identifier (_id) of the WLAN/SSID to toggle (from unifi_list_wlans)")],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the toggle. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Toggle a WLAN/SSID on or off."""
+    try:
+        # Fetch current state to show toggle preview
+        wlan = await network_manager.get_wlan_details(wlan_id)
+        if not wlan:
+            return {"success": False, "error": f"WLAN with ID '{wlan_id}' not found."}
+
+        current_enabled = wlan.get("enabled", False)
+        wlan_name = wlan.get("name", wlan_id)
+        new_state = not current_enabled
+
+        if not confirm:
+            return toggle_preview(
+                resource_type="wlan",
+                resource_id=wlan_id,
+                resource_name=wlan_name,
+                current_enabled=current_enabled,
+                additional_info={
+                    "security": wlan.get("security"),
+                    "network_id": wlan.get("networkconf_id"),
+                },
+            )
+
+        logger.info("Attempting to toggle WLAN '%s' (%s) to %s", wlan_name, wlan_id, new_state)
+
+        success = await network_manager.toggle_wlan(wlan_id)
+
+        if success:
+            # Re-fetch to confirm final state
+            updated_wlan = await network_manager.get_wlan_details(wlan_id)
+            final_state = updated_wlan.get("enabled", new_state) if updated_wlan else new_state
+            state_str = "enabled" if final_state else "disabled"
+            logger.info("Successfully toggled WLAN '%s' (%s) to %s", wlan_name, wlan_id, state_str)
+            return {
+                "success": True,
+                "wlan_id": wlan_id,
+                "enabled": final_state,
+                "message": f"WLAN '{wlan_name}' ({wlan_id}) toggled to {state_str}.",
+            }
+        return {"success": False, "error": f"Failed to toggle WLAN '{wlan_id}'."}
+    except Exception as e:
+        logger.error("Error toggling WLAN %s: %s", wlan_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to toggle WLAN '{wlan_id}': {e}"}
+
+
+# ---- AP Group Tools ----
+
+
+@server.tool(
+    name="unifi_list_ap_groups",
+    description=(
+        "List all AP groups configured on the controller. "
+        "AP groups control which access points broadcast which SSIDs. "
+        "Returns group names, IDs, and associated AP/WLAN memberships."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def list_ap_groups() -> Dict[str, Any]:
+    """List all AP groups."""
+    try:
+        groups = await network_manager.list_ap_groups()
+        return {
+            "success": True,
+            "site": network_manager._connection.site,
+            "count": len(groups),
+            "ap_groups": groups,
+        }
+    except Exception as e:
+        logger.error("Error listing AP groups: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to list AP groups: {e}"}
+
+
+@server.tool(
+    name="unifi_get_ap_group_details",
+    description="Get details of a specific AP group by ID, including member APs and WLANs.",
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def get_ap_group_details(
+    group_id: Annotated[str, Field(description="Unique identifier of the AP group (from unifi_list_ap_groups)")],
+) -> Dict[str, Any]:
+    """Get details of a specific AP group."""
+    try:
+        if not group_id:
+            return {"success": False, "error": "group_id is required"}
+        group = await network_manager.get_ap_group_details(group_id)
+        if group:
+            return {
+                "success": True,
+                "site": network_manager._connection.site,
+                "group_id": group_id,
+                "details": json.loads(json.dumps(group, default=str)),
+            }
+        return {"success": False, "error": f"AP group with ID '{group_id}' not found."}
+    except Exception as e:
+        logger.error("Error getting AP group details for %s: %s", group_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to get AP group details for {group_id}: {e}"}
+
+
+@server.tool(
+    name="unifi_create_ap_group",
+    description="Create a new AP group to control which APs broadcast which SSIDs. Requires confirmation.",
+    permission_category="wlans",
+    permission_action="create",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+async def create_ap_group(
+    group_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="AP group configuration dict. Typical fields: name (str), "
+            "device_macs (list of AP MAC addresses), wlan_group_ids (list of WLAN group IDs)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, creates the AP group. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Create a new AP group."""
+    # Validate the input
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("ap_group", group_data)
+    if not is_valid:
+        return {"success": False, "error": f"Invalid AP group data: {error_msg}"}
+
+    if not confirm:
+        return create_preview(
+            resource_type="ap_group",
+            resource_data=validated_data,
+            resource_name=validated_data.get("name", "unnamed"),
+        )
+
+    try:
+        created = await network_manager.create_ap_group(validated_data)
+        if created:
+            group_id = created.get("_id") or created.get("id")
+            return {
+                "success": True,
+                "site": network_manager._connection.site,
+                "message": f"AP group '{group_data.get('name')}' created successfully.",
+                "group_id": group_id,
+                "details": json.loads(json.dumps(created, default=str)),
+            }
+        return {"success": False, "error": f"Failed to create AP group '{group_data.get('name')}'."}
+    except Exception as e:
+        logger.error("Error creating AP group: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to create AP group: {e}"}
+
+
+@server.tool(
+    name="unifi_update_ap_group",
+    description=(
+        "Update an existing AP group's configuration. "
+        "Pass only the fields you want to change — current values are automatically preserved. "
+        "Requires confirmation."
+    ),
+    permission_category="wlans",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+async def update_ap_group(
+    group_id: Annotated[str, Field(description="Unique identifier of the AP group to update (from unifi_list_ap_groups)")],
+    update_data: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Dictionary of fields to update. Pass only the fields you want to change — "
+            "current values are automatically preserved. "
+            "Common fields: name (str), device_macs (list), wlan_group_ids (list)"
+        ),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the update. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Update an existing AP group."""
+    if not group_id:
+        return {"success": False, "error": "group_id is required"}
+    if not update_data:
+        return {"success": False, "error": "update_data cannot be empty"}
+
+    # Validate the update data
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("ap_group_update", update_data)
+    if not is_valid:
+        return {"success": False, "error": f"Invalid AP group update data: {error_msg}"}
+
+    # Fetch current state for preview
+    current = await network_manager.get_ap_group_details(group_id)
+    if not current:
+        return {"success": False, "error": f"AP group with ID '{group_id}' not found."}
+
+    if not confirm:
+        return update_preview(
+            resource_type="ap_group",
+            resource_id=group_id,
+            resource_name=current.get("name", group_id),
+            current_state=current,
+            updates=validated_data,
+        )
+
+    try:
+        success = await network_manager.update_ap_group(group_id, validated_data)
+        if success:
+            updated = await network_manager.get_ap_group_details(group_id)
+            return {
+                "success": True,
+                "group_id": group_id,
+                "updated_fields": list(validated_data.keys()),
+                "details": json.loads(json.dumps(updated, default=str)),
+            }
+        return {"success": False, "error": f"Failed to update AP group '{group_id}'."}
+    except Exception as e:
+        logger.error("Error updating AP group %s: %s", group_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to update AP group {group_id}: {e}"}
+
+
+@server.tool(
+    name="unifi_delete_ap_group",
+    description=(
+        "Delete an AP group by ID. Requires confirmation. "
+        "WARNING: APs in this group may lose their SSID assignments."
+    ),
+    permission_category="wlans",
+    permission_action="delete",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
+)
+async def delete_ap_group(
+    group_id: Annotated[str, Field(description="Unique identifier of the AP group to delete (from unifi_list_ap_groups)")],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, deletes the AP group. When false (default), returns a preview. "
+            "WARNING: APs in this group may lose their SSID assignments"
+        ),
+    ] = False,
+) -> Dict[str, Any]:
+    """Delete an AP group."""
+    if not confirm:
+        try:
+            group = await network_manager.get_ap_group_details(group_id)
+            resource_data = (
+                {
+                    "group_id": group_id,
+                    "name": group.get("name", "Unknown"),
+                }
+                if group
+                else {"group_id": group_id}
+            )
+            resource_name = group.get("name", group_id) if group else group_id
+        except Exception:
+            resource_data = {"group_id": group_id}
+            resource_name = group_id
+
+        return create_preview(
+            resource_type="ap_group",
+            resource_data=resource_data,
+            resource_name=resource_name,
+            warnings=["APs in this group may lose their SSID assignments"],
+        )
+
+    try:
+        success = await network_manager.delete_ap_group(group_id)
+        if success:
+            return {"success": True, "message": f"AP group '{group_id}' deleted successfully."}
+        return {"success": False, "error": f"Failed to delete AP group '{group_id}'."}
+    except Exception as e:
+        logger.error("Error deleting AP group %s: %s", group_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to delete AP group '{group_id}': {e}"}
