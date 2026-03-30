@@ -52,7 +52,7 @@ jobs:
         uv run --package unifi-network-mcp pytest apps/network/tests/ -v --cov=unifi_network_mcp --cov-report=term-missing --cov-report=xml
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.xml
