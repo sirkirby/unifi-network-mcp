@@ -132,7 +132,7 @@ class TestDeviceManagerWifi:
 
     @pytest.mark.asyncio
     async def test_get_rf_scan_results(self, device_manager, mock_connection):
-        """Test get_rf_scan_results calls GET /stat/spectrumscan/{mac}."""
+        """Test get_rf_scan_results calls GET /stat/spectrum-scan/{mac}."""
         scan_data = [
             {"channel": 1, "interference": 30},
             {"channel": 6, "interference": 10},
@@ -146,7 +146,7 @@ class TestDeviceManagerWifi:
         call_args = mock_connection.request.call_args
         api_req = call_args[0][0]
         assert api_req.method == "get"
-        assert api_req.path == "/stat/spectrumscan/aa:bb:cc:dd:ee:ff"
+        assert api_req.path == "/stat/spectrum-scan/aa:bb:cc:dd:ee:ff"
         mock_connection._update_cache.assert_called_once()
 
     @pytest.mark.asyncio
@@ -355,19 +355,18 @@ class TestNetworkManagerApGroups:
 
     @pytest.mark.asyncio
     async def test_get_ap_group_details(self, network_manager, mock_connection):
-        """Test get_ap_group_details calls correct endpoint and returns dict."""
-        ap_group = {"_id": "grp1", "name": "Default", "device_macs": []}
-        mock_connection.request.return_value = ap_group
+        """Test get_ap_group_details fetches list and filters by ID."""
+        groups = [
+            {"_id": "grp1", "name": "Default", "device_macs": []},
+            {"_id": "grp2", "name": "Other", "device_macs": []},
+        ]
+        mock_connection.request.return_value = groups
 
         result = await network_manager.get_ap_group_details("grp1")
 
         assert result is not None
         assert result["_id"] == "grp1"
         assert result["name"] == "Default"
-        call_args = mock_connection.request.call_args
-        api_req = call_args[0][0]
-        assert "apgroup" in api_req.path
-        assert "grp1" in api_req.path
 
     @pytest.mark.asyncio
     async def test_get_ap_group_details_not_found(self, network_manager, mock_connection):
@@ -405,21 +404,17 @@ class TestNetworkManagerApGroups:
 
     @pytest.mark.asyncio
     async def test_update_ap_group(self, network_manager, mock_connection):
-        """Test update_ap_group uses fetch-merge-put pattern (GET then PUT)."""
-        existing_group = {
-            "_id": "grp1",
-            "name": "Default",
-            "device_macs": ["aa:bb:cc:dd:ee:01"],
-            "attr_hidden_id": "default",
-        }
-        updated_group = {
-            "_id": "grp1",
-            "name": "Renamed Group",
-            "device_macs": ["aa:bb:cc:dd:ee:01", "aa:bb:cc:dd:ee:02"],
-            "attr_hidden_id": "default",
-        }
-        # First call returns the existing group (GET), second call returns updated (PUT)
-        mock_connection.request.side_effect = [existing_group, updated_group]
+        """Test update_ap_group uses fetch-merge-put pattern (list then PUT)."""
+        existing_groups = [
+            {
+                "_id": "grp1",
+                "name": "Default",
+                "device_macs": ["aa:bb:cc:dd:ee:01"],
+                "attr_hidden_id": "default",
+            }
+        ]
+        # First call: list_ap_groups (GET list), second call: PUT merged data
+        mock_connection.request.side_effect = [existing_groups, {}]
 
         result = await network_manager.update_ap_group(
             "grp1",
@@ -427,7 +422,7 @@ class TestNetworkManagerApGroups:
         )
 
         assert result is True
-        # Verify two requests were made: GET then PUT
+        # Verify two requests were made: GET list then PUT
         assert mock_connection.request.call_count == 2
         # Second call should be the PUT with merged data
         put_call = mock_connection.request.call_args_list[1]

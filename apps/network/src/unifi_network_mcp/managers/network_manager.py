@@ -328,7 +328,7 @@ class NetworkManager:
                 logger.error(f"Cannot toggle WLAN {wlan_id}: Not found.")
                 return False
 
-            new_state = not wlan.enabled
+            new_state = not wlan.get("enabled", False)
             update_payload = {"enabled": new_state}
 
             api_request = ApiRequest(method="put", path=f"/rest/wlanconf/{wlan_id}", data=update_payload)
@@ -379,13 +379,11 @@ class NetworkManager:
             The AP group dictionary, or None if not found.
         """
         try:
-            api_request = ApiRequestV2(method="get", path=f"/apgroups/{group_id}")
-            response = await self._connection.request(api_request)
-
-            if isinstance(response, list):
-                return response[0] if response else None
-            if isinstance(response, dict):
-                return response if "id" in response or "_id" in response else response.get("data", None)
+            # v2 /apgroups/{id} returns 405 — fetch all and filter
+            groups = await self.list_ap_groups()
+            for group in groups:
+                if group.get("_id") == group_id:
+                    return group
             return None
         except Exception as e:
             logger.error(f"Error getting AP group {group_id}: {e}")
@@ -446,9 +444,7 @@ class NetworkManager:
                 logger.error(f"AP group {group_id} not found for update.")
                 return False
 
-            merged_data = existing.copy()
-            for key, value in update_data.items():
-                merged_data[key] = value
+            merged_data = deep_merge(existing, update_data)
 
             api_request = ApiRequestV2(method="put", path=f"/apgroups/{group_id}", data=merged_data)
             await self._connection.request(api_request)

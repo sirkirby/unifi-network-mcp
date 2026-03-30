@@ -312,7 +312,7 @@ class DeviceManager:
         Returns:
             List of rogue AP dicts, or empty list on failure.
         """
-        cache_key = f"{CACHE_PREFIX_ROGUE_APS}_{self._connection.site}"
+        cache_key = f"{CACHE_PREFIX_ROGUE_APS}_{within_hours}_{self._connection.site}"
         cached_data: Optional[List[Dict[str, Any]]] = self._connection.get_cached(cache_key)
         if cached_data is not None:
             return cached_data
@@ -370,7 +370,7 @@ class DeviceManager:
         try:
             api_request = ApiRequest(
                 method="get",
-                path=f"/stat/spectrumscan/{ap_mac}",
+                path=f"/stat/spectrum-scan/{ap_mac}",
             )
             response = await self._connection.request(api_request)
             result = response if isinstance(response, list) else []

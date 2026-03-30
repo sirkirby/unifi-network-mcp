@@ -921,7 +921,7 @@ async def delete_wlan(
             return {"success": True, "message": f"WLAN '{wlan_id}' deleted successfully."}
         return {"success": False, "error": f"Failed to delete WLAN '{wlan_id}'."}
     except Exception as e:
-        logger.error(f"Error deleting WLAN {wlan_id}: {e}", exc_info=True)
+        logger.error("Error deleting WLAN %s: %s", wlan_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to delete WLAN '{wlan_id}': {e}"}
 
 
@@ -930,7 +930,7 @@ async def delete_wlan(
     description="Toggle a WLAN/SSID on or off. Requires confirmation.",
     permission_category="wlans",
     permission_action="update",
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def toggle_wlan(
     wlan_id: Annotated[str, Field(description="Unique identifier (_id) of the WLAN/SSID to toggle (from unifi_list_wlans)")],
@@ -980,7 +980,7 @@ async def toggle_wlan(
             }
         return {"success": False, "error": f"Failed to toggle WLAN '{wlan_id}'."}
     except Exception as e:
-        logger.error(f"Error toggling WLAN {wlan_id}: {e}", exc_info=True)
+        logger.error("Error toggling WLAN %s: %s", wlan_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to toggle WLAN '{wlan_id}': {e}"}
 
 

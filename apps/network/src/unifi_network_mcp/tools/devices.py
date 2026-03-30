@@ -898,23 +898,41 @@ async def get_speedtest_status(
     description=(
         "List neighboring/rogue APs detected by your access points. "
         "Returns BSSID, SSID, channel, RSSI, band, and which of your APs detected each one. "
-        "Useful for RF environment analysis and interference troubleshooting."
+        "Useful for RF environment analysis and interference troubleshooting. "
+        "WARNING: This can return hundreds of APs. Use channel and/or min_signal filters "
+        "to reduce the result set."
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_rogue_aps(
     within_hours: Annotated[
         int,
-        Field(description="Hours to look back for detected APs"),
+        Field(description="Hours to look back for detected APs (default 24)"),
     ] = 24,
+    channel: Annotated[
+        Optional[int],
+        Field(description="Filter to a specific channel (e.g., 1, 6, 11 for 2.4GHz; 36, 100 for 5GHz)"),
+    ] = None,
+    min_signal: Annotated[
+        Optional[int],
+        Field(description="Minimum signal strength in dBm (e.g., -70 to only show strong neighbors)"),
+    ] = None,
 ) -> Dict[str, Any]:
     """List neighboring/rogue APs detected by your access points."""
     try:
         rogue_aps = await device_manager.list_rogue_aps(within_hours)
+
+        # Apply client-side filters
+        if channel is not None:
+            rogue_aps = [ap for ap in rogue_aps if ap.get("channel") == channel]
+        if min_signal is not None:
+            rogue_aps = [ap for ap in rogue_aps if ap.get("signal", -100) >= min_signal]
+
         return {
             "success": True,
             "site": device_manager._connection.site,
             "within_hours": within_hours,
+            "filters": {"channel": channel, "min_signal": min_signal},
             "count": len(rogue_aps),
             "rogue_aps": rogue_aps,
         }
@@ -927,8 +945,11 @@ async def list_rogue_aps(
     name="unifi_trigger_rf_scan",
     description=(
         "Trigger an RF spectrum scan on an access point. Requires confirmation. "
-        "WARNING: AP briefly goes off-channel during scan, which may cause momentary client disconnections. "
-        "Use unifi_get_rf_scan_results to retrieve results after the scan completes."
+        "The scan takes 5-10 minutes to complete. Some APs have a dedicated scanning radio "
+        "and scan without going offline; others briefly go off-channel "
+        "which may cause momentary client disconnections. "
+        "Poll unifi_get_rf_scan_results periodically — results appear only after the scan finishes. "
+        "Returns per-channel interference levels and utilization across all bands."
     ),
     permission_category="devices",
     permission_action="update",
@@ -954,8 +975,9 @@ async def trigger_rf_scan(
             resource_data={"ap_mac": ap_mac},
             resource_name=ap_mac,
             warnings=[
-                "AP briefly goes off-channel during scan, which may cause momentary client disconnections",
-                "Use unifi_get_rf_scan_results to retrieve results after scan completes",
+                "Scan takes 5-10 minutes. Some APs go off-channel during scan (momentary client disconnections). "
+                "APs with a dedicated scanning radio scan without disruption.",
+                "Poll unifi_get_rf_scan_results periodically — results appear only after completion.",
             ],
         )
 
@@ -976,8 +998,9 @@ async def trigger_rf_scan(
     name="unifi_get_rf_scan_results",
     description=(
         "Get RF spectrum scan results for an access point. "
-        "Returns detected networks, channel utilization, and interference data. "
-        "Trigger a scan first with unifi_trigger_rf_scan if no recent results are available."
+        "Returns per-channel interference levels (dBm), utilization (%), and BSS counts for each radio band. "
+        "Trigger a scan first with unifi_trigger_rf_scan if no results are available. "
+        "Scans take 5-10 minutes — if spectrum_scanning is true, the scan is still in progress."
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )

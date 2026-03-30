@@ -2025,7 +2025,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Get RF spectrum scan results for an access point. Returns detected networks, channel utilization, and interference data. Trigger a scan first with unifi_trigger_rf_scan if no recent results are available.",
+      "description": "Get RF spectrum scan results for an access point. Returns per-channel interference levels (dBm), utilization (%), and BSS counts for each radio band. Trigger a scan first with unifi_trigger_rf_scan if no results are available. Scans take 5-10 minutes \u2014 if spectrum_scanning is true, the scan is still in progress.",
       "name": "unifi_get_rf_scan_results",
       "schema": {
         "input": {
@@ -2762,13 +2762,21 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "List neighboring/rogue APs detected by your access points. Returns BSSID, SSID, channel, RSSI, band, and which of your APs detected each one. Useful for RF environment analysis and interference troubleshooting.",
+      "description": "List neighboring/rogue APs detected by your access points. Returns BSSID, SSID, channel, RSSI, band, and which of your APs detected each one. Useful for RF environment analysis and interference troubleshooting. WARNING: This can return hundreds of APs. Use channel and/or min_signal filters to reduce the result set.",
       "name": "unifi_list_rogue_aps",
       "schema": {
         "input": {
           "properties": {
+            "channel": {
+              "description": "Filter to a specific channel (e.g., 1, 6, 11 for 2.4GHz; 36, 100 for 5GHz)",
+              "type": "integer"
+            },
+            "min_signal": {
+              "description": "Minimum signal strength in dBm (e.g., -70 to only show strong neighbors)",
+              "type": "integer"
+            },
             "within_hours": {
-              "description": "Hours to look back for detected APs",
+              "description": "Hours to look back for detected APs (default 24)",
               "type": "integer"
             }
           },
@@ -3465,7 +3473,7 @@
     {
       "annotations": {
         "destructiveHint": false,
-        "idempotentHint": true,
+        "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
       },
@@ -3499,7 +3507,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Trigger an RF spectrum scan on an access point. Requires confirmation. WARNING: AP briefly goes off-channel during scan, which may cause momentary client disconnections. Use unifi_get_rf_scan_results to retrieve results after the scan completes.",
+      "description": "Trigger an RF spectrum scan on an access point. Requires confirmation. The scan takes 5-10 minutes to complete. Some APs have a dedicated scanning radio and scan without going offline; others briefly go off-channel which may cause momentary client disconnections. Poll unifi_get_rf_scan_results periodically \u2014 results appear only after the scan finishes. Returns per-channel interference levels and utilization across all bands.",
       "name": "unifi_trigger_rf_scan",
       "permission_action": "update",
       "permission_category": "devices",
