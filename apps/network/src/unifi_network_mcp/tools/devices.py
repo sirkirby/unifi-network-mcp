@@ -652,6 +652,10 @@ async def update_device_radio(
         Optional[int],
         Field(description="Minimum RSSI value in dBm (e.g., -75). Only valid when min_rssi_enabled=true"),
     ] = None,
+    assisted_roaming_enabled: Annotated[
+        Optional[bool],
+        Field(description="Enable 802.11k/v assisted roaming (neighbor reports and BSS transition management)"),
+    ] = None,
     confirm: Annotated[
         bool,
         Field(description="When true, applies radio changes. When false (default), returns a preview of the changes"),
@@ -695,6 +699,8 @@ async def update_device_radio(
         updates["min_rssi_enabled"] = min_rssi_enabled
     if min_rssi is not None:
         updates["min_rssi"] = min_rssi
+    if assisted_roaming_enabled is not None:
+        updates["assisted_roaming_enabled"] = assisted_roaming_enabled
 
     if not updates:
         return {"success": False, "error": "No radio settings provided to update."}
@@ -882,3 +888,317 @@ async def get_speedtest_status(
     except Exception as e:
         logger.error("Error getting speedtest status for %s: %s", gateway_mac, e, exc_info=True)
         return {"success": False, "error": f"Failed to get speedtest status for {gateway_mac}: {e}"}
+
+
+# ---- RF Environment Tools ----
+
+
+@server.tool(
+    name="unifi_list_rogue_aps",
+    description=(
+        "List neighboring/rogue APs detected by your access points. "
+        "Returns BSSID, SSID, channel, RSSI, band, and which of your APs detected each one. "
+        "Useful for RF environment analysis and interference troubleshooting. "
+        "WARNING: This can return hundreds of APs. Use channel and/or min_signal filters "
+        "to reduce the result set."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def list_rogue_aps(
+    within_hours: Annotated[
+        int,
+        Field(description="Hours to look back for detected APs (default 24)"),
+    ] = 24,
+    channel: Annotated[
+        Optional[int],
+        Field(description="Filter to a specific channel (e.g., 1, 6, 11 for 2.4GHz; 36, 100 for 5GHz)"),
+    ] = None,
+    min_signal: Annotated[
+        Optional[int],
+        Field(description="Minimum signal strength in dBm (e.g., -70 to only show strong neighbors)"),
+    ] = None,
+) -> Dict[str, Any]:
+    """List neighboring/rogue APs detected by your access points."""
+    try:
+        rogue_aps = await device_manager.list_rogue_aps(within_hours)
+
+        # Apply client-side filters
+        if channel is not None:
+            rogue_aps = [ap for ap in rogue_aps if ap.get("channel") == channel]
+        if min_signal is not None:
+            rogue_aps = [ap for ap in rogue_aps if ap.get("signal", -100) >= min_signal]
+
+        return {
+            "success": True,
+            "site": device_manager._connection.site,
+            "within_hours": within_hours,
+            "filters": {"channel": channel, "min_signal": min_signal},
+            "count": len(rogue_aps),
+            "rogue_aps": rogue_aps,
+        }
+    except Exception as e:
+        logger.error("Error listing rogue APs: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to list rogue APs: {e}"}
+
+
+@server.tool(
+    name="unifi_trigger_rf_scan",
+    description=(
+        "Trigger an RF spectrum scan on an access point. Requires confirmation. "
+        "The scan takes 5-10 minutes to complete. Some APs have a dedicated scanning radio "
+        "and scan without going offline; others briefly go off-channel "
+        "which may cause momentary client disconnections. "
+        "Poll unifi_get_rf_scan_results periodically — results appear only after the scan finishes. "
+        "Returns per-channel interference levels and utilization across all bands."
+    ),
+    permission_category="devices",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+async def trigger_rf_scan(
+    ap_mac: Annotated[
+        str,
+        Field(description="MAC address of the access point to scan, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='ap')"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(
+            description="When true, triggers the RF scan. When false (default), returns a preview. "
+            "WARNING: AP briefly goes off-channel during scan"
+        ),
+    ] = False,
+) -> Dict[str, Any]:
+    """Trigger an RF spectrum scan on an access point."""
+    if not confirm:
+        return create_preview(
+            resource_type="rf_scan",
+            resource_data={"ap_mac": ap_mac},
+            resource_name=ap_mac,
+            warnings=[
+                "Scan takes 5-10 minutes. Some APs go off-channel during scan (momentary client disconnections). "
+                "APs with a dedicated scanning radio scan without disruption.",
+                "Poll unifi_get_rf_scan_results periodically — results appear only after completion.",
+            ],
+        )
+
+    try:
+        success = await device_manager.trigger_rf_scan(ap_mac)
+        if success:
+            return {
+                "success": True,
+                "message": f"RF scan triggered on AP '{ap_mac}'. Use unifi_get_rf_scan_results to check results.",
+            }
+        return {"success": False, "error": f"Failed to trigger RF scan on AP '{ap_mac}'."}
+    except Exception as e:
+        logger.error("Error triggering RF scan on %s: %s", ap_mac, e, exc_info=True)
+        return {"success": False, "error": f"Failed to trigger RF scan on AP '{ap_mac}': {e}"}
+
+
+@server.tool(
+    name="unifi_get_rf_scan_results",
+    description=(
+        "Get RF spectrum scan results for an access point. "
+        "Returns per-channel interference levels (dBm), utilization (%), and BSS counts for each radio band. "
+        "Trigger a scan first with unifi_trigger_rf_scan if no results are available. "
+        "Scans take 5-10 minutes — if spectrum_scanning is true, the scan is still in progress."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def get_rf_scan_results(
+    ap_mac: Annotated[
+        str,
+        Field(description="MAC address of the access point, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='ap')"),
+    ],
+) -> Dict[str, Any]:
+    """Get RF spectrum scan results for an AP."""
+    try:
+        results = await device_manager.get_rf_scan_results(ap_mac)
+        return {
+            "success": True,
+            "site": device_manager._connection.site,
+            "ap_mac": ap_mac,
+            "count": len(results),
+            "scan_results": results,
+        }
+    except Exception as e:
+        logger.error("Error getting RF scan results for %s: %s", ap_mac, e, exc_info=True)
+        return {"success": False, "error": f"Failed to get RF scan results for AP '{ap_mac}': {e}"}
+
+
+@server.tool(
+    name="unifi_list_available_channels",
+    description=(
+        "List allowed RF channels for the site's regulatory domain. "
+        "Returns per-band channel lists with DFS status and max power. "
+        "Useful for planning channel assignments."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def list_available_channels() -> Dict[str, Any]:
+    """List allowed RF channels for the site's regulatory domain."""
+    try:
+        channels = await device_manager.list_available_channels()
+        return {
+            "success": True,
+            "site": device_manager._connection.site,
+            "channels": channels,
+        }
+    except Exception as e:
+        logger.error("Error listing available channels: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to list available channels: {e}"}
+
+
+# ---- Known Rogue APs ----
+
+
+@server.tool(
+    name="unifi_list_known_rogue_aps",
+    description=(
+        "List APs you have previously classified as known/acknowledged. "
+        "These are neighboring APs that have been reviewed and marked as not a threat. "
+        "Returns the full list of known rogue AP entries."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def list_known_rogue_aps() -> Dict[str, Any]:
+    """List APs previously classified as known/acknowledged."""
+    try:
+        known_rogues = await device_manager.list_known_rogue_aps()
+        return {
+            "success": True,
+            "site": device_manager._connection.site,
+            "count": len(known_rogues),
+            "known_rogue_aps": known_rogues,
+        }
+    except Exception as e:
+        logger.error("Error listing known rogue APs: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to list known rogue APs: {e}"}
+
+
+# ---- Device LED & State Controls ----
+
+
+@server.tool(
+    name="unifi_set_device_led",
+    description=(
+        "Set the LED override state on a specific device. "
+        "Use 'on' to force LEDs on, 'off' to force them off, or 'default' to use site-wide setting. "
+        "Requires confirmation."
+    ),
+    permission_category="devices",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+async def set_device_led(
+    device_mac: Annotated[str, Field(description="MAC address of the device (from unifi_list_devices)")],
+    led_state: Annotated[
+        str,
+        Field(description="LED override state: 'on' (force on), 'off' (force off), or 'default' (use site setting)"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the LED change. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Set LED override state on a device."""
+    valid_states = ("on", "off", "default")
+    if led_state not in valid_states:
+        return {
+            "success": False,
+            "error": f"Invalid led_state '{led_state}'. Must be one of: {', '.join(valid_states)}",
+        }
+
+    if not confirm:
+        return create_preview(
+            resource_type="device_led",
+            resource_data={"device_mac": device_mac, "led_override": led_state},
+            resource_name=device_mac,
+        )
+
+    try:
+        success = await device_manager.set_device_led_override(device_mac, led_state)
+        if success:
+            return {"success": True, "message": f"LED override set to '{led_state}' on device '{device_mac}'."}
+        return {"success": False, "error": f"Failed to set LED override on '{device_mac}'."}
+    except Exception as e:
+        logger.error("Error setting LED override on %s: %s", device_mac, e, exc_info=True)
+        return {"success": False, "error": f"Failed to set LED override on {device_mac}: {e}"}
+
+
+@server.tool(
+    name="unifi_toggle_device",
+    description=(
+        "Enable or disable a device without unadopting it. "
+        "A disabled device remains adopted but stops passing traffic. "
+        "Requires confirmation."
+    ),
+    permission_category="devices",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
+)
+async def toggle_device(
+    device_mac: Annotated[str, Field(description="MAC address of the device (from unifi_list_devices)")],
+    disabled: Annotated[bool, Field(description="True to disable the device, False to enable it")],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the change. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Enable or disable a device without unadopting it."""
+    if not confirm:
+        action = "disable" if disabled else "enable"
+        return create_preview(
+            resource_type="device_toggle",
+            resource_data={"device_mac": device_mac, "disabled": disabled},
+            resource_name=device_mac,
+            warnings=[f"Will {action} device {device_mac}. A disabled device stops passing traffic."],
+        )
+
+    try:
+        success = await device_manager.set_device_disabled(device_mac, disabled)
+        if success:
+            state = "disabled" if disabled else "enabled"
+            return {"success": True, "message": f"Device '{device_mac}' has been {state}."}
+        return {"success": False, "error": f"Failed to set disabled state on '{device_mac}'."}
+    except Exception as e:
+        logger.error("Error toggling device %s: %s", device_mac, e, exc_info=True)
+        return {"success": False, "error": f"Failed to toggle device {device_mac}: {e}"}
+
+
+@server.tool(
+    name="unifi_set_site_leds",
+    description=(
+        "Toggle all device LEDs site-wide on or off. "
+        "This sets the global LED policy for the site — individual device overrides take precedence. "
+        "Requires confirmation."
+    ),
+    permission_category="devices",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+async def set_site_leds(
+    enabled: Annotated[bool, Field(description="True to enable all site LEDs, False to disable them")],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, applies the change. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Toggle all device LEDs site-wide."""
+    if not confirm:
+        action = "enable" if enabled else "disable"
+        return create_preview(
+            resource_type="site_leds",
+            resource_data={"led_enabled": enabled},
+            resource_name="site-wide LEDs",
+            warnings=[f"Will {action} LEDs on all devices site-wide. Individual device overrides take precedence."],
+        )
+
+    try:
+        success = await device_manager.set_site_led_enabled(enabled)
+        if success:
+            state = "enabled" if enabled else "disabled"
+            return {"success": True, "message": f"Site-wide LEDs have been {state}."}
+        return {"success": False, "error": "Failed to set site-wide LED state."}
+    except Exception as e:
+        logger.error("Error setting site LEDs: %s", e, exc_info=True)
+        return {"success": False, "error": f"Failed to set site-wide LED state: {e}"}

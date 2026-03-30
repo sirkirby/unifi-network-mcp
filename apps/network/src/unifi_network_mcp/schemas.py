@@ -260,6 +260,101 @@ WLAN_SCHEMA = {
         },
         "usergroup_id": {"type": "string", "description": "User group ID"},
         "networkconf_id": {"type": "string", "description": "Network configuration ID"},
+        "fast_roaming_enabled": {
+            "type": "boolean",
+            "description": "Enable 802.11r fast BSS transition",
+        },
+        "pmf_mode": {
+            "type": "string",
+            "enum": ["disabled", "optional", "required"],
+            "description": "Protected Management Frames (802.11w) mode",
+        },
+        "wpa3_support": {"type": "boolean", "description": "Enable WPA3 support"},
+        "wpa3_transition": {
+            "type": "boolean",
+            "description": "Enable WPA3 transition mode (WPA2+WPA3)",
+        },
+        "mac_filter_enabled": {
+            "type": "boolean",
+            "description": "Enable MAC address filtering on this WLAN",
+        },
+        "mac_filter_policy": {
+            "type": "string",
+            "enum": ["allow", "deny"],
+            "description": "MAC filter policy: allow (whitelist) or deny (blacklist)",
+        },
+        "mac_filter_list": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of MAC addresses for the filter",
+        },
+        "schedule_enabled": {
+            "type": "boolean",
+            "description": "Enable WLAN schedule (time-based on/off)",
+        },
+        "l2_isolation": {
+            "type": "boolean",
+            "description": "Enable L2 client isolation within this WLAN",
+        },
+        "wlan_band": {
+            "type": "string",
+            "enum": ["both", "2g", "5g"],
+            "description": "Restrict WLAN to specific band",
+        },
+        "multicast_enhance_enabled": {
+            "type": "boolean",
+            "description": "Convert multicast to unicast per client",
+        },
+        "dtim_mode": {
+            "type": "string",
+            "enum": ["default", "custom"],
+            "description": "DTIM interval mode",
+        },
+        "dtim_na": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 255,
+            "description": "DTIM interval for 5GHz radio",
+        },
+        "dtim_ng": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 255,
+            "description": "DTIM interval for 2.4GHz radio",
+        },
+        "minrate_ng_enabled": {
+            "type": "boolean",
+            "description": "Enable minimum data rate for 2.4GHz",
+        },
+        "minrate_ng_data_rate_kbps": {
+            "type": "integer",
+            "description": "Minimum data rate for 2.4GHz in kbps",
+        },
+        "minrate_na_enabled": {
+            "type": "boolean",
+            "description": "Enable minimum data rate for 5GHz",
+        },
+        "minrate_na_data_rate_kbps": {
+            "type": "integer",
+            "description": "Minimum data rate for 5GHz in kbps",
+        },
+        "group_rekey": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Group key rotation interval in seconds (0=disabled)",
+        },
+        "uapsd_enabled": {
+            "type": "boolean",
+            "description": "Enable Unscheduled Automatic Power Save Delivery",
+        },
+        "proxy_arp": {
+            "type": "boolean",
+            "description": "Enable proxy ARP for wireless clients",
+        },
+        "iapp_enabled": {
+            "type": "boolean",
+            "description": "Enable Inter-AP communication protocol",
+        },
     },
     "allOf": [
         {"if": {"properties": {"security": {"enum": ["open"]}}}, "then": {}},

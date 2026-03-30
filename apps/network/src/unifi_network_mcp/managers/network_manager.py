@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from aiounifi.models.api import ApiRequest
+from aiounifi.models.api import ApiRequest, ApiRequestV2
 from aiounifi.models.wlan import Wlan
 from unifi_core.merge import deep_merge
 
@@ -11,6 +11,7 @@ logger = logging.getLogger("unifi-network-mcp")
 
 CACHE_PREFIX_NETWORKS = "networks"
 CACHE_PREFIX_WLANS = "wlans"
+CACHE_PREFIX_AP_GROUPS = "ap_groups"
 
 
 class NetworkManager:
@@ -327,7 +328,7 @@ class NetworkManager:
                 logger.error(f"Cannot toggle WLAN {wlan_id}: Not found.")
                 return False
 
-            new_state = not wlan.enabled
+            new_state = not wlan.get("enabled", False)
             update_payload = {"enabled": new_state}
 
             api_request = ApiRequest(method="put", path=f"/rest/wlanconf/{wlan_id}", data=update_payload)
@@ -337,4 +338,138 @@ class NetworkManager:
             return True
         except Exception as e:
             logger.error(f"Error toggling WLAN {wlan_id}: {e}")
+            return False
+
+    async def list_ap_groups(self) -> List[Dict[str, Any]]:
+        """List all AP groups.
+
+        Returns:
+            List of AP group dictionaries.
+        """
+        cache_key = f"{CACHE_PREFIX_AP_GROUPS}_{self._connection.site}"
+        cached_data = self._connection.get_cached(cache_key)
+        if cached_data is not None:
+            return cached_data
+
+        try:
+            api_request = ApiRequestV2(method="get", path="/apgroups")
+            response = await self._connection.request(api_request)
+
+            groups = (
+                response
+                if isinstance(response, list)
+                else response.get("data", [])
+                if isinstance(response, dict)
+                else []
+            )
+
+            self._connection._update_cache(cache_key, groups, timeout=300)
+            return groups
+        except Exception as e:
+            logger.error(f"Error listing AP groups: {e}")
+            return []
+
+    async def get_ap_group_details(self, group_id: str) -> Optional[Dict[str, Any]]:
+        """Get details of a specific AP group by ID.
+
+        Args:
+            group_id: The ID of the AP group.
+
+        Returns:
+            The AP group dictionary, or None if not found.
+        """
+        try:
+            # v2 /apgroups/{id} returns 405 — fetch all and filter
+            groups = await self.list_ap_groups()
+            for group in groups:
+                if group.get("_id") == group_id:
+                    return group
+            return None
+        except Exception as e:
+            logger.error(f"Error getting AP group {group_id}: {e}")
+            return None
+
+    async def create_ap_group(self, group_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Create a new AP group.
+
+        Args:
+            group_data: Dictionary containing the AP group configuration.
+
+        Returns:
+            The created AP group dictionary, or None on failure.
+        """
+        try:
+            api_request = ApiRequestV2(method="post", path="/apgroups", data=group_data)
+            response = await self._connection.request(api_request)
+
+            self._connection._invalidate_cache(CACHE_PREFIX_AP_GROUPS)
+
+            if isinstance(response, dict) and ("id" in response or "_id" in response):
+                return response
+            elif isinstance(response, dict) and "data" in response:
+                return response["data"]
+            elif isinstance(response, list) and len(response) > 0:
+                return response[0] if isinstance(response[0], dict) else None
+            elif response is None or response == "":
+                logger.info("Create AP group returned empty response, verifying via list")
+                groups = await self.list_ap_groups()
+                created = next(
+                    (g for g in groups if g.get("name") == group_data.get("name")),
+                    None,
+                )
+                return created
+            else:
+                logger.error(f"Unexpected response creating AP group: {type(response)} {response}")
+                return None
+        except Exception as e:
+            logger.error(f"Error creating AP group: {e}", exc_info=True)
+            return None
+
+    async def update_ap_group(self, group_id: str, update_data: Dict[str, Any]) -> bool:
+        """Update an existing AP group by merging updates with current state.
+
+        Args:
+            group_id: The ID of the AP group to update.
+            update_data: Dictionary of fields to update (partial is fine).
+
+        Returns:
+            True on success, False on failure.
+        """
+        if not update_data:
+            return True
+
+        try:
+            existing = await self.get_ap_group_details(group_id)
+            if not existing:
+                logger.error(f"AP group {group_id} not found for update.")
+                return False
+
+            merged_data = deep_merge(existing, update_data)
+
+            api_request = ApiRequestV2(method="put", path=f"/apgroups/{group_id}", data=merged_data)
+            await self._connection.request(api_request)
+
+            self._connection._invalidate_cache(CACHE_PREFIX_AP_GROUPS)
+            return True
+        except Exception as e:
+            logger.error(f"Error updating AP group {group_id}: {e}", exc_info=True)
+            return False
+
+    async def delete_ap_group(self, group_id: str) -> bool:
+        """Delete an AP group.
+
+        Args:
+            group_id: The ID of the AP group to delete.
+
+        Returns:
+            True on success, False on failure.
+        """
+        try:
+            api_request = ApiRequestV2(method="delete", path=f"/apgroups/{group_id}")
+            await self._connection.request(api_request)
+
+            self._connection._invalidate_cache(CACHE_PREFIX_AP_GROUPS)
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting AP group {group_id}: {e}", exc_info=True)
             return False
