@@ -1277,6 +1277,28 @@ DEVICE_RADIO_UPDATE_SCHEMA = {
             "maximum": -20,
             "description": "Minimum RSSI threshold in dBm (e.g. -70). Clients below this are disconnected.",
         },
+        "assisted_roaming_enabled": {
+            "type": "boolean",
+            "description": "Enable 802.11k/v assisted roaming (neighbor reports and BSS transition management)",
+        },
+        "antenna_gain": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30,
+            "description": "External antenna gain in dBi for regulatory TX power compensation",
+        },
+        "vwire_enabled": {
+            "type": "boolean",
+            "description": "Enable virtual wire mode (transparent bridge for meshed APs)",
+        },
+        "sens_level_enabled": {
+            "type": "boolean",
+            "description": "Enable receive sensitivity level adjustment",
+        },
+        "sens_level": {
+            "type": "integer",
+            "description": "Receive sensitivity level in dBm",
+        },
     },
     "additionalProperties": False,
 }

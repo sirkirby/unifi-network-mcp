@@ -611,7 +611,9 @@ async def get_device_radio(
     description=(
         "Update radio settings for a specific band on an access point. "
         "Supports tx_power_mode, tx_power (custom dBm), channel, ht (channel width), "
-        "min_rssi_enabled, and min_rssi. Use unifi_get_device_radio first to see current settings."
+        "min_rssi_enabled, min_rssi, assisted_roaming_enabled (802.11k/v), "
+        "antenna_gain (dBi), vwire_enabled, sens_level_enabled, sens_level. "
+        "Use unifi_get_device_radio first to see current settings."
     ),
     permission_category="devices",
     permission_action="update",
@@ -656,6 +658,22 @@ async def update_device_radio(
         Optional[bool],
         Field(description="Enable 802.11k/v assisted roaming (neighbor reports and BSS transition management)"),
     ] = None,
+    antenna_gain: Annotated[
+        Optional[int],
+        Field(description="External antenna gain in dBi for regulatory TX power compensation"),
+    ] = None,
+    vwire_enabled: Annotated[
+        Optional[bool],
+        Field(description="Enable virtual wire mode (transparent bridge for meshed APs)"),
+    ] = None,
+    sens_level_enabled: Annotated[
+        Optional[bool],
+        Field(description="Enable receive sensitivity level adjustment"),
+    ] = None,
+    sens_level: Annotated[
+        Optional[int],
+        Field(description="Receive sensitivity level in dBm. Only valid when sens_level_enabled=true"),
+    ] = None,
     confirm: Annotated[
         bool,
         Field(description="When true, applies radio changes. When false (default), returns a preview of the changes"),
@@ -686,6 +704,9 @@ async def update_device_radio(
     if min_rssi is not None and min_rssi_enabled is not True:
         return {"success": False, "error": "min_rssi can only be set when min_rssi_enabled is true."}
 
+    if sens_level is not None and sens_level_enabled is not True:
+        return {"success": False, "error": "sens_level can only be set when sens_level_enabled is true."}
+
     updates: Dict[str, Any] = {}
     if tx_power_mode is not None:
         updates["tx_power_mode"] = tx_power_mode
@@ -701,6 +722,14 @@ async def update_device_radio(
         updates["min_rssi"] = min_rssi
     if assisted_roaming_enabled is not None:
         updates["assisted_roaming_enabled"] = assisted_roaming_enabled
+    if antenna_gain is not None:
+        updates["antenna_gain"] = antenna_gain
+    if vwire_enabled is not None:
+        updates["vwire_enabled"] = vwire_enabled
+    if sens_level_enabled is not None:
+        updates["sens_level_enabled"] = sens_level_enabled
+    if sens_level is not None:
+        updates["sens_level"] = sens_level
 
     if not updates:
         return {"success": False, "error": "No radio settings provided to update."}
