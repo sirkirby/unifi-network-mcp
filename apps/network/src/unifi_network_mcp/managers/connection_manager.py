@@ -351,9 +351,9 @@ class ConnectionManager:
                         if post_login_detected is not None and post_login_detected != self._unifi_os_override:
                             # Post-login detection differs - update override
                             logger.warning(
-                                "Post-login detection differs from pre-login: "
-                                f"pre={self._unifi_os_override}, post={post_login_detected}. "
-                                f"Using post-login result."
+                                "Post-login detection differs from pre-login: pre=%s, post=%s. Using post-login result.",
+                                self._unifi_os_override,
+                                post_login_detected,
                             )
                             self._unifi_os_override = post_login_detected
                         elif post_login_detected is not None:
