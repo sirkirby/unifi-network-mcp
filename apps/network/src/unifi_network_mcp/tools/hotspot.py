@@ -72,7 +72,7 @@ async def list_vouchers() -> Dict[str, Any]:
             "vouchers": formatted_vouchers,
         }
     except Exception as e:
-        logger.error(f"Error listing vouchers: {e}", exc_info=True)
+        logger.error("Error listing vouchers: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list vouchers: {e}"}
 
 
@@ -100,7 +100,7 @@ async def get_voucher_details(
             "error": f"Voucher not found with ID: {voucher_id}",
         }
     except Exception as e:
-        logger.error(f"Error getting voucher details for {voucher_id}: {e}", exc_info=True)
+        logger.error("Error getting voucher details for %s: %s", voucher_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get voucher details for {voucher_id}: {e}"}
 
 
@@ -195,7 +195,7 @@ async def create_voucher(
             }
         return {"success": False, "error": "Failed to create vouchers."}
     except Exception as e:
-        logger.error(f"Error creating vouchers: {e}", exc_info=True)
+        logger.error("Error creating vouchers: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to create vouchers: {e}"}
 
 
@@ -256,5 +256,5 @@ async def revoke_voucher(
             }
         return {"success": False, "error": f"Failed to revoke voucher {voucher_id}."}
     except Exception as e:
-        logger.error(f"Error revoking voucher {voucher_id}: {e}", exc_info=True)
+        logger.error("Error revoking voucher %s: %s", voucher_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to revoke voucher {voucher_id}: {e}"}

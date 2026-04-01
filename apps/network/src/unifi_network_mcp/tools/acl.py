@@ -68,7 +68,7 @@ async def list_acl_rules(
             "rules": formatted,
         }
     except Exception as e:
-        logger.error(f"Error listing ACL rules: {e}", exc_info=True)
+        logger.error("Error listing ACL rules: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list ACL rules: {e}"}
 
 
@@ -108,7 +108,7 @@ async def get_acl_rule_details(
             "details": json.loads(json.dumps(rule, default=str)),
         }
     except Exception as e:
-        logger.error(f"Error getting ACL rule {rule_id}: {e}", exc_info=True)
+        logger.error("Error getting ACL rule %s: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get ACL rule {rule_id}: {e}"}
 
 
@@ -209,7 +209,7 @@ async def create_acl_rule(
             }
         return {"success": False, "error": "Failed to create ACL rule."}
     except Exception as e:
-        logger.error(f"Error creating ACL rule: {e}", exc_info=True)
+        logger.error("Error creating ACL rule: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to create ACL rule: {e}"}
 
 
@@ -318,5 +318,5 @@ async def delete_acl_rule(
             return {"success": True, "message": f"ACL rule '{rule_id}' deleted successfully."}
         return {"success": False, "error": f"Failed to delete ACL rule '{rule_id}'."}
     except Exception as e:
-        logger.error(f"Error deleting ACL rule {rule_id}: {e}", exc_info=True)
+        logger.error("Error deleting ACL rule %s: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to delete ACL rule {rule_id}: {e}"}

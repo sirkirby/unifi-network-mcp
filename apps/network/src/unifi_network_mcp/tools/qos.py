@@ -69,7 +69,7 @@ async def list_qos_rules() -> Dict[str, Any]:
             "qos_rules": formatted_rules,
         }
     except Exception as e:
-        logger.error(f"Error listing QoS rules: {e}", exc_info=True)
+        logger.error("Error listing QoS rules: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list QoS rules: {e}"}
 
 
@@ -132,7 +132,7 @@ async def get_qos_rule_details(
                 "error": f"QoS rule with ID '{rule_id}' not found.",
             }
     except Exception as e:
-        logger.error(f"Error getting QoS rule {rule_id}: {e}", exc_info=True)
+        logger.error("Error getting QoS rule %s: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get QoS rule {rule_id}: {e}"}
 
 
@@ -199,7 +199,7 @@ async def toggle_qos_rule_enabled(
         new_state = not current_state
         rule_name = rule.get("name", rule_id)
 
-        logger.info(f"Attempting to toggle QoS rule '{rule_name}' ({rule_id}) to {new_state}")
+        logger.info("Attempting to toggle QoS rule '%s' (%s) to %s", rule_name, rule_id, new_state)
 
         update_data = {"enabled": new_state}
         # Assuming qos_manager.update_qos_rule handles fetch-merge-put or accepts partial data
@@ -211,7 +211,7 @@ async def toggle_qos_rule_enabled(
             rule_after_toggle = await qos_manager.get_qos_rule_details(rule_id)
             final_state = rule_after_toggle.get("enabled", new_state) if rule_after_toggle else new_state
 
-            logger.info(f"Successfully toggled QoS rule '{rule_name}' ({rule_id}) enabled status to {final_state}")
+            logger.info("Successfully toggled QoS rule '%s' (%s) enabled status to %s", rule_name, rule_id, final_state)
             return {
                 "success": True,
                 "rule_id": rule_id,
@@ -219,7 +219,7 @@ async def toggle_qos_rule_enabled(
                 "message": f"QoS rule '{rule_name}' ({rule_id}) toggled to {'enabled' if final_state else 'disabled'}.",
             }
         else:
-            logger.error(f"Failed to toggle QoS rule '{rule_name}' ({rule_id}). Manager returned false.")
+            logger.error("Failed to toggle QoS rule '%s' (%s). Manager returned false.", rule_name, rule_id)
             # Fetch state after failure
             rule_after_fail = await qos_manager.get_qos_rule_details(rule_id)
             state_after = rule_after_fail.get("enabled", "unknown") if rule_after_fail else "unknown"
@@ -231,7 +231,7 @@ async def toggle_qos_rule_enabled(
             }
 
     except Exception as e:
-        logger.error(f"Error toggling QoS rule {rule_id} state: {e}", exc_info=True)
+        logger.error("Error toggling QoS rule %s state: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to toggle QoS rule {rule_id} state: {e}"}
 
 
@@ -295,11 +295,11 @@ async def update_qos_rule(
     # Validate the update data
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("qos_rule_update", update_data)
     if not is_valid:
-        logger.warning(f"Invalid QoS rule update data for ID {rule_id}: {error_msg}")
+        logger.warning("Invalid QoS rule update data for ID %s: %s", rule_id, error_msg)
         return {"success": False, "error": f"Invalid update data: {error_msg}"}
 
     if not validated_data:
-        logger.warning(f"QoS rule update data for ID {rule_id} is empty after validation.")
+        logger.warning("QoS rule update data for ID %s is empty after validation.", rule_id)
         return {
             "success": False,
             "error": "Update data is effectively empty or invalid.",
@@ -324,9 +324,9 @@ async def update_qos_rule(
             )
 
         updated_fields_list = list(validated_data.keys())
-        logger.info(f"Attempting to update QoS rule '{rule_id}' with fields: {', '.join(updated_fields_list)}")
+        logger.info("Attempting to update QoS rule '%s' with fields: %s", rule_id, ", ".join(updated_fields_list))
     except Exception as e:
-        logger.error(f"Error fetching QoS rule {rule_id} for preview: {e}", exc_info=True)
+        logger.error("Error fetching QoS rule %s for preview: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to fetch QoS rule {rule_id} for preview: {e}"}
     try:
         # Assuming qos_manager.update_qos_rule handles fetch-merge-put or accepts partial data
@@ -335,7 +335,7 @@ async def update_qos_rule(
 
         if success:
             updated_rule = await qos_manager.get_qos_rule_details(rule_id)
-            logger.info(f"Successfully updated QoS rule ({rule_id})")
+            logger.info("Successfully updated QoS rule (%s)", rule_id)
             return {
                 "success": True,
                 "rule_id": rule_id,
@@ -343,7 +343,7 @@ async def update_qos_rule(
                 "details": json.loads(json.dumps(updated_rule, default=str)),
             }
         else:
-            logger.error(f"Failed to update QoS rule ({rule_id}). {error_message_detail}")
+            logger.error("Failed to update QoS rule (%s). %s", rule_id, error_message_detail)
             rule_after_update = await qos_manager.get_qos_rule_details(rule_id)
             return {
                 "success": False,
@@ -353,7 +353,7 @@ async def update_qos_rule(
             }
 
     except Exception as e:
-        logger.error(f"Error updating QoS rule {rule_id}: {e}", exc_info=True)
+        logger.error("Error updating QoS rule %s: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update QoS rule {rule_id}: {e}"}
 
 
@@ -413,7 +413,7 @@ async def create_qos_rule(
     # Validate the input data
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("qos_rule", qos_data)
     if not is_valid:
-        logger.warning(f"Invalid QoS rule data: {error_msg}")
+        logger.warning("Invalid QoS rule data: %s", error_msg)
         return {"success": False, "error": f"Invalid data: {error_msg}"}
 
     # Basic required field check (covered by schema, but belt-and-suspenders)
@@ -430,7 +430,7 @@ async def create_qos_rule(
         )
 
     rule_name = validated_data["name"]
-    logger.info(f"Attempting to create QoS rule '{rule_name}'")
+    logger.info("Attempting to create QoS rule '%s'", rule_name)
     try:
         # Pass validated data directly to manager
         created_rule = await qos_manager.create_qos_rule(validated_data)
@@ -438,7 +438,7 @@ async def create_qos_rule(
         # Check manager response
         if created_rule and created_rule.get("_id"):
             new_rule_id = created_rule.get("_id")
-            logger.info(f"Successfully created QoS rule '{rule_name}' with ID {new_rule_id}")
+            logger.info("Successfully created QoS rule '%s' with ID %s", rule_name, new_rule_id)
             return {
                 "success": True,
                 "site": qos_manager._connection.site,
@@ -452,14 +452,14 @@ async def create_qos_rule(
                 if isinstance(created_rule, dict)
                 else "Manager returned non-dict or failure"
             )
-            logger.error(f"Failed to create QoS rule '{rule_name}'. Reason: {error_msg}")
+            logger.error("Failed to create QoS rule '%s'. Reason: %s", rule_name, error_msg)
             return {
                 "success": False,
                 "error": f"Failed to create QoS rule '{rule_name}'. {error_msg}",
             }
 
     except Exception as e:
-        logger.error(f"Error creating QoS rule '{rule_name}': {e}", exc_info=True)
+        logger.error("Error creating QoS rule '%s': %s", rule_name, e, exc_info=True)
         return {"success": False, "error": f"Failed to create QoS rule '{rule_name}': {e}"}
 
 

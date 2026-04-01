@@ -54,7 +54,7 @@ class RoutingManager:
             self._connection._update_cache(cache_key, routes)
             return routes
         except Exception as e:
-            logger.error(f"Error getting routes: {e}")
+            logger.error("Error getting routes: %s", e)
             return []
 
     async def get_active_routes(self) -> List[Dict[str, Any]]:
@@ -86,7 +86,7 @@ class RoutingManager:
             if "404" in str(e) or "Not Found" in str(e):
                 logger.debug("Active routes endpoint /stat/routing not available on this controller")
             else:
-                logger.error(f"Error getting active routes: {e}")
+                logger.error("Error getting active routes: %s", e)
             return []
 
     async def get_route_details(self, route_id: str) -> Optional[Dict[str, Any]]:
@@ -102,10 +102,10 @@ class RoutingManager:
             all_routes = await self.get_routes()
             route = next((r for r in all_routes if r.get("_id") == route_id), None)
             if not route:
-                logger.debug(f"Route {route_id} not found.")
+                logger.debug("Route %s not found.", route_id)
             return route
         except Exception as e:
-            logger.error(f"Error getting route details for {route_id}: {e}")
+            logger.error("Error getting route details for %s: %s", route_id, e)
             return None
 
     async def create_route(
@@ -149,7 +149,7 @@ class RoutingManager:
             )
             response = await self._connection.request(api_request)
 
-            logger.info(f"Created route: {name} -> {static_route_network} via {static_route_nexthop}")
+            logger.info("Created route: %s -> %s via %s", name, static_route_network, static_route_nexthop)
 
             # Invalidate cache
             self._connection._invalidate_cache(f"{CACHE_PREFIX_ROUTES}_{self._connection.site}")
@@ -163,7 +163,7 @@ class RoutingManager:
             return None
 
         except Exception as e:
-            logger.error(f"Error creating route: {e}", exc_info=True)
+            logger.error("Error creating route: %s", e, exc_info=True)
             return None
 
     async def update_route(
@@ -195,7 +195,7 @@ class RoutingManager:
             # Get current route data first
             current = await self.get_route_details(route_id)
             if not current:
-                logger.error(f"Route {route_id} not found for update.")
+                logger.error("Route %s not found for update.", route_id)
                 return False
 
             # Start with the full existing route and apply updates
@@ -220,7 +220,7 @@ class RoutingManager:
             )
             await self._connection.request(api_request)
 
-            logger.info(f"Updated route {route_id}")
+            logger.info("Updated route %s", route_id)
 
             # Invalidate cache
             self._connection._invalidate_cache(f"{CACHE_PREFIX_ROUTES}_{self._connection.site}")
@@ -228,5 +228,5 @@ class RoutingManager:
             return True
 
         except Exception as e:
-            logger.error(f"Error updating route {route_id}: {e}", exc_info=True)
+            logger.error("Error updating route %s: %s", route_id, e, exc_info=True)
             return False

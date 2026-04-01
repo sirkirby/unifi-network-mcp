@@ -32,7 +32,7 @@ async def list_vpn_clients() -> Dict[str, Any]:
             "vpn_clients": clients,
         }
     except Exception as e:
-        logger.error(f"Error listing VPN clients: {e}", exc_info=True)
+        logger.error("Error listing VPN clients: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list VPN clients: {e}"}
 
 
@@ -59,7 +59,7 @@ async def get_vpn_client_details(
         else:
             return {"success": False, "error": f"VPN client '{client_id}' not found."}
     except Exception as e:
-        logger.error(f"Error getting VPN client details for {client_id}: {e}", exc_info=True)
+        logger.error("Error getting VPN client details for %s: %s", client_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get VPN client details for {client_id}: {e}"}
 
 
@@ -95,7 +95,7 @@ async def update_vpn_client_state(
                 "error": f"Failed to update state for VPN client '{name}'.",
             }
     except Exception as e:
-        logger.error(f"Error updating state for VPN client {client_id}: {e}", exc_info=True)
+        logger.error("Error updating state for VPN client %s: %s", client_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update state for VPN client {client_id}: {e}"}
 
 
@@ -115,7 +115,7 @@ async def list_vpn_servers() -> Dict[str, Any]:
             "vpn_servers": servers,
         }
     except Exception as e:
-        logger.error(f"Error listing VPN servers: {e}", exc_info=True)
+        logger.error("Error listing VPN servers: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list VPN servers: {e}"}
 
 
@@ -142,7 +142,7 @@ async def get_vpn_server_details(
         else:
             return {"success": False, "error": f"VPN server '{server_id}' not found."}
     except Exception as e:
-        logger.error(f"Error getting VPN server details for {server_id}: {e}", exc_info=True)
+        logger.error("Error getting VPN server details for %s: %s", server_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get VPN server details for {server_id}: {e}"}
 
 
@@ -178,5 +178,5 @@ async def update_vpn_server_state(
                 "error": f"Failed to update state for VPN server '{name}'.",
             }
     except Exception as e:
-        logger.error(f"Error updating state for VPN server {server_id}: {e}", exc_info=True)
+        logger.error("Error updating state for VPN server %s: %s", server_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update state for VPN server {server_id}: {e}"}

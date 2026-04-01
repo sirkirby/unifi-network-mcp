@@ -46,7 +46,7 @@ async def detect_unifi_os_pre_login(
         # UniFi OS typically returns 200 OK with the web UI
         # Standalone controllers often redirect to /manage or return different status
         async with session.get(base_url, timeout=client_timeout, ssl=False, allow_redirects=False) as response:
-            logger.debug(f"Pre-login probe {base_url}: status={response.status}")
+            logger.debug("Pre-login probe %s: status=%s", base_url, response.status)
 
             if response.status == 200:
                 # UniFi OS returns 200 at base URL
@@ -55,16 +55,16 @@ async def detect_unifi_os_pre_login(
             elif response.status in (301, 302, 303, 307, 308):
                 # Redirect typically indicates standalone controller
                 location = response.headers.get("Location", "")
-                logger.debug(f"Pre-login detection: redirect to {location}")
+                logger.debug("Pre-login detection: redirect to %s", location)
                 # Could be standalone redirecting to /manage
                 return False
 
     except asyncio.TimeoutError:
         logger.debug("Pre-login detection: timeout")
     except aiohttp.ClientError as e:
-        logger.debug(f"Pre-login detection failed: {e}")
+        logger.debug("Pre-login detection failed: %s", e)
     except Exception as e:
-        logger.debug(f"Pre-login detection unexpected error: {e}")
+        logger.debug("Pre-login detection unexpected error: %s", e)
 
     return None
 
@@ -108,10 +108,12 @@ async def detect_with_retry(
         except Exception as e:
             if attempt < max_retries - 1:
                 delay = 2**attempt  # Exponential backoff: 1s, 2s, 4s
-                logger.debug(f"Detection attempt {attempt + 1}/{max_retries} failed: {e}. Retrying in {delay}s...")
+                logger.debug(
+                    "Detection attempt %s/%s failed: %s. Retrying in %ss...", attempt + 1, max_retries, e, delay
+                )
                 await asyncio.sleep(delay)
             else:
-                logger.warning(f"Detection failed after {max_retries} attempts: {e}")
+                logger.warning("Detection failed after %s attempts: %s", max_retries, e)
 
     return None
 
@@ -136,23 +138,23 @@ async def _probe_endpoint(
         False otherwise
     """
     try:
-        logger.debug(f"Probing {endpoint_name} endpoint: {url}")
+        logger.debug("Probing %s endpoint: %s", endpoint_name, url)
 
         async with session.get(url, timeout=timeout, ssl=False) as response:
             if response.status == 200:
                 try:
                     data = await response.json()
                     if "data" in data:
-                        logger.debug(f"{endpoint_name} endpoint responded successfully")
+                        logger.debug("%s endpoint responded successfully", endpoint_name)
                         return True
                 except Exception as e:
-                    logger.debug(f"{endpoint_name} endpoint returned 200 but invalid JSON: {e}")
+                    logger.debug("%s endpoint returned 200 but invalid JSON: %s", endpoint_name, e)
     except asyncio.TimeoutError:
-        logger.debug(f"{endpoint_name} endpoint probe timed out")
+        logger.debug("%s endpoint probe timed out", endpoint_name)
     except aiohttp.ClientError as e:
-        logger.debug(f"{endpoint_name} endpoint probe failed: {e}")
+        logger.debug("%s endpoint probe failed: %s", endpoint_name, e)
     except Exception as e:
-        logger.debug(f"Unexpected error probing {endpoint_name} endpoint: {e}")
+        logger.debug("Unexpected error probing %s endpoint: %s", endpoint_name, e)
 
     return False
 
@@ -262,7 +264,7 @@ class ConnectionManager:
             if self._initialized and self.controller and self._aiohttp_session and not self._aiohttp_session.closed:
                 return True
 
-            logger.info(f"Attempting to connect to Unifi controller at {self.host}...")
+            logger.info("Attempting to connect to Unifi controller at %s...", self.host)
             for attempt in range(self._max_retries):
                 session_created = False
                 try:
@@ -305,7 +307,7 @@ class ConnectionManager:
                             if detected is not None:
                                 self._unifi_os_override = detected
                                 mode = "UniFi OS (proxy)" if detected else "standard (direct)"
-                                logger.info(f"Pre-login auto-detected controller type: {mode}")
+                                logger.info("Pre-login auto-detected controller type: %s", mode)
                             else:
                                 # Pre-login detection inconclusive - aiounifi will try its own detection
                                 # Show helpful message for troubleshooting
@@ -314,7 +316,7 @@ class ConnectionManager:
                                     "If login fails, try setting UNIFI_CONTROLLER_TYPE=proxy for UniFi OS devices."
                                 )
                         else:
-                            logger.debug(f"Using cached detection result: {self._unifi_os_override}")
+                            logger.debug("Using cached detection result: %s", self._unifi_os_override)
 
                     config = Configuration(
                         session=self._aiohttp_session,
@@ -332,7 +334,7 @@ class ConnectionManager:
                     # aiounifi uses /api/auth/login for UniFi OS, /api/login for standalone
                     if self._unifi_os_override is not None:
                         self.controller.connectivity.is_unifi_os = self._unifi_os_override
-                        logger.debug(f"Pre-login is_unifi_os set to: {self._unifi_os_override}")
+                        logger.debug("Pre-login is_unifi_os set to: %s", self._unifi_os_override)
 
                     await self.controller.login()
 
@@ -349,16 +351,16 @@ class ConnectionManager:
                         if post_login_detected is not None and post_login_detected != self._unifi_os_override:
                             # Post-login detection differs - update override
                             logger.warning(
-                                f"Post-login detection differs from pre-login: "
-                                f"pre={self._unifi_os_override}, post={post_login_detected}. "
-                                f"Using post-login result."
+                                "Post-login detection differs from pre-login: pre=%s, post=%s. Using post-login result.",
+                                self._unifi_os_override,
+                                post_login_detected,
                             )
                             self._unifi_os_override = post_login_detected
                         elif post_login_detected is not None:
                             logger.debug("Post-login detection confirmed pre-login result")
 
                     self._initialized = True
-                    logger.info(f"Successfully connected to Unifi controller at {self.host} for site '{self.site}'")
+                    logger.info("Successfully connected to Unifi controller at %s for site '%s'", self.host, self.site)
                     self._invalidate_cache()
                     return True
 
@@ -369,7 +371,7 @@ class ConnectionManager:
                     asyncio.TimeoutError,
                     aiohttp.ClientError,
                 ) as e:
-                    logger.warning(f"Connection attempt {attempt + 1} failed: {e}")
+                    logger.warning("Connection attempt %s failed: %s", attempt + 1, e)
                     if session_created and self._aiohttp_session and not self._aiohttp_session.closed:
                         await self._aiohttp_session.close()
                         self._aiohttp_session = None
@@ -377,12 +379,15 @@ class ConnectionManager:
                     if attempt < self._max_retries - 1:
                         await asyncio.sleep(self._retry_delay)
                     else:
-                        logger.error(f"Failed to initialize Unifi controller after {self._max_retries} attempts: {e}")
+                        logger.error(
+                            "Failed to initialize Unifi controller after %s attempts: %s", self._max_retries, e
+                        )
                         self._initialized = False
                         return False
                 except Exception as e:
                     logger.error(
-                        f"Unexpected error during controller initialization: {e}",
+                        "Unexpected error during controller initialization: %s",
+                        e,
                         exc_info=True,
                     )
                     if session_created and self._aiohttp_session and not self._aiohttp_session.closed:
@@ -435,7 +440,9 @@ class ConnectionManager:
             original_is_unifi_os = self.controller.connectivity.is_unifi_os
             if original_is_unifi_os != self._unifi_os_override:
                 logger.debug(
-                    f"Overriding is_unifi_os from {original_is_unifi_os} to {self._unifi_os_override} for this request"
+                    "Overriding is_unifi_os from %s to %s for this request",
+                    original_is_unifi_os,
+                    self._unifi_os_override,
                 )
                 self.controller.connectivity.is_unifi_os = self._unifi_os_override
 
@@ -497,13 +504,16 @@ class ConnectionManager:
                     return retry_response if return_raw else retry_response.get("data")
                 except Exception as retry_e:
                     logger.error(
-                        f"API request failed even after re-login: {api_request.method.upper()} {api_request.path} - {retry_e}"
+                        "API request failed even after re-login: %s %s - %s",
+                        api_request.method.upper(),
+                        api_request.path,
+                        retry_e,
                     )
                     raise retry_e from None
             else:
                 raise ConnectionError("Re-login failed, cannot proceed with request.")
         except (RequestError, ResponseError, aiohttp.ClientError) as e:
-            logger.error(f"API request error: {api_request.method.upper()} {api_request.path} - {e}")
+            logger.error("API request error: %s %s - %s", api_request.method.upper(), api_request.path, e)
             try:
                 from unifi_network_mcp.utils.diagnostics import diagnostics_enabled, log_api_request
 
@@ -522,7 +532,10 @@ class ConnectionManager:
             raise
         except Exception as e:
             logger.error(
-                f"Unexpected error during API request: {api_request.method.upper()} {api_request.path} - {e}",
+                "Unexpected error during API request: %s %s - %s",
+                api_request.method.upper(),
+                api_request.path,
+                e,
                 exc_info=True,
             )
             try:
@@ -552,7 +565,7 @@ class ConnectionManager:
         """Update the cache with new data."""
         self._cache[key] = data
         self._last_cache_update[key] = time.time()
-        logger.debug(f"Cache updated for key '{key}' with timeout {timeout or self.cache_timeout}s")
+        logger.debug("Cache updated for key '%s' with timeout %ss", key, timeout or self.cache_timeout)
 
     def _is_cache_valid(self, key: str, timeout: Optional[int] = None) -> bool:
         """Check if the cache for a given key is still valid."""
@@ -565,16 +578,16 @@ class ConnectionManager:
 
         is_valid = (current_time - last_update) < effective_timeout
         logger.debug(
-            f"Cache check for key '{key}': {'Valid' if is_valid else 'Expired'} (Timeout: {effective_timeout}s)"
+            "Cache check for key '%s': %s (Timeout: %ss)", key, "Valid" if is_valid else "Expired", effective_timeout
         )
         return is_valid
 
     def get_cached(self, key: str, timeout: Optional[int] = None) -> Optional[Any]:
         """Get data from cache if valid."""
         if self._is_cache_valid(key, timeout):
-            logger.debug(f"Cache hit for key '{key}'")
+            logger.debug("Cache hit for key '%s'", key)
             return self._cache[key]
-        logger.debug(f"Cache miss for key '{key}'")
+        logger.debug("Cache miss for key '%s'", key)
         return None
 
     def _invalidate_cache(self, prefix: Optional[str] = None):
@@ -585,7 +598,7 @@ class ConnectionManager:
                 del self._cache[key]
                 if key in self._last_cache_update:
                     del self._last_cache_update[key]
-            logger.debug(f"Invalidated cache for keys starting with '{prefix}'")
+            logger.debug("Invalidated cache for keys starting with '%s'", prefix)
         else:
             self._cache = {}
             self._last_cache_update = {}
@@ -601,6 +614,6 @@ class ConnectionManager:
             self.controller.connectivity.config.site = site
             self.site = site
             self._invalidate_cache()
-            logger.info(f"Switched target site to '{site}'. Cache invalidated. Re-login might occur on next request.")
+            logger.info("Switched target site to '%s'. Cache invalidated. Re-login might occur on next request.", site)
         else:
             logger.warning("Cannot set site dynamically, controller or config not available.")

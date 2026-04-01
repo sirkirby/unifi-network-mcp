@@ -16,7 +16,7 @@ from unifi_network_mcp.runtime import server, system_manager
 logger = logging.getLogger(__name__)
 
 # Explicitly retrieve and log the server instance to confirm it's being used
-logger.info(f"System tools module loaded, server instance: {server}")
+logger.info("System tools module loaded, server instance: %s", server)
 
 
 @server.tool(
@@ -40,7 +40,7 @@ async def get_system_info() -> Dict[str, Any]:
             "system_info": info,
         }
     except Exception as e:
-        logger.error(f"Error getting system info: {e}", exc_info=True)
+        logger.error("Error getting system info: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to get system info: {e}"}
 
 
@@ -69,7 +69,7 @@ async def get_network_health() -> Dict[str, Any]:
             "health_summary": health,
         }
     except Exception as e:
-        logger.error(f"Error getting network health: {e}", exc_info=True)
+        logger.error("Error getting network health: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to get network health: {e}"}
 
 
@@ -89,7 +89,7 @@ async def get_site_settings() -> Dict[str, Any]:
             "site_settings": settings,
         }
     except Exception as e:
-        logger.error(f"Error getting site settings: {e}", exc_info=True)
+        logger.error("Error getting site settings: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to get site settings: {e}"}
 
 
@@ -113,7 +113,7 @@ async def get_snmp_settings() -> Dict[str, Any]:
             },
         }
     except Exception as e:
-        logger.error(f"Error getting SNMP settings: {e}", exc_info=True)
+        logger.error("Error getting SNMP settings: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to get SNMP settings: {e}"}
 
 
@@ -142,7 +142,7 @@ async def update_snmp_settings(
         community: SNMP community string (optional, keeps current value if not provided).
         confirm: Must be true to apply changes. When false, returns a preview of proposed changes.
     """
-    logger.info(f"unifi_update_snmp_settings tool called (enabled={enabled}, confirm={confirm})")
+    logger.info("unifi_update_snmp_settings tool called (enabled=%s, confirm=%s)", enabled, confirm)
 
     try:
         settings_list = await system_manager.get_settings("snmp")
@@ -182,7 +182,7 @@ async def update_snmp_settings(
             }
         return {"success": False, "error": "Failed to update SNMP settings."}
     except Exception as e:
-        logger.error(f"Error updating SNMP settings: {e}", exc_info=True)
+        logger.error("Error updating SNMP settings: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to update SNMP settings: {e}"}
 
 

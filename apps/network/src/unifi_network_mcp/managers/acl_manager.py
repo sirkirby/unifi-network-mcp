@@ -62,7 +62,7 @@ class AclManager:
             self._connection._update_cache(cache_key, rules)
             return rules
         except Exception as e:
-            logger.error(f"Error getting ACL rules: {e}")
+            logger.error("Error getting ACL rules: %s", e)
             return []
 
     async def get_acl_rule_by_id(self, rule_id: str) -> Optional[Dict[str, Any]]:
@@ -113,7 +113,7 @@ class AclManager:
         required_keys = {"name", "acl_index", "action", "mac_acl_network_id", "type"}
         missing = required_keys - rule_data.keys()
         if missing:
-            logger.error(f"Missing required keys for ACL rule: {missing}")
+            logger.error("Missing required keys for ACL rule: %s", missing)
             return None
 
         try:
@@ -138,10 +138,10 @@ class AclManager:
                 )
                 return created
             else:
-                logger.error(f"Unexpected response creating ACL rule: {type(response)} {response}")
+                logger.error("Unexpected response creating ACL rule: %s %s", type(response), response)
                 return None
         except Exception as e:
-            logger.error(f"Error creating ACL rule: {e}", exc_info=True)
+            logger.error("Error creating ACL rule: %s", e, exc_info=True)
             return None
 
     async def update_acl_rule(self, rule_id: str, update_data: Dict[str, Any]) -> bool:
@@ -198,7 +198,7 @@ class AclManager:
             self._invalidate_cache()
             return True
         except Exception as e:
-            logger.error(f"Error deleting ACL rule {rule_id}: {e}", exc_info=True)
+            logger.error("Error deleting ACL rule %s: %s", rule_id, e, exc_info=True)
             return False
 
     def _invalidate_cache(self):

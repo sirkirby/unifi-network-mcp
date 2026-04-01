@@ -85,7 +85,7 @@ async def list_routes() -> Dict[str, Any]:
             "routes": formatted_routes,
         }
     except Exception as e:
-        logger.error(f"Error listing routes: {e}", exc_info=True)
+        logger.error("Error listing routes: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list routes: {e}"}
 
 
@@ -113,7 +113,7 @@ async def list_active_routes() -> Dict[str, Any]:
             "active_routes": routes,
         }
     except Exception as e:
-        logger.error(f"Error listing active routes: {e}", exc_info=True)
+        logger.error("Error listing active routes: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list active routes: {e}"}
 
 
@@ -141,7 +141,7 @@ async def get_route_details(
             "error": f"Route not found with ID: {route_id}",
         }
     except Exception as e:
-        logger.error(f"Error getting route details for {route_id}: {e}", exc_info=True)
+        logger.error("Error getting route details for %s: %s", route_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get route details for {route_id}: {e}"}
 
 
@@ -221,7 +221,7 @@ async def create_route(
             }
         return {"success": False, "error": "Failed to create route."}
     except Exception as e:
-        logger.error(f"Error creating route: {e}", exc_info=True)
+        logger.error("Error creating route: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to create route: {e}"}
 
 
@@ -347,5 +347,5 @@ async def update_route(
             }
         return {"success": False, "error": f"Failed to update route {route_id}."}
     except Exception as e:
-        logger.error(f"Error updating route {route_id}: {e}", exc_info=True)
+        logger.error("Error updating route %s: %s", route_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update route {route_id}: {e}"}

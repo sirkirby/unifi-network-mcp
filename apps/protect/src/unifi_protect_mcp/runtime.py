@@ -98,7 +98,7 @@ def get_server() -> FastMCP:
     )
 
     logger.debug(
-        f"Configuring FastMCP with allowed_hosts: {allowed_hosts}, dns_rebinding_protection: {enable_dns_rebinding}"
+        "Configuring FastMCP with allowed_hosts: %s, dns_rebinding_protection: %s", allowed_hosts, enable_dns_rebinding
     )
 
     server = FastMCP(

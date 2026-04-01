@@ -46,7 +46,7 @@ class SystemManager:
             self._connection._update_cache(cache_key, info, timeout=15)
             return info
         except Exception as e:
-            logger.error(f"Error getting system info: {e}")
+            logger.error("Error getting system info: %s", e)
             return {}
 
     async def get_controller_status(self) -> Dict[str, Any]:
@@ -60,7 +60,7 @@ class SystemManager:
                 return response
             return {}
         except Exception as e:
-            logger.error(f"Error getting controller status: {e}")
+            logger.error("Error getting controller status: %s", e)
             return {}
 
     async def create_backup(self, filename: Optional[str] = None) -> Optional[bytes]:
@@ -78,7 +78,7 @@ class SystemManager:
             logger.info("Backup creation requested successfully.")
             return response if isinstance(response, bytes) else None
         except Exception as e:
-            logger.error(f"Error creating backup: {e}")
+            logger.error("Error creating backup: %s", e)
             return None
 
     async def restore_backup(self, backup_data: bytes) -> bool:
@@ -104,7 +104,7 @@ class SystemManager:
             )
 
             restore_url = f"{self._connection.url_base}/api/s/{self._connection.site}/cmd/restore"
-            logger.info(f"Attempting to restore backup via POST to {restore_url}")
+            logger.info("Attempting to restore backup via POST to %s", restore_url)
 
             async with self._connection.controller.session.post(restore_url, data=form) as response:
                 if response.status == 200:
@@ -114,10 +114,10 @@ class SystemManager:
                     return True
                 else:
                     response_text = await response.text()
-                    logger.error(f"Error restoring backup: HTTP {response.status}, Response: {response_text}")
+                    logger.error("Error restoring backup: HTTP %s, Response: %s", response.status, response_text)
                     return False
         except Exception as e:
-            logger.error(f"Exception during backup restore: {e}")
+            logger.error("Exception during backup restore: %s", e)
             return False
 
     async def check_firmware_updates(self) -> Dict[str, Any]:
@@ -134,7 +134,7 @@ class SystemManager:
                 return response
             return {}
         except Exception as e:
-            logger.error(f"Error checking firmware updates: {e}")
+            logger.error("Error checking firmware updates: %s", e)
             return {}
 
     async def upgrade_controller(self) -> bool:
@@ -149,11 +149,11 @@ class SystemManager:
                 logger.info("Controller upgrade initiated successfully.")
                 self._connection._initialized = False
             else:
-                logger.error(f"Error initiating controller upgrade: {response}")
+                logger.error("Error initiating controller upgrade: %s", response)
 
             return success
         except Exception as e:
-            logger.error(f"Error upgrading controller: {e}")
+            logger.error("Error upgrading controller: %s", e)
             return False
 
     async def reboot_controller(self) -> bool:
@@ -168,11 +168,11 @@ class SystemManager:
                 logger.info("Controller reboot initiated successfully.")
                 self._connection._initialized = False
             else:
-                logger.error(f"Error initiating controller reboot: {response}")
+                logger.error("Error initiating controller reboot: %s", response)
 
             return success
         except Exception as e:
-            logger.error(f"Error rebooting controller: {e}")
+            logger.error("Error rebooting controller: %s", e)
             return False
 
     async def get_settings(self, section: str) -> List[Dict[str, Any]]:  # API returns list
@@ -196,7 +196,7 @@ class SystemManager:
             self._connection._update_cache(cache_key, settings_list)
             return settings_list
         except Exception as e:
-            logger.error(f"Error getting {section} settings: {e}")
+            logger.error("Error getting %s settings: %s", section, e)
             return []
 
     async def update_settings(self, section: str, settings_data: Dict[str, Any]) -> bool:
@@ -213,7 +213,7 @@ class SystemManager:
             current_settings_list = await self.get_settings(section)
             if not current_settings_list or not isinstance(current_settings_list[0], dict):
                 logger.warning(
-                    f"Could not get current settings for section '{section}' to update, proceeding without _id check."
+                    "Could not get current settings for section '%s' to update, proceeding without _id check.", section
                 )
                 settings_id = None
             else:
@@ -223,7 +223,8 @@ class SystemManager:
                 settings_data["_id"] = settings_id
             elif "_id" not in settings_data:
                 logger.warning(
-                    f"Attempting to update settings section '{section}' without an _id. This might not work as expected."
+                    "Attempting to update settings section '%s' without an _id. This might not work as expected.",
+                    section,
                 )
 
             if "key" not in settings_data:
@@ -241,13 +242,13 @@ class SystemManager:
                 success = True
 
             if success:
-                logger.info(f"{section} settings updated successfully")
+                logger.info("%s settings updated successfully", section)
             else:
-                logger.error(f"Error updating {section} settings: {response}")
+                logger.error("Error updating %s settings: %s", section, response)
 
             return success
         except Exception as e:
-            logger.error(f"Error updating {section} settings: {e}")
+            logger.error("Error updating %s settings: %s", section, e)
             return False
 
     async def get_network_health(self) -> List[Dict[str, Any]]:
@@ -285,7 +286,7 @@ class SystemManager:
             self._connection._update_cache(cache_key, health, timeout=10)
             return health
         except Exception as e:
-            logger.error(f"Error getting network health: {e}")
+            logger.error("Error getting network health: %s", e)
             return []
 
     async def get_site_settings(self) -> Dict[str, Any]:
@@ -305,7 +306,7 @@ class SystemManager:
                 }
             return {"raw": settings_list}
         except Exception as e:
-            logger.error(f"Error getting site settings: {e}")
+            logger.error("Error getting site settings: %s", e)
             return {}
 
     async def get_sites(self) -> List[Site]:  # Changed return type
@@ -323,7 +324,7 @@ class SystemManager:
             self._connection._update_cache(cache_key, sites)
             return sites
         except Exception as e:
-            logger.error(f"Error getting sites: {e}")
+            logger.error("Error getting sites: %s", e)
             return []
 
     async def get_site_details(self, site_identifier: str) -> Optional[Site]:  # Changed return type
@@ -348,7 +349,7 @@ class SystemManager:
         )
 
         if not site:
-            logger.warning(f"Site '{site_identifier}' not found.")
+            logger.warning("Site '%s' not found.", site_identifier)
         return site
 
     async def get_current_site(self) -> Optional[Site]:  # Changed return type
@@ -371,11 +372,11 @@ class SystemManager:
 
             sites = await self.get_sites()
             if any(s.name == formatted_name for s in sites):
-                logger.error(f"Site with internal name '{formatted_name}' already exists")
+                logger.error("Site with internal name '%s' already exists", formatted_name)
                 return None
             if any(s.description == site_desc for s in sites):
                 logger.warning(
-                    f"Site with description '{site_desc}' already exists, but proceeding with unique internal name."
+                    "Site with description '%s' already exists, but proceeding with unique internal name.", site_desc
                 )
 
             payload = {"cmd": "add-site", "name": formatted_name, "desc": site_desc}
@@ -386,17 +387,17 @@ class SystemManager:
             self._connection._invalidate_cache(CACHE_PREFIX_SITES)
 
             if isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok":
-                logger.info(f"Site '{site_desc}' (internal: '{formatted_name}') created successfully.")
+                logger.info("Site '%s' (internal: '%s') created successfully.", site_desc, formatted_name)
                 await asyncio.sleep(1.5)
                 new_site_details: Optional[Site] = await self.get_site_details(formatted_name)
                 if not new_site_details:
                     logger.warning("Could not fetch details of newly created site immediately.")
                 return new_site_details
             else:
-                logger.error(f"Error creating site: {response}")
+                logger.error("Error creating site: %s", response)
                 return None
         except Exception as e:
-            logger.error(f"Error creating site '{name}': {e}")
+            logger.error("Error creating site '%s': %s", name, e)
             return None
 
     async def update_site(self, site_id: str, description: str) -> bool:
@@ -413,11 +414,11 @@ class SystemManager:
         try:
             site = await self.get_site_details(site_id)
             if not site:
-                logger.warning(f"Site '{site_id}' not found.")
+                logger.warning("Site '%s' not found.", site_id)
                 return False
             site_internal_id = site.site_id
             if not site_internal_id:
-                logger.error(f"Site found for '{site_id}' but has no _id property.")
+                logger.error("Site found for '%s' but has no _id property.", site_id)
                 return False
 
             payload = {
@@ -433,13 +434,13 @@ class SystemManager:
 
             success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
-                logger.info(f"Site {site_id} description updated successfully.")
+                logger.info("Site %s description updated successfully.", site_id)
             else:
-                logger.error(f"Error updating site {site_id}: {response}")
+                logger.error("Error updating site %s: %s", site_id, response)
 
             return success
         except Exception as e:
-            logger.error(f"Error updating site {site_id}: {e}")
+            logger.error("Error updating site %s: %s", site_id, e)
             return False
 
     async def delete_site(self, site_id: str) -> bool:
@@ -457,7 +458,7 @@ class SystemManager:
                 return False
             site_internal_id = site.site_id
             if not site_internal_id:
-                logger.error(f"Site found for '{site_id}' but has no _id property.")
+                logger.error("Site found for '%s' but has no _id property.", site_id)
                 return False
 
             # Don't allow deleting the default site
@@ -477,19 +478,20 @@ class SystemManager:
 
             success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
-                logger.info(f"Site {site_id} deleted successfully.")
+                logger.info("Site %s deleted successfully.", site_id)
                 # If deleting the current site, switch back to default?
                 if self._connection.site == site.name:
                     logger.warning(
-                        f"Deleted the current site '{self._connection.site}'. Consider switching to another site (e.g., default)."
+                        "Deleted the current site '%s'. Consider switching to another site (e.g., default).",
+                        self._connection.site,
                     )
                     # Optionally switch automatically: await self.switch_site("default")
             else:
-                logger.error(f"Error deleting site {site_id}: {response}")
+                logger.error("Error deleting site %s: %s", site_id, response)
 
             return success
         except Exception as e:
-            logger.error(f"Error deleting site {site_id}: {e}")
+            logger.error("Error deleting site %s: %s", site_id, e)
             return False
 
     async def switch_site(self, site_identifier: str) -> bool:
@@ -508,13 +510,13 @@ class SystemManager:
 
             site_name = site.name
             if not site_name:
-                logger.error(f"Site identified by '{site_identifier}' has no internal name, cannot switch.")
+                logger.error("Site identified by '%s' has no internal name, cannot switch.", site_identifier)
                 return False
 
             await self._connection.set_site(site_name)
             return True
         except Exception as e:
-            logger.error(f"Error switching to site '{site_identifier}': {e}")
+            logger.error("Error switching to site '%s': %s", site_identifier, e)
             return False
 
     async def get_admin_users(self) -> List[Dict[str, Any]]:
@@ -531,7 +533,7 @@ class SystemManager:
             self._connection._update_cache(cache_key, admins)
             return admins
         except Exception as e:
-            logger.error(f"Error getting admin users: {e}")
+            logger.error("Error getting admin users: %s", e)
             return []
 
     async def get_admin_user_details(self, user_identifier: str) -> Optional[Dict[str, Any]]:
@@ -549,7 +551,7 @@ class SystemManager:
             None,
         )
         if not user:
-            logger.warning(f"Admin user '{user_identifier}' not found.")
+            logger.warning("Admin user '%s' not found.", user_identifier)
         return user
 
     async def create_admin_user(
@@ -575,7 +577,7 @@ class SystemManager:
         try:
             admin_users = await self.get_admin_users()
             if any(u.get("name") == name for u in admin_users):
-                logger.error(f"Admin user with name '{name}' already exists")
+                logger.error("Admin user with name '%s' already exists", name)
                 return None
 
             payload = {
@@ -590,7 +592,7 @@ class SystemManager:
                 payload["site_access"] = site_access
             elif not is_super:
                 logger.warning(
-                    f"Creating non-super admin '{name}' without site_access. They may have no site access initially."
+                    "Creating non-super admin '%s' without site_access. They may have no site access initially.", name
                 )
 
             api_request = ApiRequest(method="post", path="/cmd/sitemgr", data=payload)
@@ -599,7 +601,7 @@ class SystemManager:
             self._connection._invalidate_cache(CACHE_PREFIX_ADMINS)
 
             if isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok":
-                logger.info(f"Admin user '{name}' created successfully.")
+                logger.info("Admin user '%s' created successfully.", name)
                 self._connection._invalidate_cache(CACHE_PREFIX_ADMINS)
                 created_user_data = None
                 if "data" in response and isinstance(response["data"], list) and len(response["data"]) > 0:
@@ -610,10 +612,10 @@ class SystemManager:
                 logger.warning("Admin user creation reported success, but could not extract details.")
                 return {"success": True}  # Return simple success dict
             else:
-                logger.error(f"Error creating admin user '{name}': {response}")
+                logger.error("Error creating admin user '%s': %s", name, response)
                 return None
         except Exception as e:
-            logger.error(f"Error creating admin user '{name}': {e}")
+            logger.error("Error creating admin user '%s': %s", name, e)
             return None
 
     async def update_admin_user(
@@ -644,7 +646,7 @@ class SystemManager:
                 return False
             admin_internal_id = user.get("_id")
             if not admin_internal_id:
-                logger.error(f"Admin user found for '{user_id}' but has no _id.")
+                logger.error("Admin user found for '%s' but has no _id.", user_id)
                 return False
 
             payload = {"cmd": "update-admin", "admin_id": admin_internal_id}
@@ -652,7 +654,7 @@ class SystemManager:
                 if name != user.get("name"):
                     admins = await self.get_admin_users()
                     if any(u.get("name") == name and u.get("_id") != admin_internal_id for u in admins):
-                        logger.error(f"Cannot rename admin: Username '{name}' already exists.")
+                        logger.error("Cannot rename admin: Username '%s' already exists.", name)
                         return False
                 payload["name"] = name
             if password is not None:
@@ -669,7 +671,7 @@ class SystemManager:
                     logger.info("Ignoring site_access update for super admin.")
 
             if len(payload) <= 2:  # Only cmd and admin_id
-                logger.warning(f"No fields provided to update for admin user {user_id}")
+                logger.warning("No fields provided to update for admin user %s", user_id)
                 return False
 
             api_request = ApiRequest(method="post", path="/cmd/sitemgr", data=payload)
@@ -679,14 +681,14 @@ class SystemManager:
 
             success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
-                logger.info(f"Admin user {user_id} updated successfully.")
+                logger.info("Admin user %s updated successfully.", user_id)
                 self._connection._invalidate_cache(CACHE_PREFIX_ADMINS)
                 return True
             else:
-                logger.error(f"Error updating admin user {user_id}: {response}")
+                logger.error("Error updating admin user %s: %s", user_id, response)
                 return False
         except Exception as e:
-            logger.error(f"Error updating admin user {user_id}: {e}")
+            logger.error("Error updating admin user %s: %s", user_id, e)
             return False
 
     async def delete_admin_user(self, user_id: str) -> bool:
@@ -704,7 +706,7 @@ class SystemManager:
                 return False
             admin_internal_id = user.get("_id")
             if not admin_internal_id:
-                logger.error(f"Admin user found for '{user_id}' but has no _id.")
+                logger.error("Admin user found for '%s' but has no _id.", user_id)
                 return False
 
             if user.get("name") == self._connection.username:
@@ -716,14 +718,14 @@ class SystemManager:
 
             success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
-                logger.info(f"Admin user {user_id} deleted successfully.")
+                logger.info("Admin user %s deleted successfully.", user_id)
                 self._connection._invalidate_cache(CACHE_PREFIX_ADMINS)
                 return True
             else:
-                logger.error(f"Error deleting admin user {user_id}: {response}")
+                logger.error("Error deleting admin user %s: %s", user_id, response)
                 return False
         except Exception as e:
-            logger.error(f"Error deleting admin user {user_id}: {e}")
+            logger.error("Error deleting admin user %s: %s", user_id, e)
             return False
 
     async def invite_admin_user(
@@ -756,13 +758,13 @@ class SystemManager:
 
             success = isinstance(response, dict) and response.get("meta", {}).get("rc") == "ok"
             if success:
-                logger.info(f"Admin invitation sent successfully to {email}.")
+                logger.info("Admin invitation sent successfully to %s.", email)
                 return True
             else:
-                logger.error(f"Error sending admin invitation to {email}: {response}")
+                logger.error("Error sending admin invitation to %s: %s", email, response)
                 return False
         except Exception as e:
-            logger.error(f"Error inviting admin user {email}: {e}")
+            logger.error("Error inviting admin user %s: %s", email, e)
             return False
 
     async def get_current_admin_user(self) -> Optional[Dict[str, Any]]:  # Keep as Dict

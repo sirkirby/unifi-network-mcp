@@ -43,7 +43,7 @@ class DeviceManager:
             self._connection._update_cache(cache_key, devices)
             return devices
         except Exception as e:
-            logger.error(f"Error getting devices: {e}")
+            logger.error("Error getting devices: %s", e)
             return []
 
     async def get_device_details(self, device_mac: str) -> Optional[Device]:
@@ -51,7 +51,7 @@ class DeviceManager:
         devices = await self.get_devices()
         device: Optional[Device] = next((d for d in devices if d.mac == device_mac), None)
         if not device:
-            logger.debug(f"Device details for MAC {device_mac} not found in devices list.")
+            logger.debug("Device details for MAC %s not found in devices list.", device_mac)
         return device
 
     async def reboot_device(self, device_mac: str) -> bool:
@@ -63,11 +63,11 @@ class DeviceManager:
                 data={"mac": device_mac, "cmd": "restart"},
             )
             await self._connection.request(api_request)
-            logger.info(f"Reboot command sent for device {device_mac}")
+            logger.info("Reboot command sent for device %s", device_mac)
             self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
             return True
         except Exception as e:
-            logger.error(f"Error rebooting device {device_mac}: {e}")
+            logger.error("Error rebooting device %s: %s", device_mac, e)
             return False
 
     async def rename_device(self, device_mac: str, name: str) -> bool:
@@ -75,17 +75,17 @@ class DeviceManager:
         try:
             device = await self.get_device_details(device_mac)
             if not device or "_id" not in device.raw:
-                logger.error(f"Cannot rename device {device_mac}: Not found or missing ID.")
+                logger.error("Cannot rename device %s: Not found or missing ID.", device_mac)
                 return False
             device_id = device.raw["_id"]
 
             api_request = ApiRequest(method="put", path=f"/rest/device/{device_id}", data={"name": name})
             await self._connection.request(api_request)
-            logger.info(f"Rename command sent for device {device_mac} to '{name}'")
+            logger.info("Rename command sent for device %s to '%s'", device_mac, name)
             self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
             return True
         except Exception as e:
-            logger.error(f"Error renaming device {device_mac} to '{name}': {e}")
+            logger.error("Error renaming device %s to '%s': %s", device_mac, name, e)
             return False
 
     async def adopt_device(self, device_mac: str) -> bool:
@@ -97,11 +97,11 @@ class DeviceManager:
                 data={"mac": device_mac, "cmd": "adopt"},
             )
             await self._connection.request(api_request)
-            logger.info(f"Adopt command sent for device {device_mac}")
+            logger.info("Adopt command sent for device %s", device_mac)
             self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
             return True
         except Exception as e:
-            logger.error(f"Error adopting device {device_mac}: {e}")
+            logger.error("Error adopting device %s: %s", device_mac, e)
             return False
 
     async def upgrade_device(self, device_mac: str) -> bool:
@@ -113,11 +113,11 @@ class DeviceManager:
                 data={"mac": device_mac, "cmd": "upgrade"},
             )
             await self._connection.request(api_request)
-            logger.info(f"Upgrade command sent for device {device_mac}")
+            logger.info("Upgrade command sent for device %s", device_mac)
             self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
             return True
         except Exception as e:
-            logger.error(f"Error upgrading device {device_mac}: {e}")
+            logger.error("Error upgrading device %s: %s", device_mac, e)
             return False
 
     async def locate_device(self, device_mac: str, enabled: bool = True) -> bool:
@@ -138,10 +138,10 @@ class DeviceManager:
                 data={"cmd": cmd, "mac": device_mac},
             )
             await self._connection.request(api_request)
-            logger.info(f"Locate {'enabled' if enabled else 'disabled'} for device {device_mac}")
+            logger.info("Locate %s for device %s", "enabled" if enabled else "disabled", device_mac)
             return True
         except Exception as e:
-            logger.error(f"Error setting locate mode on device {device_mac}: {e}")
+            logger.error("Error setting locate mode on device %s: %s", device_mac, e)
             return False
 
     async def force_provision(self, device_mac: str) -> bool:
@@ -160,10 +160,10 @@ class DeviceManager:
                 data={"cmd": "force-provision", "mac": device_mac},
             )
             await self._connection.request(api_request)
-            logger.info(f"Force provision command sent for device {device_mac}")
+            logger.info("Force provision command sent for device %s", device_mac)
             return True
         except Exception as e:
-            logger.error(f"Error force provisioning device {device_mac}: {e}")
+            logger.error("Error force provisioning device %s: %s", device_mac, e)
             return False
 
     async def get_device_radio(self, device_mac: str) -> Optional[Dict[str, Any]]:
@@ -231,7 +231,7 @@ class DeviceManager:
         try:
             device = await self.get_device_details(device_mac)
             if not device or "_id" not in device.raw:
-                logger.error(f"Cannot update radio for {device_mac}: device not found or missing ID.")
+                logger.error("Cannot update radio for %s: device not found or missing ID.", device_mac)
                 return False
             device_id = device.raw["_id"]
 
@@ -244,7 +244,7 @@ class DeviceManager:
                     break
 
             if not matched:
-                logger.error(f"Radio '{radio_id}' not found on device {device_mac}.")
+                logger.error("Radio '%s' not found on device %s.", radio_id, device_mac)
                 return False
 
             api_request = ApiRequest(
@@ -253,11 +253,11 @@ class DeviceManager:
                 data={"radio_table": radio_table},
             )
             await self._connection.request(api_request)
-            logger.info(f"Radio '{radio_id}' updated on device {device_mac}: {list(updates.keys())}")
+            logger.info("Radio '%s' updated on device %s: %s", radio_id, device_mac, list(updates.keys()))
             self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
             return True
         except Exception as e:
-            logger.error(f"Error updating radio '{radio_id}' on device {device_mac}: {e}")
+            logger.error("Error updating radio '%s' on device %s: %s", radio_id, device_mac, e)
             return False
 
     async def trigger_speedtest(self, gateway_mac: str) -> bool:
@@ -276,10 +276,10 @@ class DeviceManager:
                 data={"mac": gateway_mac, "cmd": "speedtest"},
             )
             await self._connection.request(api_request)
-            logger.info(f"Speedtest triggered on gateway {gateway_mac}")
+            logger.info("Speedtest triggered on gateway %s", gateway_mac)
             return True
         except Exception as e:
-            logger.error(f"Error triggering speedtest on {gateway_mac}: {e}")
+            logger.error("Error triggering speedtest on %s: %s", gateway_mac, e)
             return False
 
     async def get_speedtest_status(self, gateway_mac: str) -> Dict[str, Any]:
@@ -300,7 +300,7 @@ class DeviceManager:
             response = await self._connection.request(api_request)
             return response if isinstance(response, dict) else {}
         except Exception as e:
-            logger.error(f"Error getting speedtest status for {gateway_mac}: {e}")
+            logger.error("Error getting speedtest status for %s: %s", gateway_mac, e)
             return {}
 
     async def list_rogue_aps(self, within_hours: int = 24) -> List[Dict[str, Any]]:
