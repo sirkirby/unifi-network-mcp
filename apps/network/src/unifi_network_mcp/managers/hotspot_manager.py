@@ -65,7 +65,7 @@ class HotspotManager:
 
             return vouchers
         except Exception as e:
-            logger.error(f"Error getting vouchers: {e}")
+            logger.error("Error getting vouchers: %s", e)
             return []
 
     async def get_voucher_details(self, voucher_id: str) -> Optional[Dict[str, Any]]:
@@ -81,10 +81,10 @@ class HotspotManager:
             all_vouchers = await self.get_vouchers()
             voucher = next((v for v in all_vouchers if v.get("_id") == voucher_id), None)
             if not voucher:
-                logger.debug(f"Voucher {voucher_id} not found.")
+                logger.debug("Voucher %s not found.", voucher_id)
             return voucher
         except Exception as e:
-            logger.error(f"Error getting voucher details for {voucher_id}: {e}")
+            logger.error("Error getting voucher details for %s: %s", voucher_id, e)
             return None
 
     async def create_voucher(
@@ -138,7 +138,7 @@ class HotspotManager:
             )
             response = await self._connection.request(api_request)
 
-            logger.info(f"Create voucher: {count} voucher(s), {expire_minutes} min, quota={quota}")
+            logger.info("Create voucher: %s voucher(s), %s min, quota=%s", count, expire_minutes, quota)
 
             # Invalidate cache
             self._connection._invalidate_cache(f"{CACHE_PREFIX_VOUCHERS}_{self._connection.site}")
@@ -159,7 +159,7 @@ class HotspotManager:
             return await self.get_vouchers()
 
         except Exception as e:
-            logger.error(f"Error creating voucher: {e}", exc_info=True)
+            logger.error("Error creating voucher: %s", e, exc_info=True)
             return None
 
     async def revoke_voucher(self, voucher_id: str) -> bool:
@@ -184,7 +184,7 @@ class HotspotManager:
             )
             await self._connection.request(api_request)
 
-            logger.info(f"Revoked voucher {voucher_id}")
+            logger.info("Revoked voucher %s", voucher_id)
 
             # Invalidate cache
             self._connection._invalidate_cache(f"{CACHE_PREFIX_VOUCHERS}_{self._connection.site}")
@@ -192,5 +192,5 @@ class HotspotManager:
             return True
 
         except Exception as e:
-            logger.error(f"Error revoking voucher {voucher_id}: {e}", exc_info=True)
+            logger.error("Error revoking voucher %s: %s", voucher_id, e, exc_info=True)
             return False

@@ -71,7 +71,7 @@ async def list_traffic_routes() -> Dict[str, Any]:
             "traffic_routes": formatted_routes,
         }
     except Exception as e:
-        logger.error(f"Error listing traffic routes: {e}", exc_info=True)
+        logger.error("Error listing traffic routes: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list traffic routes: {e}"}
 
 
@@ -101,7 +101,7 @@ async def get_traffic_route_details(
         else:
             return {"success": False, "error": f"Traffic route '{route_id}' not found."}
     except Exception as e:
-        logger.error(f"Error getting traffic route details: {e}", exc_info=True)
+        logger.error("Error getting traffic route details: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to get traffic route details: {e}"}
 
 
@@ -195,7 +195,7 @@ async def update_traffic_route(
                 "error": f"Failed to update traffic route {route_id}.",
             }
     except Exception as e:
-        logger.error(f"Error updating traffic route: {e}", exc_info=True)
+        logger.error("Error updating traffic route: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to update traffic route: {e}"}
 
 
@@ -255,5 +255,5 @@ async def toggle_traffic_route(
                 "error": f"Failed to toggle traffic route {route_id}.",
             }
     except Exception as e:
-        logger.error(f"Error toggling traffic route: {e}", exc_info=True)
+        logger.error("Error toggling traffic route: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to toggle traffic route: {e}"}

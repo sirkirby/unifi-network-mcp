@@ -54,7 +54,7 @@ class UsergroupManager:
             self._connection._update_cache(cache_key, usergroups)
             return usergroups
         except Exception as e:
-            logger.error(f"Error getting user groups: {e}")
+            logger.error("Error getting user groups: %s", e)
             return []
 
     async def get_usergroup_details(self, group_id: str) -> Optional[Dict[str, Any]]:
@@ -70,10 +70,10 @@ class UsergroupManager:
             all_groups = await self.get_usergroups()
             group = next((g for g in all_groups if g.get("_id") == group_id), None)
             if not group:
-                logger.debug(f"User group {group_id} not found.")
+                logger.debug("User group %s not found.", group_id)
             return group
         except Exception as e:
-            logger.error(f"Error getting user group details for {group_id}: {e}")
+            logger.error("Error getting user group details for %s: %s", group_id, e)
             return None
 
     async def create_usergroup(
@@ -110,7 +110,7 @@ class UsergroupManager:
             )
             response = await self._connection.request(api_request)
 
-            logger.info(f"Created user group: {name}")
+            logger.info("Created user group: %s", name)
 
             # Invalidate cache
             self._connection._invalidate_cache(f"{CACHE_PREFIX_USERGROUPS}_{self._connection.site}")
@@ -124,7 +124,7 @@ class UsergroupManager:
             return None
 
         except Exception as e:
-            logger.error(f"Error creating user group: {e}", exc_info=True)
+            logger.error("Error creating user group: %s", e, exc_info=True)
             return None
 
     async def update_usergroup(
@@ -151,7 +151,7 @@ class UsergroupManager:
             # Get current group data first
             current = await self.get_usergroup_details(group_id)
             if not current:
-                logger.error(f"User group {group_id} not found for update.")
+                logger.error("User group %s not found for update.", group_id)
                 return False
 
             # Build payload with updates
@@ -164,7 +164,7 @@ class UsergroupManager:
                 payload["qos_rate_max_up"] = up_limit_kbps
 
             if not payload:
-                logger.warning(f"No updates provided for user group {group_id}")
+                logger.warning("No updates provided for user group %s", group_id)
                 return False
 
             api_request = ApiRequest(
@@ -174,7 +174,7 @@ class UsergroupManager:
             )
             await self._connection.request(api_request)
 
-            logger.info(f"Updated user group {group_id}: {payload}")
+            logger.info("Updated user group %s: %s", group_id, payload)
 
             # Invalidate cache
             self._connection._invalidate_cache(f"{CACHE_PREFIX_USERGROUPS}_{self._connection.site}")
@@ -182,5 +182,5 @@ class UsergroupManager:
             return True
 
         except Exception as e:
-            logger.error(f"Error updating user group {group_id}: {e}", exc_info=True)
+            logger.error("Error updating user group %s: %s", group_id, e, exc_info=True)
             return False

@@ -104,7 +104,7 @@ async def list_networks() -> Dict[str, Any]:
             "networks": serializable_networks,
         }
     except Exception as e:
-        logger.error(f"Error listing networks in tool: {e}", exc_info=True)
+        logger.error("Error listing networks in tool: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list networks: {e}"}
 
 
@@ -170,7 +170,7 @@ async def get_network_details(
                 "error": f"Network with ID '{network_id}' not found.",
             }
     except Exception as e:
-        logger.error(f"Error getting network details for {network_id}: {e}", exc_info=True)
+        logger.error("Error getting network details for %s: %s", network_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get network details for {network_id}: {e}"}
 
 
@@ -245,11 +245,11 @@ async def update_network(
     # Validate the update data
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("network_update", update_data)
     if not is_valid:
-        logger.warning(f"Invalid network update data for ID {network_id}: {error_msg}")
+        logger.warning("Invalid network update data for ID %s: %s", network_id, error_msg)
         return {"success": False, "error": f"Invalid update data: {error_msg}"}
 
     if not validated_data:
-        logger.warning(f"Network update data for ID {network_id} is empty after validation.")
+        logger.warning("Network update data for ID %s is empty after validation.", network_id)
         return {
             "success": False,
             "error": "Update data is effectively empty or invalid.",
@@ -281,7 +281,7 @@ async def update_network(
             pass  # Let manager handle potential partial updates
 
     updated_fields_list = list(validated_data.keys())
-    logger.info(f"Attempting to update network '{network_id}' with fields: {', '.join(updated_fields_list)}")
+    logger.info("Attempting to update network '%s' with fields: %s", network_id, ", ".join(updated_fields_list))
     try:
         # *** Assumption: Need network_manager.update_network(network_id, validated_data) ***
         # This method needs implementation in NetworkManager.
@@ -290,7 +290,7 @@ async def update_network(
 
         if success:
             updated_network = await network_manager.get_network_details(network_id)
-            logger.info(f"Successfully updated network ({network_id})")
+            logger.info("Successfully updated network (%s)", network_id)
             return {
                 "success": True,
                 "network_id": network_id,
@@ -298,7 +298,7 @@ async def update_network(
                 "details": json.loads(json.dumps(updated_network, default=str)),
             }
         else:
-            logger.error(f"Failed to update network ({network_id}). {error_message_detail}")
+            logger.error("Failed to update network (%s). %s", network_id, error_message_detail)
             network_after_update = await network_manager.get_network_details(network_id)
             return {
                 "success": False,
@@ -308,7 +308,7 @@ async def update_network(
             }
 
     except Exception as e:
-        logger.error(f"Error updating network {network_id}: {e}", exc_info=True)
+        logger.error("Error updating network %s: %s", network_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update network {network_id}: {e}"}
 
 
@@ -386,7 +386,7 @@ async def create_network(
     # Validate the input
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("network", network_data)
     if not is_valid:
-        logger.warning(f"Invalid network data: {error_msg}")
+        logger.warning("Invalid network data: %s", error_msg)
         return {"success": False, "error": error_msg}
 
     # Required fields check
@@ -459,7 +459,7 @@ async def create_network(
             warnings=["Creating a network may temporarily disrupt connectivity"],
         )
 
-    logger.info(f"Attempting to create network '{validated_data['name']}' with purpose '{purpose}'")
+    logger.info("Attempting to create network '%s' with purpose '%s'", validated_data["name"], purpose)
     try:
         # Use validated data directly
         network_data = validated_data
@@ -469,7 +469,7 @@ async def create_network(
         created_network = await network_manager.create_network(network_data)
         if created_network and created_network.get("_id"):
             new_network_id = created_network.get("_id")
-            logger.info(f"Successfully created network '{validated_data['name']}' with ID {new_network_id}")
+            logger.info("Successfully created network '%s' with ID %s", validated_data["name"], new_network_id)
             return {
                 "success": True,
                 "site": network_manager._connection.site,
@@ -483,14 +483,16 @@ async def create_network(
                 if isinstance(created_network, dict)
                 else "Manager returned non-dict or failure"
             )
-            logger.error(f"Failed to create network '{validated_data['name']}'. Reason: {error_msg}")
+            logger.error("Failed to create network '%s'. Reason: %s", validated_data["name"], error_msg)
             return {
                 "success": False,
                 "error": f"Failed to create network '{validated_data['name']}'. {error_msg}",
             }
     except Exception as e:
         logger.error(
-            f"Error creating network '{validated_data.get('name', 'unknown')}': {e}",
+            "Error creating network '%s': %s",
+            validated_data.get("name", "unknown"),
+            e,
             exc_info=True,
         )
         return {"success": False, "error": str(e)}
@@ -557,7 +559,7 @@ async def list_wlans() -> Dict[str, Any]:
             "wlans": formatted_wlans,
         }
     except Exception as e:
-        logger.error(f"Error listing WLANs: {e}", exc_info=True)
+        logger.error("Error listing WLANs: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list WLANs: {e}"}
 
 
@@ -616,7 +618,7 @@ async def get_wlan_details(
         else:
             return {"success": False, "error": f"WLAN with ID '{wlan_id}' not found."}
     except Exception as e:
-        logger.error(f"Error getting WLAN details for {wlan_id}: {e}", exc_info=True)
+        logger.error("Error getting WLAN details for %s: %s", wlan_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get WLAN details for {wlan_id}: {e}"}
 
 
@@ -683,11 +685,11 @@ async def update_wlan(
     # Validate the update data
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("wlan_update", update_data)
     if not is_valid:
-        logger.warning(f"Invalid WLAN update data for ID {wlan_id}: {error_msg}")
+        logger.warning("Invalid WLAN update data for ID %s: %s", wlan_id, error_msg)
         return {"success": False, "error": f"Invalid update data: {error_msg}"}
 
     if not validated_data:
-        logger.warning(f"WLAN update data for ID {wlan_id} is empty after validation.")
+        logger.warning("WLAN update data for ID %s is empty after validation.", wlan_id)
         return {
             "success": False,
             "error": "Update data is effectively empty or invalid.",
@@ -713,7 +715,7 @@ async def update_wlan(
         pass  # Let manager handle merge/API requirements
 
     updated_fields_list = list(validated_data.keys())
-    logger.info(f"Attempting to update WLAN '{wlan_id}' with fields: {', '.join(updated_fields_list)}")
+    logger.info("Attempting to update WLAN '%s' with fields: %s", wlan_id, ", ".join(updated_fields_list))
     try:
         # *** Assumption: Need network_manager.update_wlan(wlan_id, validated_data) ***
         # This method needs implementation in NetworkManager.
@@ -722,7 +724,7 @@ async def update_wlan(
 
         if success:
             updated_wlan = await network_manager.get_wlan_details(wlan_id)
-            logger.info(f"Successfully updated WLAN ({wlan_id})")
+            logger.info("Successfully updated WLAN (%s)", wlan_id)
             return {
                 "success": True,
                 "wlan_id": wlan_id,
@@ -730,7 +732,7 @@ async def update_wlan(
                 "details": json.loads(json.dumps(updated_wlan, default=str)),
             }
         else:
-            logger.error(f"Failed to update WLAN ({wlan_id}). {error_message_detail}")
+            logger.error("Failed to update WLAN (%s). %s", wlan_id, error_message_detail)
             wlan_after_update = await network_manager.get_wlan_details(wlan_id)
             return {
                 "success": False,
@@ -740,7 +742,7 @@ async def update_wlan(
             }
 
     except Exception as e:
-        logger.error(f"Error updating WLAN {wlan_id}: {e}", exc_info=True)
+        logger.error("Error updating WLAN %s: %s", wlan_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update WLAN {wlan_id}: {e}"}
 
 
@@ -804,7 +806,7 @@ async def create_wlan(
     # Validate the input
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("wlan", wlan_data)
     if not is_valid:
-        logger.warning(f"Invalid WLAN data: {error_msg}")
+        logger.warning("Invalid WLAN data: %s", error_msg)
         return {"success": False, "error": error_msg}
 
     # Required fields check
@@ -830,7 +832,7 @@ async def create_wlan(
             warnings=["Creating a WLAN may temporarily affect wireless connectivity"],
         )
 
-    logger.info(f"Attempting to create WLAN '{validated_data['name']}' with security '{validated_data['security']}'")
+    logger.info("Attempting to create WLAN '%s' with security '%s'", validated_data["name"], validated_data["security"])
     try:
         # Pass validated data directly to manager
         wlan_payload = validated_data
@@ -840,7 +842,7 @@ async def create_wlan(
 
         if created_wlan and created_wlan.get("_id"):
             new_wlan_id = created_wlan.get("_id")
-            logger.info(f"Successfully created WLAN '{validated_data['name']}' with ID {new_wlan_id}")
+            logger.info("Successfully created WLAN '%s' with ID %s", validated_data["name"], new_wlan_id)
             return {
                 "success": True,
                 "site": network_manager._connection.site,
@@ -854,7 +856,7 @@ async def create_wlan(
                 if isinstance(created_wlan, dict)
                 else "Manager returned non-dict or failure"
             )
-            logger.error(f"Failed to create WLAN '{validated_data['name']}'. Reason: {error_msg}")
+            logger.error("Failed to create WLAN '%s'. Reason: %s", validated_data["name"], error_msg)
             return {
                 "success": False,
                 "error": f"Failed to create WLAN '{validated_data['name']}'. {error_msg}",
@@ -862,7 +864,9 @@ async def create_wlan(
 
     except Exception as e:
         logger.error(
-            f"Error creating WLAN '{validated_data.get('name', 'unknown')}': {e}",
+            "Error creating WLAN '%s': %s",
+            validated_data.get("name", "unknown"),
+            e,
             exc_info=True,
         )
         return {"success": False, "error": str(e)}
@@ -871,15 +875,16 @@ async def create_wlan(
 @server.tool(
     name="unifi_delete_wlan",
     description=(
-        "Delete a WLAN/SSID by ID. Requires confirmation. "
-        "WARNING: All devices using this SSID will be disconnected."
+        "Delete a WLAN/SSID by ID. Requires confirmation. WARNING: All devices using this SSID will be disconnected."
     ),
     permission_category="wlans",
     permission_action="delete",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
 )
 async def delete_wlan(
-    wlan_id: Annotated[str, Field(description="Unique identifier (_id) of the WLAN/SSID to delete (from unifi_list_wlans)")],
+    wlan_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the WLAN/SSID to delete (from unifi_list_wlans)")
+    ],
     confirm: Annotated[
         bool,
         Field(
@@ -933,7 +938,9 @@ async def delete_wlan(
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
 )
 async def toggle_wlan(
-    wlan_id: Annotated[str, Field(description="Unique identifier (_id) of the WLAN/SSID to toggle (from unifi_list_wlans)")],
+    wlan_id: Annotated[
+        str, Field(description="Unique identifier (_id) of the WLAN/SSID to toggle (from unifi_list_wlans)")
+    ],
     confirm: Annotated[
         bool,
         Field(description="When true, executes the toggle. When false (default), returns a preview of the changes"),
@@ -1099,7 +1106,9 @@ async def create_ap_group(
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
 )
 async def update_ap_group(
-    group_id: Annotated[str, Field(description="Unique identifier of the AP group to update (from unifi_list_ap_groups)")],
+    group_id: Annotated[
+        str, Field(description="Unique identifier of the AP group to update (from unifi_list_ap_groups)")
+    ],
     update_data: Annotated[
         Dict[str, Any],
         Field(
@@ -1157,15 +1166,16 @@ async def update_ap_group(
 @server.tool(
     name="unifi_delete_ap_group",
     description=(
-        "Delete an AP group by ID. Requires confirmation. "
-        "WARNING: APs in this group may lose their SSID assignments."
+        "Delete an AP group by ID. Requires confirmation. WARNING: APs in this group may lose their SSID assignments."
     ),
     permission_category="wlans",
     permission_action="delete",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
 )
 async def delete_ap_group(
-    group_id: Annotated[str, Field(description="Unique identifier of the AP group to delete (from unifi_list_ap_groups)")],
+    group_id: Annotated[
+        str, Field(description="Unique identifier of the AP group to delete (from unifi_list_ap_groups)")
+    ],
     confirm: Annotated[
         bool,
         Field(

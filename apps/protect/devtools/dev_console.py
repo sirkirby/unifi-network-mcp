@@ -42,7 +42,7 @@ async def _list_tools(server) -> List[Any]:
         tools = await server.list_tools()
         return tools
     except Exception as exc:
-        logger.error(f"Failed to list tools: {exc}")
+        logger.error("Failed to list tools: %s", exc)
         return []
 
 
@@ -54,7 +54,7 @@ def _get_all_tools_from_index() -> List[Dict[str, Any]]:
         index = get_tool_index()
         return index.get("tools", [])
     except Exception as exc:
-        logger.error(f"Failed to get tool index: {exc}")
+        logger.error("Failed to get tool index: %s", exc)
         return []
 
 
@@ -137,7 +137,7 @@ def _parse_args_with_schema(params_schema: Optional[Dict[str, Any]]) -> Dict[str
             data = json.loads(line)
             return data if isinstance(data, dict) else {}
         except Exception as exc:
-            logger.error(f"Invalid JSON: {exc}. Proceeding to guided prompts.")
+            logger.error("Invalid JSON: %s. Proceeding to guided prompts.", exc)
 
     # If non-empty and single required param, treat as simple value
     if line and params_schema:
@@ -207,7 +207,7 @@ async def _invoke_tool(server, tool) -> None:
         if not args and not schema_props:
             missing = _extract_missing_fields_from_exc(exc)
             if missing:
-                logger.info(f"Missing required fields: {missing}")
+                logger.info("Missing required fields: %s", missing)
                 fixed: Dict[str, Any] = {}
                 for key in missing:
                     val = _prompt(key)
@@ -223,9 +223,9 @@ async def _invoke_tool(server, tool) -> None:
                     _print("Result", result)
                     return
                 except Exception as exc2:
-                    logger.error(f"Tool execution failed after prompting: {exc2}")
+                    logger.error("Tool execution failed after prompting: %s", exc2)
                     return
-        logger.error(f"Tool execution failed: {exc}")
+        logger.error("Tool execution failed: %s", exc)
 
 
 async def main_async() -> None:

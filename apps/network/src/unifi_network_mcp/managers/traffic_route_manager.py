@@ -60,7 +60,7 @@ class TrafficRouteManager:
             self._connection._update_cache(cache_key, routes)
             return routes
         except Exception as e:
-            logger.error(f"Error getting traffic routes: {e}")
+            logger.error("Error getting traffic routes: %s", e)
             return []
 
     async def get_traffic_route_details(self, route_id: str) -> Optional[Dict[str, Any]]:
@@ -76,10 +76,10 @@ class TrafficRouteManager:
             all_routes = await self.get_traffic_routes()
             route = next((r for r in all_routes if r.get("_id") == route_id), None)
             if not route:
-                logger.debug(f"Traffic route {route_id} not found.")
+                logger.debug("Traffic route %s not found.", route_id)
             return route
         except Exception as e:
-            logger.error(f"Error getting traffic route details for {route_id}: {e}")
+            logger.error("Error getting traffic route details for %s: %s", route_id, e)
             return None
 
     async def update_traffic_route(self, route_id: str, enabled: Optional[bool] = None, **kwargs) -> bool:
@@ -99,7 +99,7 @@ class TrafficRouteManager:
         try:
             current = await self.get_traffic_route_details(route_id)
             if not current:
-                logger.error(f"Traffic route {route_id} not found for update.")
+                logger.error("Traffic route %s not found for update.", route_id)
                 return False
 
             # Start with full existing route and apply updates
@@ -120,7 +120,7 @@ class TrafficRouteManager:
             )
             await self._connection.request(api_request)
 
-            logger.info(f"Updated traffic route {route_id}")
+            logger.info("Updated traffic route %s", route_id)
 
             # Invalidate cache
             self._connection._invalidate_cache(f"{CACHE_PREFIX_TRAFFIC_ROUTES}_{self._connection.site}")
@@ -128,7 +128,7 @@ class TrafficRouteManager:
             return True
 
         except Exception as e:
-            logger.error(f"Error updating traffic route {route_id}: {e}", exc_info=True)
+            logger.error("Error updating traffic route %s: %s", route_id, e, exc_info=True)
             return False
 
     async def toggle_traffic_route(self, route_id: str) -> bool:
@@ -142,7 +142,7 @@ class TrafficRouteManager:
         """
         current = await self.get_traffic_route_details(route_id)
         if not current:
-            logger.error(f"Traffic route {route_id} not found for toggle.")
+            logger.error("Traffic route %s not found for toggle.", route_id)
             return False
 
         new_state = not current.get("enabled", True)
@@ -164,7 +164,7 @@ class TrafficRouteManager:
         try:
             current = await self.get_traffic_route_details(route_id)
             if not current:
-                logger.error(f"Traffic route {route_id} not found for kill switch update.")
+                logger.error("Traffic route %s not found for kill switch update.", route_id)
                 return False
 
             payload: Dict[str, Any] = current.copy()
@@ -177,7 +177,7 @@ class TrafficRouteManager:
             )
             await self._connection.request(api_request)
 
-            logger.info(f"Traffic route {route_id} kill switch {'enabled' if enabled else 'disabled'}")
+            logger.info("Traffic route %s kill switch %s", route_id, "enabled" if enabled else "disabled")
 
             self._connection._invalidate_cache(f"{CACHE_PREFIX_TRAFFIC_ROUTES}_{self._connection.site}")
 
@@ -185,7 +185,9 @@ class TrafficRouteManager:
 
         except Exception as e:
             logger.error(
-                f"Error updating kill switch for traffic route {route_id}: {e}",
+                "Error updating kill switch for traffic route %s: %s",
+                route_id,
+                e,
                 exc_info=True,
             )
             return False

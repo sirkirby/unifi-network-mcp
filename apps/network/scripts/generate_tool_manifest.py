@@ -49,7 +49,7 @@ def build_module_map() -> dict[str, str]:
     tools_dir = project_root / "src" / "unifi_network_mcp" / "tools"
 
     if not tools_dir.exists():
-        logger.warning(f"Tools directory not found at {tools_dir}")
+        logger.warning("Tools directory not found at %s", tools_dir)
         return tool_map
 
     # Scan each .py file in tools directory
@@ -72,9 +72,9 @@ def build_module_map() -> dict[str, str]:
                     tool_map[tool_name] = module_name
 
         except Exception as e:
-            logger.warning(f"Error scanning {tool_file}: {e}")
+            logger.warning("Error scanning %s: %s", tool_file, e)
 
-    logger.info(f"   Built module map with {len(tool_map)} tool->module mappings")
+    logger.info("   Built module map with %s tool->module mappings", len(tool_map))
     return tool_map
 
 
@@ -109,10 +109,10 @@ def generate_manifest() -> dict[str, Any]:
         # which in turn call register_tool() to populate TOOL_REGISTRY
         auto_load_tools(base_package="unifi_network_mcp.tools")
 
-        logger.info(f"   Loaded {len(TOOL_REGISTRY)} tools into registry")
+        logger.info("   Loaded %s tools into registry", len(TOOL_REGISTRY))
 
     except Exception as e:
-        logger.error(f"   Failed to load tools: {e}")
+        logger.error("   Failed to load tools: %s", e)
         import traceback
         traceback.print_exc()
 
@@ -143,7 +143,7 @@ def generate_manifest() -> dict[str, Any]:
 
     annotations_map = get_tool_annotations(server)
     if annotations_map:
-        logger.info(f"   Extracted annotations for {len(annotations_map)} tools")
+        logger.info("   Extracted annotations for %s tools", len(annotations_map))
     else:
         logger.warning("   No tool annotations found in FastMCP registry")
 
@@ -187,13 +187,13 @@ def generate_manifest() -> dict[str, Any]:
         "note": "Auto-generated with full schemas from tool decorators. Do not edit manually.",
     }
 
-    logger.info(f"   Generated manifest with {len(tools)} tools and full schemas")
+    logger.info("   Generated manifest with %s tools and full schemas", len(tools))
 
     # Log a sample tool to verify schemas are complete
     if tools:
         sample_tool = tools[0]
-        logger.info(f"   Sample tool: {sample_tool['name']}")
-        logger.info(f"      Properties: {list(sample_tool['schema']['input'].get('properties', {}).keys())}")
+        logger.info("   Sample tool: %s", sample_tool['name'])
+        logger.info("      Properties: %s", list(sample_tool['schema']['input'].get('properties', {}).keys()))
 
     return manifest
 
@@ -211,13 +211,13 @@ def main():
         with open(output_path, "w") as f:
             json.dump(manifest, f, indent=2, sort_keys=True)
 
-        logger.info(f"   Wrote manifest to {output_path}")
+        logger.info("   Wrote manifest to %s", output_path)
         logger.info("   Tool manifest generation complete!")
 
         return 0
 
     except Exception as e:
-        logger.error(f"   Failed to generate manifest: {e}")
+        logger.error("   Failed to generate manifest: %s", e)
         import traceback
         traceback.print_exc()
         return 1

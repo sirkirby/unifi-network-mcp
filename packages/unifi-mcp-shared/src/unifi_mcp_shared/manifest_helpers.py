@@ -53,6 +53,6 @@ def get_tool_annotations(server: Any) -> dict[str, dict[str, Any]]:
                 annotations_map[tool_name] = ann_dict
 
     except Exception as e:
-        logger.warning(f"   Failed to extract tool annotations: {e}")
+        logger.warning("   Failed to extract tool annotations: %s", e)
 
     return annotations_map

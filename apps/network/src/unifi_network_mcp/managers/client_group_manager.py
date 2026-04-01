@@ -55,7 +55,7 @@ class ClientGroupManager:
             self._connection._update_cache(cache_key, groups)
             return groups
         except Exception as e:
-            logger.error(f"Error getting client groups: {e}")
+            logger.error("Error getting client groups: %s", e)
             return []
 
     async def get_client_group_by_id(self, group_id: str) -> Optional[Dict[str, Any]]:
@@ -102,7 +102,7 @@ class ClientGroupManager:
         required_keys = {"name", "members", "type"}
         missing = required_keys - group_data.keys()
         if missing:
-            logger.error(f"Missing required keys for client group: {missing}")
+            logger.error("Missing required keys for client group: %s", missing)
             return None
 
         try:
@@ -126,10 +126,10 @@ class ClientGroupManager:
                 )
                 return created
             else:
-                logger.error(f"Unexpected response creating client group: {type(response)} {response}")
+                logger.error("Unexpected response creating client group: %s %s", type(response), response)
                 return None
         except Exception as e:
-            logger.error(f"Error creating client group: {e}", exc_info=True)
+            logger.error("Error creating client group: %s", e, exc_info=True)
             return None
 
     async def update_client_group(self, group_id: str, update_data: Dict[str, Any]) -> bool:
@@ -183,7 +183,7 @@ class ClientGroupManager:
             self._invalidate_cache()
             return True
         except Exception as e:
-            logger.error(f"Error deleting client group {group_id}: {e}", exc_info=True)
+            logger.error("Error deleting client group %s: %s", group_id, e, exc_info=True)
             return False
 
     def _invalidate_cache(self):

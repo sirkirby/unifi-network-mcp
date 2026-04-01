@@ -389,9 +389,7 @@ class TestNetworkManagerApGroups:
         }
         mock_connection.request.return_value = created_group
 
-        result = await network_manager.create_ap_group(
-            {"name": "Indoor APs", "device_macs": ["aa:bb:cc:dd:ee:01"]}
-        )
+        result = await network_manager.create_ap_group({"name": "Indoor APs", "device_macs": ["aa:bb:cc:dd:ee:01"]})
 
         assert result is not None
         assert result["name"] == "Indoor APs"

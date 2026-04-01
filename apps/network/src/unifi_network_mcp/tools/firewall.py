@@ -151,7 +151,7 @@ async def get_firewall_policy_details(
             "details": json.loads(json.dumps(policy, default=str)),
         }
     except Exception as e:
-        logger.error(f"Error getting firewall policy details for {policy_id}: {e}", exc_info=True)
+        logger.error("Error getting firewall policy details for %s: %s", policy_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get firewall policy details for {policy_id}: {e}"}
 
 
@@ -224,7 +224,7 @@ async def toggle_firewall_policy(
                 },
             )
 
-        logger.info(f"Attempting to toggle firewall policy '{policy_name}' ({policy_id}) to {new_state}")
+        logger.info("Attempting to toggle firewall policy '%s' (%s) to %s", policy_name, policy_id, new_state)
 
         success = await firewall_manager.toggle_firewall_policy(policy_id)
 
@@ -235,7 +235,7 @@ async def toggle_firewall_policy(
             )
             final_state = toggled_policy_obj.enabled if toggled_policy_obj else new_state
 
-            logger.info(f"Successfully toggled firewall policy '{policy_name}' ({policy_id}) to {final_state}")
+            logger.info("Successfully toggled firewall policy '%s' (%s) to %s", policy_name, policy_id, final_state)
             return {
                 "success": True,
                 "policy_id": policy_id,
@@ -243,7 +243,7 @@ async def toggle_firewall_policy(
                 "message": f"Firewall policy '{policy_name}' ({policy_id}) toggled successfully to {'enabled' if final_state else 'disabled'}.",
             }
         else:
-            logger.error(f"Failed to toggle firewall policy '{policy_name}' ({policy_id}). Manager returned false.")
+            logger.error("Failed to toggle firewall policy '%s' (%s). Manager returned false.", policy_name, policy_id)
             policy_after_toggle_obj = next(
                 (p for p in await firewall_manager.get_firewall_policies(include_predefined=True) if p.id == policy_id),
                 None,
@@ -256,7 +256,7 @@ async def toggle_firewall_policy(
                 "error": f"Failed to toggle firewall policy '{policy_name}' ({policy_id}). Check server logs.",
             }
     except Exception as e:
-        logger.error(f"Error toggling firewall policy {policy_id}: {e}", exc_info=True)
+        logger.error("Error toggling firewall policy %s: %s", policy_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to toggle firewall policy {policy_id}: {e}"}
 
 

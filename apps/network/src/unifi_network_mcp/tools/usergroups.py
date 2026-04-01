@@ -73,7 +73,7 @@ async def list_usergroups() -> Dict[str, Any]:
             "usergroups": formatted_groups,
         }
     except Exception as e:
-        logger.error(f"Error listing user groups: {e}", exc_info=True)
+        logger.error("Error listing user groups: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list user groups: {e}"}
 
 
@@ -103,7 +103,7 @@ async def get_usergroup_details(
             "error": f"User group not found with ID: {group_id}",
         }
     except Exception as e:
-        logger.error(f"Error getting user group details for {group_id}: {e}", exc_info=True)
+        logger.error("Error getting user group details for %s: %s", group_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get user group details for {group_id}: {e}"}
 
 
@@ -172,7 +172,7 @@ async def create_usergroup(
             }
         return {"success": False, "error": "Failed to create user group."}
     except Exception as e:
-        logger.error(f"Error creating user group: {e}", exc_info=True)
+        logger.error("Error creating user group: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to create user group: {e}"}
 
 
@@ -260,5 +260,5 @@ async def update_usergroup(
             }
         return {"success": False, "error": f"Failed to update user group {group_id}."}
     except Exception as e:
-        logger.error(f"Error updating user group {group_id}: {e}", exc_info=True)
+        logger.error("Error updating user group %s: %s", group_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update user group {group_id}: {e}"}

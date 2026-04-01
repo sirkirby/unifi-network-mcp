@@ -101,9 +101,9 @@ UNIFI_CONTROLLER_TYPE = os.getenv("UNIFI_CONTROLLER_TYPE", "auto").lower()
 # Validate controller type
 if UNIFI_CONTROLLER_TYPE not in VALID_CONTROLLER_TYPES:
     logger.warning(
-        f"Invalid UNIFI_CONTROLLER_TYPE: '{UNIFI_CONTROLLER_TYPE}'. "
-        f"Must be one of: {', '.join(sorted(VALID_CONTROLLER_TYPES))}. "
-        f"Defaulting to 'auto'."
+        "Invalid UNIFI_CONTROLLER_TYPE: '%s'. Must be one of: %s. Defaulting to 'auto'.",
+        UNIFI_CONTROLLER_TYPE,
+        ", ".join(sorted(VALID_CONTROLLER_TYPES)),
     )
     UNIFI_CONTROLLER_TYPE = "auto"
 

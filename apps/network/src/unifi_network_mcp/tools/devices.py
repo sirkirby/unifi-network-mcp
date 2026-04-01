@@ -133,7 +133,7 @@ async def list_devices(
             if target_state is not None:
                 devices_raw = [d for d in devices_raw if d.get("state") == target_state]
             else:
-                logger.warning(f"Unknown status filter: {status}")
+                logger.warning("Unknown status filter: %s", status)
 
         formatted_devices = []
         state_map = {
@@ -248,7 +248,7 @@ async def list_devices(
             "devices": formatted_devices,
         }
     except Exception as e:
-        logger.error(f"Error listing devices: {e}", exc_info=True)
+        logger.error("Error listing devices: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list devices: {e}"}
 
 
@@ -282,7 +282,7 @@ async def get_device_details(
             "error": f"Device not found with MAC address: {mac_address}",
         }
     except Exception as e:
-        logger.error(f"Error getting device details for {mac_address}: {e}", exc_info=True)
+        logger.error("Error getting device details for %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to get device details for {mac_address}: {e}"}
 
 
@@ -345,7 +345,7 @@ async def reboot_device(
                 warnings=["Device will be offline for 1-2 minutes during reboot"],
             )
 
-        logger.info(f"Attempting to reboot device: {mac_address}")
+        logger.info("Attempting to reboot device: %s", mac_address)
         success = await device_manager.reboot_device(mac_address)
 
         if success:
@@ -359,7 +359,7 @@ async def reboot_device(
                 "error": f"Failed to reboot device: {mac_address}",
             }
     except Exception as e:
-        logger.error(f"Error rebooting device {mac_address}: {e}", exc_info=True)
+        logger.error("Error rebooting device %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to reboot device {mac_address}: {e}"}
 
 
@@ -416,7 +416,7 @@ async def rename_device(
             }
         return {"success": False, "error": f"Failed to rename device {mac_address}."}
     except Exception as e:
-        logger.error(f"Error renaming device {mac_address}: {e}", exc_info=True)
+        logger.error("Error renaming device %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to rename device {mac_address}: {e}"}
 
 
@@ -482,7 +482,7 @@ async def adopt_device(
             }
         return {"success": False, "error": f"Failed to adopt device {mac_address}."}
     except Exception as e:
-        logger.error(f"Error adopting device {mac_address}: {e}", exc_info=True)
+        logger.error("Error adopting device %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to adopt device {mac_address}: {e}"}
 
 
@@ -560,7 +560,7 @@ async def upgrade_device(
             }
         return {"success": False, "error": f"Failed to upgrade device {mac_address}."}
     except Exception as e:
-        logger.error(f"Error upgrading device {mac_address}: {e}", exc_info=True)
+        logger.error("Error upgrading device %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to upgrade device {mac_address}: {e}"}
 
 
@@ -602,7 +602,7 @@ async def get_device_radio(
             **result,
         }
     except Exception as e:
-        logger.error(f"Error getting radio info for {mac_address}: {e}", exc_info=True)
+        logger.error("Error getting radio info for %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to get radio info for device {mac_address}: {e}"}
 
 
@@ -751,7 +751,7 @@ async def update_device_radio(
             }
         return {"success": False, "error": f"Failed to update radio '{radio}' on device {mac_address}."}
     except Exception as e:
-        logger.error(f"Error updating radio on {mac_address}: {e}", exc_info=True)
+        logger.error("Error updating radio on %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to update radio on device {mac_address}: {e}"}
 
 
@@ -958,7 +958,9 @@ async def list_rogue_aps(
 async def trigger_rf_scan(
     ap_mac: Annotated[
         str,
-        Field(description="MAC address of the access point to scan, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='ap')"),
+        Field(
+            description="MAC address of the access point to scan, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='ap')"
+        ),
     ],
     confirm: Annotated[
         bool,
@@ -1007,7 +1009,9 @@ async def trigger_rf_scan(
 async def get_rf_scan_results(
     ap_mac: Annotated[
         str,
-        Field(description="MAC address of the access point, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='ap')"),
+        Field(
+            description="MAC address of the access point, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='ap')"
+        ),
     ],
 ) -> Dict[str, Any]:
     """Get RF spectrum scan results for an AP."""

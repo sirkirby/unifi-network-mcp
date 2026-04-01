@@ -49,11 +49,11 @@ class ClientManager:
                         self._connection._update_cache(cache_key, raw_clients)
                         return raw_clients  # type: ignore[return-value]
                 except Exception as fallback_e:
-                    logger.debug(f"Raw clients fallback failed: {fallback_e}")
+                    logger.debug("Raw clients fallback failed: %s", fallback_e)
             self._connection._update_cache(cache_key, clients)
             return clients
         except Exception as e:
-            logger.error(f"Error getting online clients: {e}")
+            logger.error("Error getting online clients: %s", e)
             return []
 
     async def get_all_clients(self) -> List[Client]:
@@ -82,11 +82,11 @@ class ClientManager:
                         self._connection._update_cache(cache_key, raw_all)
                         return raw_all  # type: ignore[return-value]
                 except Exception as fallback_e:
-                    logger.debug(f"Raw all-clients fallback failed: {fallback_e}")
+                    logger.debug("Raw all-clients fallback failed: %s", fallback_e)
             self._connection._update_cache(cache_key, all_clients)
             return all_clients
         except Exception as e:
-            logger.error(f"Error getting all clients: {e}")
+            logger.error("Error getting all clients: %s", e)
             return []
 
     async def get_client_details(self, client_mac: str) -> Optional[Client]:
@@ -94,7 +94,7 @@ class ClientManager:
         all_clients = await self.get_all_clients()
         client: Optional[Client] = next((c for c in all_clients if c.mac == client_mac), None)
         if not client:
-            logger.debug(f"Client details for MAC {client_mac} not found in clients_all list.")
+            logger.debug("Client details for MAC %s not found in clients_all list.", client_mac)
         return client
 
     async def block_client(self, client_mac: str) -> bool:
@@ -108,11 +108,11 @@ class ClientManager:
             )
             # Call the updated request method
             await self._connection.request(api_request)
-            logger.info(f"Block command sent for client {client_mac}")
+            logger.info("Block command sent for client %s", client_mac)
             self._connection._invalidate_cache(f"{CACHE_PREFIX_CLIENTS}")  # Invalidate all client caches
             return True
         except Exception as e:
-            logger.error(f"Error blocking client {client_mac}: {e}")
+            logger.error("Error blocking client %s: %s", client_mac, e)
             return False
 
     async def unblock_client(self, client_mac: str) -> bool:
@@ -126,11 +126,11 @@ class ClientManager:
             )
             # Call the updated request method
             await self._connection.request(api_request)
-            logger.info(f"Unblock command sent for client {client_mac}")
+            logger.info("Unblock command sent for client %s", client_mac)
             self._connection._invalidate_cache(f"{CACHE_PREFIX_CLIENTS}")
             return True
         except Exception as e:
-            logger.error(f"Error unblocking client {client_mac}: {e}")
+            logger.error("Error unblocking client %s: %s", client_mac, e)
             return False
 
     async def rename_client(self, client_mac: str, name: str) -> bool:
@@ -138,7 +138,7 @@ class ClientManager:
         try:
             client = await self.get_client_details(client_mac)
             if not client or "_id" not in client.raw:
-                logger.error(f"Cannot rename client {client_mac}: Not found or missing ID.")
+                logger.error("Cannot rename client %s: Not found or missing ID.", client_mac)
                 return False
             client_id = client.raw["_id"]
 
@@ -149,16 +149,18 @@ class ClientManager:
                 await self._connection.request(api_request)
             except Exception as e:
                 logger.debug(
-                    f"REST endpoint failed for rename, falling back to legacy /upd/user/ for {client_mac}: {e}",
+                    "REST endpoint failed for rename, falling back to legacy /upd/user/ for %s: %s",
+                    client_mac,
+                    e,
                     exc_info=True,
                 )
                 api_request = ApiRequest(method="put", path=f"/upd/user/{client_id}", data={"name": name})
                 await self._connection.request(api_request)
-            logger.info(f"Rename command sent for client {client_mac} to '{name}'")
+            logger.info("Rename command sent for client %s to '%s'", client_mac, name)
             self._connection._invalidate_cache(f"{CACHE_PREFIX_CLIENTS}")
             return True
         except Exception as e:
-            logger.error(f"Error renaming client {client_mac} to '{name}': {e}")
+            logger.error("Error renaming client %s to '%s': %s", client_mac, name, e)
             return False
 
     async def force_reconnect_client(self, client_mac: str) -> bool:
@@ -170,11 +172,11 @@ class ClientManager:
                 data={"mac": client_mac, "cmd": "kick-sta"},
             )
             await self._connection.request(api_request)
-            logger.info(f"Force reconnect (kick) command sent for client {client_mac}")
+            logger.info("Force reconnect (kick) command sent for client %s", client_mac)
             self._connection._invalidate_cache(f"{CACHE_PREFIX_CLIENTS}")
             return True
         except Exception as e:
-            logger.error(f"Error forcing reconnect for client {client_mac}: {e}")
+            logger.error("Error forcing reconnect for client %s: %s", client_mac, e)
             return False
 
     async def get_blocked_clients(self) -> List[Client]:
@@ -205,11 +207,11 @@ class ClientManager:
             api_request = ApiRequest(method="post", path="/cmd/stamgr", data=payload)
             # Call the updated request method
             await self._connection.request(api_request)
-            logger.info(f"Authorize command sent for guest {client_mac} for {minutes} minutes")
+            logger.info("Authorize command sent for guest %s for %s minutes", client_mac, minutes)
             self._connection._invalidate_cache(f"{CACHE_PREFIX_CLIENTS}")
             return True
         except Exception as e:
-            logger.error(f"Error authorizing guest {client_mac}: {e}")
+            logger.error("Error authorizing guest %s: %s", client_mac, e)
             return False
 
     async def unauthorize_guest(self, client_mac: str) -> bool:
@@ -221,11 +223,11 @@ class ClientManager:
                 data={"mac": client_mac, "cmd": "unauthorize-guest"},
             )
             await self._connection.request(api_request)
-            logger.info(f"Unauthorize command sent for guest {client_mac}")
+            logger.info("Unauthorize command sent for guest %s", client_mac)
             self._connection._invalidate_cache(f"{CACHE_PREFIX_CLIENTS}")
             return True
         except Exception as e:
-            logger.error(f"Error unauthorizing guest {client_mac}: {e}")
+            logger.error("Error unauthorizing guest %s: %s", client_mac, e)
             return False
 
     async def get_client_by_ip(self, ip_address: str) -> Optional[Client]:
@@ -282,19 +284,19 @@ class ClientManager:
             # Get client to find their internal _id
             client = await self.get_client_details(client_mac)
             if not client:
-                logger.error(f"Cannot set IP settings for {client_mac}: Client not found")
+                logger.error("Cannot set IP settings for %s: Client not found", client_mac)
                 return False
 
             client_raw = client.raw if hasattr(client, "raw") else client
             if "_id" not in client_raw:
-                logger.error(f"Cannot set IP settings for {client_mac}: Missing _id")
+                logger.error("Cannot set IP settings for %s: Missing _id", client_mac)
                 return False
 
             client_id = client_raw["_id"]
 
             # If client is not "noted" (known), mark it first to enable IP config
             if not client_raw.get("noted"):
-                logger.info(f"Client {client_mac} not noted, marking as known first")
+                logger.info("Client %s not noted, marking as known first", client_mac)
                 note_payload = {"noted": True}
                 if not client_raw.get("name") and client_raw.get("hostname"):
                     note_payload["name"] = client_raw["hostname"]
@@ -306,7 +308,7 @@ class ClientManager:
                     )
                     await self._connection.request(note_request)
                 except Exception as note_err:
-                    logger.warning(f"Could not mark client as noted: {note_err}")
+                    logger.warning("Could not mark client as noted: %s", note_err)
 
             # Build payload with only explicitly provided fields
             payload: dict = {}
@@ -334,7 +336,7 @@ class ClientManager:
                 payload["local_dns_record"] = local_dns_record
 
             if not payload:
-                logger.warning(f"No IP settings provided for {client_mac}")
+                logger.warning("No IP settings provided for %s", client_mac)
                 return False
 
             api_request = ApiRequest(
@@ -343,9 +345,9 @@ class ClientManager:
                 data=payload,
             )
             await self._connection.request(api_request)
-            logger.info(f"IP settings updated for client {client_mac}: {payload}")
+            logger.info("IP settings updated for client %s: %s", client_mac, payload)
             self._connection._invalidate_cache(f"{CACHE_PREFIX_CLIENTS}")
             return True
         except Exception as e:
-            logger.error(f"Error setting IP settings for {client_mac}: {e}")
+            logger.error("Error setting IP settings for %s: %s", client_mac, e)
             return False

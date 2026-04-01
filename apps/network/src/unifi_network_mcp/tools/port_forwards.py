@@ -79,7 +79,7 @@ async def list_port_forwards() -> Dict[str, Any]:  # Removed context, adjusted r
             "port_forwards": port_forward_list,
         }
     except Exception as e:
-        logger.error(f"Error listing port forwards: {e}", exc_info=True)
+        logger.error("Error listing port forwards: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list port forwards: {e}"}
 
 
@@ -143,7 +143,7 @@ async def get_port_forward(
             "details": json.loads(json.dumps(rule, default=str)),
         }
     except Exception as e:
-        logger.error(f"Error getting port forward {port_forward_id}: {e}", exc_info=True)
+        logger.error("Error getting port forward %s: %s", port_forward_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get port forward {port_forward_id}: {e}"}
 
 
@@ -221,7 +221,7 @@ async def toggle_port_forward(
 
         new_state = not current_enabled
 
-        logger.info(f"Attempting to toggle port forward '{rule_name}' ({port_forward_id}) to {new_state}")
+        logger.info("Attempting to toggle port forward '%s' (%s) to %s", rule_name, port_forward_id, new_state)
         # Assuming toggle_port_forward directly updates the rule state.
         # If firewall_manager.toggle_port_forward doesn't exist or works differently,
         # we might need to fetch, modify 'enabled', and call update_port_forward.
@@ -234,7 +234,7 @@ async def toggle_port_forward(
         success = await firewall_manager.update_port_forward(port_forward_id, update_payload)
 
         if success:
-            logger.info(f"Successfully toggled port forward '{rule_name}' ({port_forward_id}) to {new_state}")
+            logger.info("Successfully toggled port forward '%s' (%s) to %s", rule_name, port_forward_id, new_state)
             return {
                 "success": True,
                 "port_forward_id": port_forward_id,
@@ -251,7 +251,10 @@ async def toggle_port_forward(
             )
             state_after = rule_after_toggle.get("enabled") if rule_after_toggle else "unknown"
             logger.error(
-                f"Failed to toggle port forward '{rule_name}' ({port_forward_id}). State after attempt: {state_after}. Manager update returned false."
+                "Failed to toggle port forward '%s' (%s). State after attempt: %s. Manager update returned false.",
+                rule_name,
+                port_forward_id,
+                state_after,
             )
             return {
                 "success": False,
@@ -259,7 +262,7 @@ async def toggle_port_forward(
             }
 
     except Exception as e:
-        logger.error(f"Error toggling port forward {port_forward_id}: {e}", exc_info=True)
+        logger.error("Error toggling port forward %s: %s", port_forward_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to toggle port forward {port_forward_id}: {e}"}
 
 
@@ -314,7 +317,7 @@ async def create_port_forward(
     # Validate the input
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("port_forward", port_forward_data)
     if not is_valid:
-        logger.warning(f"Invalid port forward data: {error_msg}")
+        logger.warning("Invalid port forward data: %s", error_msg)
         return {"success": False, "error": error_msg}
 
     # Required fields check
@@ -343,8 +346,12 @@ async def create_port_forward(
             rule_data["src"] = validated_data["src_ip"]
 
         logger.info(
-            f"Attempting to create port forward: {validated_data['name']} "
-            f"({rule_data['proto']} {validated_data['dst_port']} -> {validated_data['fwd_ip']}:{validated_data['fwd_port']})"
+            "Attempting to create port forward: %s (%s %s -> %s:%s)",
+            validated_data["name"],
+            rule_data["proto"],
+            validated_data["dst_port"],
+            validated_data["fwd_ip"],
+            validated_data["fwd_port"],
         )
 
         result = await firewall_manager.create_port_forward(rule_data)
@@ -352,7 +359,7 @@ async def create_port_forward(
         if result:
             new_rule_id = result if isinstance(result, str) else result.get("_id", "unknown")
             details = result if isinstance(result, dict) else {"id": new_rule_id}
-            logger.info(f"Successfully created port forward '{validated_data['name']}' with ID {new_rule_id}")
+            logger.info("Successfully created port forward '%s' with ID %s", validated_data["name"], new_rule_id)
             return {
                 "success": True,
                 "message": f"Port forward '{validated_data['name']}' created successfully.",
@@ -365,7 +372,7 @@ async def create_port_forward(
                 if isinstance(result, dict)
                 else "Manager returned failure"
             )
-            logger.error(f"Failed to create port forward '{validated_data['name']}'. Reason: {error_msg}")
+            logger.error("Failed to create port forward '%s'. Reason: %s", validated_data["name"], error_msg)
             return {
                 "success": False,
                 "error": f"Failed to create port forward '{validated_data['name']}'. {error_msg}",
@@ -373,7 +380,9 @@ async def create_port_forward(
 
     except Exception as e:
         logger.error(
-            f"Error creating port forward '{validated_data.get('name', 'unknown')}': {e}",
+            "Error creating port forward '%s': %s",
+            validated_data.get("name", "unknown"),
+            e,
             exc_info=True,
         )
         return {"success": False, "error": str(e)}
@@ -460,11 +469,11 @@ async def update_port_forward(
     # Validate the update data against the update schema
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("port_forward_update", update_data)
     if not is_valid:
-        logger.warning(f"Invalid port forward update data for ID {port_forward_id}: {error_msg}")
+        logger.warning("Invalid port forward update data for ID %s: %s", port_forward_id, error_msg)
         return {"success": False, "error": f"Invalid update data: {error_msg}"}
 
     if not validated_data:  # Ensure validation didn't return an empty dict if input was invalid
-        logger.warning(f"Port forward update data for ID {port_forward_id} is empty after validation.")
+        logger.warning("Port forward update data for ID %s is empty after validation.", port_forward_id)
         return {
             "success": False,
             "error": "Update data is effectively empty or invalid.",
@@ -514,7 +523,10 @@ async def update_port_forward(
         # We only pass the fields being changed to the manager update function
 
         logger.info(
-            f"Attempting to update port forward '{rule_name}' ({port_forward_id}) with fields: {', '.join(updated_fields_list)}"
+            "Attempting to update port forward '%s' (%s) with fields: %s",
+            rule_name,
+            port_forward_id,
+            ", ".join(updated_fields_list),
         )
 
         # Assume firewall_manager.update_port_forward(id, data) exists
@@ -526,7 +538,7 @@ async def update_port_forward(
             updated_rule_obj = await firewall_manager.get_port_forward_by_id(port_forward_id)
             updated_rule = updated_rule_obj.raw if (updated_rule_obj and hasattr(updated_rule_obj, "raw")) else {}
 
-            logger.info(f"Successfully updated port forward '{rule_name}' ({port_forward_id})")
+            logger.info("Successfully updated port forward '%s' (%s)", rule_name, port_forward_id)
             return {
                 "success": True,
                 "port_forward_id": port_forward_id,
@@ -534,7 +546,7 @@ async def update_port_forward(
                 "details": json.loads(json.dumps(updated_rule, default=str)),
             }
         else:
-            logger.error(f"Failed to update port forward '{rule_name}' ({port_forward_id}). Manager returned false.")
+            logger.error("Failed to update port forward '%s' (%s). Manager returned false.", rule_name, port_forward_id)
             # Attempt to fetch rule again to see if partial update occurred? Or just report failure.
             rule_after_update_obj = await firewall_manager.get_port_forward_by_id(port_forward_id)
             rule_after_update = (
@@ -550,7 +562,7 @@ async def update_port_forward(
             }
 
     except Exception as e:
-        logger.error(f"Error updating port forward {port_forward_id}: {e}", exc_info=True)
+        logger.error("Error updating port forward %s: %s", port_forward_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update port forward {port_forward_id}: {e}"}
 
 

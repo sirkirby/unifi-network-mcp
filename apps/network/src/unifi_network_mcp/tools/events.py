@@ -74,7 +74,7 @@ async def list_events(
             "events": events,
         }
     except Exception as e:
-        logger.error(f"Error listing events: {e}", exc_info=True)
+        logger.error("Error listing events: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list events: {e}"}
 
 
@@ -110,7 +110,7 @@ async def list_alarms(
             "alarms": alarms,
         }
     except Exception as e:
-        logger.error(f"Error listing alarms: {e}", exc_info=True)
+        logger.error("Error listing alarms: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list alarms: {e}"}
 
 
@@ -133,7 +133,7 @@ async def get_event_types() -> Dict[str, Any]:
             "usage": "Use prefix value with unifi_list_events event_type parameter",
         }
     except Exception as e:
-        logger.error(f"Error getting event types: {e}", exc_info=True)
+        logger.error("Error getting event types: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to get event types: {e}"}
 
 
@@ -168,7 +168,7 @@ async def archive_alarm(
             }
         return {"success": False, "error": f"Failed to archive alarm {alarm_id}."}
     except Exception as e:
-        logger.error(f"Error archiving alarm {alarm_id}: {e}", exc_info=True)
+        logger.error("Error archiving alarm %s: %s", alarm_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to archive alarm {alarm_id}: {e}"}
 
 
@@ -200,5 +200,5 @@ async def archive_all_alarms(
             }
         return {"success": False, "error": "Failed to archive all alarms."}
     except Exception as e:
-        logger.error(f"Error archiving all alarms: {e}", exc_info=True)
+        logger.error("Error archiving all alarms: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to archive all alarms: {e}"}

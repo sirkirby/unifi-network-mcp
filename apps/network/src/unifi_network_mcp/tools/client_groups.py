@@ -54,7 +54,7 @@ async def list_client_groups() -> Dict[str, Any]:
             "groups": formatted,
         }
     except Exception as e:
-        logger.error(f"Error listing client groups: {e}", exc_info=True)
+        logger.error("Error listing client groups: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list client groups: {e}"}
 
 
@@ -94,7 +94,7 @@ async def get_client_group_details(
             "details": json.loads(json.dumps(group, default=str)),
         }
     except Exception as e:
-        logger.error(f"Error getting client group {group_id}: {e}", exc_info=True)
+        logger.error("Error getting client group %s: %s", group_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get client group {group_id}: {e}"}
 
 
@@ -154,7 +154,7 @@ async def create_client_group(
             }
         return {"success": False, "error": f"Failed to create client group '{name}'."}
     except Exception as e:
-        logger.error(f"Error creating client group: {e}", exc_info=True)
+        logger.error("Error creating client group: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to create client group '{name}': {e}"}
 
 
@@ -255,5 +255,5 @@ async def delete_client_group(
             return {"success": True, "message": f"Client group '{group_id}' deleted successfully."}
         return {"success": False, "error": f"Failed to delete client group '{group_id}'."}
     except Exception as e:
-        logger.error(f"Error deleting client group {group_id}: {e}", exc_info=True)
+        logger.error("Error deleting client group %s: %s", group_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to delete client group '{group_id}': {e}"}

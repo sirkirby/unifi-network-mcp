@@ -103,13 +103,13 @@ class VpnManager:
             elif isinstance(response, list):
                 networks = response
             else:
-                logger.warning(f"Unexpected networkconf response format: {type(response)}")
+                logger.warning("Unexpected networkconf response format: %s", type(response))
                 networks = []
 
             self._connection._update_cache(cache_key, networks)
             return networks
         except Exception as e:
-            logger.error(f"Error fetching network configurations: {e}")
+            logger.error("Error fetching network configurations: %s", e)
             return []
 
     async def get_vpn_configs(self, include_clients: bool = True, include_servers: bool = True) -> List[Dict[str, Any]]:
@@ -142,17 +142,20 @@ class VpnManager:
                 if (include_clients and is_client) or (include_servers and is_server):
                     vpn_configs.append(network)
                     logger.debug(
-                        f"Found VPN config: {network.get('name', 'unnamed')} "
-                        f"(purpose={purpose}, vpn_type={vpn_type}, "
-                        f"client={is_client}, server={is_server})"
+                        "Found VPN config: %s (purpose=%s, vpn_type=%s, client=%s, server=%s)",
+                        network.get("name", "unnamed"),
+                        purpose,
+                        vpn_type,
+                        is_client,
+                        is_server,
                     )
 
-            logger.debug(f"Found {len(vpn_configs)} VPN configurations")
+            logger.debug("Found %s VPN configurations", len(vpn_configs))
             self._connection._update_cache(cache_key, vpn_configs)
             return vpn_configs
 
         except Exception as e:
-            logger.error(f"Error getting VPN configurations: {e}")
+            logger.error("Error getting VPN configurations: %s", e)
             return []
 
     async def get_vpn_clients(self) -> List[Dict[str, Any]]:
@@ -183,7 +186,7 @@ class VpnManager:
         vpn_clients = await self.get_vpn_clients()
         client = next((c for c in vpn_clients if c.get("_id") == client_id), None)
         if not client:
-            logger.warning(f"VPN client {client_id} not found")
+            logger.warning("VPN client %s not found", client_id)
         return client
 
     async def get_vpn_server_details(self, server_id: str) -> Optional[Dict[str, Any]]:
@@ -198,7 +201,7 @@ class VpnManager:
         vpn_servers = await self.get_vpn_servers()
         server = next((s for s in vpn_servers if s.get("_id") == server_id), None)
         if not server:
-            logger.warning(f"VPN server {server_id} not found")
+            logger.warning("VPN server %s not found", server_id)
         return server
 
     async def _update_vpn_config(self, config_id: str, update_data: Dict[str, Any]) -> bool:
@@ -217,7 +220,7 @@ class VpnManager:
             existing = next((n for n in networks if n.get("_id") == config_id), None)
 
             if not existing:
-                logger.error(f"VPN configuration {config_id} not found")
+                logger.error("VPN configuration %s not found", config_id)
                 return False
 
             # Merge updates into existing config (deep merge preserves nested sub-objects)
@@ -230,7 +233,7 @@ class VpnManager:
             )
             await self._connection.request(api_request)
 
-            logger.info(f"Updated VPN configuration {config_id}")
+            logger.info("Updated VPN configuration %s", config_id)
 
             # Invalidate caches
             self._connection._invalidate_cache(f"{CACHE_PREFIX_NETWORKS}_{self._connection.site}")
@@ -241,7 +244,7 @@ class VpnManager:
             return True
 
         except Exception as e:
-            logger.error(f"Error updating VPN configuration {config_id}: {e}")
+            logger.error("Error updating VPN configuration %s: %s", config_id, e)
             return False
 
     async def update_vpn_client_state(self, client_id: str, enabled: bool) -> bool:
@@ -256,12 +259,12 @@ class VpnManager:
         """
         client = await self.get_vpn_client_details(client_id)
         if not client:
-            logger.error(f"VPN client {client_id} not found, cannot update state")
+            logger.error("VPN client %s not found, cannot update state", client_id)
             return False
 
         result = await self._update_vpn_config(client_id, {"enabled": enabled})
         if result:
-            logger.info(f"VPN client {client.get('name', client_id)} {'enabled' if enabled else 'disabled'}")
+            logger.info("VPN client %s %s", client.get("name", client_id), "enabled" if enabled else "disabled")
         return result
 
     async def update_vpn_server_state(self, server_id: str, enabled: bool) -> bool:
@@ -276,12 +279,12 @@ class VpnManager:
         """
         server = await self.get_vpn_server_details(server_id)
         if not server:
-            logger.error(f"VPN server {server_id} not found, cannot update state")
+            logger.error("VPN server %s not found, cannot update state", server_id)
             return False
 
         result = await self._update_vpn_config(server_id, {"enabled": enabled})
         if result:
-            logger.info(f"VPN server {server.get('name', server_id)} {'enabled' if enabled else 'disabled'}")
+            logger.info("VPN server %s %s", server.get("name", server_id), "enabled" if enabled else "disabled")
         return result
 
     async def toggle_vpn_config(self, config_id: str) -> bool:
@@ -297,7 +300,7 @@ class VpnManager:
         config = next((n for n in networks if n.get("_id") == config_id), None)
 
         if not config or not is_vpn_network(config):
-            logger.error(f"VPN configuration {config_id} not found")
+            logger.error("VPN configuration %s not found", config_id)
             return False
 
         new_state = not config.get("enabled", True)

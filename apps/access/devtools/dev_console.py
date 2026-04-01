@@ -38,7 +38,7 @@ async def _list_tools(server) -> List[Any]:
         tools = await server.list_tools()
         return tools
     except Exception as exc:
-        logger.error(f"Failed to list tools: {exc}")
+        logger.error("Failed to list tools: %s", exc)
         return []
 
 
@@ -50,7 +50,7 @@ def _get_all_tools_from_index() -> List[Dict[str, Any]]:
         index = get_tool_index()
         return index.get("tools", [])
     except Exception as exc:
-        logger.error(f"Failed to get tool index: {exc}")
+        logger.error("Failed to get tool index: %s", exc)
         return []
 
 
@@ -123,7 +123,7 @@ def _parse_args_with_schema(params_schema: Optional[Dict[str, Any]]) -> Dict[str
             data = json.loads(line)
             return data if isinstance(data, dict) else {}
         except Exception as exc:
-            logger.error(f"Invalid JSON: {exc}. Proceeding to guided prompts.")
+            logger.error("Invalid JSON: %s. Proceeding to guided prompts.", exc)
 
     if line and params_schema:
         req = params_schema.get("required", []) or []
@@ -169,7 +169,7 @@ async def _invoke_tool(server, tool) -> None:
         result = await server.call_tool(name, args)
         _print("Result", result)
     except Exception as exc:
-        logger.error(f"Tool execution failed: {exc}")
+        logger.error("Tool execution failed: %s", exc)
 
 
 async def main_async() -> None:
