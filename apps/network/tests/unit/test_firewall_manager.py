@@ -1,8 +1,8 @@
-"""Tests for firewall manager update_traffic_route mutation safety.
+"""Tests for firewall manager mutation safety.
 
-Verifies that update_traffic_route() uses deepcopy to protect cached
-TrafficRoute.raw from mutation — the same pattern tested in
-test_device_radio.py for device radio updates.
+Verifies that update methods use deepcopy to protect cached .raw
+from mutation, and that update_firewall_policy uses the single-policy
+endpoint with deep_merge.
 """
 
 import copy
@@ -113,3 +113,96 @@ class TestUpdateTrafficRouteMutationSafety:
 
         assert result is False
         assert route.raw == original_raw
+
+
+# ---------------------------------------------------------------------------
+# update_firewall_policy — endpoint and merge tests (issue #124)
+# ---------------------------------------------------------------------------
+
+SAMPLE_POLICY_RAW = {
+    "_id": "pol001",
+    "name": "Test Policy",
+    "action": "ALLOW",
+    "enabled": True,
+    "logging": False,
+    "predefined": False,
+    "protocol": "all",
+    "ip_version": "BOTH",
+    "source": {
+        "zone_id": "zone-internal",
+        "matching_target": "NETWORK",
+        "network_ids": ["net001"],
+    },
+    "destination": {
+        "zone_id": "zone-external",
+        "matching_target": "ANY",
+    },
+}
+
+
+def _make_firewall_policy(raw: dict | None = None):
+    """Create a mock FirewallPolicy with the given raw dict."""
+    policy = MagicMock()
+    policy.raw = raw if raw is not None else copy.deepcopy(SAMPLE_POLICY_RAW)
+    policy.id = policy.raw["_id"]
+    policy.predefined = policy.raw.get("predefined", False)
+    return policy
+
+
+class TestUpdateFirewallPolicyEndpoint:
+    """Ensure update_firewall_policy uses single-policy endpoint, not batch."""
+
+    @pytest.mark.asyncio
+    async def test_uses_single_policy_endpoint(self, firewall_manager, mock_connection):
+        """PUT should target /firewall-policies/{id}, not /firewall-policies/batch."""
+        policy = _make_firewall_policy()
+
+        with patch.object(firewall_manager, "get_firewall_policies", new_callable=AsyncMock, return_value=[policy]):
+            result = await firewall_manager.update_firewall_policy("pol001", {"logging": True})
+
+        assert result is True
+        mock_connection.request.assert_called_once()
+        api_request = mock_connection.request.call_args[0][0]
+        assert api_request.path == "/firewall-policies/pol001"
+        assert api_request.method == "put"
+
+    @pytest.mark.asyncio
+    async def test_sends_merged_payload_not_wrapped_in_list(self, firewall_manager, mock_connection):
+        """Payload should be a single dict, not a list."""
+        policy = _make_firewall_policy()
+
+        with patch.object(firewall_manager, "get_firewall_policies", new_callable=AsyncMock, return_value=[policy]):
+            await firewall_manager.update_firewall_policy("pol001", {"logging": True})
+
+        api_request = mock_connection.request.call_args[0][0]
+        payload = api_request.data
+        assert isinstance(payload, dict)
+        assert payload["logging"] is True
+        assert payload["_id"] == "pol001"
+
+    @pytest.mark.asyncio
+    async def test_deep_merges_nested_objects(self, firewall_manager, mock_connection):
+        """Nested source/destination dicts should be deep-merged, not replaced."""
+        policy = _make_firewall_policy()
+
+        with patch.object(firewall_manager, "get_firewall_policies", new_callable=AsyncMock, return_value=[policy]):
+            await firewall_manager.update_firewall_policy("pol001", {"source": {"zone_id": "zone-wan"}})
+
+        api_request = mock_connection.request.call_args[0][0]
+        payload = api_request.data
+        # Updated key
+        assert payload["source"]["zone_id"] == "zone-wan"
+        # Sibling keys preserved by deep_merge
+        assert payload["source"]["matching_target"] == "NETWORK"
+        assert payload["source"]["network_ids"] == ["net001"]
+
+    @pytest.mark.asyncio
+    async def test_does_not_mutate_cached_policy(self, firewall_manager, mock_connection):
+        """The cached FirewallPolicy.raw must be unchanged after update."""
+        policy = _make_firewall_policy()
+        original_raw = copy.deepcopy(policy.raw)
+
+        with patch.object(firewall_manager, "get_firewall_policies", new_callable=AsyncMock, return_value=[policy]):
+            await firewall_manager.update_firewall_policy("pol001", {"logging": True})
+
+        assert policy.raw == original_raw

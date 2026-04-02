@@ -8,6 +8,8 @@ from aiounifi.models.firewall_policy import FirewallPolicy
 from aiounifi.models.port_forward import PortForward
 from aiounifi.models.traffic_route import TrafficRoute
 
+from unifi_core.merge import deep_merge
+
 from .connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -125,7 +127,7 @@ class FirewallManager:
 
         if not updates:
             logger.warning("No updates provided for firewall policy %s.", policy_id)
-            return False  # Or maybe True, as no action was needed? Returning False for clarity.
+            return False
 
         try:
             all_policies = await self.get_firewall_policies(include_predefined=True)
@@ -138,17 +140,17 @@ class FirewallManager:
             if not hasattr(policy_to_update, "raw") or not isinstance(policy_to_update.raw, dict):
                 logger.error("Could not get raw data for policy %s. Update aborted.", policy_id)
                 return False
-            # Deep copy to avoid mutating the cached FirewallPolicy.raw
-            policy_data = copy.deepcopy(policy_to_update.raw)
 
-            for key, value in updates.items():
-                policy_data[key] = value
+            # Deep merge preserves nested sub-objects (source, destination, schedule, etc.)
+            merged_data = deep_merge(policy_to_update.raw, updates)
 
-            update_payload = [policy_data]
+            logger.info("Updating firewall policy %s via single-policy endpoint", policy_id)
 
-            logger.info("Updating firewall policy %s with full data payload: %s", policy_id, update_payload)
-
-            api_request = ApiRequestV2(method="put", path="/firewall-policies/batch", data=update_payload)
+            api_request = ApiRequestV2(
+                method="put",
+                path=f"/firewall-policies/{policy_id}",
+                data=merged_data,
+            )
             await self._connection.request(api_request)
 
             self._connection._invalidate_cache(f"{CACHE_PREFIX_FIREWALL_POLICIES}_True_{self._connection.site}")
