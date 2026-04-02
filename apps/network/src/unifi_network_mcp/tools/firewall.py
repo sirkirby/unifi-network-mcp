@@ -532,6 +532,44 @@ async def update_firewall_policy(
                 None,
             )
             updated_details = updated_policy_obj.raw if updated_policy_obj else {}
+
+            # Verify the controller actually applied the requested changes.
+            # For nested dicts (source, destination, schedule), check that each
+            # requested key-value is present in the response (subset check),
+            # since deep_merge preserves unmentioned sibling keys.
+            mismatched = []
+            for field, expected in validated_data.items():
+                actual = updated_details.get(field)
+                if isinstance(expected, dict) and isinstance(actual, dict):
+                    for k, v in expected.items():
+                        if actual.get(k) != v:
+                            mismatched.append(field)
+                            logger.warning(
+                                "Firewall policy %s field '%s.%s' not applied: expected %s, got %s",
+                                policy_id,
+                                field,
+                                k,
+                                v,
+                                actual.get(k),
+                            )
+                            break
+                elif actual != expected:
+                    mismatched.append(field)
+                    logger.warning(
+                        "Firewall policy %s field '%s' not applied: expected %s, got %s",
+                        policy_id,
+                        field,
+                        expected,
+                        actual,
+                    )
+            if mismatched:
+                return {
+                    "success": False,
+                    "policy_id": policy_id,
+                    "error": "Controller accepted the request but did not apply changes to: %s" % ", ".join(mismatched),
+                    "details": json.loads(json.dumps(updated_details, default=str)),
+                }
+
             logger.info("Updated firewall policy (%s)", policy_id)
             return {
                 "success": True,

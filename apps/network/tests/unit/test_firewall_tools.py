@@ -316,6 +316,8 @@ class TestUpdateFirewallPolicyV2Fields:
         mock_policy = _make_policy(SAMPLE_ZONE_POLICY_RAW)
         updated_raw = copy.deepcopy(SAMPLE_ZONE_POLICY_RAW)
         updated_raw["action"] = "BLOCK"
+        updated_raw["source"]["zone_id"] = "wan"
+        updated_raw["source"]["matching_target"] = "ANY"
         mock_updated = _make_policy(updated_raw)
 
         with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
@@ -370,6 +372,30 @@ class TestUpdateFirewallPolicyV2Fields:
 
         assert result["success"] is False
         assert "Invalid action" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_update_detects_silently_discarded_change(self):
+        """Post-update verification should catch when controller ignores a field."""
+        mock_policy = _make_policy(SAMPLE_ZONE_POLICY_RAW)
+        # Simulate controller ignoring the logging change (returns original value)
+        unchanged_raw = copy.deepcopy(SAMPLE_ZONE_POLICY_RAW)
+        mock_unchanged = _make_policy(unchanged_raw)
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(side_effect=[[mock_policy], [mock_unchanged]])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"logging": True},
+                confirm=True,
+            )
+
+        assert result["success"] is False
+        assert "logging" in result["error"]
+        assert "did not apply" in result["error"]
 
 
 # ---------------------------------------------------------------------------
