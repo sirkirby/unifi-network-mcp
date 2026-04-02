@@ -624,7 +624,20 @@ async def get_wlan_details(
 
 @server.tool(
     name="unifi_update_wlan",
-    description="Update specific fields of an existing WLAN (SSID). Requires confirmation.",
+    description="Update specific fields of an existing WLAN (SSID). "
+    "Pass only the fields you want to change — current values are automatically preserved. "
+    "Basic: name (str), security ('open'/'wpapsk'/'wpa2-psk'), x_passphrase (str), "
+    "enabled (bool), hide_ssid (bool), guest_policy (bool), usergroup_id (str), networkconf_id (str). "
+    "Security: wpa3_support (bool), wpa3_transition (bool), pmf_mode ('disabled'/'optional'/'required'), "
+    "fast_roaming_enabled (bool), group_rekey (int seconds, 0=disabled). "
+    "Access control: mac_filter_enabled (bool), mac_filter_policy ('allow'/'deny'), "
+    "mac_filter_list (list of MAC strings), l2_isolation (bool). "
+    "Radio: wlan_band ('both'/'2g'/'5g'), multicast_enhance_enabled (bool), "
+    "dtim_mode ('default'/'custom'), dtim_na (int 1-255), dtim_ng (int 1-255), "
+    "minrate_ng_enabled (bool), minrate_ng_data_rate_kbps (int), "
+    "minrate_na_enabled (bool), minrate_na_data_rate_kbps (int). "
+    "Other: schedule_enabled (bool), uapsd_enabled (bool), proxy_arp (bool), iapp_enabled (bool). "
+    "Requires confirmation.",
     permission_category="wlans",
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
@@ -634,11 +647,7 @@ async def update_wlan(
     update_data: Annotated[
         Dict[str, Any],
         Field(
-            description="Dictionary of fields to update. Pass only the fields you want to change — "
-            "current values are automatically preserved. "
-            "Allowed keys: name (SSID), security ('open'/'wpapsk'/'wpa2-psk'), x_passphrase (password), "
-            "enabled (bool), hide_ssid (bool), guest_policy (bool), usergroup_id (str), "
-            "networkconf_id (network ID to associate)"
+            description="Dictionary of fields to update. See tool description for all supported fields."
         ),
     ],
     confirm: Annotated[
@@ -648,23 +657,14 @@ async def update_wlan(
 ) -> Dict[str, Any]:
     """Updates specific fields of an existing WLAN (Wireless SSID).
 
-    Allows modifying properties like SSID name, security settings, password,
-    enabled state, network association, etc. Only provided fields are updated.
+    Only provided fields are updated — current values are automatically preserved.
+    Supported fields are defined in WLAN_UPDATE_SCHEMA and validated via UniFiValidatorRegistry.
     Requires confirmation.
 
     Args:
         wlan_id (str): The unique identifier (_id) of the WLAN to update.
-        update_data (Dict[str, Any]): Dictionary of fields to update.
-            Allowed fields (all optional):
-            - name (string): New SSID name.
-            - security (string): New security mode ("open", "wpapsk", "wpa2-psk", etc.).
-            - x_passphrase (string): New password (required if security is not "open").
-            - enabled (boolean): New enabled state.
-            - hide_ssid (boolean): New SSID hiding state.
-            - guest_policy (boolean): Make this a guest network.
-            - usergroup_id (string): New user group ID.
-            - networkconf_id (string): New network configuration ID (associates WLAN with network).
-            # Add other relevant fields from WLANSchema if needed
+        update_data (Dict[str, Any]): Dictionary of fields to update. See tool description
+            and WLAN_UPDATE_SCHEMA in schemas.py for all supported fields.
         confirm (bool): Must be set to `True` to execute. Defaults to `False`.
 
     Returns:
