@@ -657,23 +657,14 @@ async def update_wlan(
 ) -> Dict[str, Any]:
     """Updates specific fields of an existing WLAN (Wireless SSID).
 
-    Allows modifying properties like SSID name, security settings, password,
-    enabled state, network association, etc. Only provided fields are updated.
+    Only provided fields are updated — current values are automatically preserved.
+    Supported fields are defined in WLAN_UPDATE_SCHEMA and validated via UniFiValidatorRegistry.
     Requires confirmation.
 
     Args:
         wlan_id (str): The unique identifier (_id) of the WLAN to update.
-        update_data (Dict[str, Any]): Dictionary of fields to update.
-            Allowed fields (all optional):
-            - name (string): New SSID name.
-            - security (string): New security mode ("open", "wpapsk", "wpa2-psk", etc.).
-            - x_passphrase (string): New password (required if security is not "open").
-            - enabled (boolean): New enabled state.
-            - hide_ssid (boolean): New SSID hiding state.
-            - guest_policy (boolean): Make this a guest network.
-            - usergroup_id (string): New user group ID.
-            - networkconf_id (string): New network configuration ID (associates WLAN with network).
-            # Add other relevant fields from WLANSchema if needed
+        update_data (Dict[str, Any]): Dictionary of fields to update. See tool description
+            and WLAN_UPDATE_SCHEMA in schemas.py for all supported fields.
         confirm (bool): Must be set to `True` to execute. Defaults to `False`.
 
     Returns:

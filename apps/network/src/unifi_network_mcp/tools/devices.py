@@ -736,7 +736,7 @@ async def update_device_radio(
         return {"success": False, "error": "No radio settings provided to update."}
 
     # Validate against schema (type checks, bounds, no unknown keys)
-    is_valid, error_msg, _ = UniFiValidatorRegistry.validate("device_radio_update", updates)
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("device_radio_update", updates)
     if not is_valid:
         logger.warning("Invalid radio update data for %s: %s", mac_address, error_msg)
         return {"success": False, "error": f"Invalid radio update data: {error_msg}"}
@@ -762,7 +762,7 @@ async def update_device_radio(
         band_label = RADIO_BAND_LABELS.get(target_radio["radio"], target_radio.get("name", radio))
         device_name = radio_data.get("name", mac_address)
 
-        current_state = {k: target_radio.get(k) for k in updates}
+        current_state = {k: target_radio.get(k) for k in validated_data}
 
         if not confirm:
             preview = update_preview(
@@ -770,7 +770,7 @@ async def update_device_radio(
                 resource_id=f"{mac_address}/{radio}",
                 resource_name=f"{device_name} ({band_label})",
                 current_state=current_state,
-                updates=updates,
+                updates=validated_data,
             )
             preview["warnings"] = [
                 "AP radio will restart briefly after changes are applied.",
@@ -778,7 +778,7 @@ async def update_device_radio(
             ]
             return preview
 
-        success = await device_manager.update_device_radio(mac_address, radio, updates)
+        success = await device_manager.update_device_radio(mac_address, radio, validated_data)
         if success:
             return {
                 "success": True,
