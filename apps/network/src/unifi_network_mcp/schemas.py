@@ -1306,6 +1306,55 @@ DEVICE_RADIO_UPDATE_SCHEMA = {
 }
 
 
+SNMP_SETTINGS_UPDATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "enabled": {
+            "type": "boolean",
+            "description": "Enable or disable SNMP on the site",
+        },
+        "community": {
+            "type": "string",
+            "description": "SNMP community string (e.g., 'public')",
+        },
+    },
+    "additionalProperties": False,
+}
+
+AUTOBACKUP_SETTINGS_UPDATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "autobackup_enabled": {
+            "type": "boolean",
+            "description": "Enable or disable automatic backups",
+        },
+        "autobackup_cron_expr": {
+            "type": "string",
+            "description": "Cron expression for backup schedule (e.g., '30 2 * * *' for daily at 2:30 AM)",
+        },
+        "autobackup_days": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Backup retention in days (0 = use max_files instead)",
+        },
+        "autobackup_max_files": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum number of backup files to keep",
+        },
+        "autobackup_timezone": {
+            "type": "string",
+            "description": "Timezone for backup schedule (e.g., 'America/Denver')",
+        },
+        "autobackup_cloud_enabled": {
+            "type": "boolean",
+            "description": "Enable cloud backup storage",
+        },
+    },
+    "additionalProperties": False,
+}
+
+
 class UniFiResourceRegistry:
     """Registry for UniFi Network resource schemas and validators."""
 
@@ -1329,6 +1378,7 @@ class UniFiResourceRegistry:
         "qos_rule_simple": QOS_RULE_SIMPLE_SCHEMA,
         "port_forward_simple": PORT_FORWARD_SIMPLE_SCHEMA,
         "device_radio_update": DEVICE_RADIO_UPDATE_SCHEMA,
+        "autobackup_settings_update": AUTOBACKUP_SETTINGS_UPDATE_SCHEMA,
         "firewall_policy_v2_create": FIREWALL_POLICY_V2_CREATE_SCHEMA,
     }
 

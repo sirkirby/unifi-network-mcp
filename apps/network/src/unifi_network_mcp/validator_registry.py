@@ -4,7 +4,9 @@ from .schemas import (
     ACL_RULE_UPDATE_SCHEMA,
     AP_GROUP_SCHEMA,
     AP_GROUP_UPDATE_SCHEMA,
+    AUTOBACKUP_SETTINGS_UPDATE_SCHEMA,
     CLIENT_GROUP_UPDATE_SCHEMA,
+    SNMP_SETTINGS_UPDATE_SCHEMA,
     CONTENT_FILTER_UPDATE_SCHEMA,
     DEVICE_RADIO_UPDATE_SCHEMA,
     FIREWALL_POLICY_CREATE_SCHEMA,
@@ -61,6 +63,10 @@ class UniFiValidatorRegistry:
         "ap_group": ResourceValidator(AP_GROUP_SCHEMA, "AP Group"),
         "ap_group_update": ResourceValidator(AP_GROUP_UPDATE_SCHEMA, "AP Group Update"),
         "device_radio_update": ResourceValidator(DEVICE_RADIO_UPDATE_SCHEMA, "Device Radio Update"),
+        "snmp_settings_update": ResourceValidator(SNMP_SETTINGS_UPDATE_SCHEMA, "SNMP Settings Update"),
+        "autobackup_settings_update": ResourceValidator(
+            AUTOBACKUP_SETTINGS_UPDATE_SCHEMA, "Auto-Backup Settings Update"
+        ),
     }
 
     @classmethod

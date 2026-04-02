@@ -63,22 +63,25 @@ class SystemManager:
             logger.error("Error getting controller status: %s", e)
             return {}
 
-    async def create_backup(self, filename: Optional[str] = None) -> Optional[bytes]:
+    async def create_backup(self) -> Optional[Dict[str, Any]]:
         """Create a backup of the controller configuration.
 
-        Args:
-            filename: Optional filename for the backup (currently unused by API call)
-
         Returns:
-            Backup data as bytes if successful, None otherwise
+            Dict with backup metadata including download URL, or None on failure.
         """
         try:
             api_request = ApiRequest(method="post", path="/cmd/backup", data={"cmd": "backup"})
-            response = await self._connection.request(api_request, return_raw=True)
-            logger.info("Backup creation requested successfully.")
-            return response if isinstance(response, bytes) else None
+            response = await self._connection.request(api_request)
+            if isinstance(response, list) and response:
+                logger.info("Backup creation requested successfully.")
+                return response[0]
+            if isinstance(response, dict) and response.get("url"):
+                logger.info("Backup creation requested successfully.")
+                return response
+            logger.error("Unexpected backup response: %s", response)
+            return None
         except Exception as e:
-            logger.error("Error creating backup: %s", e)
+            logger.error("Error creating backup: %s", e, exc_info=True)
             return None
 
     async def restore_backup(self, backup_data: bytes) -> bool:
@@ -118,6 +121,87 @@ class SystemManager:
                     return False
         except Exception as e:
             logger.error("Exception during backup restore: %s", e)
+            return False
+
+    async def list_backups(self) -> List[Dict[str, Any]]:
+        """List available backups on the controller.
+
+        Returns:
+            List of backup dicts with filename, datetime, size, etc.
+        """
+        try:
+            api_request = ApiRequest(
+                method="post", path="/cmd/backup", data={"cmd": "list-backups"}
+            )
+            response = await self._connection.request(api_request)
+            if isinstance(response, list):
+                return response
+            if isinstance(response, dict):
+                return response.get("data", [])
+            return []
+        except Exception as e:
+            logger.error("Error listing backups: %s", e, exc_info=True)
+            return []
+
+    async def delete_backup(self, filename: str) -> bool:
+        """Delete a backup file from the controller.
+
+        Args:
+            filename: Backup filename (from list_backups).
+
+        Returns:
+            True on success, False on failure.
+        """
+        try:
+            api_request = ApiRequest(
+                method="post",
+                path="/cmd/backup",
+                data={"cmd": "delete-backup", "filename": filename},
+            )
+            await self._connection.request(api_request)
+            logger.info("Backup '%s' deleted successfully.", filename)
+            return True
+        except Exception as e:
+            logger.error("Error deleting backup '%s': %s", filename, e, exc_info=True)
+            return False
+
+    async def get_autobackup_settings(self) -> Dict[str, Any]:
+        """Get auto-backup settings from the controller.
+
+        Returns:
+            Dict with autobackup_enabled, cron schedule, retention, cloud settings.
+        """
+        try:
+            settings_list = await self.get_settings("super_mgmt")
+            if not settings_list:
+                return {}
+            settings = settings_list[0]
+            return {
+                "autobackup_enabled": settings.get("autobackup_enabled", False),
+                "autobackup_cron_expr": settings.get("autobackup_cron_expr"),
+                "autobackup_days": settings.get("autobackup_days"),
+                "autobackup_max_files": settings.get("autobackup_max_files"),
+                "autobackup_timezone": settings.get("autobackup_timezone"),
+                "autobackup_cloud_enabled": settings.get("autobackup_cloud_enabled", False),
+            }
+        except Exception as e:
+            logger.error("Error getting auto-backup settings: %s", e, exc_info=True)
+            return {}
+
+    async def update_autobackup_settings(self, settings: Dict[str, Any]) -> bool:
+        """Update auto-backup settings on the controller.
+
+        Args:
+            settings: Dict of auto-backup fields to update.
+
+        Returns:
+            True on success, False on failure.
+        """
+        try:
+            # update_settings handles cache invalidation with correct site-qualified key
+            return await self.update_settings("super_mgmt", settings)
+        except Exception as e:
+            logger.error("Error updating auto-backup settings: %s", e, exc_info=True)
             return False
 
     async def check_firmware_updates(self) -> Dict[str, Any]:
