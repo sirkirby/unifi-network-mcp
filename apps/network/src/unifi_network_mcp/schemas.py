@@ -1378,6 +1378,7 @@ class UniFiResourceRegistry:
         "qos_rule_simple": QOS_RULE_SIMPLE_SCHEMA,
         "port_forward_simple": PORT_FORWARD_SIMPLE_SCHEMA,
         "device_radio_update": DEVICE_RADIO_UPDATE_SCHEMA,
+        "snmp_settings_update": SNMP_SETTINGS_UPDATE_SCHEMA,
         "autobackup_settings_update": AUTOBACKUP_SETTINGS_UPDATE_SCHEMA,
         "firewall_policy_v2_create": FIREWALL_POLICY_V2_CREATE_SCHEMA,
     }

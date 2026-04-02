@@ -176,7 +176,7 @@ async def update_snmp_settings(
         success = await system_manager.update_settings("snmp", validated_data)
         if success:
             refreshed = await system_manager.get_settings("snmp")
-            new_settings = refreshed[0] if refreshed else payload
+            new_settings = refreshed[0] if refreshed else validated_data
             return {
                 "success": True,
                 "site": system_manager._connection.site,
