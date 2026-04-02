@@ -1297,7 +1297,9 @@ DEVICE_RADIO_UPDATE_SCHEMA = {
         },
         "sens_level": {
             "type": "integer",
-            "description": "Receive sensitivity level in dBm",
+            "minimum": -95,
+            "maximum": -20,
+            "description": "Receive sensitivity level in dBm (e.g. -70)",
         },
     },
     "additionalProperties": False,

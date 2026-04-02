@@ -6,6 +6,7 @@ from .schemas import (
     AP_GROUP_UPDATE_SCHEMA,
     CLIENT_GROUP_UPDATE_SCHEMA,
     CONTENT_FILTER_UPDATE_SCHEMA,
+    DEVICE_RADIO_UPDATE_SCHEMA,
     FIREWALL_POLICY_CREATE_SCHEMA,
     FIREWALL_POLICY_SCHEMA,
     FIREWALL_POLICY_SIMPLE_SCHEMA,
@@ -59,6 +60,7 @@ class UniFiValidatorRegistry:
         "oon_policy_update": ResourceValidator(OON_POLICY_UPDATE_SCHEMA, "OON Policy Update"),
         "ap_group": ResourceValidator(AP_GROUP_SCHEMA, "AP Group"),
         "ap_group_update": ResourceValidator(AP_GROUP_UPDATE_SCHEMA, "AP Group Update"),
+        "device_radio_update": ResourceValidator(DEVICE_RADIO_UPDATE_SCHEMA, "Device Radio Update"),
     }
 
     @classmethod

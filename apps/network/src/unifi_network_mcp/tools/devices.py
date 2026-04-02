@@ -15,6 +15,7 @@ from unifi_mcp_shared.confirmation import create_preview, preview_response, upda
 
 # Import the global FastMCP server instance, config, and managers
 from unifi_network_mcp.runtime import device_manager, server
+from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -733,6 +734,12 @@ async def update_device_radio(
 
     if not updates:
         return {"success": False, "error": "No radio settings provided to update."}
+
+    # Validate against schema (type checks, bounds, no unknown keys)
+    is_valid, error_msg, _ = UniFiValidatorRegistry.validate("device_radio_update", updates)
+    if not is_valid:
+        logger.warning("Invalid radio update data for %s: %s", mac_address, error_msg)
+        return {"success": False, "error": f"Invalid radio update data: {error_msg}"}
 
     try:
         radio_data = await device_manager.get_device_radio(mac_address)
