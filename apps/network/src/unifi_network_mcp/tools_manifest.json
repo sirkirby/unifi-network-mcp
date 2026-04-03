@@ -1,5 +1,5 @@
 {
-  "count": 156,
+  "count": 161,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "unifi_network_mcp.tools.devices",
@@ -11,6 +11,7 @@
     "unifi_configure_port_mirror": "unifi_network_mcp.tools.switch",
     "unifi_create_acl_rule": "unifi_network_mcp.tools.acl",
     "unifi_create_ap_group": "unifi_network_mcp.tools.network",
+    "unifi_create_backup": "unifi_network_mcp.tools.system",
     "unifi_create_client_group": "unifi_network_mcp.tools.client_groups",
     "unifi_create_firewall_group": "unifi_network_mcp.tools.firewall",
     "unifi_create_firewall_policy": "unifi_network_mcp.tools.firewall",
@@ -28,6 +29,7 @@
     "unifi_create_wlan": "unifi_network_mcp.tools.network",
     "unifi_delete_acl_rule": "unifi_network_mcp.tools.acl",
     "unifi_delete_ap_group": "unifi_network_mcp.tools.network",
+    "unifi_delete_backup": "unifi_network_mcp.tools.system",
     "unifi_delete_client_group": "unifi_network_mcp.tools.client_groups",
     "unifi_delete_content_filter": "unifi_network_mcp.tools.content_filtering",
     "unifi_delete_firewall_group": "unifi_network_mcp.tools.firewall",
@@ -41,6 +43,7 @@
     "unifi_get_alerts": "unifi_network_mcp.tools.stats",
     "unifi_get_anomalies": "unifi_network_mcp.tools.stats",
     "unifi_get_ap_group_details": "unifi_network_mcp.tools.network",
+    "unifi_get_autobackup_settings": "unifi_network_mcp.tools.system",
     "unifi_get_client_details": "unifi_network_mcp.tools.clients",
     "unifi_get_client_dpi_traffic": "unifi_network_mcp.tools.stats",
     "unifi_get_client_group_details": "unifi_network_mcp.tools.client_groups",
@@ -89,6 +92,7 @@
     "unifi_list_alarms": "unifi_network_mcp.tools.events",
     "unifi_list_ap_groups": "unifi_network_mcp.tools.network",
     "unifi_list_available_channels": "unifi_network_mcp.tools.devices",
+    "unifi_list_backups": "unifi_network_mcp.tools.system",
     "unifi_list_blocked_clients": "unifi_network_mcp.tools.clients",
     "unifi_list_client_groups": "unifi_network_mcp.tools.client_groups",
     "unifi_list_clients": "unifi_network_mcp.tools.clients",
@@ -139,6 +143,7 @@
     "unifi_unblock_client": "unifi_network_mcp.tools.clients",
     "unifi_update_acl_rule": "unifi_network_mcp.tools.acl",
     "unifi_update_ap_group": "unifi_network_mcp.tools.network",
+    "unifi_update_autobackup_settings": "unifi_network_mcp.tools.system",
     "unifi_update_client_group": "unifi_network_mcp.tools.client_groups",
     "unifi_update_content_filter": "unifi_network_mcp.tools.content_filtering",
     "unifi_update_device_radio": "unifi_network_mcp.tools.devices",
@@ -469,6 +474,29 @@
           "required": [
             "group_data"
           ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Create a new backup of the controller configuration. Returns the backup metadata on success. Requires confirmation.",
+      "name": "unifi_create_backup",
+      "permission_action": "create",
+      "permission_category": "system",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, creates the backup. When false (default), returns a preview",
+              "type": "boolean"
+            }
+          },
           "type": "object"
         }
       }
@@ -1103,6 +1131,36 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
+      "description": "Delete a backup file from the controller. Use unifi_list_backups to find filenames. Requires confirmation.",
+      "name": "unifi_delete_backup",
+      "permission_action": "delete",
+      "permission_category": "system",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, deletes the backup. When false (default), returns a preview",
+              "type": "boolean"
+            },
+            "filename": {
+              "description": "Backup filename to delete (from unifi_list_backups)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "filename"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Delete a client group. Requires confirmation. WARNING: Deleting a group may affect OON policies and firewall rules that reference it.",
       "name": "unifi_delete_client_group",
       "permission_action": "delete",
@@ -1448,6 +1506,20 @@
           "required": [
             "group_id"
           ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Get auto-backup settings (enabled state, schedule, retention count, cloud backup).",
+      "name": "unifi_get_autobackup_settings",
+      "schema": {
+        "input": {
+          "properties": {},
           "type": "object"
         }
       }
@@ -2442,6 +2514,20 @@
       },
       "description": "List allowed RF channels for the site's regulatory domain. Returns per-band channel lists with DFS status and max power. Useful for planning channel assignments.",
       "name": "unifi_list_available_channels",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List available backups on the controller. Returns filename, datetime, size, and version for each backup.",
+      "name": "unifi_list_backups",
       "schema": {
         "input": {
           "properties": {},
@@ -3684,6 +3770,36 @@
           },
           "required": [
             "group_id",
+            "update_data"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Update auto-backup settings. Pass only the fields you want to change \u2014 current values are automatically preserved. Fields: autobackup_enabled (bool), autobackup_cron_expr (str, cron format), autobackup_days (int, retention days), autobackup_max_files (int, max backup files to keep), autobackup_timezone (str), autobackup_cloud_enabled (bool). Requires confirmation.",
+      "name": "unifi_update_autobackup_settings",
+      "permission_action": "update",
+      "permission_category": "system",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, applies the update. When false (default), returns a preview",
+              "type": "boolean"
+            },
+            "update_data": {
+              "description": "Dictionary of auto-backup fields to update. See tool description for supported fields.",
+              "type": "object"
+            }
+          },
+          "required": [
             "update_data"
           ],
           "type": "object"

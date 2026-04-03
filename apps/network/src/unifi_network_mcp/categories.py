@@ -48,6 +48,7 @@ NETWORK_CATEGORY_MAP = {
     "oon_policy": "oon_policies",
     "dpi": "dpi",
     "switch": "switch",
+    "system": "system",
 }
 
 # Backward-compatible alias
