@@ -49,6 +49,7 @@ NETWORK_CATEGORY_MAP = {
     "dpi": "dpi",
     "switch": "switch",
     "system": "system",
+    "dns": "dns",
 }
 
 # Backward-compatible alias

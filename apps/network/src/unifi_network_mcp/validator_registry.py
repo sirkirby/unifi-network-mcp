@@ -6,6 +6,8 @@ from .schemas import (
     AP_GROUP_UPDATE_SCHEMA,
     AUTOBACKUP_SETTINGS_UPDATE_SCHEMA,
     CLIENT_GROUP_UPDATE_SCHEMA,
+    DNS_RECORD_SCHEMA,
+    DNS_RECORD_UPDATE_SCHEMA,
     SNMP_SETTINGS_UPDATE_SCHEMA,
     CONTENT_FILTER_UPDATE_SCHEMA,
     DEVICE_RADIO_UPDATE_SCHEMA,
@@ -67,6 +69,8 @@ class UniFiValidatorRegistry:
         "autobackup_settings_update": ResourceValidator(
             AUTOBACKUP_SETTINGS_UPDATE_SCHEMA, "Auto-Backup Settings Update"
         ),
+        "dns_record": ResourceValidator(DNS_RECORD_SCHEMA, "DNS Record"),
+        "dns_record_update": ResourceValidator(DNS_RECORD_UPDATE_SCHEMA, "DNS Record Update"),
     }
 
     @classmethod

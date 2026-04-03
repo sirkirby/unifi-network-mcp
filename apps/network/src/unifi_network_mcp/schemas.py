@@ -1354,6 +1354,54 @@ AUTOBACKUP_SETTINGS_UPDATE_SCHEMA = {
     "additionalProperties": False,
 }
 
+DNS_RECORD_SCHEMA = {
+    "type": "object",
+    "required": ["key", "value", "record_type"],
+    "properties": {
+        "key": {
+            "type": "string",
+            "description": "Hostname / record name (e.g., 'myhost.example.com')",
+        },
+        "value": {
+            "type": "string",
+            "description": "Record value — IP address for A/AAAA, hostname for CNAME, mail server for MX, text for TXT",
+        },
+        "record_type": {
+            "type": "string",
+            "enum": ["A", "AAAA", "CNAME", "MX", "TXT", "SRV"],
+            "description": "DNS record type",
+        },
+        "enabled": {
+            "type": "boolean",
+            "description": "Whether the record is active",
+        },
+        "ttl": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Time to live in seconds (0 = default 300s)",
+        },
+        "port": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Port number (for SRV records)",
+        },
+        "priority": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Priority (for MX and SRV records, lower = higher priority)",
+        },
+        "weight": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Weight (for SRV records)",
+        },
+    },
+    "additionalProperties": False,
+}
+
+DNS_RECORD_UPDATE_SCHEMA = copy.deepcopy(DNS_RECORD_SCHEMA)
+DNS_RECORD_UPDATE_SCHEMA.pop("required", None)
+
 
 class UniFiResourceRegistry:
     """Registry for UniFi Network resource schemas and validators."""
@@ -1380,6 +1428,8 @@ class UniFiResourceRegistry:
         "device_radio_update": DEVICE_RADIO_UPDATE_SCHEMA,
         "snmp_settings_update": SNMP_SETTINGS_UPDATE_SCHEMA,
         "autobackup_settings_update": AUTOBACKUP_SETTINGS_UPDATE_SCHEMA,
+        "dns_record": DNS_RECORD_SCHEMA,
+        "dns_record_update": DNS_RECORD_UPDATE_SCHEMA,
         "firewall_policy_v2_create": FIREWALL_POLICY_V2_CREATE_SCHEMA,
     }
 
