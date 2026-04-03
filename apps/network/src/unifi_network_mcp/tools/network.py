@@ -176,7 +176,15 @@ async def get_network_details(
 
 @server.tool(
     name="unifi_update_network",
-    description="Update specific fields of an existing network (LAN/VLAN). Requires confirmation. Note: Network isolation is only supported on 'corporate' networks, not 'guest' networks.",
+    description="Update specific fields of an existing network (LAN/VLAN). "
+    "Pass only the fields you want to change — current values are automatically preserved. "
+    "Basic: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), vlan (str), "
+    "ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), enabled (bool), "
+    "network_isolation_enabled (bool, corporate networks only). "
+    "Multicast: igmp_snooping (bool), igmp_querier_switches (list of {switch_mac, querier_address}), "
+    "igmp_flood_unknown_multicast (bool), mdns_enabled (bool). "
+    "Note: Network isolation is only supported on 'corporate' networks, not 'guest' networks. "
+    "Requires confirmation.",
     permission_category="networks",
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
@@ -188,11 +196,7 @@ async def update_network(
     update_data: Annotated[
         Dict[str, Any],
         Field(
-            description="Dictionary of fields to update. Pass only the fields you want to change — "
-            "current values are automatically preserved. "
-            "Allowed keys: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), "
-            "vlan (1-4094), ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), "
-            "enabled (bool), network_isolation_enabled (bool, corporate networks only)"
+            description="Dictionary of fields to update. See tool description for all supported fields."
         ),
     ],
     confirm: Annotated[
@@ -219,7 +223,10 @@ async def update_network(
             - dhcp_stop (string): New DHCP stop IP.
             - enabled (boolean): Enable/disable the entire network.
             - network_isolation_enabled (boolean): Enable network isolation (IMPORTANT: Only works on networks with purpose="corporate").
-            # Add other relevant fields from NetworkSchema here if needed
+            - igmp_snooping (boolean): Enable IGMP snooping to limit multicast flooding.
+            - igmp_querier_switches (list): List of {switch_mac, querier_address} dicts for IGMP querier assignment.
+            - igmp_flood_unknown_multicast (boolean): Flood unknown multicast traffic to all ports.
+            - mdns_enabled (boolean): Enable mDNS (Bonjour/Avahi) reflection on this network.
         confirm (bool): Must be set to `True` to execute. Defaults to `False`.
 
     Important Constraints:
