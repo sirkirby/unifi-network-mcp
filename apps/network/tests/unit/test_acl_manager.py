@@ -105,13 +105,25 @@ class TestAclManager:
 
     @pytest.mark.asyncio
     async def test_get_acl_rule_by_id_found(self, acl_manager, mock_connection):
-        """Test get_acl_rule_by_id returns rule when found."""
-        mock_connection.request.return_value = {"_id": "r1", "name": "Test Rule"}
+        """Test get_acl_rule_by_id returns rule when found via list-then-filter."""
+        mock_connection.request.return_value = [
+            {"_id": "r1", "name": "Test Rule"},
+            {"_id": "r2", "name": "Other Rule"},
+        ]
 
         rule = await acl_manager.get_acl_rule_by_id("r1")
 
         assert rule is not None
         assert rule["name"] == "Test Rule"
+
+    @pytest.mark.asyncio
+    async def test_get_acl_rule_by_id_not_found(self, acl_manager, mock_connection):
+        """Test get_acl_rule_by_id returns None when ID not in list."""
+        mock_connection.request.return_value = [{"_id": "r1", "name": "Test Rule"}]
+
+        rule = await acl_manager.get_acl_rule_by_id("nonexistent")
+
+        assert rule is None
 
     @pytest.mark.asyncio
     async def test_get_acl_rule_by_id_not_connected(self, acl_manager, mock_connection):
@@ -219,7 +231,7 @@ class TestAclManager:
         """Test update_acl_rule with valid data."""
         existing_rule = {"_id": "r1", "name": "Original"}
         mock_connection.request.side_effect = [
-            existing_rule,  # GET (fetch current)
+            [existing_rule],  # LIST (for get_acl_rule_by_id)
             {},  # PUT (update)
         ]
 
@@ -261,7 +273,7 @@ class TestAclManager:
             "traffic_destination": {"type": "CLIENT_MAC", "specific_mac_addresses": []},
         }
         mock_connection.request.side_effect = [
-            existing_rule,  # GET (fetch current)
+            [existing_rule],  # LIST (for get_acl_rule_by_id)
             {},  # PUT (update)
         ]
 
@@ -282,7 +294,7 @@ class TestAclManager:
     @pytest.mark.asyncio
     async def test_update_acl_rule_not_found(self, acl_manager, mock_connection):
         """Test update_acl_rule returns False when rule not found."""
-        mock_connection.request.return_value = None
+        mock_connection.request.return_value = []
 
         result = await acl_manager.update_acl_rule("nonexistent", {"name": "Test"})
 
@@ -340,15 +352,15 @@ class TestAclManager:
         assert api_request.path == "/acl-rules"
 
     @pytest.mark.asyncio
-    async def test_get_by_id_uses_correct_path(self, acl_manager, mock_connection):
-        """Test get_acl_rule_by_id calls the correct API endpoint."""
-        mock_connection.request.return_value = {"_id": "r1"}
+    async def test_get_by_id_uses_list_endpoint(self, acl_manager, mock_connection):
+        """Test get_acl_rule_by_id uses list-then-filter (GET /acl-rules/{id} returns 405)."""
+        mock_connection.request.return_value = [{"_id": "r1"}]
 
         await acl_manager.get_acl_rule_by_id("r1")
 
         call_args = mock_connection.request.call_args
         api_request = call_args[0][0]
-        assert api_request.path == "/acl-rules/r1"
+        assert api_request.path == "/acl-rules"
 
     @pytest.mark.asyncio
     async def test_create_uses_correct_path_and_method(self, acl_manager, mock_connection):
@@ -375,7 +387,7 @@ class TestAclManager:
         """Test update_acl_rule uses PUT to the correct endpoint."""
         existing_rule = {"_id": "r1", "name": "Original"}
         mock_connection.request.side_effect = [
-            existing_rule,  # GET (fetch current)
+            [existing_rule],  # LIST (for get_acl_rule_by_id)
             {},  # PUT (update)
         ]
 
