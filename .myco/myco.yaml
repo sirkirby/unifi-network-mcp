@@ -16,9 +16,7 @@ capture:
     - .md
   buffer_max_events: 500
 agent:
-  auto_run: true
-  interval_seconds: 300
-  summary_batch_interval: 5
+  summary_batch_interval: 10
   provider:
     type: cloud
   tasks:
@@ -32,3 +30,15 @@ backup:
 team:
   enabled: false
   interval_minutes: 15
+skills:
+  confidence_threshold: 0.7
+  usage_stale_days: 30
+notifications:
+  enabled: true
+  system_notifications: false
+  default_mode: summary
+  domains:
+    mycelium:
+      enabled: false
+    sessions:
+      enabled: false
