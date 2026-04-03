@@ -1,6 +1,6 @@
 # Tool Catalog
 
-The UniFi Network MCP server exposes 130 tools, all prefixed with `unifi_`. Read-only tools are always available. Mutating tools are controlled by the [permission system](permissions.md).
+The UniFi Network MCP server exposes 161 tools, all prefixed with `unifi_`. Read-only tools are always available. Mutating tools are controlled by the [permission system](permissions.md).
 
 For machine-readable tool metadata, call the `unifi_tool_index` meta-tool at runtime, or inspect `src/unifi_network_mcp/tools_manifest.json`.
 
@@ -208,13 +208,18 @@ These are always registered regardless of mode:
 - `unifi_get_dpi_stats` — Deep Packet Inspection statistics
 - `unifi_get_alerts` — Recent alerts
 
-## System (5 tools)
+## System (10 tools)
 
 - `unifi_get_system_info` — Controller version, uptime, resource usage
 - `unifi_get_network_health` — Per-subsystem health (WAN, LAN, WLAN, VPN)
 - `unifi_get_site_settings` — Current site settings
 - `unifi_get_snmp_settings` — SNMP configuration
 - `unifi_update_snmp_settings` — Update SNMP settings
+- `unifi_list_backups` — List available backups on the controller
+- `unifi_create_backup` — Create a new backup of the controller configuration
+- `unifi_delete_backup` — Delete a backup file from the controller
+- `unifi_get_autobackup_settings` — Get auto-backup settings
+- `unifi_update_autobackup_settings` — Update auto-backup settings
 
 ## Tool Registration Modes
 
