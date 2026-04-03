@@ -68,24 +68,17 @@ class AclManager:
     async def get_acl_rule_by_id(self, rule_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific ACL rule by ID.
 
+        Uses list-then-filter because GET /acl-rules/{id} returns 405.
+
         Args:
             rule_id: The ID of the ACL rule.
 
         Returns:
             The ACL rule dictionary, or None if not found.
         """
-        if not await self._connection.ensure_connected():
-            return None
-
         try:
-            api_request = ApiRequestV2(method="get", path=f"/acl-rules/{rule_id}")
-            response = await self._connection.request(api_request)
-
-            if isinstance(response, list):
-                return response[0] if response else None
-            if isinstance(response, dict):
-                return response if "_id" in response else response.get("data", None)
-            return None
+            rules = await self.get_acl_rules()
+            return next((r for r in rules if r.get("_id") == rule_id), None)
         except Exception as e:
             logger.error("Error getting ACL rule %s: %s", rule_id, e)
             return None
