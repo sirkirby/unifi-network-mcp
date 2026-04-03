@@ -1,6 +1,6 @@
 # Tool Catalog
 
-The UniFi Network MCP server exposes 161 tools, all prefixed with `unifi_`. Read-only tools are always available. Mutating tools are controlled by the [permission system](permissions.md).
+The UniFi Network MCP server exposes 166 tools, all prefixed with `unifi_`. Read-only tools are always available. Mutating tools are controlled by the [permission system](permissions.md).
 
 For machine-readable tool metadata, call the `unifi_tool_index` meta-tool at runtime, or inspect `src/unifi_network_mcp/tools_manifest.json`.
 
@@ -207,6 +207,14 @@ These are always registered regardless of mode:
 - `unifi_get_top_clients` — Top clients by bandwidth usage
 - `unifi_get_dpi_stats` — Deep Packet Inspection statistics
 - `unifi_get_alerts` — Recent alerts
+
+## DNS Records (5 tools)
+
+- `unifi_list_dns_records` — List all static DNS records
+- `unifi_get_dns_record_details` — Get full record config by ID
+- `unifi_create_dns_record` — Create a new DNS record (A, AAAA, CNAME, MX, TXT, SRV)
+- `unifi_update_dns_record` — Update a record (partial updates preserved)
+- `unifi_delete_dns_record` — Delete a record
 
 ## System (10 tools)
 
