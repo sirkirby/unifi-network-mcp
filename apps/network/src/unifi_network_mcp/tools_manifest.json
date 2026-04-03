@@ -4032,7 +4032,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Update specific fields of an existing network (LAN/VLAN). Requires confirmation. Note: Network isolation is only supported on 'corporate' networks, not 'guest' networks.",
+      "description": "Update specific fields of an existing network (LAN/VLAN). Pass only the fields you want to change \u2014 current values are automatically preserved. Basic: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), vlan (str), ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), enabled (bool). Multicast: igmp_snooping (bool), igmp_querier_switches (list of {switch_mac, querier_address}), igmp_flood_unknown_multicast (bool), mdns_enabled (bool). Note: Network isolation is only supported on 'corporate' networks, not 'guest' networks. Requires confirmation.",
       "name": "unifi_update_network",
       "permission_action": "update",
       "permission_category": "networks",
@@ -4048,7 +4048,7 @@
               "type": "string"
             },
             "update_data": {
-              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), vlan (1-4094), ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), enabled (bool), network_isolation_enabled (bool, corporate networks only)",
+              "description": "Dictionary of fields to update. See tool description for all supported fields.",
               "type": "object"
             }
           },

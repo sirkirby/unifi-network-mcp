@@ -406,6 +406,30 @@ NETWORK_SCHEMA = {
             "default": True,
             "description": "Whether the network is enabled",
         },
+        "igmp_snooping": {
+            "type": "boolean",
+            "description": "Enable IGMP snooping to limit multicast flooding to interested ports only",
+        },
+        "igmp_querier_switches": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["switch_mac"],
+                "properties": {
+                    "switch_mac": {"type": "string", "description": "MAC address of the switch to act as IGMP querier"},
+                    "querier_address": {"type": "string", "description": "Querier IP address (empty for auto)"},
+                },
+            },
+            "description": "List of switches assigned as IGMP queriers for this network",
+        },
+        "igmp_flood_unknown_multicast": {
+            "type": "boolean",
+            "description": "Flood unknown multicast traffic to all ports (false = drop unknown multicast)",
+        },
+        "mdns_enabled": {
+            "type": "boolean",
+            "description": "Enable mDNS (Bonjour/Avahi) reflection on this network",
+        },
     },
     "allOf": [
         {
