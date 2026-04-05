@@ -130,9 +130,7 @@ class SystemManager:
             List of backup dicts with filename, datetime, size, etc.
         """
         try:
-            api_request = ApiRequest(
-                method="post", path="/cmd/backup", data={"cmd": "list-backups"}
-            )
+            api_request = ApiRequest(method="post", path="/cmd/backup", data={"cmd": "list-backups"})
             response = await self._connection.request(api_request)
             if isinstance(response, list):
                 return response
