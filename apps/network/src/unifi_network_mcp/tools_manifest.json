@@ -660,7 +660,7 @@
               "type": "boolean"
             },
             "network_data": {
-              "description": "Network configuration dict. Required: name (str), purpose (str: 'corporate', 'guest', 'wan', 'vlan-only', 'vpn-client', 'vpn-server'). Required if purpose != 'vlan-only': ip_subnet (CIDR, e.g. '192.168.1.0/24'). Required if purpose == 'vlan-only': vlan (int 1-4094). Optional: vlan_enabled, vlan, dhcp_enabled, dhcp_start, dhcp_stop, enabled, network_isolation_enabled",
+              "description": "Network configuration dict. Required: name (str), purpose (str: 'corporate', 'guest', 'wan', 'vlan-only', 'vpn-client', 'vpn-server'). Required if purpose != 'vlan-only': ip_subnet (CIDR, e.g. '192.168.1.0/24'). Required if purpose == 'vlan-only': vlan (int 1-4094). Optional: vlan_enabled, vlan, dhcpd_enabled, dhcpd_start, dhcpd_stop, dhcpd_leasetime, domain_name, enabled, network_isolation_enabled, upnp_lan_enabled. See update_network for the full list of supported DHCP/DNS fields.",
               "type": "object"
             }
           },
@@ -4168,7 +4168,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Update specific fields of an existing network (LAN/VLAN). Pass only the fields you want to change \u2014 current values are automatically preserved. Basic: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), vlan (str), ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), enabled (bool), network_isolation_enabled (bool, corporate networks only). Multicast: igmp_snooping (bool), igmp_querier_switches (list of {switch_mac, querier_address}), igmp_flood_unknown_multicast (bool), mdns_enabled (bool). Note: Network isolation is only supported on 'corporate' networks, not 'guest' networks. Requires confirmation.",
+      "description": "Update specific fields of an existing network (LAN/VLAN). Pass only the fields you want to change \u2014 current values are automatically preserved. Basic: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), vlan (str), ip_subnet (CIDR), enabled (bool), network_isolation_enabled (bool, corporate only), internet_access_enabled (bool), upnp_lan_enabled (bool). DHCP: dhcpd_enabled (bool), dhcpd_start (IP), dhcpd_stop (IP), dhcpd_leasetime (int seconds), dhcpd_gateway (IP), dhcpd_gateway_enabled (bool), dhcp_relay_enabled (bool), dhcpd_conflict_checking (bool), dhcpguard_enabled (bool, requires dhcpd_ip_1), dhcpd_ip_1 (IP, trusted DHCP server for guard), dhcpd_boot_enabled (bool), dhcpd_boot_server (IP), dhcpd_boot_filename (str), dhcpd_tftp_server (str, DHCP opt 150). DHCP options: dhcpd_dns_1 (IP), dhcpd_dns_2 (IP), dhcpd_dns_enabled (bool), dhcpd_ntp_1 (IPv4), dhcpd_ntp_2 (IPv4), dhcpd_ntp_enabled (bool), dhcpd_wins_1 (IP), dhcpd_wins_2 (IP), dhcpd_wins_enabled (bool), dhcpd_unifi_controller (IP). DNS: domain_name (str). Multicast: igmp_snooping (bool), igmp_querier_switches (list of {switch_mac, querier_address}), igmp_flood_unknown_multicast (bool), mdns_enabled (bool). Requires confirmation.",
       "name": "unifi_update_network",
       "permission_action": "update",
       "permission_category": "networks",

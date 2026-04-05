@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from aiounifi.models.api import ApiRequest, ApiRequestV2
 from aiounifi.models.wlan import Wlan
@@ -115,10 +115,12 @@ class NetworkManager:
             return response  # Return raw response
 
         except Exception as e:
-            logger.error("Error creating network: %s", e)
+            logger.error("Error creating network: %s", e, exc_info=True)
             return None
 
-    async def update_network(self, network_id: str, update_data: Dict[str, Any]) -> bool:
+    async def update_network(
+        self, network_id: str, update_data: Dict[str, Any]
+    ) -> Tuple[bool, Optional[str]]:
         """Update a network configuration by merging updates with existing data.
 
         Args:
@@ -126,20 +128,22 @@ class NetworkManager:
             update_data: Dictionary of fields to update
 
         Returns:
-            bool: True if successful, False otherwise
+            Tuple of (success, error_message). On success error_message is None.
+            On failure error_message contains the controller's response (e.g. an
+            API 400 body) so the caller can surface it instead of a generic guess.
         """
         if not await self._connection.ensure_connected():
-            return False
+            return False, "Failed to update network: controller connection unavailable"
         if not update_data:
             logger.warning("No update data provided for network %s.", network_id)
-            return True  # No action needed
+            return True, None  # No action needed
 
         try:
             # 1. Fetch existing network data
             existing_network = await self.get_network_details(network_id)
             if not existing_network:
                 logger.error("Network %s not found for update.", network_id)
-                return False
+                return False, f"Failed to update network: network {network_id} not found"
 
             # 2. Merge updates into existing data (deep merge preserves nested sub-objects)
             merged_data = deep_merge(existing_network, update_data)
@@ -153,10 +157,10 @@ class NetworkManager:
             await self._connection.request(api_request)
             logger.info("Update command sent for network %s with merged data.", network_id)
             self._connection._invalidate_cache(f"{CACHE_PREFIX_NETWORKS}_{self._connection.site}")
-            return True
+            return True, None
         except Exception as e:
             logger.error("Error updating network %s: %s", network_id, e, exc_info=True)
-            return False
+            return False, str(e)
 
     async def delete_network(self, network_id: str) -> bool:
         """Delete a network.
