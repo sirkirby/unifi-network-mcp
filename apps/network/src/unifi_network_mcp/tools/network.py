@@ -201,9 +201,7 @@ async def update_network(
     ],
     update_data: Annotated[
         Dict[str, Any],
-        Field(
-            description="Dictionary of fields to update. See tool description for all supported fields."
-        ),
+        Field(description="Dictionary of fields to update. See tool description for all supported fields."),
     ],
     confirm: Annotated[
         bool,
@@ -684,9 +682,7 @@ async def update_wlan(
     wlan_id: Annotated[str, Field(description="Unique identifier (_id) of the WLAN to update (from unifi_list_wlans)")],
     update_data: Annotated[
         Dict[str, Any],
-        Field(
-            description="Dictionary of fields to update. See tool description for all supported fields."
-        ),
+        Field(description="Dictionary of fields to update. See tool description for all supported fields."),
     ],
     confirm: Annotated[
         bool,
@@ -755,10 +751,7 @@ async def update_wlan(
     updated_fields_list = list(validated_data.keys())
     logger.info("Attempting to update WLAN '%s' with fields: %s", wlan_id, ", ".join(updated_fields_list))
     try:
-        # *** Assumption: Need network_manager.update_wlan(wlan_id, validated_data) ***
-        # This method needs implementation in NetworkManager.
-        success = await network_manager.update_wlan(wlan_id, validated_data)
-        error_message_detail = "Manager method update_wlan might not be fully implemented for partial updates."
+        success, error_detail = await network_manager.update_wlan(wlan_id, validated_data)
 
         if success:
             updated_wlan = await network_manager.get_wlan_details(wlan_id)
@@ -770,12 +763,12 @@ async def update_wlan(
                 "details": json.loads(json.dumps(updated_wlan, default=str)),
             }
         else:
-            logger.error("Failed to update WLAN (%s). %s", wlan_id, error_message_detail)
+            logger.error("Failed to update WLAN (%s): %s", wlan_id, error_detail)
             wlan_after_update = await network_manager.get_wlan_details(wlan_id)
             return {
                 "success": False,
                 "wlan_id": wlan_id,
-                "error": f"Failed to update WLAN ({wlan_id}). Check server logs. {error_message_detail}",
+                "error": f"Failed to update WLAN ({wlan_id}): {error_detail}",
                 "details_after_attempt": json.loads(json.dumps(wlan_after_update, default=str)),
             }
 

@@ -143,9 +143,7 @@ class TestUpdateNetwork:
         This test guards the whole point of the error-surfacing fix: a future
         refactor that reverts manager.update_network to bool would break this.
         """
-        controller_error = (
-            "{'meta': {'rc': 'error', 'msg': 'api.err.MissingIPAddress'}, 'data': []}"
-        )
+        controller_error = "{'meta': {'rc': 'error', 'msg': 'api.err.MissingIPAddress'}, 'data': []}"
         with patch("unifi_network_mcp.tools.network.network_manager") as mock_mgr:
             mock_mgr.get_network_details = AsyncMock(return_value=SAMPLE_NETWORK)
             mock_mgr.update_network = AsyncMock(return_value=(False, controller_error))

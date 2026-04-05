@@ -4,7 +4,6 @@ Verifies DHCP, DNS, multicast, and network feature fields
 are accepted or rejected correctly by the validator.
 """
 
-import pytest
 
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
