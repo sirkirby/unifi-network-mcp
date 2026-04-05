@@ -27,6 +27,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from unifi_core.auth import UniFiAuth
 from unifi_protect_mcp.bootstrap import load_config, logger
+from unifi_protect_mcp.managers.alarm_manager import AlarmManager
 from unifi_protect_mcp.managers.camera_manager import CameraManager
 from unifi_protect_mcp.managers.chime_manager import ChimeManager
 from unifi_protect_mcp.managers.connection_manager import ProtectConnectionManager
@@ -195,6 +196,11 @@ def get_system_manager() -> SystemManager:
 
 
 @lru_cache
+def get_alarm_manager() -> AlarmManager:
+    return AlarmManager(get_connection_manager())
+
+
+@lru_cache
 def get_tool_registry() -> dict[str, Any]:
     """Return the global tool registry for runtime access."""
     return TOOL_REGISTRY
@@ -219,6 +225,7 @@ sensor_manager = get_sensor_manager()
 chime_manager = get_chime_manager()
 liveview_manager = get_liveview_manager()
 system_manager = get_system_manager()
+alarm_manager = get_alarm_manager()
 tool_registry = get_tool_registry()
 
 logger.debug("runtime.py: shared singletons initialised")

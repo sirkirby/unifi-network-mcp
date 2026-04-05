@@ -175,7 +175,7 @@ This is a monorepo with shared packages:
 ```
 apps/
   network/          # UniFi Network MCP server (stable, 166 tools)
-  protect/          # UniFi Protect MCP server (beta, 34 tools)
+  protect/          # UniFi Protect MCP server (beta, 38 tools)
   access/           # UniFi Access MCP server (beta, 29 tools)
 packages/
   unifi-core/       # Shared UniFi connectivity (auth, detection, retry)

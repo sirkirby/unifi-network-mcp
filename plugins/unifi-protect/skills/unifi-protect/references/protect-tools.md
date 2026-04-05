@@ -1,4 +1,4 @@
-# Protect Server Tool Reference (34 tools)
+# Protect Server Tool Reference (38 tools)
 
 Complete reference for `protect_*` tools. All read tools are always available. All mutations are **disabled by default** — the user must explicitly enable them because Protect controls physical security hardware.
 
@@ -10,6 +10,7 @@ Complete reference for `protect_*` tools. All read tools are always available. A
 - [Devices: Lights, Sensors, Chimes](#devices-lights-sensors-chimes)
 - [Liveviews](#liveviews)
 - [System](#system)
+- [Alarm Manager](#alarm-manager)
 - [Common Scenarios](#common-scenarios)
 - [Important Limitations](#important-limitations)
 
@@ -157,6 +158,29 @@ Always available, regardless of registration mode.
 **Tips:**
 - `protect_get_health` is the best "is the NVR healthy?" check — covers CPU, RAM, storage
 - `protect_get_firmware_status` shows which devices have updates available
+
+---
+
+## Alarm Manager
+
+Controls the UniFi Protect Alarm Manager (Protect 6.1+). Requires arm profiles configured in the Protect web UI. Mutations gated by `UNIFI_POLICY_PROTECT_ALARM_UPDATE=true`.
+
+<!-- AUTO:tools:alarm -->
+4 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `protect_get_arm_status` | Read | Returns the current armed/disarmed state of the UniFi Protect Alarm Manager, including the active profile, raw status string, armed-at ti... |
+| `protect_list_arm_profiles` | Read | Lists all configured UniFi Protect Alarm Manager profiles with their id, name, activation delay, schedule count, and automation count. |
+| `protect_arm` | Mutate | Arms the UniFi Protect Alarm Manager. |
+| `protect_disarm` | Mutate | Disarms the UniFi Protect Alarm Manager system-wide via POST arm/disable. |
+<!-- /AUTO:tools:alarm -->
+
+**Tips:**
+- Call `protect_get_arm_status` first to see what's currently active before arming/disarming
+- Both `protect_arm` and `protect_disarm` are idempotent — calling them when the system is already in the target state is a no-op (returns `already_armed` / `already_disarmed`)
+- To switch arm profiles while the system is armed, you must **disarm first** — the API does not allow switching profiles mid-arm
+- There's typically an activation delay (e.g. 60 seconds) configured per profile — the system enters a pending state (`willBeArmedAt`) before fully arming
 
 ---
 
