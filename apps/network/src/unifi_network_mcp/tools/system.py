@@ -149,9 +149,7 @@ async def update_snmp_settings(
     if community is not None:
         updates["community"] = community
 
-    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate(
-        "snmp_settings_update", updates
-    )
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("snmp_settings_update", updates)
     if not is_valid:
         return {"success": False, "error": f"Validation error: {error_msg}"}
     if not validated_data:
@@ -334,9 +332,7 @@ async def update_autobackup_settings(
     if not update_data:
         return {"success": False, "error": "No settings provided to update."}
 
-    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate(
-        "autobackup_settings_update", update_data
-    )
+    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("autobackup_settings_update", update_data)
     if not is_valid:
         return {"success": False, "error": f"Validation error: {error_msg}"}
     if not validated_data:

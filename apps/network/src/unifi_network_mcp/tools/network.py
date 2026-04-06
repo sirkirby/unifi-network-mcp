@@ -179,11 +179,17 @@ async def get_network_details(
     description="Update specific fields of an existing network (LAN/VLAN). "
     "Pass only the fields you want to change — current values are automatically preserved. "
     "Basic: name, purpose ('corporate'/'guest'/'vlan-only'), vlan_enabled (bool), vlan (str), "
-    "ip_subnet (CIDR), dhcp_enabled (bool), dhcp_start (IP), dhcp_stop (IP), enabled (bool), "
-    "network_isolation_enabled (bool, corporate networks only). "
+    "ip_subnet (CIDR), enabled (bool), network_isolation_enabled (bool, corporate only), "
+    "internet_access_enabled (bool), upnp_lan_enabled (bool). "
+    "DHCP: dhcpd_enabled (bool), dhcpd_start (IP), dhcpd_stop (IP), dhcpd_leasetime (int seconds), "
+    "dhcpd_gateway (IP), dhcpd_gateway_enabled (bool), dhcp_relay_enabled (bool), "
+    "dhcpd_conflict_checking (bool), dhcpguard_enabled (bool, requires dhcpd_ip_1), dhcpd_ip_1 (IP, trusted DHCP server for guard), dhcpd_boot_enabled (bool), dhcpd_boot_server (IP), dhcpd_boot_filename (str), dhcpd_tftp_server (str, DHCP opt 150). "
+    "DHCP options: dhcpd_dns_1 (IP), dhcpd_dns_2 (IP), dhcpd_dns_enabled (bool), "
+    "dhcpd_ntp_1 (IPv4), dhcpd_ntp_2 (IPv4), dhcpd_ntp_enabled (bool), "
+    "dhcpd_wins_1 (IP), dhcpd_wins_2 (IP), dhcpd_wins_enabled (bool), dhcpd_unifi_controller (IP). "
+    "DNS: domain_name (str). "
     "Multicast: igmp_snooping (bool), igmp_querier_switches (list of {switch_mac, querier_address}), "
     "igmp_flood_unknown_multicast (bool), mdns_enabled (bool). "
-    "Note: Network isolation is only supported on 'corporate' networks, not 'guest' networks. "
     "Requires confirmation.",
     permission_category="networks",
     permission_action="update",
@@ -195,9 +201,7 @@ async def update_network(
     ],
     update_data: Annotated[
         Dict[str, Any],
-        Field(
-            description="Dictionary of fields to update. See tool description for all supported fields."
-        ),
+        Field(description="Dictionary of fields to update. See tool description for all supported fields."),
     ],
     confirm: Annotated[
         bool,
@@ -218,15 +222,39 @@ async def update_network(
             - vlan_enabled (boolean): Enable/disable VLAN tagging.
             - vlan (integer): New VLAN ID (1-4094).
             - ip_subnet (string): New IP subnet (CIDR format).
-            - dhcp_enabled (boolean): Enable/disable DHCP server.
-            - dhcp_start (string): New DHCP start IP.
-            - dhcp_stop (string): New DHCP stop IP.
             - enabled (boolean): Enable/disable the entire network.
-            - network_isolation_enabled (boolean): Enable network isolation (IMPORTANT: Only works on networks with purpose="corporate").
-            - igmp_snooping (boolean): Enable IGMP snooping to limit multicast flooding.
-            - igmp_querier_switches (list): List of {switch_mac, querier_address} dicts for IGMP querier assignment.
-            - igmp_flood_unknown_multicast (boolean): Flood unknown multicast traffic to all ports.
-            - mdns_enabled (boolean): Enable mDNS (Bonjour/Avahi) reflection on this network.
+            - network_isolation_enabled (boolean): Enable network isolation (corporate networks only).
+            - internet_access_enabled (boolean): Allow this network to access the internet.
+            - upnp_lan_enabled (boolean): Enable UPnP on this network.
+            - dhcpd_enabled (boolean): Enable the DHCP server.
+            - dhcpd_start (string): DHCP range start IP.
+            - dhcpd_stop (string): DHCP range end IP.
+            - dhcpd_leasetime (integer): DHCP lease time in seconds.
+            - dhcpd_gateway (string): Custom DHCP gateway IP.
+            - dhcpd_gateway_enabled (boolean): Use custom gateway instead of default.
+            - dhcpd_dns_1 (string): Primary DNS server for DHCP clients.
+            - dhcpd_dns_2 (string): Secondary DNS server for DHCP clients.
+            - dhcpd_dns_enabled (boolean): Enable custom DNS servers in DHCP.
+            - dhcpd_ntp_1 (string): Primary NTP server IPv4 (controller rejects hostnames).
+            - dhcpd_ntp_2 (string): Secondary NTP server IPv4 (controller rejects hostnames).
+            - dhcpd_ntp_enabled (boolean): Enable NTP option in DHCP.
+            - dhcpd_wins_1 (string): Primary WINS server for DHCP clients.
+            - dhcpd_wins_2 (string): Secondary WINS server for DHCP clients.
+            - dhcpd_wins_enabled (boolean): Enable WINS option in DHCP.
+            - dhcpd_unifi_controller (string): UniFi controller IP for DHCP option 43.
+            - dhcpd_tftp_server (string): TFTP server for DHCP option 150 (Cisco TFTP, independent of PXE).
+            - dhcpd_boot_server (string): PXE boot server IP (BOOTP siaddr).
+            - dhcpd_boot_filename (string): PXE boot filename (option 67, required if dhcpd_boot_enabled).
+            - dhcpd_boot_enabled (boolean): Enable PXE boot options (requires dhcpd_boot_server + dhcpd_boot_filename).
+            - dhcpd_conflict_checking (boolean): Ping before assigning DHCP IP.
+            - dhcp_relay_enabled (boolean): Use DHCP relay instead of local server.
+            - dhcpguard_enabled (boolean): Block rogue DHCP servers. Requires dhcpd_ip_1 set in same update.
+            - dhcpd_ip_1 (string): Trusted DHCP server IP for DHCP guard (typically the gateway).
+            - domain_name (string): DNS domain for the network.
+            - igmp_snooping (boolean): Enable IGMP snooping.
+            - igmp_querier_switches (list): IGMP querier assignment.
+            - igmp_flood_unknown_multicast (boolean): Flood unknown multicast.
+            - mdns_enabled (boolean): Enable mDNS reflection.
         confirm (bool): Must be set to `True` to execute. Defaults to `False`.
 
     Important Constraints:
@@ -244,6 +272,7 @@ async def update_network(
             "details": { ... updated network details ... }
         }
     """
+    logger.info("unifi_update_network tool called (network_id=%s, confirm=%s)", network_id, confirm)
     if not network_id:
         return {"success": False, "error": "network_id is required"}
     if not update_data:
@@ -282,18 +311,11 @@ async def update_network(
         pass  # Let manager handle fetching existing state for merge
     if "vlan" in validated_data and (int(validated_data["vlan"]) < 1 or int(validated_data["vlan"]) > 4094):
         return {"success": False, "error": "'vlan' must be between 1 and 4094."}
-    if "dhcp_enabled" in validated_data and validated_data["dhcp_enabled"]:
-        if "dhcp_start" not in validated_data or "dhcp_stop" not in validated_data:
-            # Check existing state? Or assume manager requires them if enabling?
-            pass  # Let manager handle potential partial updates
 
     updated_fields_list = list(validated_data.keys())
     logger.info("Attempting to update network '%s' with fields: %s", network_id, ", ".join(updated_fields_list))
     try:
-        # *** Assumption: Need network_manager.update_network(network_id, validated_data) ***
-        # This method needs implementation in NetworkManager.
-        success = await network_manager.update_network(network_id, validated_data)
-        error_message_detail = "Manager method update_network might not be fully implemented for partial updates."
+        success, error_detail = await network_manager.update_network(network_id, validated_data)
 
         if success:
             updated_network = await network_manager.get_network_details(network_id)
@@ -305,12 +327,12 @@ async def update_network(
                 "details": json.loads(json.dumps(updated_network, default=str)),
             }
         else:
-            logger.error("Failed to update network (%s). %s", network_id, error_message_detail)
+            logger.error("Failed to update network (%s): %s", network_id, error_detail)
             network_after_update = await network_manager.get_network_details(network_id)
             return {
                 "success": False,
                 "network_id": network_id,
-                "error": f"Failed to update network ({network_id}). Check server logs. {error_message_detail}",
+                "error": f"Failed to update network ({network_id}): {error_detail}",
                 "details_after_attempt": json.loads(json.dumps(network_after_update, default=str)),
             }
 
@@ -330,7 +352,7 @@ async def create_network(
     network_data: Annotated[
         Dict[str, Any],
         Field(
-            description="Network configuration dict. Required: name (str), purpose (str: 'corporate', 'guest', 'wan', 'vlan-only', 'vpn-client', 'vpn-server'). Required if purpose != 'vlan-only': ip_subnet (CIDR, e.g. '192.168.1.0/24'). Required if purpose == 'vlan-only': vlan (int 1-4094). Optional: vlan_enabled, vlan, dhcp_enabled, dhcp_start, dhcp_stop, enabled, network_isolation_enabled"
+            description="Network configuration dict. Required: name (str), purpose (str: 'corporate', 'guest', 'wan', 'vlan-only', 'vpn-client', 'vpn-server'). Required if purpose != 'vlan-only': ip_subnet (CIDR, e.g. '192.168.1.0/24'). Required if purpose == 'vlan-only': vlan (int 1-4094). Optional: vlan_enabled, vlan, dhcpd_enabled, dhcpd_start, dhcpd_stop, dhcpd_leasetime, domain_name, enabled, network_isolation_enabled, upnp_lan_enabled. See update_network for the full list of supported DHCP/DNS fields."
         ),
     ],
     confirm: Annotated[
@@ -354,20 +376,27 @@ async def create_network(
     If purpose is "vlan-only":
     - vlan (integer): VLAN ID (1-4094) is required
 
-    If purpose is not "vlan-only" and dhcp_enabled is true:
-    - dhcp_start (string): Start of DHCP range is required
-    - dhcp_stop (string): End of DHCP range is required
+    If purpose is not "vlan-only" and dhcpd_enabled is true:
+    - dhcpd_start (string): Start of DHCP range is required
+    - dhcpd_stop (string): End of DHCP range is required
 
     Optional parameters:
     - vlan_enabled (boolean): Whether VLAN is enabled (default: false)
     - vlan (integer): VLAN ID (required if vlan_enabled is true)
-    - dhcp_enabled (boolean): Whether DHCP is enabled (default: true)
+    - dhcpd_enabled (boolean): Whether DHCP is enabled (default: true)
+    - dhcpd_leasetime (integer): DHCP lease time in seconds
+    - domain_name (string): DNS domain name
     - enabled (boolean): Whether the network is enabled (default: true)
     - network_isolation_enabled (boolean): Enable network isolation (IMPORTANT: Only works on networks with purpose="corporate")
+    - upnp_lan_enabled (boolean): Enable UPnP on this network
+    (see update_network for the full list of additional DHCP/DNS fields that can
+    also be supplied at creation time)
 
     Important Constraints:
     - Network isolation (network_isolation_enabled) is ONLY supported on networks with purpose="corporate".
     - It cannot be enabled on "guest" networks.
+    - All DHCP fields use the `dhcpd_*` prefix (the UniFi API field names); the
+      legacy `dhcp_enabled`/`dhcp_start`/`dhcp_stop` names are NOT accepted.
 
     Example:
     {
@@ -376,9 +405,9 @@ async def create_network(
         "ip_subnet": "10.20.0.0/24",
         "vlan_enabled": true,
         "vlan": 20,
-        "dhcp_enabled": true,
-        "dhcp_start": "10.20.0.100",
-        "dhcp_stop": "10.20.0.254"
+        "dhcpd_enabled": true,
+        "dhcpd_start": "10.20.0.100",
+        "dhcpd_stop": "10.20.0.254"
     }
 
     Returns:
@@ -434,16 +463,16 @@ async def create_network(
             "error": "'vlan' is required for network purpose 'vlan-only'.",
         }
 
-    # Validation for DHCP
-    dhcp_enabled = validated_data.get("dhcp_enabled", True)
+    # Validation for DHCP — UniFi API uses dhcpd_* field names
+    dhcpd_enabled = validated_data.get("dhcpd_enabled", True)
     if (
         purpose != "vlan-only"
-        and dhcp_enabled
-        and (not validated_data.get("dhcp_start") or not validated_data.get("dhcp_stop"))
+        and dhcpd_enabled
+        and (not validated_data.get("dhcpd_start") or not validated_data.get("dhcpd_stop"))
     ):
         return {
             "success": False,
-            "error": "'dhcp_start' and 'dhcp_stop' are required if dhcp_enabled is true (and purpose is not vlan-only).",
+            "error": "'dhcpd_start' and 'dhcpd_stop' are required if dhcpd_enabled is true (and purpose is not vlan-only).",
         }
 
     # Validation for VLAN
@@ -653,9 +682,7 @@ async def update_wlan(
     wlan_id: Annotated[str, Field(description="Unique identifier (_id) of the WLAN to update (from unifi_list_wlans)")],
     update_data: Annotated[
         Dict[str, Any],
-        Field(
-            description="Dictionary of fields to update. See tool description for all supported fields."
-        ),
+        Field(description="Dictionary of fields to update. See tool description for all supported fields."),
     ],
     confirm: Annotated[
         bool,
@@ -724,10 +751,7 @@ async def update_wlan(
     updated_fields_list = list(validated_data.keys())
     logger.info("Attempting to update WLAN '%s' with fields: %s", wlan_id, ", ".join(updated_fields_list))
     try:
-        # *** Assumption: Need network_manager.update_wlan(wlan_id, validated_data) ***
-        # This method needs implementation in NetworkManager.
-        success = await network_manager.update_wlan(wlan_id, validated_data)
-        error_message_detail = "Manager method update_wlan might not be fully implemented for partial updates."
+        success, error_detail = await network_manager.update_wlan(wlan_id, validated_data)
 
         if success:
             updated_wlan = await network_manager.get_wlan_details(wlan_id)
@@ -739,12 +763,12 @@ async def update_wlan(
                 "details": json.loads(json.dumps(updated_wlan, default=str)),
             }
         else:
-            logger.error("Failed to update WLAN (%s). %s", wlan_id, error_message_detail)
+            logger.error("Failed to update WLAN (%s): %s", wlan_id, error_detail)
             wlan_after_update = await network_manager.get_wlan_details(wlan_id)
             return {
                 "success": False,
                 "wlan_id": wlan_id,
-                "error": f"Failed to update WLAN ({wlan_id}). Check server logs. {error_message_detail}",
+                "error": f"Failed to update WLAN ({wlan_id}): {error_detail}",
                 "details_after_attempt": json.loads(json.dumps(wlan_after_update, default=str)),
             }
 

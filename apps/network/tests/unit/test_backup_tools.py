@@ -175,9 +175,7 @@ class TestBackupTools:
             [{"_id": "abc123", "autobackup_enabled": True}],
         ]
 
-        result = await system_manager.update_autobackup_settings(
-            {"autobackup_enabled": True}
-        )
+        result = await system_manager.update_autobackup_settings({"autobackup_enabled": True})
 
         assert result is True
 
@@ -186,9 +184,7 @@ class TestBackupTools:
         """Test update_autobackup_settings returns False on error."""
         mock_connection.request.side_effect = Exception("Failed")
 
-        result = await system_manager.update_autobackup_settings(
-            {"autobackup_enabled": True}
-        )
+        result = await system_manager.update_autobackup_settings({"autobackup_enabled": True})
 
         assert result is False
 

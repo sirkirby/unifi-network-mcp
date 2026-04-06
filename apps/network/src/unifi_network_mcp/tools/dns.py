@@ -193,8 +193,7 @@ async def update_dns_record(
 
 @server.tool(
     name="unifi_delete_dns_record",
-    description="Delete a static DNS record. Use unifi_list_dns_records to find record IDs. "
-    "Requires confirmation.",
+    description="Delete a static DNS record. Use unifi_list_dns_records to find record IDs. Requires confirmation.",
     permission_category="dns",
     permission_action="delete",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),

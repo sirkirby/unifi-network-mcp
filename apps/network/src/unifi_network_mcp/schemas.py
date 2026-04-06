@@ -394,13 +394,6 @@ NETWORK_SCHEMA = {
             "type": "string",
             "description": "IP subnet in CIDR notation (e.g., '192.168.1.0/24')",
         },
-        "dhcp_enabled": {
-            "type": "boolean",
-            "default": True,
-            "description": "Whether DHCP is enabled",
-        },
-        "dhcp_start": {"type": "string", "description": "Start of DHCP range"},
-        "dhcp_stop": {"type": "string", "description": "End of DHCP range"},
         "enabled": {
             "type": "boolean",
             "default": True,
@@ -429,6 +422,119 @@ NETWORK_SCHEMA = {
         "mdns_enabled": {
             "type": "boolean",
             "description": "Enable mDNS (Bonjour/Avahi) reflection on this network",
+        },
+        "domain_name": {
+            "type": "string",
+            "description": "DNS domain name for the network (e.g., 'example.com')",
+        },
+        "dhcpd_enabled": {
+            "type": "boolean",
+            "description": "Enable the DHCP server on this network (mutually exclusive with dhcp_relay_enabled — the controller rejects having both true)",
+        },
+        "dhcpd_start": {
+            "type": "string",
+            "description": "DHCP range start IP address",
+        },
+        "dhcpd_stop": {
+            "type": "string",
+            "description": "DHCP range end IP address",
+        },
+        "dhcpd_leasetime": {
+            "type": "integer",
+            "minimum": 60,
+            "description": "DHCP lease time in seconds (default 86400 = 24 hours)",
+        },
+        "dhcpd_gateway": {
+            "type": "string",
+            "description": "Custom DHCP gateway IP (overrides default gateway)",
+        },
+        "dhcpd_gateway_enabled": {
+            "type": "boolean",
+            "description": "Enable custom DHCP gateway (use dhcpd_gateway value instead of default)",
+        },
+        "dhcpd_dns_1": {
+            "type": "string",
+            "description": "Primary DNS server IP for DHCP clients",
+        },
+        "dhcpd_dns_2": {
+            "type": "string",
+            "description": "Secondary DNS server IP for DHCP clients",
+        },
+        "dhcpd_dns_enabled": {
+            "type": "boolean",
+            "description": "Enable custom DNS servers in DHCP (use dhcpd_dns_1/2 instead of default)",
+        },
+        "dhcpd_ntp_1": {
+            "type": "string",
+            "description": "Primary NTP server IPv4 address for DHCP clients (controller rejects hostnames)",
+        },
+        "dhcpd_ntp_2": {
+            "type": "string",
+            "description": "Secondary NTP server IPv4 address for DHCP clients (controller rejects hostnames)",
+        },
+        "dhcpd_ntp_enabled": {
+            "type": "boolean",
+            "description": "Enable NTP server option in DHCP responses",
+        },
+        "dhcpd_wins_1": {
+            "type": "string",
+            "description": "Primary WINS server IP for DHCP clients",
+        },
+        "dhcpd_wins_2": {
+            "type": "string",
+            "description": "Secondary WINS server IP for DHCP clients",
+        },
+        "dhcpd_wins_enabled": {
+            "type": "boolean",
+            "description": "Enable WINS server option in DHCP responses",
+        },
+        "dhcpd_unifi_controller": {
+            "type": "string",
+            "description": "UniFi controller IP for DHCP option 43 (device adoption)",
+        },
+        "dhcpd_tftp_server": {
+            "type": "string",
+            "description": "TFTP server name/IP for DHCP option 150 (Cisco TFTP server). Independent of PXE boot — see dhcpd_boot_server for PXE",
+        },
+        "dhcpd_boot_server": {
+            "type": "string",
+            "description": "PXE boot server IP (BOOTP siaddr). Set together with dhcpd_boot_filename and dhcpd_boot_enabled to enable PXE boot",
+        },
+        "dhcpd_boot_filename": {
+            "type": "string",
+            "description": "PXE boot filename served via DHCP option 67 (required when dhcpd_boot_enabled is true)",
+        },
+        "dhcpd_boot_enabled": {
+            "type": "boolean",
+            "description": "Enable PXE network boot options in DHCP (requires dhcpd_boot_server and dhcpd_boot_filename)",
+        },
+        "dhcpd_conflict_checking": {
+            "type": "boolean",
+            "description": "Enable DHCP conflict checking (ping before assigning IP)",
+        },
+        "dhcp_relay_enabled": {
+            "type": "boolean",
+            "description": "Enable DHCP relay instead of local DHCP server (mutually exclusive with dhcpd_enabled — set dhcpd_enabled=false in the same update)",
+        },
+        "dhcpd_ip_1": {
+            "type": "string",
+            "description": "Trusted DHCP server IP for DHCP guard (typically the network gateway). Required when dhcpguard_enabled=true — enabling dhcpguard without this returns api.err.MissingIPAddress. Not present in GET responses until set",
+        },
+        "dhcpguard_enabled": {
+            "type": "boolean",
+            "description": "Enable DHCP guard (blocks rogue DHCP servers on this network). Requires dhcpd_ip_1 to be set to the trusted DHCP server's IP address in the same update; the controller returns api.err.MissingIPAddress otherwise",
+        },
+        "network_isolation_enabled": {
+            "type": "boolean",
+            "description": "Enable network isolation (corporate networks only — blocks inter-VLAN routing)",
+        },
+        "internet_access_enabled": {
+            "type": "boolean",
+            "description": "Allow this network to access the internet (WAN)",
+        },
+        "upnp_lan_enabled": {
+            "type": "boolean",
+            "description": "Enable UPnP on this network",
         },
     },
     "allOf": [
