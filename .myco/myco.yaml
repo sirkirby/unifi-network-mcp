@@ -17,6 +17,8 @@ capture:
   buffer_max_events: 500
 agent:
   summary_batch_interval: 10
+  scheduled_tasks_enabled: true
+  event_tasks_enabled: true
   provider:
     type: cloud
   tasks:
@@ -35,7 +37,7 @@ skills:
   usage_stale_days: 30
 notifications:
   enabled: true
-  system_notifications: false
+  system_notifications: true
   default_mode: summary
   domains:
     mycelium:
