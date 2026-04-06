@@ -1,6 +1,6 @@
 # Tool Catalog
 
-The UniFi Protect MCP server exposes 34 tools, all prefixed with `protect_`. Read-only tools are always available. Mutating tools are controlled by the [permission system](permissions.md).
+The UniFi Protect MCP server exposes 38 tools, all prefixed with `protect_`. Read-only tools are always available. Mutating tools are controlled by the [permission system](permissions.md).
 
 For machine-readable tool metadata, call the `protect_tool_index` meta-tool at runtime, or inspect `src/unifi_protect_mcp/tools_manifest.json`.
 
@@ -69,6 +69,15 @@ In lazy mode, an additional meta-tool is available:
 - `protect_list_liveviews` -- List multi-camera layouts with slots, cameras, cycle settings
 - `protect_create_liveview` -- Validate liveview creation (not supported by uiprotect API)
 - `protect_delete_liveview` -- Validate liveview deletion (not supported by uiprotect API)
+
+## Alarm Manager (4 tools)
+
+Controls the UniFi Protect Alarm Manager (Protect 6.1+). Requires arm profiles to be configured in the Protect web UI first.
+
+- `protect_list_arm_profiles` -- List all configured arm profiles with id, name, armed state, default flag
+- `protect_get_arm_status` -- Current armed/disarmed state across all profiles
+- `protect_arm` -- Arm the system for a given profile (confirm required; defaults to default profile)
+- `protect_disarm` -- Disarm the system for a given profile (confirm required; defaults to default profile)
 
 ## System (4 tools)
 

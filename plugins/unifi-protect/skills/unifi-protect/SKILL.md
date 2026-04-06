@@ -1,11 +1,11 @@
 ---
 name: unifi-protect
-description: How to manage UniFi Protect cameras and NVR — view cameras, smart detections, recordings, snapshots, lights, and sensors. Use this skill when the user mentions UniFi cameras, security cameras, NVR, recordings, motion detection, person detection, snapshots, RTSP streams, floodlights, sensors, chimes, or any UniFi Protect task.
+description: How to manage UniFi Protect cameras and NVR — view cameras, smart detections, recordings, snapshots, lights, sensors, and the Alarm Manager. Use this skill when the user mentions UniFi cameras, security cameras, NVR, recordings, motion detection, person detection, snapshots, RTSP streams, floodlights, sensors, chimes, arming/disarming the alarm, or any UniFi Protect task.
 ---
 
 # UniFi Protect MCP Server
 
-You have access to a UniFi Protect MCP server that lets you query and manage a UniFi Protect NVR. It provides 34 tools covering cameras, smart detections, recordings, snapshots, lights, sensors, and chimes.
+You have access to a UniFi Protect MCP server that lets you query and manage a UniFi Protect NVR. It provides 38 tools covering cameras, smart detections, recordings, snapshots, lights, sensors, chimes, and the Alarm Manager (arm/disarm).
 
 ## Tool Discovery
 
@@ -13,7 +13,7 @@ The server uses **lazy loading** by default — only meta-tools are registered i
 
 | Meta-Tool | Purpose |
 |-----------|---------|
-| `protect_tool_index` | List all 34 tools with full parameter schemas |
+| `protect_tool_index` | List all 38 tools with full parameter schemas |
 | `protect_execute` | Call any tool by name (essential in lazy mode) |
 | `protect_batch` | Run multiple tools in parallel |
 | `protect_batch_status` | Check async batch job status |
@@ -30,6 +30,7 @@ The server uses **lazy loading** by default — only meta-tools are registered i
 - `UNIFI_POLICY_PROTECT_CAMERAS_UPDATE=true` — camera settings, recording toggle, PTZ, reboot
 - `UNIFI_POLICY_PROTECT_LIGHTS_UPDATE=true` — light brightness, PIR sensitivity
 - `UNIFI_POLICY_PROTECT_CHIMES_UPDATE=true` — chime volume, trigger
+- `UNIFI_POLICY_PROTECT_ALARM_UPDATE=true` — arm/disarm the Alarm Manager (Protect 6.1+)
 
 **Confirmation flow** — every mutation uses preview-then-confirm:
 1. Default call → returns preview of what would change
@@ -80,4 +81,4 @@ Cameras are network clients — if a camera appears offline, the Network server 
 
 ## Tool Reference
 
-For the complete list of all 34 tools organized by category with descriptions, tips, and common scenarios, read `references/protect-tools.md`.
+For the complete list of all 38 tools organized by category with descriptions, tips, and common scenarios, read `references/protect-tools.md`.

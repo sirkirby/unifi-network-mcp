@@ -33,6 +33,7 @@ PROTECT_CATEGORY_MAP = {
     "chime": "chimes",
     "liveview": "liveviews",
     "system": "system",
+    "alarm": "alarm",
 }
 
 # Backward-compatible alias

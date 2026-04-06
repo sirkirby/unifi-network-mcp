@@ -1,8 +1,12 @@
 {
-  "count": 34,
+  "count": 38,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "protect_acknowledge_event": "unifi_protect_mcp.tools.events",
+    "protect_arm": "unifi_protect_mcp.tools.alarm",
+    "protect_disarm": "unifi_protect_mcp.tools.alarm",
+    "protect_get_arm_status": "unifi_protect_mcp.tools.alarm",
+    "protect_list_arm_profiles": "unifi_protect_mcp.tools.alarm",
     "protect_create_liveview": "unifi_protect_mcp.tools.liveviews",
     "protect_delete_liveview": "unifi_protect_mcp.tools.liveviews",
     "protect_delete_recording": "unifi_protect_mcp.tools.recordings",
@@ -64,6 +68,84 @@
           "required": [
             "event_id"
           ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Arms the UniFi Protect Alarm Manager. When profile_id is provided, the system first selects that profile (PATCH arm) and then activates it (POST arm/enable). When omitted, the currently selected profile is used. Requires confirm=True to apply — otherwise returns a preview.",
+      "name": "protect_arm",
+      "permission_action": "update",
+      "permission_category": "alarm",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, arms the system. When false (default), returns a preview.",
+              "type": "boolean"
+            },
+            "profile_id": {
+              "description": "Arm profile UUID from protect_list_arm_profiles. Omit to use the currently selected profile.",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Disarms the UniFi Protect Alarm Manager system-wide via POST arm/disable. No profile id is required (or accepted) by the disarm endpoint. Requires confirm=True to apply — otherwise returns a preview.",
+      "name": "protect_disarm",
+      "permission_action": "update",
+      "permission_category": "alarm",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, disarms the system. When false (default), returns a preview.",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Returns the current armed/disarmed state of the UniFi Protect Alarm Manager, including the active profile, raw status string, armed-at timestamp, and any breach info. Use this to check whether the security system is currently active.",
+      "name": "protect_get_arm_status",
+      "schema": {
+        "input": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Lists all configured UniFi Protect Alarm Manager profiles with their id, name, activation delay, schedule count, and automation count. Use this to discover the arm profile id needed by protect_arm. Requires Protect 6.1+ with Alarm Manager configured in the web UI.",
+      "name": "protect_list_arm_profiles",
+      "schema": {
+        "input": {
+          "properties": {},
           "type": "object"
         }
       }
