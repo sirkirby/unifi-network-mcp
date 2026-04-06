@@ -115,8 +115,8 @@ async def get_oon_policy_details(
     name="unifi_create_oon_policy",
     description="Create a new OON (Object-Oriented Network) policy for internet access scheduling, "
     "app blocking, bandwidth limiting, or VPN routing. "
-    "IMPORTANT: qos and route objects (including mode, apps, domains, ip_addresses, regions fields) "
-    "must be complete even if disabled — use unifi_get_oon_policy_details on an existing policy as a template. "
+    "IMPORTANT: qos and route must be full nested dicts (not the flattened qos_enabled/route_enabled booleans from list output). "
+    "Use unifi_get_oon_policy_details on an existing policy as a template for the nested structure. "
     "Requires confirmation.",
     permission_category="oon_policy",
     permission_action="create",

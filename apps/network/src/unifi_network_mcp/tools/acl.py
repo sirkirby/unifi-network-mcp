@@ -8,7 +8,7 @@ Application with Policy Engine support.
 
 import json
 import logging
-from typing import Annotated, Any, Dict, Optional
+from typing import Annotated, Any, Dict, List, Optional
 
 from mcp.types import ToolAnnotations
 from pydantic import Field
@@ -115,8 +115,8 @@ async def get_acl_rule_details(
 @server.tool(
     name="unifi_create_acl_rule",
     description="Create a new MAC ACL rule for Layer 2 access control within a VLAN. "
-    "Requires confirmation. IMPORTANT: traffic_source and traffic_destination type MUST be 'CLIENT_MAC' "
-    "(not 'ANY'). Use an empty specific_mac_addresses list to match any device.",
+    "Use source_macs/destination_macs to specify MAC addresses (same field names as unifi_list_acl_rules output). "
+    "Empty list = match any device. Requires confirmation.",
     permission_category="acl_rules",
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
@@ -129,17 +129,21 @@ async def create_acl_rule(
         str,
         Field(description="Network/VLAN ID this rule applies to (from unifi_list_networks)"),
     ],
+    source_macs: Annotated[
+        Optional[List[str]],
+        Field(description="List of source MAC addresses to match (empty list = any source). Uses same field name as unifi_list_acl_rules output"),
+    ] = None,
+    destination_macs: Annotated[
+        Optional[List[str]],
+        Field(description="List of destination MAC addresses to match (empty list = any destination). Uses same field name as unifi_list_acl_rules output"),
+    ] = None,
     traffic_source: Annotated[
         Optional[dict],
-        Field(
-            description="Source config dict with keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs, empty list = any). Defaults to matching any source"
-        ),
+        Field(description="(Advanced) Full source config dict. Ignored if source_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)"),
     ] = None,
     traffic_destination: Annotated[
         Optional[dict],
-        Field(
-            description="Destination config dict with same structure as traffic_source. Defaults to matching any destination"
-        ),
+        Field(description="(Advanced) Full destination config dict. Ignored if destination_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)"),
     ] = None,
     confirm: Annotated[
         bool,
@@ -154,16 +158,26 @@ async def create_acl_rule(
         acl_index (int): Position in the rule chain (lower = evaluated first).
         action (str): "ALLOW" or "BLOCK".
         mac_acl_network_id (str): Network ID of the VLAN this rule applies to.
-        traffic_source (dict): Source config with keys:
-            - type (str): "CLIENT_MAC"
-            - specific_mac_addresses (list): List of source MAC addresses. Empty list = any.
-        traffic_destination (dict): Destination config with same structure as source.
+        source_macs (list): List of source MAC addresses. Empty list or None = any.
+        destination_macs (list): List of destination MAC addresses. Empty list or None = any.
+        traffic_source (dict): Advanced — full source config dict. Ignored if source_macs is provided.
+        traffic_destination (dict): Advanced — full destination config dict. Ignored if destination_macs is provided.
         confirm (bool): Must be True to execute. False returns a preview.
 
     Returns:
         Preview of changes or the created rule.
     """
-    if traffic_source is None:
+    logger.info("unifi_create_acl_rule called (name=%s, action=%s, confirm=%s)", name, action, confirm)
+    # Build traffic_source: convenience params take precedence over raw dicts
+    if source_macs is not None:
+        traffic_source = {
+            "ips_or_subnets": [],
+            "network_ids": [],
+            "ports": [],
+            "specific_mac_addresses": source_macs,
+            "type": "CLIENT_MAC",
+        }
+    elif traffic_source is None:
         traffic_source = {
             "ips_or_subnets": [],
             "network_ids": [],
@@ -171,7 +185,16 @@ async def create_acl_rule(
             "specific_mac_addresses": [],
             "type": "CLIENT_MAC",
         }
-    if traffic_destination is None:
+    # Build traffic_destination: same precedence
+    if destination_macs is not None:
+        traffic_destination = {
+            "ips_or_subnets": [],
+            "network_ids": [],
+            "ports": [],
+            "specific_mac_addresses": destination_macs,
+            "type": "CLIENT_MAC",
+        }
+    elif traffic_destination is None:
         traffic_destination = {
             "ips_or_subnets": [],
             "network_ids": [],
@@ -217,7 +240,8 @@ async def create_acl_rule(
     name="unifi_update_acl_rule",
     description="Update an existing MAC ACL rule. Pass only the fields you want to change — "
     "current values are automatically preserved. "
-    "Requires confirmation. IMPORTANT: traffic source/destination type MUST be 'CLIENT_MAC' (not 'ANY').",
+    "Requires confirmation. Use source_macs/destination_macs for MAC lists (same field names as list output). "
+    "If using advanced traffic_source/traffic_destination dicts instead, type MUST be 'CLIENT_MAC'.",
     permission_category="acl_rules",
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
@@ -232,7 +256,8 @@ async def update_acl_rule(
             description="Dictionary of fields to update. Pass only the fields you want to change — "
             "current values are automatically preserved. "
             "Allowed keys: name, acl_index, action ('ALLOW'/'BLOCK'), enabled (bool), "
-            "mac_acl_network_id, traffic_source (dict), traffic_destination (dict)"
+            "mac_acl_network_id, source_macs (list of MACs), destination_macs (list of MACs), "
+            "traffic_source (dict, advanced), traffic_destination (dict, advanced)"
         ),
     ],
     confirm: Annotated[
@@ -241,10 +266,29 @@ async def update_acl_rule(
     ] = False,
 ) -> Dict[str, Any]:
     """Updates an existing MAC ACL rule with partial data."""
+    logger.info("unifi_update_acl_rule called (rule_id=%s, confirm=%s)", rule_id, confirm)
     if not rule_id:
         return {"success": False, "error": "rule_id is required"}
     if not rule_data:
         return {"success": False, "error": "rule_data cannot be empty"}
+
+    # Translate flattened field names (from list output) to nested structure
+    if "source_macs" in rule_data:
+        rule_data["traffic_source"] = {
+            "ips_or_subnets": [],
+            "network_ids": [],
+            "ports": [],
+            "specific_mac_addresses": rule_data.pop("source_macs"),
+            "type": "CLIENT_MAC",
+        }
+    if "destination_macs" in rule_data:
+        rule_data["traffic_destination"] = {
+            "ips_or_subnets": [],
+            "network_ids": [],
+            "ports": [],
+            "specific_mac_addresses": rule_data.pop("destination_macs"),
+            "type": "CLIENT_MAC",
+        }
 
     is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("acl_rule_update", rule_data)
     if not is_valid:
