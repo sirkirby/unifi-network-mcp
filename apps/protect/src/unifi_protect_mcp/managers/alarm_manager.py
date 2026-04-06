@@ -154,16 +154,6 @@ class AlarmManager:
             "No arm profiles found. Configure Alarm Manager in the Protect UI first, or pass profile_id explicitly."
         )
 
-    async def _profile_name(self, profile_id: str) -> Optional[str]:
-        try:
-            profiles = await self.list_arm_profiles()
-        except Exception:
-            return None
-        for p in profiles:
-            if p.get("id") == profile_id:
-                return p.get("name")
-        return None
-
     async def _select_profile(self, profile_id: str) -> None:
         """PATCH ``arm`` to set which profile is active."""
         await self._cm.client.api_request(

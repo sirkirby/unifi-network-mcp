@@ -119,5 +119,5 @@ def test_protect_category_map_values():
     """Verify category map values match config.yaml permissions keys."""
     from unifi_protect_mcp.categories import PROTECT_CATEGORY_MAP
 
-    expected_values = {"cameras", "events", "recordings", "lights", "sensors", "chimes", "liveviews", "system"}
+    expected_values = {"cameras", "events", "recordings", "lights", "sensors", "chimes", "liveviews", "system", "alarm"}
     assert set(PROTECT_CATEGORY_MAP.values()) == expected_values

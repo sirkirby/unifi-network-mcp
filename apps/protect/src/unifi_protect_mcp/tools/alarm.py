@@ -18,18 +18,18 @@ logger = logging.getLogger(__name__)
 
 
 @server.tool(
-    name="protect_list_arm_profiles",
+    name="protect_alarm_list_profiles",
     description=(
         "Lists all configured UniFi Protect Alarm Manager profiles with their id, "
         "name, activation delay, schedule count, and automation count. Use this "
-        "to discover the arm profile id needed by protect_arm. Requires Protect "
+        "to discover the arm profile id needed by protect_alarm_arm. Requires Protect "
         "6.1+ with Alarm Manager configured in the web UI."
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def protect_list_arm_profiles() -> Dict[str, Any]:
+async def protect_alarm_list_profiles() -> Dict[str, Any]:
     """List all arm profiles."""
-    logger.info("protect_list_arm_profiles tool called")
+    logger.info("protect_alarm_list_profiles tool called")
     try:
         profiles = await alarm_manager.list_arm_profiles()
         return {
@@ -42,7 +42,7 @@ async def protect_list_arm_profiles() -> Dict[str, Any]:
 
 
 @server.tool(
-    name="protect_get_arm_status",
+    name="protect_alarm_get_status",
     description=(
         "Returns the current armed/disarmed state of the UniFi Protect Alarm "
         "Manager, including the active profile, raw status string, armed-at "
@@ -51,9 +51,9 @@ async def protect_list_arm_profiles() -> Dict[str, Any]:
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
-async def protect_get_arm_status() -> Dict[str, Any]:
+async def protect_alarm_get_status() -> Dict[str, Any]:
     """Get the current arm status."""
-    logger.info("protect_get_arm_status tool called")
+    logger.info("protect_alarm_get_status tool called")
     try:
         state = await alarm_manager.get_arm_state()
         return {
@@ -76,7 +76,7 @@ async def protect_get_arm_status() -> Dict[str, Any]:
 
 
 @server.tool(
-    name="protect_arm",
+    name="protect_alarm_arm",
     description=(
         "Arms the UniFi Protect Alarm Manager. When profile_id is provided, "
         "the system first selects that profile (PATCH arm) and then activates "
@@ -87,11 +87,11 @@ async def protect_get_arm_status() -> Dict[str, Any]:
     permission_category="alarm",
     permission_action="update",
 )
-async def protect_arm(
+async def protect_alarm_arm(
     profile_id: Annotated[
         Optional[str],
         Field(
-            description=("Arm profile UUID from protect_list_arm_profiles. Omit to use the currently selected profile.")
+            description=("Arm profile UUID from protect_alarm_list_profiles. Omit to use the currently selected profile.")
         ),
     ] = None,
     confirm: Annotated[
@@ -100,7 +100,7 @@ async def protect_arm(
     ] = False,
 ) -> Dict[str, Any]:
     """Arm the Protect Alarm Manager."""
-    logger.info("protect_arm tool called (profile_id=%s, confirm=%s)", profile_id, confirm)
+    logger.info("protect_alarm_arm tool called (profile_id=%s, confirm=%s)", profile_id, confirm)
     try:
         if not confirm:
             preview_data = await alarm_manager.preview_arm(profile_id)
@@ -123,7 +123,7 @@ async def protect_arm(
 
 
 @server.tool(
-    name="protect_disarm",
+    name="protect_alarm_disarm",
     description=(
         "Disarms the UniFi Protect Alarm Manager system-wide via POST "
         "arm/disable. No profile id is required (or accepted) by the disarm "
@@ -133,14 +133,14 @@ async def protect_arm(
     permission_category="alarm",
     permission_action="update",
 )
-async def protect_disarm(
+async def protect_alarm_disarm(
     confirm: Annotated[
         bool,
         Field(description="When true, disarms the system. When false (default), returns a preview."),
     ] = False,
 ) -> Dict[str, Any]:
     """Disarm the Protect Alarm Manager."""
-    logger.info("protect_disarm tool called (confirm=%s)", confirm)
+    logger.info("protect_alarm_disarm tool called (confirm=%s)", confirm)
     try:
         if not confirm:
             preview_data = await alarm_manager.preview_disarm()
@@ -162,4 +162,4 @@ async def protect_disarm(
         return {"success": False, "error": f"Failed to disarm alarm: {e}"}
 
 
-logger.info("Alarm tools registered: protect_list_arm_profiles, protect_get_arm_status, protect_arm, protect_disarm")
+logger.info("Alarm tools registered: protect_alarm_list_profiles, protect_alarm_get_status, protect_alarm_arm, protect_alarm_disarm")

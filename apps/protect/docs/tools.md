@@ -74,10 +74,10 @@ In lazy mode, an additional meta-tool is available:
 
 Controls the UniFi Protect Alarm Manager (Protect 6.1+). Requires arm profiles to be configured in the Protect web UI first.
 
-- `protect_list_arm_profiles` -- List all configured arm profiles with id, name, armed state, default flag
-- `protect_get_arm_status` -- Current armed/disarmed state across all profiles
-- `protect_arm` -- Arm the system for a given profile (confirm required; defaults to default profile)
-- `protect_disarm` -- Disarm the system for a given profile (confirm required; defaults to default profile)
+- `protect_alarm_list_profiles` -- List all configured arm profiles with id, name, armed state, default flag
+- `protect_alarm_get_status` -- Current armed/disarmed state across all profiles
+- `protect_alarm_arm` -- Arm the system for a given profile (confirm required; defaults to default profile)
+- `protect_alarm_disarm` -- Disarm the system for a given profile (confirm required; defaults to default profile)
 
 ## System (4 tools)
 

@@ -170,15 +170,15 @@ Controls the UniFi Protect Alarm Manager (Protect 6.1+). Requires arm profiles c
 
 | Tool | Type | Description |
 |------|------|-------------|
-| `protect_get_arm_status` | Read | Returns the current armed/disarmed state of the UniFi Protect Alarm Manager, including the active profile, raw status string, armed-at ti... |
-| `protect_list_arm_profiles` | Read | Lists all configured UniFi Protect Alarm Manager profiles with their id, name, activation delay, schedule count, and automation count. |
-| `protect_arm` | Mutate | Arms the UniFi Protect Alarm Manager. |
-| `protect_disarm` | Mutate | Disarms the UniFi Protect Alarm Manager system-wide via POST arm/disable. |
+| `protect_alarm_get_status` | Read | Returns the current armed/disarmed state of the UniFi Protect Alarm Manager, including the active profile, raw status string, armed-at ti... |
+| `protect_alarm_list_profiles` | Read | Lists all configured UniFi Protect Alarm Manager profiles with their id, name, activation delay, schedule count, and automation count. |
+| `protect_alarm_arm` | Mutate | Arms the UniFi Protect Alarm Manager. |
+| `protect_alarm_disarm` | Mutate | Disarms the UniFi Protect Alarm Manager system-wide via POST arm/disable. |
 <!-- /AUTO:tools:alarm -->
 
 **Tips:**
-- Call `protect_get_arm_status` first to see what's currently active before arming/disarming
-- Both `protect_arm` and `protect_disarm` are idempotent — calling them when the system is already in the target state is a no-op (returns `already_armed` / `already_disarmed`)
+- Call `protect_alarm_get_status` first to see what's currently active before arming/disarming
+- Both `protect_alarm_arm` and `protect_alarm_disarm` are idempotent — calling them when the system is already in the target state is a no-op (returns `already_armed` / `already_disarmed`)
 - To switch arm profiles while the system is armed, you must **disarm first** — the API does not allow switching profiles mid-arm
 - There's typically an activation delay (e.g. 60 seconds) configured per profile — the system enters a pending state (`willBeArmedAt`) before fully arming
 
