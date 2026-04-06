@@ -74,6 +74,8 @@
     },
     {
       "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": false
       },
@@ -99,10 +101,12 @@
     },
     {
       "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Disarms the UniFi Protect Alarm Manager system-wide via POST arm/disable. No profile id is required (or accepted) by the disarm endpoint. Requires confirm=True to apply — otherwise returns a preview of the action.",
+      "description": "Disarms the UniFi Protect Alarm Manager system-wide via POST arm/disable. No profile id is required (or accepted) by the disarm endpoint. Requires confirm=True to apply — otherwise returns a preview.",
       "name": "protect_disarm",
       "permission_action": "update",
       "permission_category": "alarm",

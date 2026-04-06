@@ -83,7 +83,7 @@ async def protect_get_arm_status() -> Dict[str, Any]:
         "it (POST arm/enable). When omitted, the currently selected profile is "
         "used. Requires confirm=True to apply — otherwise returns a preview."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
     permission_category="alarm",
     permission_action="update",
 )
@@ -129,7 +129,7 @@ async def protect_arm(
         "arm/disable. No profile id is required (or accepted) by the disarm "
         "endpoint. Requires confirm=True to apply — otherwise returns a preview."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
     permission_category="alarm",
     permission_action="update",
 )
