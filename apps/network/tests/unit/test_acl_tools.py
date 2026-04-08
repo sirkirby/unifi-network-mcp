@@ -205,3 +205,96 @@ class TestUpdateAclRule:
         assert "traffic_destination" in update_data
         assert update_data["traffic_destination"]["specific_mac_addresses"] == ["aa:bb:cc:dd:ee:ff"]
         assert "destination_macs" not in update_data
+
+    @pytest.mark.asyncio
+    async def test_source_macs_with_traffic_source_returns_error(self):
+        """Passing both source_macs and traffic_source in rule_data is rejected."""
+        from unifi_network_mcp.tools.acl import update_acl_rule
+
+        result = await update_acl_rule(
+            rule_id="rule001",
+            rule_data={
+                "source_macs": ["11:22:33:44:55:66"],
+                "traffic_source": {
+                    "type": "CLIENT_MAC",
+                    "specific_mac_addresses": ["aa:bb:cc:dd:ee:ff"],
+                },
+            },
+            confirm=True,
+        )
+
+        assert result["success"] is False
+        assert "source_macs" in result["error"]
+        assert "traffic_source" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_destination_macs_with_traffic_destination_returns_error(self):
+        """Passing both destination_macs and traffic_destination in rule_data is rejected."""
+        from unifi_network_mcp.tools.acl import update_acl_rule
+
+        result = await update_acl_rule(
+            rule_id="rule001",
+            rule_data={
+                "destination_macs": ["11:22:33:44:55:66"],
+                "traffic_destination": {
+                    "type": "CLIENT_MAC",
+                    "specific_mac_addresses": ["aa:bb:cc:dd:ee:ff"],
+                },
+            },
+            confirm=True,
+        )
+
+        assert result["success"] is False
+        assert "destination_macs" in result["error"]
+        assert "traffic_destination" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_empty_source_macs_clears_mac_list(self):
+        """source_macs=[] in rule_data clears specific_mac_addresses (not a no-op).
+
+        Mirror image of the original silent-drop bug: a caller clearing MAC
+        restrictions must actually clear them, not silently keep the old list.
+        """
+        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
+            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_RULE)
+            mock_mgr.update_acl_rule = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.acl import update_acl_rule
+
+            result = await update_acl_rule(
+                rule_id="rule001",
+                rule_data={"source_macs": []},
+                confirm=True,
+            )
+
+        assert result["success"] is True
+        call_args = mock_mgr.update_acl_rule.call_args[0]
+        update_data = call_args[1]
+        assert update_data["traffic_source"]["specific_mac_addresses"] == []
+        assert "source_macs" not in update_data
+
+    @pytest.mark.asyncio
+    async def test_source_macs_preserves_sibling_fields(self):
+        """source_macs translation does not drop other fields in rule_data."""
+        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
+            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_RULE)
+            mock_mgr.update_acl_rule = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.acl import update_acl_rule
+
+            result = await update_acl_rule(
+                rule_id="rule001",
+                rule_data={
+                    "source_macs": ["11:22:33:44:55:66"],
+                    "name": "Renamed Rule",
+                    "action": "BLOCK",
+                },
+                confirm=True,
+            )
+
+        assert result["success"] is True
+        call_args = mock_mgr.update_acl_rule.call_args[0]
+        update_data = call_args[1]
+        assert update_data["traffic_source"]["specific_mac_addresses"] == ["11:22:33:44:55:66"]
+        assert update_data["name"] == "Renamed Rule"
+        assert update_data["action"] == "BLOCK"

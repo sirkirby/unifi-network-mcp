@@ -131,19 +131,27 @@ async def create_acl_rule(
     ],
     source_macs: Annotated[
         Optional[List[str]],
-        Field(description="List of source MAC addresses to match (empty list = any source). Uses same field name as unifi_list_acl_rules output"),
+        Field(
+            description="List of source MAC addresses to match (empty list = any source). Uses same field name as unifi_list_acl_rules output"
+        ),
     ] = None,
     destination_macs: Annotated[
         Optional[List[str]],
-        Field(description="List of destination MAC addresses to match (empty list = any destination). Uses same field name as unifi_list_acl_rules output"),
+        Field(
+            description="List of destination MAC addresses to match (empty list = any destination). Uses same field name as unifi_list_acl_rules output"
+        ),
     ] = None,
     traffic_source: Annotated[
         Optional[dict],
-        Field(description="(Advanced) Full source config dict. Ignored if source_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)"),
+        Field(
+            description="(Advanced) Full source config dict. Ignored if source_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)"
+        ),
     ] = None,
     traffic_destination: Annotated[
         Optional[dict],
-        Field(description="(Advanced) Full destination config dict. Ignored if destination_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)"),
+        Field(
+            description="(Advanced) Full destination config dict. Ignored if destination_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)"
+        ),
     ] = None,
     confirm: Annotated[
         bool,
@@ -271,6 +279,21 @@ async def update_acl_rule(
         return {"success": False, "error": "rule_id is required"}
     if not rule_data:
         return {"success": False, "error": "rule_data cannot be empty"}
+
+    # Convenience params and advanced dicts are mutually exclusive — reject
+    # the collision up front rather than silently picking a winner (which
+    # would be the same class of silent-drop bug this tool's create path
+    # exists to prevent).
+    if "source_macs" in rule_data and "traffic_source" in rule_data:
+        return {
+            "success": False,
+            "error": "Pass either source_macs or traffic_source, not both.",
+        }
+    if "destination_macs" in rule_data and "traffic_destination" in rule_data:
+        return {
+            "success": False,
+            "error": "Pass either destination_macs or traffic_destination, not both.",
+        }
 
     # Translate flattened field names (from list output) to nested structure
     if "source_macs" in rule_data:
