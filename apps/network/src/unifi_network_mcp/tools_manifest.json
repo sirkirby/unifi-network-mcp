@@ -407,7 +407,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Create a new MAC ACL rule for Layer 2 access control within a VLAN. Requires confirmation. IMPORTANT: traffic_source and traffic_destination type MUST be 'CLIENT_MAC' (not 'ANY'). Use an empty specific_mac_addresses list to match any device.",
+      "description": "Create a new MAC ACL rule for Layer 2 access control within a VLAN. Use source_macs/destination_macs to specify MAC addresses (same field names as unifi_list_acl_rules output). Empty list = match any device. Requires confirmation.",
       "name": "unifi_create_acl_rule",
       "permission_action": "create",
       "permission_category": "acl_rules",
@@ -426,6 +426,10 @@
               "description": "When true, creates the rule. When false (default), returns a preview of the changes",
               "type": "boolean"
             },
+            "destination_macs": {
+              "description": "List of destination MAC addresses to match (empty list = any destination). Uses same field name as unifi_list_acl_rules output",
+              "type": "array"
+            },
             "mac_acl_network_id": {
               "description": "Network/VLAN ID this rule applies to (from unifi_list_networks)",
               "type": "string"
@@ -434,12 +438,16 @@
               "description": "Descriptive name for the ACL rule",
               "type": "string"
             },
+            "source_macs": {
+              "description": "List of source MAC addresses to match (empty list = any source). Uses same field name as unifi_list_acl_rules output",
+              "type": "array"
+            },
             "traffic_destination": {
-              "description": "Destination config dict with same structure as traffic_source. Defaults to matching any destination",
+              "description": "(Advanced) Full destination config dict. Ignored if destination_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)",
               "type": "object"
             },
             "traffic_source": {
-              "description": "Source config dict with keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs, empty list = any). Defaults to matching any source",
+              "description": "(Advanced) Full source config dict. Ignored if source_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)",
               "type": "object"
             }
           },
@@ -678,7 +686,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Create a new OON (Object-Oriented Network) policy for internet access scheduling, app blocking, bandwidth limiting, or VPN routing. IMPORTANT: qos and route objects (including mode, apps, domains, ip_addresses, regions fields) must be complete even if disabled \u2014 use unifi_get_oon_policy_details on an existing policy as a template. Requires confirmation.",
+      "description": "Create a new OON (Object-Oriented Network) policy for internet access scheduling, app blocking, bandwidth limiting, or VPN routing. IMPORTANT: qos and route must be full nested dicts (not the flattened qos_enabled/route_enabled booleans from list output). Use unifi_get_oon_policy_details on an existing policy as a template for the nested structure. Requires confirmation.",
       "name": "unifi_create_oon_policy",
       "permission_action": "create",
       "permission_category": "oon_policy",
@@ -3814,7 +3822,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Update an existing MAC ACL rule. Pass only the fields you want to change \u2014 current values are automatically preserved. Requires confirmation. IMPORTANT: traffic source/destination type MUST be 'CLIENT_MAC' (not 'ANY').",
+      "description": "Update an existing MAC ACL rule. Pass only the fields you want to change \u2014 current values are automatically preserved. Requires confirmation. Use source_macs/destination_macs for MAC lists (same field names as list output). If using advanced traffic_source/traffic_destination dicts instead, type MUST be 'CLIENT_MAC'.",
       "name": "unifi_update_acl_rule",
       "permission_action": "update",
       "permission_category": "acl_rules",
@@ -3826,7 +3834,7 @@
               "type": "boolean"
             },
             "rule_data": {
-              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name, acl_index, action ('ALLOW'/'BLOCK'), enabled (bool), mac_acl_network_id, traffic_source (dict), traffic_destination (dict)",
+              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name, acl_index, action ('ALLOW'/'BLOCK'), enabled (bool), mac_acl_network_id, source_macs (list of MACs), destination_macs (list of MACs), traffic_source (dict, advanced), traffic_destination (dict, advanced)",
               "type": "object"
             },
             "rule_id": {

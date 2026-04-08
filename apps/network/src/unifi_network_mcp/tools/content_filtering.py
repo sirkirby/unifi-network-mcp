@@ -62,7 +62,7 @@ async def list_content_filters() -> Dict[str, Any]:
                 "safe_search": f.get("safe_search", []),
                 "allow_list_count": len(f.get("allow_list", [])),
                 "block_list_count": len(f.get("block_list", [])),
-                "schedule_mode": f.get("schedule", {}).get("mode"),
+                "schedule_mode": f.get("schedule", {}).get("mode"),  # read-only summary, not updateable via API
             }
             for f in filters
         ]
