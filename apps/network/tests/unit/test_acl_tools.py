@@ -1,7 +1,8 @@
-"""Tests for ACL rule tool functions.
+"""Tests for ACL rule tool functions and the shared AclRule model.
 
-Tests the source_macs/destination_macs convenience params and the
-flattened-to-nested translation in create and update paths.
+Tests tool-layer behavior (create, update, list, preview), model
+translation (from_controller, to_controller_create, to_controller_update),
+and field symmetry guarantees.
 """
 
 import os
@@ -14,7 +15,8 @@ os.environ.setdefault("UNIFI_USERNAME", "test")
 os.environ.setdefault("UNIFI_PASSWORD", "test")
 
 
-SAMPLE_RULE = {
+# Controller-shaped sample (what the manager returns)
+SAMPLE_CONTROLLER_RULE = {
     "_id": "rule001",
     "name": "Test Rule",
     "acl_index": 5,
@@ -38,14 +40,109 @@ SAMPLE_RULE = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Model translation tests
+# ---------------------------------------------------------------------------
+
+
+class TestAclRuleModel:
+    """Test the shared AclRule model and its translation helpers."""
+
+    def test_from_controller_flattens_correctly(self):
+        """from_controller extracts nested MACs into flat fields."""
+        from unifi_network_mcp.models.acl import from_controller
+
+        rule = from_controller(SAMPLE_CONTROLLER_RULE)
+        assert rule.id == "rule001"
+        assert rule.name == "Test Rule"
+        assert rule.network_id == "net001"
+        assert rule.source_macs == ["aa:bb:cc:dd:ee:ff"]
+        assert rule.destination_macs == []
+        assert rule.source_type == "CLIENT_MAC"
+        assert rule.action == "ALLOW"
+
+    def test_to_controller_create_nests_correctly(self):
+        """to_controller_create builds the nested traffic_source/destination."""
+        from unifi_network_mcp.models.acl import AclRule, to_controller_create
+
+        rule = AclRule(
+            name="New Rule",
+            acl_index=10,
+            action="BLOCK",
+            network_id="net002",
+            source_macs=["11:22:33:44:55:66"],
+            destination_macs=["aa:bb:cc:dd:ee:ff"],
+        )
+        payload = to_controller_create(rule)
+
+        assert payload["name"] == "New Rule"
+        assert payload["mac_acl_network_id"] == "net002"
+        assert payload["traffic_source"]["specific_mac_addresses"] == ["11:22:33:44:55:66"]
+        assert payload["traffic_destination"]["specific_mac_addresses"] == ["aa:bb:cc:dd:ee:ff"]
+        assert payload["type"] == "MAC"
+
+    def test_round_trip_preserves_data(self):
+        """from_controller → to_controller_create preserves all mutable fields."""
+        from unifi_network_mcp.models.acl import from_controller, to_controller_create
+
+        rule = from_controller(SAMPLE_CONTROLLER_RULE)
+        payload = to_controller_create(rule)
+
+        assert payload["name"] == SAMPLE_CONTROLLER_RULE["name"]
+        assert payload["acl_index"] == SAMPLE_CONTROLLER_RULE["acl_index"]
+        assert payload["action"] == SAMPLE_CONTROLLER_RULE["action"]
+        assert payload["mac_acl_network_id"] == SAMPLE_CONTROLLER_RULE["mac_acl_network_id"]
+        assert (
+            payload["traffic_source"]["specific_mac_addresses"]
+            == SAMPLE_CONTROLLER_RULE["traffic_source"]["specific_mac_addresses"]
+        )
+
+    def test_to_controller_update_partial(self):
+        """to_controller_update only includes provided fields."""
+        from unifi_network_mcp.models.acl import to_controller_update
+
+        result = to_controller_update({"source_macs": ["11:22:33:44:55:66"], "name": "Renamed"})
+
+        assert result["traffic_source"]["specific_mac_addresses"] == ["11:22:33:44:55:66"]
+        assert result["name"] == "Renamed"
+        assert "traffic_destination" not in result  # not provided, not included
+        assert "acl_index" not in result
+
+    def test_to_controller_update_network_id_maps(self):
+        """network_id in model maps to mac_acl_network_id in controller."""
+        from unifi_network_mcp.models.acl import to_controller_update
+
+        result = to_controller_update({"network_id": "net999"})
+        assert result["mac_acl_network_id"] == "net999"
+        assert "network_id" not in result
+
+    def test_mutable_fields_excludes_read_only(self):
+        """MUTABLE_FIELDS does not contain read-only fields."""
+        from unifi_network_mcp.models.acl import MUTABLE_FIELDS, READ_ONLY_FIELDS
+
+        assert "id" not in MUTABLE_FIELDS
+        assert "source_type" not in MUTABLE_FIELDS
+        assert "destination_type" not in MUTABLE_FIELDS
+        assert "source_macs" in MUTABLE_FIELDS
+        assert "name" in MUTABLE_FIELDS
+
+        assert "id" in READ_ONLY_FIELDS
+        assert "source_macs" not in READ_ONLY_FIELDS
+
+
+# ---------------------------------------------------------------------------
+# Create tool tests
+# ---------------------------------------------------------------------------
+
+
 class TestCreateAclRule:
-    """Test create_acl_rule with convenience MAC params."""
+    """Test create_acl_rule using the shared model."""
 
     @pytest.mark.asyncio
-    async def test_source_macs_builds_traffic_source(self):
-        """source_macs param builds the nested traffic_source dict correctly."""
+    async def test_create_with_macs(self):
+        """source_macs and destination_macs flow through to controller payload."""
         with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
-            mock_mgr.create_acl_rule = AsyncMock(return_value=SAMPLE_RULE)
+            mock_mgr.create_acl_rule = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
 
             from unifi_network_mcp.tools.acl import create_acl_rule
 
@@ -53,76 +150,22 @@ class TestCreateAclRule:
                 name="Test",
                 acl_index=5,
                 action="ALLOW",
-                mac_acl_network_id="net001",
+                network_id="net001",
                 source_macs=["aa:bb:cc:dd:ee:ff"],
                 destination_macs=[],
                 confirm=True,
             )
 
         assert result["success"] is True
-        # Verify the manager received the nested structure
         call_args = mock_mgr.create_acl_rule.call_args[0][0]
         assert call_args["traffic_source"]["specific_mac_addresses"] == ["aa:bb:cc:dd:ee:ff"]
         assert call_args["traffic_destination"]["specific_mac_addresses"] == []
 
     @pytest.mark.asyncio
-    async def test_source_macs_overrides_traffic_source_dict(self):
-        """source_macs takes precedence over traffic_source dict when both provided."""
-        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
-            mock_mgr.create_acl_rule = AsyncMock(return_value=SAMPLE_RULE)
-
-            from unifi_network_mcp.tools.acl import create_acl_rule
-
-            result = await create_acl_rule(
-                name="Test",
-                acl_index=5,
-                action="ALLOW",
-                mac_acl_network_id="net001",
-                source_macs=["11:22:33:44:55:66"],
-                traffic_source={
-                    "type": "CLIENT_MAC",
-                    "specific_mac_addresses": ["aa:bb:cc:dd:ee:ff"],
-                },
-                confirm=True,
-            )
-
-        assert result["success"] is True
-        call_args = mock_mgr.create_acl_rule.call_args[0][0]
-        # source_macs wins over traffic_source
-        assert call_args["traffic_source"]["specific_mac_addresses"] == ["11:22:33:44:55:66"]
-
-    @pytest.mark.asyncio
-    async def test_backward_compat_traffic_source_dict(self):
-        """traffic_source dict still works when source_macs is not provided."""
-        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
-            mock_mgr.create_acl_rule = AsyncMock(return_value=SAMPLE_RULE)
-
-            from unifi_network_mcp.tools.acl import create_acl_rule
-
-            result = await create_acl_rule(
-                name="Test",
-                acl_index=5,
-                action="ALLOW",
-                mac_acl_network_id="net001",
-                traffic_source={
-                    "type": "CLIENT_MAC",
-                    "specific_mac_addresses": ["aa:bb:cc:dd:ee:ff"],
-                    "ips_or_subnets": [],
-                    "network_ids": [],
-                    "ports": [],
-                },
-                confirm=True,
-            )
-
-        assert result["success"] is True
-        call_args = mock_mgr.create_acl_rule.call_args[0][0]
-        assert call_args["traffic_source"]["specific_mac_addresses"] == ["aa:bb:cc:dd:ee:ff"]
-
-    @pytest.mark.asyncio
     async def test_no_macs_defaults_to_any(self):
-        """Omitting both source_macs and traffic_source defaults to ANY (empty list)."""
+        """Omitting source_macs and destination_macs defaults to ANY (empty list)."""
         with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
-            mock_mgr.create_acl_rule = AsyncMock(return_value=SAMPLE_RULE)
+            mock_mgr.create_acl_rule = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
 
             from unifi_network_mcp.tools.acl import create_acl_rule
 
@@ -130,7 +173,7 @@ class TestCreateAclRule:
                 name="Block All",
                 acl_index=99,
                 action="BLOCK",
-                mac_acl_network_id="net001",
+                network_id="net001",
                 confirm=True,
             )
 
@@ -148,7 +191,7 @@ class TestCreateAclRule:
             name="Test Preview",
             acl_index=5,
             action="ALLOW",
-            mac_acl_network_id="net001",
+            network_id="net001",
             source_macs=["aa:bb:cc:dd:ee:ff"],
             confirm=False,
         )
@@ -158,15 +201,44 @@ class TestCreateAclRule:
         preview_data = result.get("preview", {}).get("will_create", {})
         assert preview_data["traffic_source"]["specific_mac_addresses"] == ["aa:bb:cc:dd:ee:ff"]
 
+    @pytest.mark.asyncio
+    async def test_create_returns_model_shape(self):
+        """Successful create returns the rule in model shape (flat fields)."""
+        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
+            mock_mgr.create_acl_rule = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
+
+            from unifi_network_mcp.tools.acl import create_acl_rule
+
+            result = await create_acl_rule(
+                name="Test",
+                acl_index=5,
+                action="ALLOW",
+                network_id="net001",
+                source_macs=["aa:bb:cc:dd:ee:ff"],
+                confirm=True,
+            )
+
+        assert result["success"] is True
+        rule = result["rule"]
+        # Model shape: flat source_macs, not nested traffic_source
+        assert "source_macs" in rule
+        assert rule["source_macs"] == ["aa:bb:cc:dd:ee:ff"]
+        assert rule["network_id"] == "net001"
+
+
+# ---------------------------------------------------------------------------
+# Update tool tests
+# ---------------------------------------------------------------------------
+
 
 class TestUpdateAclRule:
-    """Test update_acl_rule flattened field translation."""
+    """Test update_acl_rule with model field names."""
 
     @pytest.mark.asyncio
-    async def test_source_macs_translated_to_traffic_source(self):
-        """source_macs in rule_data is translated to nested traffic_source before validation."""
+    async def test_source_macs_translated(self):
+        """source_macs in rule_data is translated to controller shape."""
         with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
-            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_RULE)
+            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
             mock_mgr.update_acl_rule = AsyncMock(return_value=True)
 
             from unifi_network_mcp.tools.acl import update_acl_rule
@@ -180,83 +252,13 @@ class TestUpdateAclRule:
         assert result["success"] is True
         call_args = mock_mgr.update_acl_rule.call_args[0]
         update_data = call_args[1]
-        assert "traffic_source" in update_data
         assert update_data["traffic_source"]["specific_mac_addresses"] == ["11:22:33:44:55:66"]
-        assert "source_macs" not in update_data
 
     @pytest.mark.asyncio
-    async def test_destination_macs_translated_to_traffic_destination(self):
-        """destination_macs in rule_data is translated to nested traffic_destination."""
+    async def test_empty_source_macs_clears(self):
+        """source_macs=[] clears the MAC list (not a no-op)."""
         with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
-            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_RULE)
-            mock_mgr.update_acl_rule = AsyncMock(return_value=True)
-
-            from unifi_network_mcp.tools.acl import update_acl_rule
-
-            result = await update_acl_rule(
-                rule_id="rule001",
-                rule_data={"destination_macs": ["aa:bb:cc:dd:ee:ff"]},
-                confirm=True,
-            )
-
-        assert result["success"] is True
-        call_args = mock_mgr.update_acl_rule.call_args[0]
-        update_data = call_args[1]
-        assert "traffic_destination" in update_data
-        assert update_data["traffic_destination"]["specific_mac_addresses"] == ["aa:bb:cc:dd:ee:ff"]
-        assert "destination_macs" not in update_data
-
-    @pytest.mark.asyncio
-    async def test_source_macs_with_traffic_source_returns_error(self):
-        """Passing both source_macs and traffic_source in rule_data is rejected."""
-        from unifi_network_mcp.tools.acl import update_acl_rule
-
-        result = await update_acl_rule(
-            rule_id="rule001",
-            rule_data={
-                "source_macs": ["11:22:33:44:55:66"],
-                "traffic_source": {
-                    "type": "CLIENT_MAC",
-                    "specific_mac_addresses": ["aa:bb:cc:dd:ee:ff"],
-                },
-            },
-            confirm=True,
-        )
-
-        assert result["success"] is False
-        assert "source_macs" in result["error"]
-        assert "traffic_source" in result["error"]
-
-    @pytest.mark.asyncio
-    async def test_destination_macs_with_traffic_destination_returns_error(self):
-        """Passing both destination_macs and traffic_destination in rule_data is rejected."""
-        from unifi_network_mcp.tools.acl import update_acl_rule
-
-        result = await update_acl_rule(
-            rule_id="rule001",
-            rule_data={
-                "destination_macs": ["11:22:33:44:55:66"],
-                "traffic_destination": {
-                    "type": "CLIENT_MAC",
-                    "specific_mac_addresses": ["aa:bb:cc:dd:ee:ff"],
-                },
-            },
-            confirm=True,
-        )
-
-        assert result["success"] is False
-        assert "destination_macs" in result["error"]
-        assert "traffic_destination" in result["error"]
-
-    @pytest.mark.asyncio
-    async def test_empty_source_macs_clears_mac_list(self):
-        """source_macs=[] in rule_data clears specific_mac_addresses (not a no-op).
-
-        Mirror image of the original silent-drop bug: a caller clearing MAC
-        restrictions must actually clear them, not silently keep the old list.
-        """
-        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
-            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_RULE)
+            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
             mock_mgr.update_acl_rule = AsyncMock(return_value=True)
 
             from unifi_network_mcp.tools.acl import update_acl_rule
@@ -269,15 +271,13 @@ class TestUpdateAclRule:
 
         assert result["success"] is True
         call_args = mock_mgr.update_acl_rule.call_args[0]
-        update_data = call_args[1]
-        assert update_data["traffic_source"]["specific_mac_addresses"] == []
-        assert "source_macs" not in update_data
+        assert call_args[1]["traffic_source"]["specific_mac_addresses"] == []
 
     @pytest.mark.asyncio
-    async def test_source_macs_preserves_sibling_fields(self):
-        """source_macs translation does not drop other fields in rule_data."""
+    async def test_sibling_fields_preserved(self):
+        """source_macs alongside name/action — siblings survive translation."""
         with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
-            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_RULE)
+            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
             mock_mgr.update_acl_rule = AsyncMock(return_value=True)
 
             from unifi_network_mcp.tools.acl import update_acl_rule
@@ -298,3 +298,128 @@ class TestUpdateAclRule:
         assert update_data["traffic_source"]["specific_mac_addresses"] == ["11:22:33:44:55:66"]
         assert update_data["name"] == "Renamed Rule"
         assert update_data["action"] == "BLOCK"
+
+    @pytest.mark.asyncio
+    async def test_unknown_field_rejected(self):
+        """Fields not in MUTABLE_FIELDS are rejected with a clear error."""
+        from unifi_network_mcp.tools.acl import update_acl_rule
+
+        result = await update_acl_rule(
+            rule_id="rule001",
+            rule_data={"traffic_source": {"type": "CLIENT_MAC", "specific_mac_addresses": []}},
+            confirm=True,
+        )
+
+        assert result["success"] is False
+        assert "Unknown or read-only" in result["error"]
+        assert "traffic_source" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_read_only_field_rejected(self):
+        """Read-only fields (id, source_type) are rejected."""
+        from unifi_network_mcp.tools.acl import update_acl_rule
+
+        result = await update_acl_rule(
+            rule_id="rule001",
+            rule_data={"id": "new_id"},
+            confirm=True,
+        )
+
+        assert result["success"] is False
+        assert "Unknown or read-only" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_network_id_accepted(self):
+        """network_id (model name) is accepted and translated to mac_acl_network_id."""
+        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
+            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
+            mock_mgr.update_acl_rule = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.acl import update_acl_rule
+
+            result = await update_acl_rule(
+                rule_id="rule001",
+                rule_data={"network_id": "net999"},
+                confirm=True,
+            )
+
+        assert result["success"] is True
+        call_args = mock_mgr.update_acl_rule.call_args[0]
+        assert call_args[1]["mac_acl_network_id"] == "net999"
+
+
+# ---------------------------------------------------------------------------
+# List tool tests
+# ---------------------------------------------------------------------------
+
+
+class TestListAclRules:
+    """Test list_acl_rules returns model-shaped output."""
+
+    @pytest.mark.asyncio
+    async def test_list_returns_model_shape(self):
+        """List output uses model field names (flat), not controller shape (nested)."""
+        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
+            mock_mgr.get_acl_rules = AsyncMock(return_value=[SAMPLE_CONTROLLER_RULE])
+            mock_mgr._connection.site = "default"
+
+            from unifi_network_mcp.tools.acl import list_acl_rules
+
+            result = await list_acl_rules()
+
+        assert result["success"] is True
+        assert result["count"] == 1
+        rule = result["rules"][0]
+        # Model shape: flat fields
+        assert rule["source_macs"] == ["aa:bb:cc:dd:ee:ff"]
+        assert rule["destination_macs"] == []
+        assert rule["network_id"] == "net001"
+        assert rule["id"] == "rule001"
+        # No nested controller fields
+        assert "traffic_source" not in rule
+        assert "mac_acl_network_id" not in rule
+
+    def test_update_path_covers_all_mutable_fields(self):
+        """Every mutable field is handled by to_controller_update.
+
+        Prevents a contributor from adding a mutable field to AclRule that
+        passes MUTABLE_FIELDS validation but gets silently dropped by
+        to_controller_update because it's not in UPDATE_FIELD_MAP or the
+        MAC translation branches.
+        """
+        from unifi_network_mcp.models.acl import (
+            MUTABLE_FIELDS,
+            UPDATE_FIELD_MAP,
+            MAC_TRANSLATED_FIELDS,
+        )
+
+        covered_fields = set(UPDATE_FIELD_MAP.keys()) | MAC_TRANSLATED_FIELDS
+        for field in MUTABLE_FIELDS:
+            assert field in covered_fields, (
+                f"Mutable field '{field}' is not handled by to_controller_update — "
+                f"it's not in UPDATE_FIELD_MAP or MAC_TRANSLATED_FIELDS. "
+                f"It would pass MUTABLE_FIELDS validation but be silently dropped."
+            )
+
+    @pytest.mark.asyncio
+    async def test_list_and_create_field_symmetry(self):
+        """Every mutable field in list output is accepted by create_acl_rule.
+
+        This is the structural guarantee from #137 — round-tripping works
+        by construction because both tools derive from the same model.
+        """
+        from unifi_network_mcp.models.acl import AclRule, MUTABLE_FIELDS
+
+        # Get the create tool's param names
+        from unifi_network_mcp.tools.acl import create_acl_rule
+        import inspect
+
+        create_params = set(inspect.signature(create_acl_rule).parameters.keys())
+        create_params.discard("confirm")  # not a data field
+
+        # Every mutable field should be a create param
+        for field in MUTABLE_FIELDS:
+            assert field in create_params, (
+                f"Mutable field '{field}' in AclRule is not a param on create_acl_rule — "
+                f"field symmetry violation"
+            )

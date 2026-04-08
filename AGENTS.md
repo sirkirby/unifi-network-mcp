@@ -154,6 +154,30 @@ Update tools MUST use the fetch-merge-put pattern. The manager fetches current s
 6. Run `make manifest`
 7. Add tests covering: partial merge preserves unmentioned fields, not-found returns False, empty update is a no-op
 
+### Add or migrate a domain to shared field models
+
+When a tool domain has list/create/update tools, define a shared pydantic model as the single source of truth for field names, types, and mutability. This ensures list output field names are always accepted by create/update tools — preventing silent data loss when callers round-trip fields from list output into create/update calls.
+
+1. Create model in `apps/<server>/src/<pkg>/models/<domain>.py`
+   - One `BaseModel` class with all fields (mutable + read-only)
+   - Read-only fields marked with `json_schema_extra={"mutable": False}`
+   - Export `MUTABLE_FIELDS` and `READ_ONLY_FIELDS` frozensets
+   - Co-locate translation helpers: `from_controller(raw)`, `to_controller_create(model)`, `to_controller_update(fields)`
+   - **Anchor:** `apps/network/src/unifi_network_mcp/models/acl.py`
+2. Refactor tool functions to derive I/O from the model
+   - List/get tools: `from_controller(raw).model_dump()`
+   - Create tool: build model from params → `to_controller_create()` → manager
+   - Update tool: validate keys against `MUTABLE_FIELDS`, translate via `to_controller_update()` → manager
+   - **Anchor:** `apps/network/src/unifi_network_mcp/tools/acl.py`
+3. Retire the domain's JSON Schema from `schemas.py` and `validator_registry.py`
+   - The pydantic model replaces the JSON Schema for validation
+   - Leave a comment noting the migration for other contributors
+4. Manager layer is unchanged — continues to speak the controller API dialect
+5. Add a field symmetry test asserting every mutable field is a create param
+   - **Anchor:** `apps/network/tests/unit/test_acl_tools.py:TestListAclRules.test_list_and_create_field_symmetry`
+6. Run `make manifest`
+7. Commit model + refactored tools + retired schema + tests together
+
 ### Modify the permission system
 
 1. Shared logic: `packages/unifi-mcp-shared/src/unifi_mcp_shared/policy_gate.py`

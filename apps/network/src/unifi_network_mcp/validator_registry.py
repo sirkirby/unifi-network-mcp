@@ -1,7 +1,6 @@
 from typing import Any, Dict, Optional, Tuple
 
 from .schemas import (
-    ACL_RULE_UPDATE_SCHEMA,
     AP_GROUP_SCHEMA,
     AP_GROUP_UPDATE_SCHEMA,
     AUTOBACKUP_SETTINGS_UPDATE_SCHEMA,
@@ -57,7 +56,7 @@ class UniFiValidatorRegistry:
         "firewall_policy_v2_create": ResourceValidator(
             FIREWALL_POLICY_V2_CREATE_SCHEMA, "V2 Zone-Based Firewall Policy Create"
         ),
-        "acl_rule_update": ResourceValidator(ACL_RULE_UPDATE_SCHEMA, "ACL Rule Update"),
+        # ACL rule validation migrated to pydantic model (models/acl.py) — see #139
         "port_profile_update": ResourceValidator(PORT_PROFILE_UPDATE_SCHEMA, "Port Profile Update"),
         "client_group_update": ResourceValidator(CLIENT_GROUP_UPDATE_SCHEMA, "Client Group Update"),
         "content_filter_update": ResourceValidator(CONTENT_FILTER_UPDATE_SCHEMA, "Content Filter Update"),
