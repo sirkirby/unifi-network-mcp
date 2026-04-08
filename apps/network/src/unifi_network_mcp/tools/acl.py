@@ -75,7 +75,7 @@ async def list_acl_rules(
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_acl_rule_details(
-    rule_id: Annotated[str, Field(description="Unique identifier (_id) of the ACL rule (from unifi_list_acl_rules)")],
+    rule_id: Annotated[str, Field(description="The id field from unifi_list_acl_rules output")],
 ) -> Dict[str, Any]:
     """
     Gets the detailed configuration of a specific MAC ACL rule.

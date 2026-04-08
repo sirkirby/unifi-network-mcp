@@ -1504,7 +1504,7 @@
         "input": {
           "properties": {
             "rule_id": {
-              "description": "Unique identifier (_id) of the ACL rule (from unifi_list_acl_rules)",
+              "description": "The id field from unifi_list_acl_rules output",
               "type": "string"
             }
           },
