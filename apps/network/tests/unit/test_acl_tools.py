@@ -347,6 +347,115 @@ class TestUpdateAclRule:
         call_args = mock_mgr.update_acl_rule.call_args[0]
         assert call_args[1]["mac_acl_network_id"] == "net999"
 
+    @pytest.mark.asyncio
+    async def test_invalid_action_enum_rejected(self):
+        """action values outside ALLOW/BLOCK are rejected by type validation."""
+        from unifi_network_mcp.tools.acl import update_acl_rule
+
+        result = await update_acl_rule(
+            rule_id="rule001",
+            rule_data={"action": "DROP"},
+            confirm=True,
+        )
+
+        assert result["success"] is False
+        assert "action" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_invalid_int_rejected(self):
+        """Non-integer acl_index is rejected by type validation."""
+        from unifi_network_mcp.tools.acl import update_acl_rule
+
+        result = await update_acl_rule(
+            rule_id="rule001",
+            rule_data={"acl_index": "five"},
+            confirm=True,
+        )
+
+        assert result["success"] is False
+        assert "acl_index" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_invalid_bool_rejected(self):
+        """Non-boolean enabled is rejected by type validation."""
+        from unifi_network_mcp.tools.acl import update_acl_rule
+
+        result = await update_acl_rule(
+            rule_id="rule001",
+            rule_data={"enabled": "yes"},
+            confirm=True,
+        )
+
+        assert result["success"] is False
+        assert "enabled" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# Get details tool tests
+# ---------------------------------------------------------------------------
+
+
+class TestGetAclRuleDetails:
+    """Test get_acl_rule_details returns model-shaped output."""
+
+    @pytest.mark.asyncio
+    async def test_returns_model_shape(self):
+        """Happy path: returns flat model fields, not nested controller shape."""
+        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
+            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
+
+            from unifi_network_mcp.tools.acl import get_acl_rule_details
+
+            result = await get_acl_rule_details(rule_id="rule001")
+
+        assert result["success"] is True
+        assert result["rule_id"] == "rule001"
+        details = result["details"]
+        assert details["source_macs"] == ["aa:bb:cc:dd:ee:ff"]
+        assert details["network_id"] == "net001"
+        assert details["id"] == "rule001"
+        assert "traffic_source" not in details
+        assert "mac_acl_network_id" not in details
+
+    @pytest.mark.asyncio
+    async def test_empty_rule_id_rejected(self):
+        """Empty rule_id returns a validation error."""
+        from unifi_network_mcp.tools.acl import get_acl_rule_details
+
+        result = await get_acl_rule_details(rule_id="")
+
+        assert result["success"] is False
+        assert "rule_id" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_fallback_to_list_when_by_id_returns_none(self):
+        """If get_acl_rule_by_id returns None, fall back to searching list."""
+        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
+            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=None)
+            mock_mgr.get_acl_rules = AsyncMock(return_value=[SAMPLE_CONTROLLER_RULE])
+
+            from unifi_network_mcp.tools.acl import get_acl_rule_details
+
+            result = await get_acl_rule_details(rule_id="rule001")
+
+        assert result["success"] is True
+        assert result["details"]["id"] == "rule001"
+        mock_mgr.get_acl_rules.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_not_found_returns_error(self):
+        """Rule missing from both by-id and list returns a not-found error."""
+        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
+            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=None)
+            mock_mgr.get_acl_rules = AsyncMock(return_value=[])
+
+            from unifi_network_mcp.tools.acl import get_acl_rule_details
+
+            result = await get_acl_rule_details(rule_id="missing")
+
+        assert result["success"] is False
+        assert "missing" in result["error"]
+
 
 # ---------------------------------------------------------------------------
 # List tool tests

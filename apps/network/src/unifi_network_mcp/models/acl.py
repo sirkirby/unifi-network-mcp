@@ -11,9 +11,9 @@ described in AGENTS.md. Other domains should follow this pattern.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 
 class AclRule(BaseModel):
@@ -129,6 +129,27 @@ def to_controller_create(rule: AclRule) -> Dict[str, Any]:
         },
         "type": "MAC",
     }
+
+
+def validate_update_fields(fields: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+    """Type-check a partial update dict against the AclRule field annotations.
+
+    Field names are assumed to have been validated separately against
+    MUTABLE_FIELDS. This enforces per-field type and enum constraints
+    (e.g., action must be ALLOW/BLOCK, acl_index must be int, enabled
+    must be bool) using the model's existing annotations as the source
+    of truth. Returns (is_valid, error_message).
+    """
+    for field_name, value in fields.items():
+        field_info = AclRule.model_fields.get(field_name)
+        if field_info is None:
+            continue  # unknown field — caught by MUTABLE_FIELDS check
+        try:
+            TypeAdapter(field_info.annotation).validate_python(value, strict=True)
+        except ValidationError as e:
+            err = e.errors()[0]
+            return False, f"Invalid value for '{field_name}': {err['msg']}"
+    return True, None
 
 
 def to_controller_update(fields: Dict[str, Any]) -> Dict[str, Any]:

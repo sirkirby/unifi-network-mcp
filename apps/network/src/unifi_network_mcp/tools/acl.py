@@ -24,6 +24,7 @@ from unifi_network_mcp.models.acl import (
     from_controller,
     to_controller_create,
     to_controller_update,
+    validate_update_fields,
 )
 from unifi_network_mcp.runtime import acl_manager, server
 
@@ -236,6 +237,11 @@ async def update_acl_rule(
             "error": f"Unknown or read-only fields: {sorted(unknown_fields)}. "
             f"Allowed fields: {sorted(MUTABLE_FIELDS)}",
         }
+
+    # Type-check field values against the model's annotations
+    is_valid, type_error = validate_update_fields(rule_data)
+    if not is_valid:
+        return {"success": False, "error": type_error}
 
     # Translate model field names to controller API shape
     controller_update = to_controller_update(rule_data)
