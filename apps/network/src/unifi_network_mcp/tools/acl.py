@@ -4,6 +4,10 @@ MAC ACL rule tools for UniFi Network MCP server.
 MAC ACL rules (Policy Engine) control Layer 2 access within a VLAN
 by whitelisting specific MAC address pairs. Requires UniFi Network
 Application with Policy Engine support.
+
+Tool I/O is derived from the shared AclRule model in models/acl.py.
+That model is the single source of truth for field names, types, and
+read-only vs mutable metadata.
 """
 
 import json
@@ -14,8 +18,15 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_mcp_shared.confirmation import create_preview, update_preview
+from unifi_network_mcp.models.acl import (
+    AclRule,
+    MUTABLE_FIELDS,
+    from_controller,
+    to_controller_create,
+    to_controller_update,
+    validate_update_fields,
+)
 from unifi_network_mcp.runtime import acl_manager, server
-from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -46,21 +57,7 @@ async def list_acl_rules(
     """
     try:
         rules = await acl_manager.get_acl_rules(network_id=network_id)
-        formatted = [
-            {
-                "id": r.get("_id"),
-                "name": r.get("name"),
-                "acl_index": r.get("acl_index"),
-                "action": r.get("action"),
-                "enabled": r.get("enabled"),
-                "network_id": r.get("mac_acl_network_id"),
-                "source_type": r.get("traffic_source", {}).get("type"),
-                "source_macs": r.get("traffic_source", {}).get("specific_mac_addresses", []),
-                "destination_type": r.get("traffic_destination", {}).get("type"),
-                "destination_macs": r.get("traffic_destination", {}).get("specific_mac_addresses", []),
-            }
-            for r in rules
-        ]
+        formatted = [from_controller(r).model_dump() for r in rules]
         return {
             "success": True,
             "site": acl_manager._connection.site,
@@ -74,11 +71,12 @@ async def list_acl_rules(
 
 @server.tool(
     name="unifi_get_acl_rule_details",
-    description="Get detailed configuration for a specific MAC ACL rule by ID.",
+    description="Get detailed configuration for a specific MAC ACL rule by ID. "
+    "Returns the same field names as unifi_list_acl_rules.",
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def get_acl_rule_details(
-    rule_id: Annotated[str, Field(description="Unique identifier (_id) of the ACL rule (from unifi_list_acl_rules)")],
+    rule_id: Annotated[str, Field(description="The id field from unifi_list_acl_rules output")],
 ) -> Dict[str, Any]:
     """
     Gets the detailed configuration of a specific MAC ACL rule.
@@ -87,7 +85,7 @@ async def get_acl_rule_details(
         rule_id (str): The unique identifier of the ACL rule.
 
     Returns:
-        A dictionary containing the full rule configuration.
+        A dictionary containing the rule in the canonical AclRule shape.
     """
     try:
         if not rule_id:
@@ -105,7 +103,7 @@ async def get_acl_rule_details(
         return {
             "success": True,
             "rule_id": rule_id,
-            "details": json.loads(json.dumps(rule, default=str)),
+            "details": from_controller(rule).model_dump(),
         }
     except Exception as e:
         logger.error("Error getting ACL rule %s: %s", rule_id, e, exc_info=True)
@@ -115,8 +113,8 @@ async def get_acl_rule_details(
 @server.tool(
     name="unifi_create_acl_rule",
     description="Create a new MAC ACL rule for Layer 2 access control within a VLAN. "
-    "Use source_macs/destination_macs to specify MAC addresses (same field names as unifi_list_acl_rules output). "
-    "Empty list = match any device. Requires confirmation.",
+    "Uses the same field names as unifi_list_acl_rules output — source_macs, destination_macs, "
+    "network_id, action, etc. Empty MAC list = match any device. Requires confirmation.",
     permission_category="acl_rules",
     permission_action="create",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
@@ -125,33 +123,21 @@ async def create_acl_rule(
     name: Annotated[str, Field(description="Descriptive name for the ACL rule")],
     acl_index: Annotated[int, Field(description="Position in the rule chain (lower numbers are evaluated first)")],
     action: Annotated[str, Field(description="Rule action: 'ALLOW' or 'BLOCK'")],
-    mac_acl_network_id: Annotated[
+    network_id: Annotated[
         str,
         Field(description="Network/VLAN ID this rule applies to (from unifi_list_networks)"),
     ],
+    enabled: Annotated[
+        bool,
+        Field(description="Whether the rule is active (default: true)"),
+    ] = True,
     source_macs: Annotated[
         Optional[List[str]],
-        Field(
-            description="List of source MAC addresses to match (empty list = any source). Uses same field name as unifi_list_acl_rules output"
-        ),
+        Field(description="List of source MAC addresses to match (empty list = any source)"),
     ] = None,
     destination_macs: Annotated[
         Optional[List[str]],
-        Field(
-            description="List of destination MAC addresses to match (empty list = any destination). Uses same field name as unifi_list_acl_rules output"
-        ),
-    ] = None,
-    traffic_source: Annotated[
-        Optional[dict],
-        Field(
-            description="(Advanced) Full source config dict. Ignored if source_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)"
-        ),
-    ] = None,
-    traffic_destination: Annotated[
-        Optional[dict],
-        Field(
-            description="(Advanced) Full destination config dict. Ignored if destination_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)"
-        ),
+        Field(description="List of destination MAC addresses to match (empty list = any destination)"),
     ] = None,
     confirm: Annotated[
         bool,
@@ -165,78 +151,42 @@ async def create_acl_rule(
         name (str): Name of the rule.
         acl_index (int): Position in the rule chain (lower = evaluated first).
         action (str): "ALLOW" or "BLOCK".
-        mac_acl_network_id (str): Network ID of the VLAN this rule applies to.
+        network_id (str): Network/VLAN ID this rule applies to.
+        enabled (bool): Whether the rule is active. Defaults to True.
         source_macs (list): List of source MAC addresses. Empty list or None = any.
         destination_macs (list): List of destination MAC addresses. Empty list or None = any.
-        traffic_source (dict): Advanced — full source config dict. Ignored if source_macs is provided.
-        traffic_destination (dict): Advanced — full destination config dict. Ignored if destination_macs is provided.
         confirm (bool): Must be True to execute. False returns a preview.
 
     Returns:
         Preview of changes or the created rule.
     """
     logger.info("unifi_create_acl_rule called (name=%s, action=%s, confirm=%s)", name, action, confirm)
-    # Build traffic_source: convenience params take precedence over raw dicts
-    if source_macs is not None:
-        traffic_source = {
-            "ips_or_subnets": [],
-            "network_ids": [],
-            "ports": [],
-            "specific_mac_addresses": source_macs,
-            "type": "CLIENT_MAC",
-        }
-    elif traffic_source is None:
-        traffic_source = {
-            "ips_or_subnets": [],
-            "network_ids": [],
-            "ports": [],
-            "specific_mac_addresses": [],
-            "type": "CLIENT_MAC",
-        }
-    # Build traffic_destination: same precedence
-    if destination_macs is not None:
-        traffic_destination = {
-            "ips_or_subnets": [],
-            "network_ids": [],
-            "ports": [],
-            "specific_mac_addresses": destination_macs,
-            "type": "CLIENT_MAC",
-        }
-    elif traffic_destination is None:
-        traffic_destination = {
-            "ips_or_subnets": [],
-            "network_ids": [],
-            "ports": [],
-            "specific_mac_addresses": [],
-            "type": "CLIENT_MAC",
-        }
 
-    rule_data = {
-        "name": name,
-        "acl_index": acl_index,
-        "action": action.upper(),
-        "enabled": True,
-        "mac_acl_network_id": mac_acl_network_id,
-        "specific_enforcers": [],
-        "traffic_source": traffic_source,
-        "traffic_destination": traffic_destination,
-        "type": "MAC",
-    }
+    rule = AclRule(
+        name=name,
+        acl_index=acl_index,
+        action=action.upper(),
+        enabled=enabled,
+        network_id=network_id,
+        source_macs=source_macs if source_macs is not None else [],
+        destination_macs=destination_macs if destination_macs is not None else [],
+    )
+    controller_payload = to_controller_create(rule)
 
     if not confirm:
         return create_preview(
             resource_type="acl_rule",
-            resource_data=rule_data,
+            resource_data=controller_payload,
             resource_name=name,
         )
 
     try:
-        result = await acl_manager.create_acl_rule(rule_data)
+        result = await acl_manager.create_acl_rule(controller_payload)
         if result:
             return {
                 "success": True,
                 "message": f"ACL rule '{name}' created successfully.",
-                "rule": json.loads(json.dumps(result, default=str)),
+                "rule": from_controller(result).model_dump() if isinstance(result, dict) and "_id" in result else json.loads(json.dumps(result, default=str)),
             }
         return {"success": False, "error": "Failed to create ACL rule."}
     except Exception as e:
@@ -248,8 +198,8 @@ async def create_acl_rule(
     name="unifi_update_acl_rule",
     description="Update an existing MAC ACL rule. Pass only the fields you want to change — "
     "current values are automatically preserved. "
-    "Requires confirmation. Use source_macs/destination_macs for MAC lists (same field names as list output). "
-    "If using advanced traffic_source/traffic_destination dicts instead, type MUST be 'CLIENT_MAC'.",
+    "Uses the same field names as unifi_list_acl_rules output: name, acl_index, action, enabled, "
+    "network_id, source_macs, destination_macs. Requires confirmation.",
     permission_category="acl_rules",
     permission_action="update",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
@@ -264,8 +214,7 @@ async def update_acl_rule(
             description="Dictionary of fields to update. Pass only the fields you want to change — "
             "current values are automatically preserved. "
             "Allowed keys: name, acl_index, action ('ALLOW'/'BLOCK'), enabled (bool), "
-            "mac_acl_network_id, source_macs (list of MACs), destination_macs (list of MACs), "
-            "traffic_source (dict, advanced), traffic_destination (dict, advanced)"
+            "network_id, source_macs (list of MACs), destination_macs (list of MACs)"
         ),
     ],
     confirm: Annotated[
@@ -280,44 +229,22 @@ async def update_acl_rule(
     if not rule_data:
         return {"success": False, "error": "rule_data cannot be empty"}
 
-    # Convenience params and advanced dicts are mutually exclusive — reject
-    # the collision up front rather than silently picking a winner (which
-    # would be the same class of silent-drop bug this tool's create path
-    # exists to prevent).
-    if "source_macs" in rule_data and "traffic_source" in rule_data:
+    # Validate field names against the model's mutable fields
+    unknown_fields = set(rule_data.keys()) - MUTABLE_FIELDS
+    if unknown_fields:
         return {
             "success": False,
-            "error": "Pass either source_macs or traffic_source, not both.",
-        }
-    if "destination_macs" in rule_data and "traffic_destination" in rule_data:
-        return {
-            "success": False,
-            "error": "Pass either destination_macs or traffic_destination, not both.",
+            "error": f"Unknown or read-only fields: {sorted(unknown_fields)}. "
+            f"Allowed fields: {sorted(MUTABLE_FIELDS)}",
         }
 
-    # Translate flattened field names (from list output) to nested structure
-    if "source_macs" in rule_data:
-        rule_data["traffic_source"] = {
-            "ips_or_subnets": [],
-            "network_ids": [],
-            "ports": [],
-            "specific_mac_addresses": rule_data.pop("source_macs"),
-            "type": "CLIENT_MAC",
-        }
-    if "destination_macs" in rule_data:
-        rule_data["traffic_destination"] = {
-            "ips_or_subnets": [],
-            "network_ids": [],
-            "ports": [],
-            "specific_mac_addresses": rule_data.pop("destination_macs"),
-            "type": "CLIENT_MAC",
-        }
-
-    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate("acl_rule_update", rule_data)
+    # Type-check field values against the model's annotations
+    is_valid, type_error = validate_update_fields(rule_data)
     if not is_valid:
-        return {"success": False, "error": f"Invalid update data: {error_msg}"}
-    if not validated_data:
-        return {"success": False, "error": "Update data is effectively empty or invalid."}
+        return {"success": False, "error": type_error}
+
+    # Translate model field names to controller API shape
+    controller_update = to_controller_update(rule_data)
 
     current = await acl_manager.get_acl_rule_by_id(rule_id)
     if not current:
@@ -328,12 +255,12 @@ async def update_acl_rule(
             resource_type="acl_rule",
             resource_id=rule_id,
             resource_name=current.get("name"),
-            current_state=current,
-            updates=validated_data,
+            current_state=from_controller(current).model_dump(),
+            updates=rule_data,
         )
 
     try:
-        success = await acl_manager.update_acl_rule(rule_id, validated_data)
+        success = await acl_manager.update_acl_rule(rule_id, controller_update)
         if success:
             return {"success": True, "message": f"ACL rule '{rule_id}' updated successfully."}
         return {"success": False, "error": f"Failed to update ACL rule '{rule_id}'."}
@@ -366,23 +293,38 @@ async def delete_acl_rule(
 
     Args:
         rule_id (str): The ID of the rule to delete.
-        confirm (bool): Must be True to execute.
+        confirm (bool): Must be True to execute. False returns a preview.
 
     Returns:
-        Preview or success/failure status.
+        Success/error message.
     """
-    if not confirm:
-        return create_preview(
-            resource_type="acl_rule",
-            resource_data={"rule_id": rule_id},
-            resource_name=rule_id,
-            warnings=["Removing an ALLOW rule may block device communication. Removing a BLOCK rule may open access."],
-        )
+    logger.info("unifi_delete_acl_rule called (rule_id=%s, confirm=%s)", rule_id, confirm)
+    if not rule_id:
+        return {"success": False, "error": "rule_id is required"}
 
     try:
+        rule = await acl_manager.get_acl_rule_by_id(rule_id)
+        if not rule:
+            return {"success": False, "error": f"ACL rule '{rule_id}' not found."}
+
+        if not confirm:
+            return {
+                "success": True,
+                "requires_confirmation": True,
+                "action": "delete",
+                "resource_type": "acl_rule",
+                "rule_id": rule_id,
+                "rule_name": rule.get("name"),
+                "message": f"Will delete ACL rule '{rule.get('name')}'. Set confirm=true to execute. "
+                "WARNING: Removing an ALLOW rule may block device communication.",
+            }
+
         success = await acl_manager.delete_acl_rule(rule_id)
         if success:
-            return {"success": True, "message": f"ACL rule '{rule_id}' deleted successfully."}
+            return {
+                "success": True,
+                "message": f"ACL rule '{rule_id}' deleted successfully.",
+            }
         return {"success": False, "error": f"Failed to delete ACL rule '{rule_id}'."}
     except Exception as e:
         logger.error("Error deleting ACL rule %s: %s", rule_id, e, exc_info=True)

@@ -407,7 +407,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Create a new MAC ACL rule for Layer 2 access control within a VLAN. Use source_macs/destination_macs to specify MAC addresses (same field names as unifi_list_acl_rules output). Empty list = match any device. Requires confirmation.",
+      "description": "Create a new MAC ACL rule for Layer 2 access control within a VLAN. Uses the same field names as unifi_list_acl_rules output \u2014 source_macs, destination_macs, network_id, action, etc. Empty MAC list = match any device. Requires confirmation.",
       "name": "unifi_create_acl_rule",
       "permission_action": "create",
       "permission_category": "acl_rules",
@@ -427,35 +427,31 @@
               "type": "boolean"
             },
             "destination_macs": {
-              "description": "List of destination MAC addresses to match (empty list = any destination). Uses same field name as unifi_list_acl_rules output",
+              "description": "List of destination MAC addresses to match (empty list = any destination)",
               "type": "array"
             },
-            "mac_acl_network_id": {
-              "description": "Network/VLAN ID this rule applies to (from unifi_list_networks)",
-              "type": "string"
+            "enabled": {
+              "description": "Whether the rule is active (default: true)",
+              "type": "boolean"
             },
             "name": {
               "description": "Descriptive name for the ACL rule",
               "type": "string"
             },
+            "network_id": {
+              "description": "Network/VLAN ID this rule applies to (from unifi_list_networks)",
+              "type": "string"
+            },
             "source_macs": {
-              "description": "List of source MAC addresses to match (empty list = any source). Uses same field name as unifi_list_acl_rules output",
+              "description": "List of source MAC addresses to match (empty list = any source)",
               "type": "array"
-            },
-            "traffic_destination": {
-              "description": "(Advanced) Full destination config dict. Ignored if destination_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)",
-              "type": "object"
-            },
-            "traffic_source": {
-              "description": "(Advanced) Full source config dict. Ignored if source_macs is provided. Keys: type ('CLIENT_MAC'), specific_mac_addresses (list of MACs)",
-              "type": "object"
             }
           },
           "required": [
             "name",
             "acl_index",
             "action",
-            "mac_acl_network_id"
+            "network_id"
           ],
           "type": "object"
         }
@@ -1502,13 +1498,13 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Get detailed configuration for a specific MAC ACL rule by ID.",
+      "description": "Get detailed configuration for a specific MAC ACL rule by ID. Returns the same field names as unifi_list_acl_rules.",
       "name": "unifi_get_acl_rule_details",
       "schema": {
         "input": {
           "properties": {
             "rule_id": {
-              "description": "Unique identifier (_id) of the ACL rule (from unifi_list_acl_rules)",
+              "description": "The id field from unifi_list_acl_rules output",
               "type": "string"
             }
           },
@@ -3822,7 +3818,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Update an existing MAC ACL rule. Pass only the fields you want to change \u2014 current values are automatically preserved. Requires confirmation. Use source_macs/destination_macs for MAC lists (same field names as list output). If using advanced traffic_source/traffic_destination dicts instead, type MUST be 'CLIENT_MAC'.",
+      "description": "Update an existing MAC ACL rule. Pass only the fields you want to change \u2014 current values are automatically preserved. Uses the same field names as unifi_list_acl_rules output: name, acl_index, action, enabled, network_id, source_macs, destination_macs. Requires confirmation.",
       "name": "unifi_update_acl_rule",
       "permission_action": "update",
       "permission_category": "acl_rules",
@@ -3834,7 +3830,7 @@
               "type": "boolean"
             },
             "rule_data": {
-              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name, acl_index, action ('ALLOW'/'BLOCK'), enabled (bool), mac_acl_network_id, source_macs (list of MACs), destination_macs (list of MACs), traffic_source (dict, advanced), traffic_destination (dict, advanced)",
+              "description": "Dictionary of fields to update. Pass only the fields you want to change \u2014 current values are automatically preserved. Allowed keys: name, acl_index, action ('ALLOW'/'BLOCK'), enabled (bool), network_id, source_macs (list of MACs), destination_macs (list of MACs)",
               "type": "object"
             },
             "rule_id": {

@@ -989,35 +989,7 @@ QOS_RULE_SIMPLE_SCHEMA = {
     },
 }
 
-# ACL Rule update schema
-ACL_RULE_UPDATE_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "name": {"type": "string", "description": "Rule name"},
-        "acl_index": {
-            "type": "integer",
-            "description": "Position in the rule chain (lower numbers evaluated first)",
-        },
-        "action": {
-            "type": "string",
-            "enum": ["ALLOW", "BLOCK"],
-            "description": "Rule action",
-        },
-        "enabled": {"type": "boolean", "description": "Whether the rule is active"},
-        "mac_acl_network_id": {
-            "type": "string",
-            "description": "Network/VLAN ID this rule applies to",
-        },
-        "traffic_source": {
-            "type": "object",
-            "description": "Source config: type must be 'CLIENT_MAC', specific_mac_addresses is a list of MACs (empty = any)",
-        },
-        "traffic_destination": {
-            "type": "object",
-            "description": "Destination config: same structure as traffic_source",
-        },
-    },
-}
+# ACL Rule validation migrated to pydantic model (models/acl.py) — see #139
 
 # Port Profile update schema
 PORT_PROFILE_UPDATE_SCHEMA = {
