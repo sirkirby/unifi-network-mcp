@@ -23,12 +23,33 @@ agent:
     type: cloud
   tasks:
     full-intelligence: {}
+    skill-generate:
+      provider:
+        type: cloud
+      phases:
+        draft:
+          maxTurns: 20
+        validate:
+          maxTurns: 30
+      schedule:
+        enabled: false
+    skill-evolve:
+      provider:
+        type: cloud
+      schedule:
+        enabled: true
+    skill-survey:
+      provider:
+        type: cloud
 context:
   digest_tier: 5000
   prompt_search: true
   prompt_max_spores: 3
 backup:
   dir: ~/myco_backups/unifi-mcp
+maintenance:
+  auto_optimize: true
+  auto_optimize_interval_hours: 24
 team:
   enabled: false
   interval_minutes: 15

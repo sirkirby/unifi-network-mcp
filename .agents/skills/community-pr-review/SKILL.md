@@ -4,9 +4,9 @@ description: |
   Use this skill when reviewing or merging any community PR in unifi-mcp — even if the user
   just says "take a look at this PR" or "can we merge this." Covers the complete quality gate
   checklist (f-string logger ban, validator registry registration, doc site update ordering),
-  the fork-edit model for trusted contributors, and PR body standards. Apply this skill before
-  approving any externally-authored PR, before running the merge command, and when auditing
-  recently merged PRs for compliance.
+  the fork-edit model for trusted contributors, org-fork push limitations, the dual-subagent
+  review pattern, and PR body standards. Apply this skill before approving any externally-authored
+  PR, before running the merge command, and when auditing recently merged PRs for compliance.
 managed_by: myco
 user-invocable: true
 allowed-tools: Read, Edit, Write, Bash, Grep, Glob
@@ -24,6 +24,22 @@ latency. This skill documents the full workflow from first look to merge commit.
 - PR is open and CI is green (or failures are understood)
 - You have push access to the contributor's fork (needed for the fork-edit model)
 - `AGENTS.md` is current — it is the canonical source for hard bans
+
+---
+
+## Subagent Decomposition (For Complex PRs)
+
+For PRs with significant code changes or security implications, split the review across two
+subagents rather than doing a single-pass review:
+
+1. **Code review subagent** — correctness, security, quality gates (this skill's Gates 1–3)
+2. **Test coverage subagent** — test completeness, coverage gaps, test pattern compliance
+
+Before dispatching either, check out the branch locally and run `git log origin/main..HEAD`
+to enumerate commits. This gives both subagents a shared commit list for scoped analysis.
+
+PR #135 (`fix/acl-create-mac-passthrough`) established this split — it caught both a code
+correctness issue and a test coverage gap that a single-pass review would have missed.
 
 ---
 
@@ -134,6 +150,23 @@ the gap is mechanical and the fix is unambiguous.
 **Trusted contributor definition:** Level99 qualifies (7+ merged PRs). For first-time or
 low-history contributors, prefer review comments so they learn the patterns.
 
+### Org Forks — Push Limitation
+
+**The fork-edit model only works for personal forks.** Org forks (e.g., `vigrai/unifi-mcp`
+from contributor fgallese in PR #133) block `git push` back to the contributor's branch even
+when "Allow edits from maintainers" is checked on the PR. That checkbox is scoped to personal
+accounts — GitHub does not honor it for org-owned forks.
+
+Decision matrix:
+
+| Fork type | Can push fixes? | Action |
+|-----------|----------------|--------|
+| Personal fork (e.g., `level99/unifi-mcp`) | ✅ Yes | Fork-edit model as described above |
+| Org fork (e.g., `vigrai/unifi-mcp`) | ❌ No | Merge PR as-is, then commit cleanup directly to `main` in a follow-up commit |
+
+When merging an org-fork PR as-is and fixing on main, record what was fixed and why in the
+follow-up commit message so the history is traceable.
+
 ---
 
 ## Step 3 — Verify PR Body Standards
@@ -146,6 +179,11 @@ Before merging, confirm the PR body includes:
 
 If the PR body is sparse, edit it before merging. The PR body becomes part of the git log
 context and is referenced in future sessions when diagnosing regressions.
+
+**When a PR surfaces broader scope:** If reviewing a PR uncovers a pattern that warrants a
+wider architectural fix (beyond what this contributor's PR should carry), open a separate
+GitHub issue rather than expanding the PR. Link the issue in the PR body for context. This
+keeps the PR focused and creates community visibility for the broader discussion.
 
 ---
 

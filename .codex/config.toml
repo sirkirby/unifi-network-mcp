@@ -1,3 +1,6 @@
 [mcp_servers.myco]
 command = "myco-run"
 args = ["mcp"]
+
+[features]
+codex_hooks = true
