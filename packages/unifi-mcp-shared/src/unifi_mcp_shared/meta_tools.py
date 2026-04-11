@@ -168,8 +168,35 @@ def register_meta_tools(
             result = await server.call_tool(tool, arguments)
             return result
         except Exception as e:
+            error_type = type(e).__name__
+            error_str = str(e)
             logger.error("Error executing tool '%s': %s", tool, e, exc_info=True)
-            return {"error": f"Failed to execute tool: {str(e)}"}
+
+            # Classify the error so the LLM knows how to recover
+            if "unknown tool" in error_str.lower() or "not found" in error_str.lower():
+                hint = f"'{tool}' is not a valid tool name. Call {idx_name} to list available tools."
+                kind = "unknown_tool"
+            elif "auth" in error_str.lower() or "forbidden" in error_str.lower() or "401" in error_str or "403" in error_str:
+                hint = "Authentication or permission error. Check controller credentials."
+                kind = "auth_error"
+            elif "connect" in error_str.lower() or "timeout" in error_str.lower():
+                hint = "Could not reach the UniFi controller. Check UNIFI_HOST and network connectivity."
+                kind = "connection_error"
+            elif "validation" in error_str.lower() or "required" in error_str.lower() or isinstance(e, (TypeError, ValueError)):
+                hint = f"Invalid arguments for '{tool}'. Call {idx_name} with category filter to check the tool schema."
+                kind = "invalid_arguments"
+            else:
+                hint = "Unexpected error. Check controller logs for details."
+                kind = "tool_error"
+
+            return {
+                "error": error_str,
+                "error_type": error_type,
+                "kind": kind,
+                "hint": hint,
+                "tool": tool,
+                "arguments": arguments,
+            }
 
     register_tool(
         name=exec_name,
@@ -251,12 +278,15 @@ def register_meta_tools(
                 )
             except Exception as e:
                 logger.error("Error starting batch operation %d (%s): %s", i, tool, e, exc_info=True)
-                errors.append({"index": i, "tool": tool, "error": str(e)})
+                errors.append({"index": i, "tool": tool, "arguments": arguments, "error": str(e), "error_type": type(e).__name__})
 
         return {
+            "requested": len(operations),
+            "accepted": len(jobs),
+            "rejected": len(errors),
             "jobs": jobs,
             "errors": errors if errors else None,
-            "message": f"Started {len(jobs)} operation(s). Use {status_name} to check progress.",
+            "message": f"Accepted {len(jobs)}/{len(operations)} operation(s). Use {status_name} to check progress.",
         }
 
     register_tool(
