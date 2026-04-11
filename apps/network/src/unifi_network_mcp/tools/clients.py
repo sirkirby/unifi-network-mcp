@@ -131,9 +131,10 @@ async def list_clients(
 @server.tool(
     name="unifi_get_client_details",
     description=(
-        "Returns the full raw client object for one client by MAC address — includes "
-        "all controller-reported fields: IP, hostname, connection stats, DHCP info, "
-        "network/WLAN associations, traffic counters, and fixed-IP settings. "
+        "Returns client details for one client by MAC address. "
+        "Use include_fields to request only the fields you need — the full object can be 3-10KB. "
+        "Common fields: mac, ip, hostname, name, is_wired, network_id, essid, signal, tx_bytes, rx_bytes, uptime, fixed_ip. "
+        "Omit include_fields to get the complete raw object. "
         "For a summary of all clients, use unifi_list_clients."
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
@@ -142,12 +143,18 @@ async def get_client_details(
     mac_address: Annotated[
         str, Field(description="Client MAC address in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)")
     ],
+    include_fields: Annotated[
+        Optional[List[str]],
+        Field(description="If provided, return only these top-level fields from the client object. E.g. ['mac','ip','hostname','signal']"),
+    ] = None,
 ) -> Dict[str, Any]:
     """Implementation for getting client details."""
     try:
         client_obj = await client_manager.get_client_details(mac_address)
         if client_obj:
             client_raw = client_obj.raw if hasattr(client_obj, "raw") else client_obj
+            if include_fields:
+                client_raw = {k: client_raw[k] for k in include_fields if k in client_raw}
             return {
                 "success": True,
                 "site": client_manager._connection.site,

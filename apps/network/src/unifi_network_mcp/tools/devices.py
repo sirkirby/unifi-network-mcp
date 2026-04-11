@@ -256,10 +256,12 @@ async def list_devices(
 @server.tool(
     name="unifi_get_device_details",
     description=(
-        "Returns the full raw device object for one device by MAC address — includes "
-        "radio tables, port tables, system stats, WAN info, firmware details, and all "
-        "controller-reported fields. Use when you need deep inspection of a specific "
-        "device. For a filtered overview of all devices, use unifi_list_devices."
+        "Returns device details for one device by MAC address. "
+        "Use include_fields to request only the fields you need — the full object can be 3-10KB. "
+        "Common fields: mac, ip, name, model, type, version, uptime, state, satisfaction, "
+        "radio_table, port_table, sys_stats, wan1, config_network. "
+        "Omit include_fields to get the complete raw object. "
+        "For a filtered overview of all devices, use unifi_list_devices."
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
@@ -268,15 +270,22 @@ async def get_device_details(
         str,
         Field(description="Device MAC address in format AA:BB:CC:DD:EE:FF (from unifi_list_devices)"),
     ],
+    include_fields: Annotated[
+        Optional[List[str]],
+        Field(description="If provided, return only these top-level fields from the device object. E.g. ['mac','name','model','version','uptime']"),
+    ] = None,
 ) -> Dict[str, Any]:
     """Implementation for getting device details."""
     try:
         device = await device_manager.get_device_details(mac_address)
         if device:
+            device_raw = device.raw if hasattr(device, "raw") else device
+            if include_fields:
+                device_raw = {k: device_raw[k] for k in include_fields if k in device_raw}
             return {
                 "success": True,
                 "site": device_manager._connection.site,
-                "device": device.raw if hasattr(device, "raw") else device,
+                "device": device_raw,
             }
         return {
             "success": False,
