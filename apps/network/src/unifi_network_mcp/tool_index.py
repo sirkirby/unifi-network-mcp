@@ -12,8 +12,8 @@ from unifi_mcp_shared.tool_index import (
 )
 
 
-def get_tool_index():
-    """Get the complete tool index, using network server's registration mode and manifest."""
+def get_tool_index(category=None, search=None, names_only=True):
+    """Get the tool index, using network server's registration mode and manifest."""
     try:
         from unifi_network_mcp.bootstrap import UNIFI_TOOL_REGISTRATION_MODE
 
@@ -22,12 +22,23 @@ def get_tool_index():
         registration_mode = "lazy"
 
     manifest_path = Path(__file__).parent / "tools_manifest.json"
-    return _get_tool_index(registration_mode=registration_mode, manifest_path=manifest_path)
+    return _get_tool_index(
+        registration_mode=registration_mode,
+        manifest_path=manifest_path,
+        category=category,
+        search=search,
+        names_only=names_only,
+    )
 
 
 async def tool_index_handler(args=None):
     """Handler for the unifi_tool_index tool."""
-    return get_tool_index()
+    args = args or {}
+    return get_tool_index(
+        category=args.get("category"),
+        search=args.get("search"),
+        names_only=bool(args.get("names_only", True)),
+    )
 
 
 __all__ = ["TOOL_REGISTRY", "ToolMetadata", "get_tool_index", "register_tool", "tool_index_handler"]

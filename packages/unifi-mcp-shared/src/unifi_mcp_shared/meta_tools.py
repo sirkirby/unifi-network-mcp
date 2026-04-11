@@ -76,9 +76,10 @@ def register_meta_tools(
     @tool_decorator(
         name=idx_name,
         description=(
-            f"List all available {server_label} tools and their schemas. "
+            f"Discover available {server_label} tools and their schemas. "
             f"This server manages {hint}. "
-            f"CALL THIS FIRST to discover the right tool for your task. "
+            f"Use 'names_only=true' for a compact list, 'category' to filter by area "
+            f"(e.g. clients, firewall, devices), or 'search' for keyword matching. "
             f"After finding the right tool, use {exec_name} to run it."
         ),
         annotations=ToolAnnotations(
@@ -94,18 +95,48 @@ def register_meta_tools(
     register_tool(
         name=idx_name,
         description=(
-            f"CALL FIRST - List all {server_label} tools ({hint}) "
-            f"with schemas to find the right one for your task."
+            f"Discover {server_label} tools ({hint}). "
+            f"Filter with category/search/names_only to avoid large responses."
         ),
-        input_schema={"type": "object", "properties": {}},
+        input_schema={
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "description": (
+                        "Filter to one category (module area). "
+                        "Examples: clients, firewall, devices, network, stats, switch, vpn, dns, routing."
+                    ),
+                },
+                "search": {
+                    "type": "string",
+                    "description": "Case-insensitive substring match against tool name and description.",
+                },
+                "names_only": {
+                    "type": "boolean",
+                    "description": (
+                        "Return only name + description per tool (no schemas). "
+                        "Defaults to true — the full index exceeds token limits. "
+                        "Set to false with a category filter to get schemas for a specific area."
+                    ),
+                    "default": True,
+                },
+            },
+        },
         output_schema={
             "type": "object",
             "properties": {
                 "tools": {
                     "type": "array",
-                    "description": "Available tools with name, description, and input/output schemas",
+                    "description": "Matching tools with name, description, and (unless names_only) schemas",
                 },
-                "count": {"type": "integer", "description": "Total number of available tools"},
+                "count": {"type": "integer", "description": "Number of tools returned"},
+                "categories": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "All available category names (use as values for the category filter)",
+                },
+                "filtered": {"type": "boolean", "description": "True when category or search filter was applied"},
             },
         },
     )
