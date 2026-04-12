@@ -447,15 +447,11 @@ async def force_reconnect_client(
 async def forget_client(
     mac_address: Annotated[
         str,
-        Field(
-            description="MAC address of the client to forget, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)"
-        ),
+        Field(description="MAC address of the client to forget, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)"),
     ],
     confirm: Annotated[
         bool,
-        Field(
-            description="When true, executes the forget. When false (default), returns a preview of the changes"
-        ),
+        Field(description="When true, executes the forget. When false (default), returns a preview of the changes"),
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for forgetting/removing a client from the controller."""
