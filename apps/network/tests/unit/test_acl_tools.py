@@ -497,9 +497,9 @@ class TestListAclRules:
         MAC translation branches.
         """
         from unifi_network_mcp.models.acl import (
+            MAC_TRANSLATED_FIELDS,
             MUTABLE_FIELDS,
             UPDATE_FIELD_MAP,
-            MAC_TRANSLATED_FIELDS,
         )
 
         covered_fields = set(UPDATE_FIELD_MAP.keys()) | MAC_TRANSLATED_FIELDS
@@ -517,11 +517,12 @@ class TestListAclRules:
         This is the structural guarantee from #137 — round-tripping works
         by construction because both tools derive from the same model.
         """
-        from unifi_network_mcp.models.acl import AclRule, MUTABLE_FIELDS
+        import inspect
+
+        from unifi_network_mcp.models.acl import MUTABLE_FIELDS
 
         # Get the create tool's param names
         from unifi_network_mcp.tools.acl import create_acl_rule
-        import inspect
 
         create_params = set(inspect.signature(create_acl_rule).parameters.keys())
         create_params.discard("confirm")  # not a data field
@@ -529,6 +530,5 @@ class TestListAclRules:
         # Every mutable field should be a create param
         for field in MUTABLE_FIELDS:
             assert field in create_params, (
-                f"Mutable field '{field}' in AclRule is not a param on create_acl_rule — "
-                f"field symmetry violation"
+                f"Mutable field '{field}' in AclRule is not a param on create_acl_rule — field symmetry violation"
             )

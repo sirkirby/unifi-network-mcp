@@ -91,7 +91,9 @@ async def protect_alarm_arm(
     profile_id: Annotated[
         Optional[str],
         Field(
-            description=("Arm profile UUID from protect_alarm_list_profiles. Omit to use the currently selected profile.")
+            description=(
+                "Arm profile UUID from protect_alarm_list_profiles. Omit to use the currently selected profile."
+            )
         ),
     ] = None,
     confirm: Annotated[
@@ -162,4 +164,6 @@ async def protect_alarm_disarm(
         return {"success": False, "error": f"Failed to disarm alarm: {e}"}
 
 
-logger.info("Alarm tools registered: protect_alarm_list_profiles, protect_alarm_get_status, protect_alarm_arm, protect_alarm_disarm")
+logger.info(
+    "Alarm tools registered: protect_alarm_list_profiles, protect_alarm_get_status, protect_alarm_arm, protect_alarm_disarm"
+)

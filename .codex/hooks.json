@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .agents/myco-hook.cjs hook session-start",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && node .agents/myco-run.cjs hook session-start --symbiont codex",
             "timeout": 10
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .agents/myco-hook.cjs hook user-prompt-submit",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && node .agents/myco-run.cjs hook user-prompt-submit --symbiont codex",
             "timeout": 5
           }
         ]
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .agents/myco-hook.cjs hook post-tool-use",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && node .agents/myco-run.cjs hook post-tool-use --symbiont codex",
             "timeout": 5
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .agents/myco-hook.cjs hook stop",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && node .agents/myco-run.cjs hook stop --symbiont codex",
             "timeout": 30
           }
         ]

@@ -12,6 +12,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from aiounifi.models.api import ApiRequest
+
 from unifi_core.merge import deep_merge
 
 from .connection_manager import ConnectionManager

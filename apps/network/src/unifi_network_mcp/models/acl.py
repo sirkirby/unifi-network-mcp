@@ -61,21 +61,18 @@ class AclRule(BaseModel):
 # ---------------------------------------------------------------------------
 
 MUTABLE_FIELDS = frozenset(
-    name
-    for name, info in AclRule.model_fields.items()
-    if (info.json_schema_extra or {}).get("mutable") is not False
+    name for name, info in AclRule.model_fields.items() if (info.json_schema_extra or {}).get("mutable") is not False
 )
 
 READ_ONLY_FIELDS = frozenset(
-    name
-    for name, info in AclRule.model_fields.items()
-    if (info.json_schema_extra or {}).get("mutable") is False
+    name for name, info in AclRule.model_fields.items() if (info.json_schema_extra or {}).get("mutable") is False
 )
 
 
 # ---------------------------------------------------------------------------
 # Translation: controller API ↔ AclRule
 # ---------------------------------------------------------------------------
+
 
 def from_controller(raw: Dict[str, Any]) -> AclRule:
     """Build an AclRule from a controller API response dict.

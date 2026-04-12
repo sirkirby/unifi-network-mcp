@@ -1,5 +1,5 @@
 version: 3
-config_version: 3
+config_version: 4
 embedding:
   provider: ollama
   model: bge-m3:latest
@@ -20,12 +20,12 @@ agent:
   scheduled_tasks_enabled: true
   event_tasks_enabled: true
   provider:
-    type: cloud
+    type: anthropic
   tasks:
     full-intelligence: {}
     skill-generate:
       provider:
-        type: cloud
+        type: anthropic
       phases:
         draft:
           maxTurns: 20
@@ -35,12 +35,12 @@ agent:
         enabled: false
     skill-evolve:
       provider:
-        type: cloud
+        type: anthropic
       schedule:
         enabled: true
     skill-survey:
       provider:
-        type: cloud
+        type: anthropic
 context:
   digest_tier: 5000
   prompt_search: true
