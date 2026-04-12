@@ -76,9 +76,12 @@ def register_meta_tools(
     @tool_decorator(
         name=idx_name,
         description=(
-            f"List all available {server_label} tools and their schemas. "
+            f"Discover available {server_label} tools. "
             f"This server manages {hint}. "
-            f"CALL THIS FIRST to discover the right tool for your task. "
+            f"CALL THIS FIRST to find the right tool for your task. "
+            f"Returns names and descriptions by default (~38K chars). "
+            f"Use 'category' to filter by area (e.g. clients, firewall, devices), "
+            f"'search' for keyword matching, or 'include_schemas' for full parameter schemas. "
             f"After finding the right tool, use {exec_name} to run it."
         ),
         annotations=ToolAnnotations(
@@ -88,24 +91,65 @@ def register_meta_tools(
             openWorldHint=False,
         ),
     )
-    async def _tool_index_wrapper(args: dict | None = None) -> dict:
-        return await tool_index_handler(args)
+    async def _tool_index_wrapper(
+        category: str | None = None,
+        search: str | None = None,
+        include_schemas: bool = False,
+    ) -> dict:
+        args = {}
+        if category is not None:
+            args["category"] = category
+        if search is not None:
+            args["search"] = search
+        if include_schemas:
+            args["include_schemas"] = include_schemas
+        return await tool_index_handler(args or None)
 
     register_tool(
         name=idx_name,
         description=(
-            f"CALL FIRST - List all {server_label} tools ({hint}) "
-            f"with schemas to find the right one for your task."
+            f"Discover {server_label} tools ({hint}). "
+            f"Filter with category/search; use include_schemas for full parameter details."
         ),
-        input_schema={"type": "object", "properties": {}},
+        input_schema={
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "description": (
+                        "Filter to one category. "
+                        "Valid values are returned in the 'categories' field of every response."
+                    ),
+                },
+                "search": {
+                    "type": "string",
+                    "description": "Case-insensitive substring match against tool name and description.",
+                },
+                "include_schemas": {
+                    "type": "boolean",
+                    "description": (
+                        "Include full input/output schemas per tool. "
+                        "Defaults to false — set true with a category or search filter "
+                        "to get parameter details for specific tools."
+                    ),
+                    "default": False,
+                },
+            },
+        },
         output_schema={
             "type": "object",
             "properties": {
                 "tools": {
                     "type": "array",
-                    "description": "Available tools with name, description, and input/output schemas",
+                    "description": "Matching tools with name and description (plus schemas if include_schemas)",
                 },
-                "count": {"type": "integer", "description": "Total number of available tools"},
+                "count": {"type": "integer", "description": "Number of tools returned"},
+                "categories": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "All available category names (use as values for the category filter)",
+                },
+                "filtered": {"type": "boolean", "description": "True when category or search filter was applied"},
             },
         },
     )

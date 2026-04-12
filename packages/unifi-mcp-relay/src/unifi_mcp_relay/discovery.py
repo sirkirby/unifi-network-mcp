@@ -263,7 +263,9 @@ async def discover_tools(server_url: str) -> ServerInfo | None:
         if tool_index_name:
             # Lazy mode: call the tool_index for the full catalog
             logger.info("[discovery] Found tool index '%s' on %s, fetching full catalog", tool_index_name, server_name)
-            call_result = await client.request("tools/call", {"name": tool_index_name, "arguments": {}})
+            call_result = await client.request(
+                "tools/call", {"name": tool_index_name, "arguments": {"include_schemas": True}}
+            )
 
             # Parse the tool_index response (content[0].text is JSON)
             content = call_result.get("content", [])
