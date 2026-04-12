@@ -5,8 +5,9 @@ description: |
   just says "take a look at this PR" or "can we merge this." Covers the complete quality gate
   checklist (f-string logger ban, validator registry registration, doc site update ordering),
   the fork-edit model for trusted contributors, org-fork push limitations, the dual-subagent
-  review pattern, and PR body standards. Apply this skill before approving any externally-authored
-  PR, before running the merge command, and when auditing recently merged PRs for compliance.
+  review pattern, PR body standards, and the close-and-redirect pattern for unsalvageable PRs.
+  Apply this skill before approving any externally-authored PR, before running the merge command,
+  and when auditing recently merged PRs for compliance.
 managed_by: myco
 user-invocable: true
 allowed-tools: Read, Edit, Write, Bash, Grep, Glob
@@ -221,10 +222,46 @@ Before merging, confirm the PR body includes:
 If the PR body is sparse, edit it before merging. The PR body becomes part of the git log
 context and is referenced in future sessions when diagnosing regressions.
 
-**When a PR surfaces broader scope:** If reviewing a PR uncovers a pattern that warrants a
-wider architectural fix (beyond what this contributor's PR should carry), open a separate
-GitHub issue rather than expanding the PR. Link the issue in the PR body for context. This
-keeps the PR focused and creates community visibility for the broader discussion.
+### When a PR surfaces broader scope (Principle #5)
+
+If reviewing a PR uncovers a pattern that warrants a wider architectural fix (beyond what this
+contributor's PR should carry), open a separate GitHub issue rather than expanding the PR.
+Link the issue in the PR body for context. This keeps the PR focused and creates community
+visibility for the broader discussion.
+
+Use Principle #5 when: **the PR itself is salvageable** but the idea it surfaces is too big
+to carry in this PR.
+
+### When the PR itself is unsalvageable — Close-and-Redirect (Principle #6)
+
+Some PRs are too scattered, unfocused, or structurally misaligned to merge or fix via the
+fork-edit model. When the PR as a whole cannot be salvaged, **close it constructively** rather
+than requesting rework:
+
+1. **Extract valid proposals** — identify any genuinely good ideas in the PR and open a new
+   GitHub issue capturing them. Write the issue clearly enough that a different contributor
+   (or the maintainer) can implement the ideas properly.
+2. **Implement in-house** — if the ideas are high-value, plan to implement them directly on
+   `main` rather than accepting a rework of the original PR.
+3. **Credit the contributor** — close the PR with a comment that acknowledges the contributor
+   for surfacing the problem, links the new issue, and explains why the PR was closed rather
+   than revised. This keeps the community relationship healthy.
+
+**Reference:** PR #142 was closed using this pattern. The PR had multiple overlapping
+concerns that couldn't be cleanly separated. Valid proposals were extracted to a GitHub issue;
+the contributor was credited in the close comment.
+
+### Principle #5 vs. Principle #6 — Decision Matrix
+
+| Situation | Principle | Action |
+|-----------|-----------|--------|
+| PR is good; it just surfaced a bigger idea | **#5** | Keep PR → merge it; open separate issue for the bigger idea |
+| PR has too many concerns to fix cleanly | **#6** | Close PR → extract ideas to issue; implement in-house |
+| PR has mechanical gaps (logger, registry) | Fork-edit | Fix directly on fork; don't close |
+| Contributor is first-time/low-history | Review comments | Request changes; don't close unless clearly out of scope |
+
+The key question: *can a targeted fix make this PR mergeable?* If yes → Principle #5 or
+fork-edit. If no → Principle #6.
 
 ---
 
