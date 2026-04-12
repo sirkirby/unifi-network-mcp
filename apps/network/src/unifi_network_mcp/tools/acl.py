@@ -19,8 +19,8 @@ from pydantic import Field
 
 from unifi_mcp_shared.confirmation import create_preview, update_preview
 from unifi_network_mcp.models.acl import (
-    AclRule,
     MUTABLE_FIELDS,
+    AclRule,
     from_controller,
     to_controller_create,
     to_controller_update,
@@ -186,7 +186,9 @@ async def create_acl_rule(
             return {
                 "success": True,
                 "message": f"ACL rule '{name}' created successfully.",
-                "rule": from_controller(result).model_dump() if isinstance(result, dict) and "_id" in result else json.loads(json.dumps(result, default=str)),
+                "rule": from_controller(result).model_dump()
+                if isinstance(result, dict) and "_id" in result
+                else json.loads(json.dumps(result, default=str)),
             }
         return {"success": False, "error": "Failed to create ACL rule."}
     except Exception as e:
@@ -234,8 +236,7 @@ async def update_acl_rule(
     if unknown_fields:
         return {
             "success": False,
-            "error": f"Unknown or read-only fields: {sorted(unknown_fields)}. "
-            f"Allowed fields: {sorted(MUTABLE_FIELDS)}",
+            "error": f"Unknown or read-only fields: {sorted(unknown_fields)}. Allowed fields: {sorted(MUTABLE_FIELDS)}",
         }
 
     # Type-check field values against the model's annotations

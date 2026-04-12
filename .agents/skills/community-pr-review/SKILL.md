@@ -45,7 +45,48 @@ correctness issue and a test coverage gap that a single-pass review would have m
 
 ## Step 1 — Run the Quality Gate Checklist
 
-Work through all three gates in order. Each is blocking.
+First, classify the PR type (Gate 0), then work through the applicable gates in order.
+
+### Gate 0: PR Type Classification — Routes the Checklist
+
+Determine whether this is a **feature addition PR** or a **governance/structural refactor PR**
+before running any other gate.
+
+**Feature addition PR** — adds new tools, managers, or capabilities
+→ Run Gates 1–3 as written below.
+
+**Governance/structural refactor PR** — reorganizes field definitions, introduces shared Pydantic
+models, changes base class hierarchy, or implements a field-symmetry sub-issue
+→ Run the structural-correctness path instead:
+
+1. **Pydantic inheritance correct?** — If a shared base model is introduced, does it accurately
+   represent the common fields? Are subclass fields genuinely distinct from the base?
+2. **Field coverage complete?** — Does the shared model cover all field variants used by the
+   resource's create, read, list, and update surfaces? No field should be accessible via
+   list/read but absent from the shared model.
+3. **Type symmetry correct?** — Field types in the shared model must be compatible with both
+   read-surface output and create/update input. Name-match alone is insufficient — a field can
+   appear in both surfaces but fail silently if types diverge (e.g., `source_macs: list[str]`
+   returned by list tools vs. `source_macs: str` accepted by create). This is CI-enforced via
+   `tests/unit/test_tool_field_symmetry.py`'s type assertion requirement (issue #137 scope
+   extension).
+4. **No field leakage?** — Fields belonging to one resource variant must not silently appear
+   on another through inheritance.
+5. **Matches issue spec?** — Compare against the linked GitHub issue. Every scoped item should
+   be implemented; nothing out of scope should be added.
+6. **Pattern symmetric with AGENTS.md rule?** — The implementation must align with the
+   field-symmetry governance rule in `AGENTS.md`, not diverge from it.
+
+Gates 1–3 (f-string logger, validator registry, doc site) still apply to governance PRs for
+any new or modified tool/manager files — but the structural questions above are the primary gate.
+
+**Why the split matters:** PR #140 (ACL shared-field-model pilot, level99) was reviewed with
+the feature-addition checklist. The structural questions were asked only because the reviewer
+recognized the PR type. A structural refactor can pass Gates 1–3 cleanly while still violating
+inheritance structure, field coverage, or type symmetry — the feature-addition checklist gives
+false confidence on governance PRs.
+
+---
 
 ### Gate 1: F-String Logger — Hard Blocker
 
@@ -221,6 +262,7 @@ using this exact approach and a fix PR was opened the same session.
 
 | Gate | Blocker level | Where to look | Common miss |
 |------|--------------|---------------|-------------|
-| F-string loggers | Hard block | `*_manager.py` | Manager layer even when tool layer is clean |
-| Validator registry | Critical (silent) | Registry file + `validated_data` usage | Tool registered but reads raw params |
-| Doc site count | Ordering gate | Doc site entry count | Updated after merge instead of before |
+| PR type (Gate 0) | Routing gate | PR description + linked issue | Applying feature-addition checklist to a governance/refactor PR |
+| F-string loggers (Gate 1) | Hard block | `*_manager.py` | Manager layer even when tool layer is clean |
+| Validator registry (Gate 2) | Critical (silent) | Registry file + `validated_data` usage | Tool registered but reads raw params |
+| Doc site count (Gate 3) | Ordering gate | Doc site entry count | Updated after merge instead of before |

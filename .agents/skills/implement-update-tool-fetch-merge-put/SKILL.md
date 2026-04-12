@@ -16,6 +16,7 @@ All update tools in unifi-mcp follow the **fetch-merge-put** pattern. Skipping t
 - The resource's manager already has a `get_<resource>_by_id` method. If not, write it first (check the V2 API gotcha below before you do).
 - `deep_merge` is importable from `unifi-core`. Tests live in `packages/unifi-core/tests/test_merge.py` — run them after any merge logic change.
 - The create tool for this resource already exists. Update tools assume the object exists; if it doesn't, the caller should use create, not update.
+- The field symmetry rule (issue #137) requires `update_data` to accept all field names and compatible types from the read surface. Check `tests/unit/test_tool_field_symmetry.py` before opening a PR.
 
 ## Steps
 
@@ -96,7 +97,56 @@ async def update_<resource>(
 
 Include the "pass only fields you want to change" language in the docstring. The LLM reads docstrings to understand how to call the tool.
 
-### 6. Implement the confirm preview using a delta, not the merged result
+### 6. Enforce field symmetry: update_data must match read-surface fields
+
+The `update_data` dict must accept **all field names and compatible types** that the resource's
+read-surface tools (`list_*`, `get_*`) expose. If a field appears in the read surface but is
+absent from `update_data`, the tool silently cannot update that field — a hidden capability gap.
+
+This rule is CI-enforced via `tests/unit/test_tool_field_symmetry.py`. A test failure means your
+update tool has a field symmetry gap. Fix it before opening the PR.
+
+How to check: read the `list_<resource>` and `get_<resource>` return fields, then confirm each
+one either (a) appears in `update_data`, or (b) is documented as intentionally read-only with
+a comment explaining why (e.g., server-assigned fields like `id` or `created_at`).
+
+**Known current violations (as of issue #137):**
+- `update_content_filter`: does not handle `schedule_mode`, which is returned by the list surface.
+- `create_oon_policy`: the list surface (`list_oon_policies`) exposes `qos_enabled` and `route_enabled` as flat booleans, but `create_oon_policy` expects them as nested `qos`/`route` dicts — a structural shape mismatch, not just a missing field.
+
+Issue #137 tracks remediation of these violations.
+
+**CI rollout — allow-list in test_tool_field_symmetry.py:** The symmetry tests use an explicit
+allow-list of known violations so the governance PR can merge green before all domains are
+remediated. When adding symmetry tests for a new resource domain, add any pre-existing violations
+to the allow-list with a comment linking the tracking issue — do not block CI on legacy gaps.
+
+### 7. Add additionalProperties: false to the UPDATE_SCHEMA entry
+
+Every `*_UPDATE_SCHEMA` entry in `unifi_mcp/schemas.py` must include `"additionalProperties": false`.
+This is Layer-2 hardening against the ArgModelBase silent-drop vulnerability: FastMCP's
+`ArgModelBase` is missing `model_config = ConfigDict(extra="forbid")`, so extra keys passed to
+a tool are silently dropped before your validator sees them. The schema-level restriction closes
+this gap at the transport boundary.
+
+```python
+# In unifi_mcp/schemas.py
+NETWORK_UPDATE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,   # ← required on every update schema
+    "properties": {
+        "network_id": {"type": "string"},
+        "update_data": {"type": "object"},
+        "confirm": {"type": "boolean"},
+    },
+    "required": ["network_id", "update_data"],
+}
+```
+
+This applies to all update schemas, including existing ones. When patching managers for issue #113
+or any future batch fix, add `additionalProperties: false` to each schema entry at the same time.
+
+### 8. Implement the confirm preview using a delta, not the merged result
 
 The `confirm=False` preview must show **what is changing**, not the full merged object. The full object is noise — the caller already knows the current state. Show the delta:
 
@@ -111,7 +161,7 @@ if not confirm:
 
 This is a deliberate design decision, not an oversight. The confirm flow does a second fetch (double-fetch) even though the apply path also fetches — that's intentional to ensure the preview reflects live controller state, not stale cache.
 
-### 7. Patch all managers for a new utility
+### 9. Patch all managers for a new utility
 
 If you're adding or changing merge behavior that affects multiple managers, check `AGENTS.md` for the list of managers that implement update tools. All 11 were patched as part of issue #113. If you're introducing a new shared utility (like `deep_merge` was), update all of them in the same PR — partial patches leave the codebase inconsistent.
 
@@ -140,3 +190,23 @@ def test_update_preserves_unspecified_fields():
 ```
 
 This test pattern catches the original bug class (PUT without fetch) at the test level.
+
+## Established Pattern: Shared-Field-Models
+
+PR #140 (ACL domain, level99) established the shared-field-models pattern: defining resource
+fields once in a shared Pydantic base model that is imported by create, update, list, and read
+tools alike. This makes field symmetry structurally enforced rather than test-enforced. The ACL
+domain is the first completed domain under this rollout arc.
+
+**What PR #140 produced (ACL reference implementation):**
+
+- `validate_update_fields()` helper lives in **`models/acl.py`** (~20 lines). The model layer
+  owns type enforcement — this function does not belong in `tools/`.
+- `tools/acl.py` calls `validate_update_fields()` before any processing (+6 lines). Tool files
+  stay thin; validation logic stays in models.
+- 3 dedicated type-validation tests in `test_acl_tools.py` cover the helper directly.
+
+When implementing update tools for new resource domains, consider the shared-model pattern rather
+than inline schema dicts — particularly for complex resources with many fields. Use
+`models/acl.py` + `tools/acl.py` as the concrete reference, not just the issue description.
+Inline schema dicts remain acceptable for simple resources or incremental fixes.

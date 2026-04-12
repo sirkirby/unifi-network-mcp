@@ -216,7 +216,7 @@ class TestStatsManagerEnhanced:
         """Test get_site_dpi_traffic uses /stat/sitedpi."""
         mock_connection.request.return_value = [{"app": 1, "rx_bytes": 500}]
 
-        result = await stats_manager.get_site_dpi_traffic()
+        await stats_manager.get_site_dpi_traffic()
 
         call_args = mock_connection.request.call_args
         api_request = call_args[0][0]
@@ -239,7 +239,7 @@ class TestStatsManagerEnhanced:
         """Test get_client_dpi_traffic uses /stat/stadpi with mac filter."""
         mock_connection.request.return_value = [{"app": 2, "tx_bytes": 300}]
 
-        result = await stats_manager.get_client_dpi_traffic("aa:bb:cc:dd:ee:ff")
+        await stats_manager.get_client_dpi_traffic("aa:bb:cc:dd:ee:ff")
 
         call_args = mock_connection.request.call_args
         api_request = call_args[0][0]
@@ -251,7 +251,7 @@ class TestStatsManagerEnhanced:
         """Test get_ips_events uses /stat/ips/event."""
         mock_connection.request.return_value = [{"event_type": "alert"}]
 
-        result = await stats_manager.get_ips_events()
+        await stats_manager.get_ips_events()
 
         call_args = mock_connection.request.call_args
         api_request = call_args[0][0]
@@ -274,7 +274,7 @@ class TestStatsManagerEnhanced:
         """Test get_client_sessions uses /stat/session."""
         mock_connection.request.return_value = [{"mac": "aa:bb:cc:dd:ee:ff"}]
 
-        result = await stats_manager.get_client_sessions()
+        await stats_manager.get_client_sessions()
 
         call_args = mock_connection.request.call_args
         api_request = call_args[0][0]
@@ -321,7 +321,7 @@ class TestStatsManagerEnhanced:
         """Test get_anomalies uses /stat/anomalies."""
         mock_connection.request.return_value = [{"type": "dns_anomaly"}]
 
-        result = await stats_manager.get_anomalies()
+        await stats_manager.get_anomalies()
 
         call_args = mock_connection.request.call_args
         api_request = call_args[0][0]
