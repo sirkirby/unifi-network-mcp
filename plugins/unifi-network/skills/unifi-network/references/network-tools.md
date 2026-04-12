@@ -1,4 +1,4 @@
-# Network Server Tool Reference (166 tools)
+# Network Server Tool Reference (167 tools)
 
 Complete reference for `unifi_*` tools. All read tools are always available. Mutating tools require permissions (see main skill for details).
 
@@ -39,7 +39,7 @@ Always available, regardless of registration mode.
 ## Clients
 
 <!-- AUTO:tools:clients -->
-11 tools.
+12 tools.
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -50,6 +50,7 @@ Always available, regardless of registration mode.
 | `unifi_authorize_guest` | Mutate | Authorize a guest client to access the guest network by MAC address |
 | `unifi_block_client` | Mutate | Block a client/device from the network by MAC address |
 | `unifi_force_reconnect_client` | Mutate | Force a client to reconnect to the network (kick) by MAC address |
+| `unifi_forget_client` | Mutate | Remove/forget a client from the controller's known client history by MAC address. |
 | `unifi_rename_client` | Mutate | Rename a client/device in the Unifi Network controller by MAC address |
 | `unifi_set_client_ip_settings` | Mutate | Set fixed IP address and/or local DNS record for a client device. |
 | `unifi_unauthorize_guest` | Mutate | Revoke authorization for a guest client by MAC address |
