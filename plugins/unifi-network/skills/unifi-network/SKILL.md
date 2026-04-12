@@ -13,7 +13,7 @@ The server uses **lazy loading** by default — only meta-tools are registered i
 
 | Meta-Tool | Purpose |
 |-----------|---------|
-| `unifi_tool_index` | List all 91 tools with full parameter schemas |
+| `unifi_tool_index` | Discover tools by name/description; use `category`, `search`, or `include_schemas` to filter |
 | `unifi_execute` | Call any tool by name (essential in lazy mode) |
 | `unifi_batch` | Run multiple tools in parallel |
 | `unifi_batch_status` | Check async batch job status |

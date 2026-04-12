@@ -28,8 +28,10 @@ async def query_tool_index() -> Dict[str, Any]:
         async with ClientSession(read, write) as session:
             await session.initialize()
 
-            # Query the tool index
-            result = await session.call_tool("unifi_tool_index", arguments={})
+            # Query the tool index with full schemas
+            result = await session.call_tool(
+                "unifi_tool_index", arguments={"include_schemas": True}
+            )
             return result
 
 
@@ -76,7 +78,7 @@ async def main():
             print(f"\n{category.upper()}:")
             for tool in categories[category]:
                 name = tool.get("name", "")
-                description = tool["schema"].get("description", "No description")
+                description = tool.get("description", "No description")
                 print(f"  • {name}")
                 print(f"    {description[:80]}...")
 

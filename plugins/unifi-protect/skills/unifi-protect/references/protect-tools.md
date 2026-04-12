@@ -22,7 +22,7 @@ Always available, regardless of registration mode.
 
 | Tool | Purpose |
 |------|---------|
-| `protect_tool_index` | List all available tools with full parameter schemas |
+| `protect_tool_index` | Discover tools (names+descriptions by default; pass `include_schemas` for full schemas) |
 | `protect_execute` | Execute any tool by name (essential in lazy mode) |
 | `protect_batch` | Run multiple tools in parallel |
 | `protect_batch_status` | Check status of an async batch job |

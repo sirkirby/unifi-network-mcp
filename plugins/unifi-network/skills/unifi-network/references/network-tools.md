@@ -29,7 +29,7 @@ Always available, regardless of registration mode.
 
 | Tool | Purpose |
 |------|---------|
-| `unifi_tool_index` | List all available tools with full parameter schemas |
+| `unifi_tool_index` | Discover tools (names+descriptions by default; pass `include_schemas` for full schemas) |
 | `unifi_execute` | Execute any tool by name (essential in lazy mode) |
 | `unifi_batch` | Run multiple tools in parallel |
 | `unifi_batch_status` | Check status of an async batch job |

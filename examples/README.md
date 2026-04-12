@@ -76,7 +76,9 @@ Programmatically discover available tools:
 from mcp import ClientSession, stdio_client
 
 result = await session.call_tool("unifi_tool_index", {})
-# Returns: {"tools": [{"name": "...", "schema": {...}}, ...]}
+# Returns: {"tools": [{"name": "...", "description": "..."}, ...], "categories": [...]}
+# Pass {"include_schemas": True} for full parameter schemas
+# Pass {"category": "clients"} or {"search": "firewall"} to filter
 ```
 
 **Use cases:**

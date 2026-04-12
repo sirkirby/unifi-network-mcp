@@ -19,7 +19,7 @@ The tool index system captures metadata about all registered MCP tools, making i
    - `ToolMetadata`: Dataclass storing tool metadata
    - `TOOL_REGISTRY`: Global dictionary mapping tool names to metadata
    - `register_tool()`: Function to add tools to the registry
-   - `get_tool_index()`: Returns complete tool index in machine-readable format
+   - `get_tool_index()`: Returns tool index with optional filtering (`category`, `search`, `include_schemas`)
    - `tool_index_handler()`: Async MCP tool handler for querying the index
 
 2. **`src/runtime.py`** - Runtime access
@@ -35,38 +35,64 @@ The tool index system captures metadata about all registered MCP tools, making i
 
 ### Querying Available Tools
 
-Use the `unifi_tool_index` tool to get a machine-readable list of all available tools:
+Use the `unifi_tool_index` tool to discover available tools. The default response returns names and descriptions only (~38K chars for 166 tools), keeping responses within MCP client token limits.
 
+**Default — compact discovery:**
+```json
+{"name": "unifi_tool_index", "arguments": {}}
+```
+Returns:
 ```json
 {
-  "name": "unifi_tool_index",
-  "arguments": {}
+  "tools": [
+    {"name": "unifi_list_clients", "description": "List all connected clients..."},
+    {"name": "unifi_list_devices", "description": "List all network devices..."}
+  ],
+  "count": 166,
+  "categories": ["acl", "clients", "devices", "dns", "firewall", ...]
 }
 ```
 
+**Filter by category:**
+```json
+{"name": "unifi_tool_index", "arguments": {"category": "firewall"}}
+```
+
+**Search by keyword:**
+```json
+{"name": "unifi_tool_index", "arguments": {"search": "client"}}
+```
+
+**Full schemas for a category:**
+```json
+{"name": "unifi_tool_index", "arguments": {"category": "clients", "include_schemas": true}}
+```
 Returns:
 ```json
 {
   "tools": [
     {
-      "name": "tool_name",
-      "description": "Tool description",
+      "name": "unifi_list_clients",
+      "description": "List all connected clients...",
       "schema": {
-        "input": {
-          "type": "object",
-          "properties": {...},
-          "required": [...]
-        },
-        "output": {
-          "type": "object",
-          "properties": {...}
-        }
+        "input": {"type": "object", "properties": {...}, "required": [...]},
+        "output": {"type": "object", "properties": {...}}
       }
     }
   ],
-  "count": 42
+  "count": 11,
+  "categories": ["acl", "clients", "devices", ...],
+  "filtered": true
 }
 ```
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `category` | string | — | Filter to one category (e.g. `clients`, `firewall`, `devices`) |
+| `search` | string | — | Case-insensitive substring match on tool name and description |
+| `include_schemas` | boolean | `false` | Include full input/output schemas per tool |
 
 ### Programmatic Access
 
@@ -74,12 +100,12 @@ Returns:
 from src.runtime import tool_registry
 from src.tool_index import get_tool_index
 
-# Access the registry directly
-all_tools = tool_registry
-
-# Get formatted index
+# Compact index (names + descriptions)
 index = get_tool_index()
-print(f"Found {index['count']} tools")
+print(f"Found {index['count']} tools in {len(index['categories'])} categories")
+
+# Full schemas for one category
+firewall_tools = get_tool_index(category="firewall", include_schemas=True)
 ```
 
 ## Metadata Captured
@@ -148,9 +174,7 @@ Supported type mappings:
 
 Potential improvements for the tool index system:
 
+- Align with MCP spec response size controls if/when standardized (tracking [modelcontextprotocol/modelcontextprotocol#2211](https://github.com/modelcontextprotocol/modelcontextprotocol/discussions/2211))
 - Enhanced type inference for complex types (List[str], Dict[str, Any], etc.)
-- Support for JSON Schema validation of tool outputs
 - OpenAPI/Swagger export for REST API wrapping
-- Runtime schema validation for tool inputs
 - Tool versioning and compatibility tracking
-- Performance metrics per tool

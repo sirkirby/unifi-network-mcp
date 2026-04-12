@@ -8,7 +8,7 @@ For machine-readable tool metadata, call the `unifi_tool_index` meta-tool at run
 
 These are always registered regardless of mode:
 
-- `unifi_tool_index` — List all available tools with schemas
+- `unifi_tool_index` — Discover tools (names+descriptions by default; use `category`/`search`/`include_schemas` to filter)
 - `unifi_execute` — Execute a tool by name (for lazy/meta_only modes)
 - `unifi_batch` — Execute multiple tools in parallel
 - `unifi_batch_status` — Check batch job status

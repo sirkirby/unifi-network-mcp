@@ -13,7 +13,7 @@ The server uses **lazy loading** by default — only meta-tools are registered i
 
 | Meta-Tool | Purpose |
 |-----------|---------|
-| `access_tool_index` | List all 29 tools with full parameter schemas |
+| `access_tool_index` | Discover tools by name/description; use `category`, `search`, or `include_schemas` to filter |
 | `access_execute` | Call any tool by name (essential in lazy mode) |
 | `access_batch` | Run multiple tools in parallel |
 | `access_batch_status` | Check async batch job status |

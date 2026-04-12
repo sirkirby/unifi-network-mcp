@@ -8,7 +8,7 @@ For machine-readable tool metadata, call the `access_tool_index` meta-tool at ru
 
 These are always registered regardless of mode:
 
-- `access_tool_index` -- List all available tools with schemas
+- `access_tool_index` -- Discover tools (names+descriptions by default; use `category`/`search`/`include_schemas` to filter)
 - `access_execute` -- Execute a tool by name (for lazy/meta_only modes)
 - `access_batch` -- Execute multiple tools in parallel
 - `access_batch_status` -- Check batch job status

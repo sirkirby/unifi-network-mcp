@@ -8,7 +8,7 @@ For machine-readable tool metadata, call the `protect_tool_index` meta-tool at r
 
 These are always registered regardless of mode:
 
-- `protect_tool_index` -- List all available tools with schemas
+- `protect_tool_index` -- Discover tools (names+descriptions by default; use `category`/`search`/`include_schemas` to filter)
 - `protect_execute` -- Execute a tool by name (for lazy/meta_only modes)
 - `protect_batch` -- Execute multiple tools in parallel
 - `protect_batch_status` -- Check batch job status
