@@ -1,5 +1,5 @@
 {
-  "count": 166,
+  "count": 167,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "unifi_network_mcp.tools.devices",
@@ -41,6 +41,7 @@
     "unifi_delete_wlan": "unifi_network_mcp.tools.network",
     "unifi_force_provision_device": "unifi_network_mcp.tools.devices",
     "unifi_force_reconnect_client": "unifi_network_mcp.tools.clients",
+    "unifi_forget_client": "unifi_network_mcp.tools.clients",
     "unifi_get_acl_rule_details": "unifi_network_mcp.tools.acl",
     "unifi_get_alerts": "unifi_network_mcp.tools.stats",
     "unifi_get_anomalies": "unifi_network_mcp.tools.stats",
@@ -1483,6 +1484,36 @@
             },
             "mac_address": {
               "description": "MAC address of the client to force reconnect, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Remove/forget a client from the controller's known client history by MAC address. This permanently deletes the client record including its name, notes, fixed IP settings, and historical stats. The client will reappear as a new unknown device if it reconnects.",
+      "name": "unifi_forget_client",
+      "permission_action": "update",
+      "permission_category": "clients",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, executes the forget. When false (default), returns a preview of the changes",
+              "type": "boolean"
+            },
+            "mac_address": {
+              "description": "MAC address of the client to forget, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)",
               "type": "string"
             }
           },

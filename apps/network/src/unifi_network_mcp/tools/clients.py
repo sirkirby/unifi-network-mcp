@@ -438,6 +438,68 @@ async def force_reconnect_client(
 
 
 @server.tool(
+    name="unifi_forget_client",
+    description="Remove/forget a client from the controller's known client history by MAC address. This permanently deletes the client record including its name, notes, fixed IP settings, and historical stats. The client will reappear as a new unknown device if it reconnects.",
+    permission_category="clients",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
+)
+async def forget_client(
+    mac_address: Annotated[
+        str,
+        Field(description="MAC address of the client to forget, in format AA:BB:CC:DD:EE:FF (from unifi_list_clients)"),
+    ],
+    confirm: Annotated[
+        bool,
+        Field(description="When true, executes the forget. When false (default), returns a preview of the changes"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Implementation for forgetting/removing a client from the controller."""
+    try:
+        # Fetch client details first
+        client_obj = await client_manager.get_client_details(mac_address)
+        if not client_obj:
+            return {
+                "success": False,
+                "error": f"Client not found with MAC address: {mac_address}",
+            }
+
+        client = client_obj.raw if hasattr(client_obj, "raw") else client_obj
+        client_name = client.get("name") or client.get("hostname", "Unknown")
+
+        # Return preview when confirm=false
+        if not confirm:
+            return {
+                "success": True,
+                "requires_confirmation": True,
+                "action": "forget_client",
+                "resource_type": "client",
+                "resource_id": mac_address,
+                "resource_name": client_name,
+                "preview": {
+                    "current": {
+                        "ip": client.get("ip"),
+                        "hostname": client.get("hostname"),
+                        "connection_type": "Wired" if client.get("is_wired") else "Wireless",
+                    },
+                    "action": "Client will be permanently removed from controller history. Name, notes, fixed IP settings, and historical stats will be deleted.",
+                },
+                "message": f"Will forget client '{client_name}' ({mac_address}). Set confirm=true to execute.",
+            }
+
+        success = await client_manager.forget_client(mac_address)
+        if success:
+            return {
+                "success": True,
+                "message": f"Client {mac_address} ('{client_name}') forgotten successfully.",
+            }
+        return {"success": False, "error": f"Failed to forget client {mac_address}."}
+    except Exception as e:
+        logger.error("Error forgetting client %s: %s", mac_address, e, exc_info=True)
+        return {"success": False, "error": f"Failed to forget client {mac_address}: {e}"}
+
+
+@server.tool(
     name="unifi_authorize_guest",
     description="Authorize a guest client to access the guest network by MAC address",
     permission_category="clients",

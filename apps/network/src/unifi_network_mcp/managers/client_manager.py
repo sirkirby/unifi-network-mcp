@@ -179,6 +179,22 @@ class ClientManager:
             logger.error("Error forcing reconnect for client %s: %s", client_mac, e)
             return False
 
+    async def forget_client(self, client_mac: str) -> bool:
+        """Forget/remove a client from the controller's known client history."""
+        try:
+            api_request = ApiRequest(
+                method="post",
+                path="/cmd/stamgr",
+                data={"macs": [client_mac], "cmd": "forget-sta"},
+            )
+            await self._connection.request(api_request)
+            logger.info("Forget command sent for client %s", client_mac)
+            self._connection._invalidate_cache(f"{CACHE_PREFIX_CLIENTS}")
+            return True
+        except Exception as e:
+            logger.error("Error forgetting client %s: %s", client_mac, e)
+            return False
+
     async def get_blocked_clients(self) -> List[Client]:
         """Get a list of currently blocked clients."""
         all_clients = await self.get_all_clients()
