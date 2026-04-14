@@ -7,6 +7,7 @@ daemon:
   port: 28221
   log_level: info
   log_retention_days: 30
+  stale_session_threshold_ms: 3600000
 capture:
   transcript_paths: []
   plan_dirs:
@@ -65,3 +66,12 @@ notifications:
       enabled: false
     sessions:
       enabled: false
+symbionts:
+  claude-code:
+    enabled: true
+  codex:
+    enabled: true
+  gemini:
+    enabled: true
+  opencode:
+    enabled: true

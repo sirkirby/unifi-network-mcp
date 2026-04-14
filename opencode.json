@@ -1,0 +1,17 @@
+{
+  "mcp": {
+    "myco": {
+      "type": "local",
+      "command": [
+        "myco-run",
+        "mcp"
+      ]
+    }
+  },
+  "permission": {
+    "bash": {
+      "myco *": "allow",
+      "myco-dev *": "allow"
+    }
+  }
+}

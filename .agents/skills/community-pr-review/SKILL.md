@@ -54,7 +54,7 @@ Determine whether this is a **feature addition PR** or a **governance/structural
 before running any other gate.
 
 **Feature addition PR** — adds new tools, managers, or capabilities
-→ Run Gates 1–3 as written below.
+→ Run Gates 1–4 as written below.
 
 **Governance/structural refactor PR** — reorganizes field definitions, introduces shared Pydantic
 models, changes base class hierarchy, or implements a field-symmetry sub-issue
@@ -78,8 +78,9 @@ models, changes base class hierarchy, or implements a field-symmetry sub-issue
 6. **Pattern symmetric with AGENTS.md rule?** — The implementation must align with the
    field-symmetry governance rule in `AGENTS.md`, not diverge from it.
 
-Gates 1–3 (f-string logger, validator registry, doc site) still apply to governance PRs for
-any new or modified tool/manager files — but the structural questions above are the primary gate.
+Gates 1–4 (f-string logger, validator registry, doc site, shared validator blast radius) still
+apply to governance PRs for any new or modified tool/manager files — but the structural
+questions above are the primary gate.
 
 **Why the split matters:** PR #140 (ACL shared-field-model pilot, level99) was reviewed with
 the feature-addition checklist. The structural questions were asked only because the reviewer
@@ -120,6 +121,19 @@ check manager files explicitly.
 be reliably caught by automated scripts. This survived a 481-call automated migration in PR #122
 and was only caught by manual review. Scan manually for this pattern when logger calls span lines.
 
+**Full-payload logging promoted to INFO level:** A `logger.debug` call that dumps a full JSON
+payload is acceptable at DEBUG level but becomes a production noise and data-exposure risk if
+promoted to `logger.info`. Watch for this in manager files — it appeared at `firewall_manager.py`
+line 622 in PR #146. All full-payload log calls must use `logger.debug`.
+
+```python
+# BLOCKED: full payload at INFO level
+logger.info("Firewall policy response: %s", json.dumps(response))
+
+# REQUIRED: full payload at DEBUG level only
+logger.debug("Firewall policy response: %s", json.dumps(response))
+```
+
 **Why this is a hard ban and not a suggestion:** F-string loggers eagerly evaluate all arguments
 even when the log level is suppressed. On deployments with debug logging disabled, this creates
 unnecessary overhead on every suppressed call.
@@ -156,6 +170,63 @@ For PR #126, this gate was explicitly enforced — the PR wasn't merged until do
 
 Verify: does the PR update the doc site entry count and tool listing to match what's being
 merged? If not, either request the update or make it yourself before merging (see Step 2).
+
+---
+
+### Gate 4: Shared Validator Modifications — Blast Radius Check
+
+**Target:** Any PR that modifies a shared validator class (e.g., `ResourceValidator.validate()`).
+
+If a PR injects schema defaults into a shared `validate()` method, every update tool that calls
+the method will silently overwrite fields the caller intentionally omitted — a data-loss bug with
+blast radius across all 37+ default-using properties and all three app packages.
+
+**Hard blocker pattern:**
+
+```python
+# DANGEROUS — defaults injected into shared validator
+class ResourceValidator:
+    def validate(self, data: dict) -> dict:
+        data.setdefault("create_allow_respond", False)  # silently overwrites on update
+        data.setdefault("schedule", {"mode": "ALWAYS"})  # silently overwrites on update
+        return data
+```
+
+With this code, `update_firewall_policy({"name": "new"})` would silently inject unwanted field
+values — overwriting whatever the controller currently has, regardless of what the caller specified.
+
+**The rule:** Defaults belong in create-specific code paths only (or in an explicit opt-in method
+such as `validate_and_apply_defaults()` that update tools do not call). Any PR that adds defaults
+to a shared validator code path is a **hard blocker**.
+
+This gate emerged from PR #146. Check for it whenever the PR diff touches a class that both
+create and update tools inherit from or call into.
+
+---
+
+## Step 1b — Post Feedback With the Right Review Type
+
+When you find merge blockers in Step 1, submit your GitHub review as **`request-changes`**, not
+as `comment`. This matters for two reasons:
+
+1. **Prevents accidental merge** — GitHub blocks merging a PR that has an unresolved
+   "request changes" review, even if CI is green.
+2. **Signals mandatory work clearly** — the contributor sees their PR requires action, not just
+   feedback.
+
+Structure your review body with explicit sections:
+
+```
+## Hard Blockers (must fix before merge)
+- [ ] Replace f-string loggers in device_manager.py (23 instances)
+- [ ] Register new tool in validator registry
+
+## Minor Items (nice-to-have)
+- Consider renaming X for consistency with Y
+```
+
+Hard blockers are items from Gates 1–4. Minor items are suggestions that won't delay merge.
+Use the `comment` review type only when you have zero hard blockers and are leaving suggestions.
 
 ---
 
@@ -247,7 +318,7 @@ than requesting rework:
    for surfacing the problem, links the new issue, and explains why the PR was closed rather
    than revised. This keeps the community relationship healthy.
 
-**Reference:** PR #142 was closed using this pattern. The PR had multiple overlapping
+**Reference:** PR #142 (riichard) was closed using this pattern. The PR had multiple overlapping
 concerns that couldn't be cleanly separated. Valid proposals were extracted to a GitHub issue;
 the contributor was credited in the close comment.
 
@@ -289,7 +360,7 @@ run a retroactive audit:
 git diff --name-only <merge-commit>^1 <merge-commit>
 ```
 
-Then run Gates 1–3 against those files. If gaps are found, open a follow-up PR immediately.
+Then run Gates 1–4 against those files. If gaps are found, open a follow-up PR immediately.
 Don't let an unreviewed merge sit — the pattern compounds. PR #122 was audited retroactively
 using this exact approach and a fix PR was opened the same session.
 
@@ -300,6 +371,7 @@ using this exact approach and a fix PR was opened the same session.
 | Gate | Blocker level | Where to look | Common miss |
 |------|--------------|---------------|-------------|
 | PR type (Gate 0) | Routing gate | PR description + linked issue | Applying feature-addition checklist to a governance/refactor PR |
-| F-string loggers (Gate 1) | Hard block | `*_manager.py` | Manager layer even when tool layer is clean |
+| F-string loggers (Gate 1) | Hard block | `*_manager.py` | Manager layer even when tool layer is clean; full-payload calls promoted to INFO |
 | Validator registry (Gate 2) | Critical (silent) | Registry file + `validated_data` usage | Tool registered but reads raw params |
 | Doc site count (Gate 3) | Ordering gate | Doc site entry count | Updated after merge instead of before |
+| Shared validator defaults (Gate 4) | Hard block | `ResourceValidator.validate()` and any shared validator class | Defaults injected into shared path silently overwrite update-tool fields |

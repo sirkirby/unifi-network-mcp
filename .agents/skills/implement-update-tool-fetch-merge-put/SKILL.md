@@ -165,6 +165,37 @@ This is a deliberate design decision, not an oversight. The confirm flow does a 
 
 If you're adding or changing merge behavior that affects multiple managers, check `AGENTS.md` for the list of managers that implement update tools. All 11 were patched as part of issue #113. If you're introducing a new shared utility (like `deep_merge` was), update all of them in the same PR — partial patches leave the codebase inconsistent.
 
+## Validator Pitfall: Schema Defaults in Shared Validators
+
+The `ResourceValidator.validate()` shared base method is a **blast-radius risk** for update tools. If a PR injects schema defaults into this shared method, every update tool that calls `.validate()` will silently overwrite fields the caller intentionally omitted — exactly the data-loss bug the fetch-merge-put pattern was designed to prevent.
+
+**Example of the failure mode:**
+
+```python
+# DANGEROUS: defaults injected into shared validator
+class ResourceValidator:
+    def validate(self, data: dict) -> dict:
+        data.setdefault("create_allow_respond", False)  # ← blast radius
+        data.setdefault("schedule", {"mode": "ALWAYS"})  # ← blast radius
+        return data
+```
+
+With this code, `update_firewall_policy({"name": "new"})` would silently inject
+`create_allow_respond: False` and `schedule: {"mode": "ALWAYS"}` — overwriting whatever the
+controller currently has, regardless of what the caller specified.
+
+**The rule:** Schema defaults must **never** live in the shared base validator. Defaults belong
+exclusively in:
+- Create-specific code paths (a separate `create` method or subclass override), or
+- An explicit opt-in method such as `validate_and_apply_defaults()` that update tools do not call.
+
+When reviewing a PR that modifies `ResourceValidator` or any shared validator class, check whether
+defaults are being added to a code path that update tools share. If so, this is a **hard blocker**:
+the blast radius spans all 37+ default-using properties and all three app packages.
+
+This pitfall emerged from PR #146 review. It is structurally independent of the `additionalProperties`
+gate (Step 7) — both protections are needed.
+
 ## Create vs. Update Asymmetry
 
 Update tools use dict params. Create tools use flat keyword params. This is intentional:
