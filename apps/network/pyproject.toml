@@ -29,7 +29,7 @@ build-backend = "hatchling.build"
 source = "vcs"
 raw-options.root = "../.."
 raw-options.tag_regex = "^(?:network/v|v)(?P<version>\\d+(?:\\.\\d+)*)(?:\\S*)$"
-raw-options.git_describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "network/v*", "--match", "v[0-9]*"]
+raw-options.git_describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "network/v*"]
 raw-options.fallback_version = "0.0.0"
 
 [tool.hatch.build.hooks.vcs]
