@@ -344,15 +344,20 @@ async def create_firewall_policy(
             "error": "policy_data must be a non-empty dictionary.",
         }
 
-    # Auto-detect format and validate accordingly
+    # Auto-detect format and validate accordingly. Zone-based (V2) policies
+    # are rejected by the controller without fields like ``schedule`` and
+    # ``create_allow_respond``, so we fill missing top-level properties from
+    # schema defaults on that path. Legacy policies don't need this.
     zone_based = _is_zone_based_policy(policy_data)
 
     if zone_based:
         schema_key = "firewall_policy_v2_create"
+        is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate_and_apply_defaults(
+            schema_key, policy_data
+        )
     else:
         schema_key = "firewall_policy_create"
-
-    is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate(schema_key, policy_data)
+        is_valid, error_msg, validated_data = UniFiValidatorRegistry.validate(schema_key, policy_data)
 
     if not is_valid:
         logger.warning("Invalid firewall policy data: %s", error_msg)
@@ -710,7 +715,17 @@ async def create_simple_firewall_policy(
         )
 
     # --- Step 4: call manager to create policy -----------------------------
-    created = await firewall_manager.create_firewall_policy(payload)
+    # firewall_manager.create_firewall_policy raises on API errors so the
+    # controller's errorCode/message surface to the caller — wrap to return a
+    # structured error response instead of letting it propagate.
+    try:
+        created = await firewall_manager.create_firewall_policy(payload)
+    except Exception as exc:
+        logger.error(
+            "Error creating migrated firewall policy '%s': %s", pol["name"], exc, exc_info=True
+        )
+        return {"success": False, "error": f"Failed to create firewall policy '{pol['name']}': {exc}"}
+
     if created is None:
         return {
             "success": False,
