@@ -358,6 +358,58 @@ class TestStatsManagerEnhanced:
         assert result["channel"] == 100
 
     @pytest.mark.asyncio
+    async def test_get_client_wifi_details_uses_get_stat_sta(self, stats_manager, mock_connection):
+        """Regression for #148: /stat/sta ignores MAC in POST body — must use GET."""
+        mock_connection.request.return_value = []
+
+        await stats_manager.get_client_wifi_details("aa:bb:cc:dd:ee:ff")
+
+        api_request = mock_connection.request.call_args[0][0]
+        assert api_request.method == "get"
+        assert api_request.path == "/stat/sta"
+
+    @pytest.mark.asyncio
+    async def test_get_client_wifi_details_filters_by_mac(self, stats_manager, mock_connection):
+        """Regression for #148: must filter list by MAC, not return clients[0]."""
+        mock_connection.request.return_value = [
+            {"mac": "11:11:11:11:11:11", "signal": -57, "channel": 132, "radio": "na"},
+            {"mac": "aa:bb:cc:dd:ee:ff", "signal": -34, "channel": 1, "radio": "ng"},
+            {"mac": "22:22:22:22:22:22", "signal": -79, "channel": 11, "radio": "ng"},
+        ]
+
+        result = await stats_manager.get_client_wifi_details("aa:bb:cc:dd:ee:ff")
+
+        assert result is not None
+        assert result["mac"] == "aa:bb:cc:dd:ee:ff"
+        assert result["signal"] == -34
+        assert result["channel"] == 1
+
+    @pytest.mark.asyncio
+    async def test_get_client_wifi_details_no_match_returns_none(self, stats_manager, mock_connection):
+        """Regression for #148: unknown MAC must return None, not clients[0]."""
+        mock_connection.request.return_value = [
+            {"mac": "11:11:11:11:11:11", "signal": -57, "channel": 132},
+            {"mac": "22:22:22:22:22:22", "signal": -60, "channel": 36},
+        ]
+
+        result = await stats_manager.get_client_wifi_details("00:00:00:00:00:00")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_client_wifi_details_mac_case_insensitive(self, stats_manager, mock_connection):
+        """MAC matching must ignore case so callers aren't forced to normalize."""
+        mock_connection.request.return_value = [
+            {"mac": "AA:BB:CC:DD:EE:FF", "signal": -50, "channel": 36},
+        ]
+
+        result = await stats_manager.get_client_wifi_details("aa:bb:cc:dd:ee:ff")
+
+        assert result is not None
+        assert result["mac"] == "AA:BB:CC:DD:EE:FF"
+        assert result["signal"] == -50
+
+    @pytest.mark.asyncio
     async def test_get_client_wifi_details_not_found(self, stats_manager, mock_connection):
         """Test get_client_wifi_details returns None for unknown client."""
         mock_connection.request.return_value = []
