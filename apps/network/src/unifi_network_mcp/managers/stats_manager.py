@@ -573,20 +573,25 @@ class StatsManager:
             return cached_data
 
         try:
-            endpoint = "/stat/sta"
-            payload = {"mac": client_mac}
-            api_request = ApiRequest(method="post", path=endpoint, data=payload)
+            # /stat/sta is a collection endpoint: it returns all currently-
+            # connected wireless clients and ignores any MAC filter in the body.
+            # Fetch the full list, then filter for the requested MAC ourselves.
+            api_request = ApiRequest(method="get", path="/stat/sta")
             response = await self._connection.request(api_request)
 
-            # Response is typically a list; find the matching client
             clients = response if isinstance(response, list) else []
-            if not clients:
+            target = client_mac.lower()
+            raw = next(
+                (
+                    c
+                    for c in clients
+                    if isinstance(c, dict) and str(c.get("mac", "")).lower() == target
+                ),
+                None,
+            )
+            if raw is None:
                 return None
 
-            # Use the first matching entry
-            raw = clients[0] if isinstance(clients[0], dict) else {}
-
-            # Extract WiFi-specific fields
             wifi_fields = [
                 "signal",
                 "noise",
@@ -607,7 +612,7 @@ class StatsManager:
                 "nss",
                 "is_11r",
             ]
-            result: Dict[str, Any] = {"mac": client_mac}
+            result: Dict[str, Any] = {"mac": raw.get("mac", client_mac)}
             for field in wifi_fields:
                 if field in raw:
                     result[field] = raw[field]
