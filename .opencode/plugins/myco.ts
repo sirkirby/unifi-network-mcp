@@ -282,6 +282,16 @@ function bufferEvent(
  * POST a capture event to the daemon with buffer fallback on failure.
  * Used for user_prompt and tool_use events — both are replayed from the
  * buffer by reconcileBufferBatches when the daemon restarts.
+ *
+ * Two failure modes route to the buffer:
+ *   1. Transport failure — HTTP non-200, timeout, network error. `result.ok`
+ *      is false and we buffer exactly as you'd expect.
+ *   2. Server-side drop — HTTP 200 with body `{ ok: true, ignored: reason }`.
+ *      The daemon chose not to persist the event (capture rules, phantom
+ *      detection, etc.), but we've seen rule bugs silently discard entire
+ *      live sessions this way. Treat "ignored" as a drop and buffer it so
+ *      `reconcileBufferBatches` can recover on the next restart once the
+ *      underlying cause is fixed.
  */
 async function postEventWithBuffer(
   directory: string,
@@ -289,9 +299,16 @@ async function postEventWithBuffer(
   event: Record<string, unknown>,
 ): Promise<void> {
   const result = await postJson(directory, "/events", event);
-  if (!result.ok) {
+  if (!result.ok || isIgnoredResponse(result.data)) {
     bufferEvent(directory, sessionId, event);
   }
+}
+
+/** True when the daemon returned 200 but signalled it dropped the event. */
+function isIgnoredResponse(data: unknown): boolean {
+  if (!isRecord(data)) return false;
+  const ignored = data.ignored;
+  return typeof ignored === "string" && ignored.length > 0;
 }
 
 /** Register an opencode session with the daemon. */
@@ -523,6 +540,29 @@ export const MycoPlugin = async ({ client, directory, worktree }: { client: any;
         activeOpencodeSessions.add(sessionId);
 
         const parentSessionId = info.parentID || undefined;
+
+        // Diagnostic: log the full session.created payload when a parent is
+        // present so we can tell sub-agent spawns apart from user-initiated
+        // forks. Sub-agents pollute the session list as phantom user sessions;
+        // filtering them needs a structural signal we don't have yet. Capture
+        // live payloads from both paths (skill invocation vs. TUI fork) and
+        // compare. Drop this block once the signal is known.
+        if (parentSessionId) {
+          try {
+            await client.app.log({
+              service: "myco",
+              level: "info",
+              message: "session.created with parentID",
+              extra: {
+                session_id: sessionId,
+                parent_session_id: parentSessionId,
+                info: JSON.stringify(info),
+              },
+            });
+          } catch {
+            // Diagnostic only — never block registration.
+          }
+        }
         const contextPromise = parentSessionId
           ? (resumeInjectedSessions.has(sessionId)
             ? Promise.resolve(null)

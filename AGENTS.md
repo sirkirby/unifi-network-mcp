@@ -243,3 +243,11 @@ make pre-commit   # format + lint + sync-skills + test
 Before non-trivial changes, produce a short plan covering: approach, impacted files, which anchors apply, new tests needed, verification steps.
 
 **Skip the plan only when all are true:** single-file edit, no new behavior or tools, no config/permission/schema changes, no new tests.
+
+
+<!-- myco:managed:start -->
+## Myco Managed Guidance
+
+- When `capture.ignore_plan_dirs_in_git` is enabled, custom directories in `capture.plan_dirs` may be intentionally gitignored after capture into Myco.
+- Do not force-add files from intentionally gitignored custom plan directories unless the user explicitly asks.
+<!-- myco:managed:end -->

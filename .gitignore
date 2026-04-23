@@ -91,6 +91,5 @@ docs/specs/
 
 # Myco managed (machine-specific)
 .agents/skills/myco
-.agents/skills/myco-curate
-.agents/skills/rules
+.agents/skills/myco-rules
 .wrangler/

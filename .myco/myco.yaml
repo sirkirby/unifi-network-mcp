@@ -1,5 +1,5 @@
 version: 3
-config_version: 4
+config_version: 6
 embedding:
   provider: ollama
   model: bge-m3:latest
@@ -13,6 +13,7 @@ capture:
   plan_dirs:
     - docs/superpowers/plans/
     - docs/superpowers/specs/
+  ignore_plan_dirs_in_git: false
   artifact_extensions:
     - .md
   buffer_max_events: 500
@@ -23,7 +24,6 @@ agent:
   provider:
     type: anthropic
   tasks:
-    full-intelligence: {}
     skill-generate:
       provider:
         type: anthropic
@@ -42,8 +42,11 @@ agent:
     skill-survey:
       provider:
         type: anthropic
+    vault-evolve: {}
 context:
   digest_tier: 5000
+  session_start_digest_enabled: false
+  cortex_enabled: true
   prompt_search: true
   prompt_max_spores: 3
 backup:
@@ -66,6 +69,14 @@ notifications:
       enabled: false
     sessions:
       enabled: false
+    settings:
+      enabled: true
+      mode: banner
+appearance:
+  theme: sage
+  mode: dark
+  font: default
+  density: normal
 symbionts:
   claude-code:
     enabled: true
