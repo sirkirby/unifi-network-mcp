@@ -619,7 +619,7 @@ class FirewallManager:
         try:
             policy_name = policy_data.get("name", "Unnamed Policy")
             logger.info("Attempting to create firewall policy '%s' via V2 endpoint.", policy_name)
-            logger.info("Firewall policy create payload: %s", json.dumps(policy_data, indent=2))
+            logger.debug("Firewall policy create payload: %s", json.dumps(policy_data, indent=2))
 
             api_request = ApiRequestV2(method="post", path="/firewall-policies", data=policy_data)
 

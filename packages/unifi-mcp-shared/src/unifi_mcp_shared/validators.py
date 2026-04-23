@@ -25,6 +25,12 @@ class ResourceValidator:
     def validate(self, params: Dict[str, Any]) -> Tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
         """Validate parameters against schema.
 
+        Does NOT inject schema defaults. Update tools intentionally omit fields
+        to signal "leave this unchanged," so silently filling missing keys with
+        schema defaults would overwrite existing resource state. Callers that
+        want defaults applied (e.g. create tools) must opt in via
+        ``validate_and_apply_defaults``.
+
         Args:
             params: The parameters to validate
 
@@ -33,12 +39,7 @@ class ResourceValidator:
         """
         try:
             validate(instance=params, schema=self.schema)
-            # Apply schema-defined defaults for top-level properties absent from params
-            result = dict(params)
-            for key, prop_schema in self.schema.get("properties", {}).items():
-                if key not in result and "default" in prop_schema:
-                    result[key] = prop_schema["default"]
-            return True, None, result
+            return True, None, params
         except ValidationError as e:
             logger.error("%s validation error: %s", self.resource_name, e.message)
             return False, f"{self.resource_name} validation error: {e.message}", None
@@ -54,6 +55,31 @@ class ResourceValidator:
                 f"Unexpected error validating {self.resource_name}: {str(e)}",
                 None,
             )
+
+    def validate_and_apply_defaults(
+        self, params: Dict[str, Any]
+    ) -> Tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
+        """Validate params and fill missing top-level properties with schema defaults.
+
+        Opt-in counterpart to :meth:`validate`. Intended for create paths where
+        the schema declares required defaults (for example a UniFi V2 firewall
+        policy that the controller rejects without ``schedule`` set). Never use
+        this on update paths — absent keys on updates mean "don't change this,"
+        and injecting defaults would silently overwrite existing values.
+        """
+        is_valid, error, validated = self.validate(params)
+        if not is_valid or validated is None:
+            return is_valid, error, validated
+
+        result = dict(validated)
+        for key, prop_schema in self.schema.get("properties", {}).items():
+            if (
+                key not in result
+                and isinstance(prop_schema, dict)
+                and "default" in prop_schema
+            ):
+                result[key] = prop_schema["default"]
+        return True, None, result
 
 
 def create_response(success: bool, data: Any = None, error: str = None) -> Dict[str, Any]:

@@ -94,3 +94,18 @@ class UniFiValidatorRegistry:
         if validator:
             return validator.validate(params)
         return False, f"No validator found for resource type: {resource_type}", None
+
+    @classmethod
+    def validate_and_apply_defaults(
+        cls, resource_type: str, params: Dict[str, Any]
+    ) -> Tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
+        """Validate and fill missing top-level properties with schema defaults.
+
+        Opt-in companion to :meth:`validate` for create paths. See
+        ``ResourceValidator.validate_and_apply_defaults`` — never use on
+        update paths.
+        """
+        validator = cls.get_validator(resource_type)
+        if validator:
+            return validator.validate_and_apply_defaults(params)
+        return False, f"No validator found for resource type: {resource_type}", None
