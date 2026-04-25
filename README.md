@@ -1,7 +1,7 @@
 # UniFi MCP
 
 <p align="center">
-  <img src="docs/assets/hero.svg" alt="UniFi MCP — AI-Powered UniFi Management" width="720">
+  <img src="docs/assets/hero-readme.jpg" alt="UniFi MCP — AI agents for your UniFi infrastructure" width="720">
 </p>
 
 Leverage agents and agentic AI workflows to manage your UniFi deployment.

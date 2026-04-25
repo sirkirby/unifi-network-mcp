@@ -1,1165 +1,1736 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>UniFi MCP — AI-Powered UniFi Management</title>
-  <meta name="description" content="MCP servers that give AI agents direct access to your UniFi infrastructure. 150+ tools across Network, Protect, Access, and Drive.">
-  <meta name="theme-color" content="#0a0e1a">
-  <meta property="og:title" content="UniFi MCP — AI-Powered UniFi Management">
-  <meta property="og:description" content="MCP servers that give AI agents direct access to your UniFi infrastructure. 150+ tools across Network, Protect, Access, and Drive.">
-  <meta property="og:url" content="https://unifimcp.com">
-  <meta property="og:type" content="website">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="UniFi MCP — AI-Powered UniFi Management">
-  <meta name="twitter:description" content="MCP servers that give AI agents direct access to your UniFi infrastructure.">
-  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-  <style>
-    /* ===== Custom Properties ===== */
-    :root {
-      --blue: #006FFF;
-      --blue-text: #3388FF;
-      --teal: #00D4AA;
-      --bg-deep: #0a0e1a;
-      --bg-card: #111827;
-      --bg-card-hover: #1a2332;
-      --text: #e2e8f0;
-      --text-muted: #9ca3af;
-      --border: #1e293b;
-      --network: #006FFF;
-      --protect: #8B5CF6;
-      --access: #F59E0B;
-      --relay: #EC4899;
-      --drive: #00D4AA;
-    }
-
-    /* ===== Reset & Base ===== */
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
-      background: var(--bg-deep);
-      color: var(--text);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      line-height: 1.6;
-    }
-
-    img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-    }
-
-    a {
-      color: var(--blue-text);
-      text-decoration: none;
-    }
-
-    a:hover {
-      text-decoration: underline;
-    }
-
-    /* ===== Skip Link ===== */
-    .skip-link {
-      position: fixed;
-      top: -100%;
-      left: 16px;
-      z-index: 9999;
-      background: var(--blue);
-      color: #fff;
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 600;
-      transition: top 0.2s;
-    }
-
-    .skip-link:focus {
-      top: 16px;
-      text-decoration: none;
-    }
-
-    /* ===== Reduced Motion ===== */
-    @media (prefers-reduced-motion: reduce) {
-      html {
-        scroll-behavior: auto;
-      }
-
-      *, *::before, *::after {
-        transition-duration: 0s !important;
-        animation-duration: 0s !important;
-      }
-    }
-
-    /* ===== Nav ===== */
-    .nav {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 1000;
-      background: rgba(10, 14, 26, 0.85);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .nav-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 24px;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .nav-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-      color: var(--text);
-      font-weight: 700;
-      font-size: 18px;
-    }
-
-    .nav-brand:hover {
-      text-decoration: none;
-    }
-
-    .nav-brand img {
-      width: 32px;
-      height: 32px;
-    }
-
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 28px;
-    }
-
-    .nav-links a {
-      font-size: 14px;
-      color: var(--text-muted);
-      transition: color 0.2s;
-    }
-
-    .nav-links a:hover {
-      color: var(--text);
-      text-decoration: none;
-    }
-
-    .nav-github {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 14px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 14px;
-      color: var(--text);
-      transition: border-color 0.2s, background 0.2s;
-    }
-
-    .nav-github:hover {
-      border-color: var(--text-muted);
-      background: var(--bg-card);
-      text-decoration: none;
-    }
-
-    .nav-github svg {
-      width: 18px;
-      height: 18px;
-      fill: var(--text);
-    }
-
-    .hamburger {
-      display: none;
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 8px;
-    }
-
-    .hamburger svg {
-      width: 24px;
-      height: 24px;
-      stroke: var(--text);
-    }
-
-    .mobile-menu {
-      display: none;
-      position: fixed;
-      top: 64px;
-      left: 0;
-      right: 0;
-      background: var(--bg-card);
-      border-bottom: 1px solid var(--border);
-      padding: 16px 24px;
-      z-index: 999;
-    }
-
-    .mobile-menu.open {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .mobile-menu a {
-      font-size: 16px;
-      color: var(--text-muted);
-      padding: 4px 0;
-    }
-
-    .mobile-menu a:hover {
-      color: var(--text);
-    }
-
-    /* ===== Section Scroll Offset ===== */
-    section {
-      scroll-margin-top: 72px;
-    }
-
-    /* ===== Hero ===== */
-    .hero {
-      text-align: center;
-      padding: 120px 24px 64px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .hero-img {
-      max-width: 720px;
-      margin: 0 auto 40px;
-      border-radius: 12px;
-    }
-
-    .hero h1 {
-      font-size: 48px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      line-height: 1.15;
-      background: linear-gradient(135deg, var(--blue), var(--teal));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 16px;
-    }
-
-    .hero p {
-      font-size: 18px;
-      color: var(--text-muted);
-      max-width: 640px;
-      margin: 0 auto 32px;
-      line-height: 1.7;
-    }
-
-    .hero-ctas {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-bottom: 24px;
-    }
-
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      padding: 12px 28px;
-      background: var(--blue);
-      color: #fff;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      transition: background 0.2s, transform 0.1s;
-      border: none;
-      cursor: pointer;
-    }
-
-    .btn-primary:hover {
-      background: #0062e6;
-      text-decoration: none;
-    }
-
-    .btn-primary:active {
-      transform: scale(0.98);
-    }
-
-    .btn-outline {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 12px 28px;
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      transition: border-color 0.2s, background 0.2s;
-    }
-
-    .btn-outline:hover {
-      border-color: var(--text-muted);
-      background: var(--bg-card);
-      text-decoration: none;
-    }
-
-    .hero-badge {
-      margin-top: 8px;
-    }
-
-    .hero-badge img {
-      display: inline-block;
-      height: 24px;
-    }
-
-    /* ===== Server Cards ===== */
-    .servers {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 64px 24px;
-    }
-
-    .servers h2 {
-      text-align: center;
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-
-    .servers > p {
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 16px;
-      margin-bottom: 40px;
-    }
-
-    .server-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-    }
-
-    .server-card {
-      background: var(--bg-card);
-      border-radius: 12px;
-      padding: 24px;
-      border-top: 3px solid var(--border);
-      transition: background 0.2s;
-    }
-
-    .server-card:hover {
-      background: var(--bg-card-hover);
-    }
-
-    .server-card--network {
-      border-top-color: var(--network);
-    }
-
-    .server-card--protect {
-      border-top-color: var(--protect);
-    }
-
-    .server-card--access {
-      border-top-color: var(--access);
-    }
-
-    .server-card--relay {
-      border-top-color: var(--relay);
-    }
-    .server-card--drive {
-      border-top-color: var(--drive);
-    }
-
-    .server-card-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    .server-card-icon {
-      width: 40px;
-      height: 40px;
-      flex-shrink: 0;
-    }
-
-    .server-card-header h3 {
-      font-size: 18px;
-      font-weight: 700;
-    }
-
-    .server-card-meta {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 99px;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-    }
-
-    .badge-stable {
-      background: rgba(34, 197, 94, 0.15);
-      color: #22c55e;
-    }
-
-    .badge-beta {
-      background: rgba(245, 158, 11, 0.15);
-      color: #f59e0b;
-    }
-
-    .badge-planned {
-      background: rgba(156, 163, 175, 0.15);
-      color: #9ca3af;
-    }
-
-    .server-card-tools {
-      font-size: 13px;
-      color: var(--text-muted);
-    }
-
-    .server-card p {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-bottom: 16px;
-      line-height: 1.6;
-    }
-
-    .server-card-link {
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    /* ===== Install Tabs ===== */
-    .install {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 64px 24px;
-    }
-
-    .install h2 {
-      text-align: center;
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-
-    .install > p {
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 16px;
-      margin-bottom: 32px;
-    }
-
-    .tab-container {
-      max-width: 720px;
-      margin: 0 auto;
-    }
-
-    .tab-bar {
-      display: flex;
-      border-bottom: 1px solid var(--border);
-      gap: 0;
-    }
-
-    .tab-bar button {
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
-      padding: 10px 20px;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: color 0.2s, border-color 0.2s;
-      font-family: inherit;
-    }
-
-    .tab-bar button:hover {
-      color: var(--text);
-    }
-
-    .tab-bar button[aria-selected="true"] {
-      color: var(--blue-text);
-      border-bottom-color: var(--blue);
-    }
-
-    .tab-panel {
-      display: none;
-      background: var(--bg-card);
-      border-radius: 0 0 12px 12px;
-      padding: 24px;
-      position: relative;
-    }
-
-    .tab-panel.active {
-      display: block;
-    }
-
-    .copy-btn {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: var(--bg-deep);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-      transition: color 0.2s, border-color 0.2s;
-    }
-
-    .copy-btn:hover {
-      color: var(--text);
-      border-color: var(--text-muted);
-    }
-
-    .tab-panel pre {
-      margin: 0;
-      overflow-x: auto;
-    }
-
-    .tab-panel code {
-      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
-      font-size: 14px;
-      line-height: 1.7;
-      color: var(--text);
-    }
-
-    .tab-panel .comment {
-      color: var(--text-muted);
-    }
-
-    /* ===== Features ===== */
-    .features {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 64px 24px;
-    }
-
-    .features h2 {
-      text-align: center;
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-
-    .features > p {
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 16px;
-      margin-bottom: 40px;
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 32px;
-    }
-
-    .feature {
-      padding: 4px 0;
-    }
-
-    .feature-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-
-    .feature-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .feature-dot--blue { background: var(--blue); }
-    .feature-dot--teal { background: var(--teal); }
-    .feature-dot--purple { background: var(--protect); }
-    .feature-dot--amber { background: var(--access); }
-
-    .feature h3 {
-      font-size: 16px;
-      font-weight: 700;
-    }
-
-    .feature p {
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.65;
-    }
-
-    /* ===== Footer ===== */
-    .footer {
-      border-top: 1px solid var(--border);
-      margin-top: 48px;
-      padding: 48px 24px 24px;
-    }
-
-    .footer-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .footer-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 40px;
-      margin-bottom: 40px;
-    }
-
-    .footer-grid h4 {
-      font-size: 13px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text);
-      margin-bottom: 14px;
-    }
-
-    .footer-grid ul {
-      list-style: none;
-    }
-
-    .footer-grid li {
-      margin-bottom: 8px;
-    }
-
-    .footer-grid a {
-      font-size: 14px;
-      color: var(--text-muted);
-      transition: color 0.2s;
-    }
-
-    .footer-grid a:hover {
-      color: var(--blue-text);
-    }
-
-    .footer-bottom {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-      font-size: 13px;
-      color: var(--text-muted);
-    }
-
-    .footer-bottom a {
-      color: var(--text-muted);
-    }
-
-    .footer-bottom a:hover {
-      color: var(--blue-text);
-    }
-
-    /* ===== Focus Styles ===== */
-    a:focus-visible,
-    button:focus-visible {
-      outline: 2px solid var(--blue-text);
-      outline-offset: 2px;
-    }
-
-    /* ===== Responsive: 1024px ===== */
-    @media (max-width: 1024px) {
-      .server-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .features-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    /* ===== Responsive: 768px ===== */
-    @media (max-width: 768px) {
-      .server-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .features-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .footer-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .nav-links {
-        display: none;
-      }
-
-      .hamburger {
-        display: block;
-      }
-
-      .hero h1 {
-        font-size: 32px;
-      }
-
-      .hero p {
-        font-size: 16px;
-      }
-
-      .footer-bottom {
-        flex-direction: column;
-        gap: 8px;
-        text-align: center;
-      }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UniFi MCP — AI agents for your UniFi infrastructure</title>
+<meta name="description" content="Open-source MCP servers that give AI agents safe, structured access to UniFi Network, Protect, and Access controllers. 220+ tools, preview-then-confirm mutations, multi-controller ready.">
+<meta name="theme-color" content="#070a14">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============== Tokens ============== */
+:root {
+  /* Surfaces */
+  --bg-0: #060912;            /* deepest */
+  --bg-1: #0a0f1c;            /* page bg */
+  --bg-2: #0f1525;            /* card bg */
+  --bg-3: #141c30;            /* card bg hover */
+  --bg-4: #1a2440;
+  --line: #1a2238;
+  --line-2: #243052;
+  --line-bright: #3a4a78;
+
+  /* Text */
+  --fg: #e8edf7;
+  --fg-2: #b8c1d6;
+  --fg-3: #8590ad;
+  --fg-4: #5b6786;
+
+  /* Brand — pulled from the hero artwork */
+  --cyan: #4ff0d0;            /* electric teal */
+  --cyan-2: #38c9b3;
+  --blue: #4d7cff;            /* signal blue */
+  --blue-2: #2860f5;
+  --violet: #7e6bff;
+  --amber: #f5b452;
+  --rose: #ff6b8a;
+
+  /* Server accents */
+  --c-network: #4d7cff;
+  --c-protect: #b487ff;
+  --c-access:  #f5b452;
+  --c-relay:   #ff6b8a;
+  --c-drive:   #4ff0d0;
+
+  /* Effects */
+  --glow-cyan: 0 0 0 1px rgba(79,240,208,.18), 0 24px 60px -20px rgba(79,240,208,.35);
+  --glow-blue: 0 0 0 1px rgba(77,124,255,.22), 0 24px 60px -20px rgba(77,124,255,.45);
+
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 22px;
+
+  --shell-w: 1200px;
+  --gutter: 28px;
+
+  --ff-display: 'Inter Tight', system-ui, sans-serif;
+  --ff-body: 'Inter', system-ui, sans-serif;
+  --ff-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ============== Reset ============== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-1);
+  color: var(--fg);
+  font-family: var(--ff-body);
+  font-feature-settings: "ss01","cv11";
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.55;
+  overflow-x: hidden;
+}
+img, svg { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+/* Page background — deep, with a subtle radial */
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(900px 600px at 80% -10%, rgba(77,124,255,.10), transparent 60%),
+    radial-gradient(800px 500px at -10% 20%, rgba(79,240,208,.06), transparent 60%),
+    var(--bg-1);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ============== Shared ============== */
+.shell { max-width: var(--shell-w); margin: 0 auto; padding: 0 var(--gutter); }
+
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  padding: 6px 12px;
+  border: 1px solid rgba(79,240,208,.22);
+  background: rgba(79,240,208,.05);
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.eyebrow .dot { width: 6px; height: 6px; border-radius: 99px; background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
+
+h1, h2, h3, h4 { font-family: var(--ff-display); letter-spacing: -0.02em; line-height: 1.1; }
+
+.section-head {
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 48px;
+  max-width: 760px;
+}
+.section-head h2 {
+  font-size: clamp(34px, 4.5vw, 52px);
+  font-weight: 700;
+}
+.section-head p {
+  color: var(--fg-3);
+  font-size: 17px;
+  max-width: 620px;
+}
+
+/* ============== Nav ============== */
+.nav {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in oklab, var(--bg-1) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border-bottom: 1px solid var(--line);
+}
+.nav-inner {
+  max-width: var(--shell-w); margin: 0 auto;
+  padding: 0 var(--gutter);
+  height: 68px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--ff-display);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.brand-mark {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1a2440, #0a0f1c);
+  border: 1px solid var(--line-2);
+  color: var(--cyan);
+}
+.brand-mark svg { width: 16px; height: 16px; }
+.brand small {
+  font-family: var(--ff-mono);
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--fg-4);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.nav-links { display: flex; align-items: center; gap: 4px; }
+.nav-links a {
+  padding: 8px 14px;
+  font-size: 14px;
+  color: var(--fg-3);
+  border-radius: 8px;
+  transition: color .15s, background .15s;
+}
+.nav-links a:hover { color: var(--fg); background: rgba(255,255,255,.03); }
+
+.nav-cta { display: flex; align-items: center; gap: 10px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform .12s ease, background .15s, border-color .15s, color .15s, box-shadow .2s;
+}
+.btn-ghost {
+  color: var(--fg-2);
+  border: 1px solid var(--line-2);
+}
+.btn-ghost:hover { color: var(--fg); border-color: var(--line-bright); }
+.btn-primary {
+  background: linear-gradient(180deg, var(--cyan) 0%, var(--cyan-2) 100%);
+  color: #042418;
+  font-weight: 700;
+  box-shadow: 0 6px 28px -6px rgba(79,240,208,.55), inset 0 1px 0 rgba(255,255,255,.4);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 36px -6px rgba(79,240,208,.7), inset 0 1px 0 rgba(255,255,255,.4); }
+.btn-primary:active { transform: translateY(0); }
+.btn svg { width: 16px; height: 16px; }
+
+.nav-hamb { display: none; padding: 8px; border-radius: 8px; border: 1px solid var(--line-2); }
+
+/* ============== Hero ============== */
+.hero {
+  position: relative;
+  padding: 88px 0 40px;
+  overflow: hidden;
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.05fr .95fr;
+  gap: 56px;
+  align-items: center;
+}
+.hero h1 {
+  font-size: clamp(44px, 5.6vw, 76px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  margin: 22px 0 22px;
+}
+.hero h1 .accent {
+  background: linear-gradient(120deg, var(--cyan) 0%, #6affd9 40%, var(--blue) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.hero p.lead {
+  font-size: 19px;
+  color: var(--fg-2);
+  max-width: 540px;
+  margin-bottom: 28px;
+}
+.hero p.lead b { color: var(--fg); font-weight: 600; }
+.hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+.btn-lg { padding: 14px 22px; font-size: 15px; border-radius: 12px; }
+
+.hero-meta {
+  display: flex; align-items: center; gap: 18px;
+  flex-wrap: wrap;
+  font-size: 13px; color: var(--fg-3);
+}
+.hero-meta .pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 99px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  font-family: var(--ff-mono);
+  font-size: 12px;
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+.hero-meta .pill svg { width: 14px; height: 14px; color: var(--cyan); }
+.hero-meta .sep { width: 4px; height: 4px; border-radius: 99px; background: var(--fg-4); }
+
+/* hero image card */
+.hero-art {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--line-2);
+  background: linear-gradient(180deg, #0c1426, #060912);
+  box-shadow: 0 40px 80px -20px rgba(0,0,0,.6), 0 0 0 1px rgba(79,240,208,.08), 0 0 80px -10px rgba(77,124,255,.18);
+}
+.hero-art img { width: 100%; display: block; }
+.hero-art::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(60% 80% at 50% 60%, transparent, rgba(6,9,18,.55) 100%);
+  pointer-events: none;
+}
+.hero-chip {
+  position: absolute;
+  z-index: 2;
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  background: color-mix(in oklab, var(--bg-2) 80%, transparent);
+  border: 1px solid var(--line-2);
+  color: var(--fg-2);
+  padding: 8px 12px;
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 28px -10px rgba(0,0,0,.6);
+}
+.hero-chip b { color: var(--cyan); font-weight: 600; }
+.hero-chip-1 { top: 18px; left: 18px; }
+.hero-chip-2 { top: 18px; right: 18px; }
+.hero-chip-3 { bottom: 18px; left: 18px; }
+.hero-chip-4 { bottom: 18px; right: 18px; color: var(--fg-2); }
+
+/* ============== Marquee / logos band ============== */
+.marquee-band {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 22px 0;
+  margin-top: 64px;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,.012));
+  overflow: hidden;
+}
+.marquee-label {
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 16px;
+}
+.marquee-label .ln { flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+
+.marquee {
+  display: flex; gap: 56px;
+  animation: marquee 40s linear infinite;
+  width: max-content;
+  align-items: center;
+}
+.marquee .item {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--ff-display); font-weight: 600; font-size: 16px;
+  color: var(--fg-3); white-space: nowrap;
+}
+.marquee .item .glyph { width: 22px; height: 22px; color: var(--fg-3); opacity: .85; }
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ============== Stats strip ============== */
+.stats {
+  margin-top: 48px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.stat {
+  background: var(--bg-1);
+  padding: 28px 28px;
+}
+.stat .num {
+  font-family: var(--ff-display);
+  font-weight: 700;
+  font-size: 44px;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+  line-height: 1;
+  display: flex; align-items: baseline; gap: 4px;
+}
+.stat .num small { font-size: 22px; color: var(--cyan); font-weight: 600; }
+.stat .lbl {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--fg-3);
+}
+.stat .sub {
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  color: var(--fg-4);
+  letter-spacing: .06em;
+  margin-top: 3px;
+}
+
+/* ============== Section spacing ============== */
+section.block { padding: 100px 0; position: relative; }
+section.block + section.block { padding-top: 0; }
+
+/* ============== Servers ============== */
+.servers { display: grid; grid-template-columns: 1.05fr 1fr; gap: 24px; }
+.server-card {
+  position: relative;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  overflow: hidden;
+  transition: border-color .2s, transform .2s, background .2s;
+}
+.server-card:hover { border-color: var(--line-bright); transform: translateY(-2px); }
+.server-card.featured { grid-row: span 2; padding: 32px; }
+.server-card .tag {
+  position: absolute; top: 18px; right: 18px;
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  letter-spacing: .04em;
+}
+.tag-stable  { background: rgba(79,240,208,.10); color: var(--cyan); border: 1px solid rgba(79,240,208,.22); }
+.tag-beta    { background: rgba(245,180,82,.10); color: var(--amber); border: 1px solid rgba(245,180,82,.22); }
+.tag-planned { background: rgba(133,144,173,.08); color: var(--fg-3); border: 1px solid var(--line-2); }
+
+.sc-mark {
+  width: 56px; height: 56px;
+  display: grid; place-items: center;
+  border-radius: 14px;
+  margin-bottom: 20px;
+  position: relative;
+}
+.sc-mark::before {
+  content: ""; position: absolute; inset: 0;
+  border-radius: 14px;
+  padding: 1px;
+  background: linear-gradient(180deg, var(--ac, var(--cyan)), transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.sc-mark .bg {
+  position: absolute; inset: 1px;
+  border-radius: 13px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--ac) 18%, var(--bg-3)), var(--bg-2));
+}
+.sc-mark svg { position: relative; width: 28px; height: 28px; color: var(--ac); }
+
+.server-card h3 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.server-card.featured h3 { font-size: 34px; }
+.sc-meta {
+  display: flex; align-items: center; gap: 14px;
+  font-family: var(--ff-mono);
+  font-size: 12px;
+  color: var(--fg-3);
+  margin-bottom: 16px;
+}
+.sc-meta b { color: var(--fg); font-weight: 500; }
+.sc-meta .dot { width: 3px; height: 3px; border-radius: 99px; background: var(--fg-4); }
+.server-card p.desc {
+  color: var(--fg-2);
+  font-size: 15px;
+  margin-bottom: 20px;
+  max-width: 56ch;
+}
+
+.sc-tools {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 22px;
+}
+.sc-tools .chip {
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.025);
+  border: 1px solid var(--line);
+  color: var(--fg-3);
+}
+.sc-tools .chip.acc { color: var(--ac); border-color: color-mix(in oklab, var(--ac) 35%, var(--line)); }
+
+.sc-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ac);
+}
+.sc-link:hover { gap: 10px; transition: gap .15s; }
+
+/* Featured card extras */
+.sc-prompt {
+  margin-top: 20px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.sc-prompt-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  color: var(--fg-4);
+  letter-spacing: .06em;
+}
+.sc-prompt-head .dots { display: flex; gap: 5px; }
+.sc-prompt-head .dots i { width: 8px; height: 8px; border-radius: 99px; background: var(--line-bright); display: block; }
+.sc-prompt-head .dots i:nth-child(1){ background: #f56c6c; }
+.sc-prompt-head .dots i:nth-child(2){ background: #f5b452; }
+.sc-prompt-head .dots i:nth-child(3){ background: var(--cyan); }
+.sc-prompt-body { padding: 16px; font-family: var(--ff-mono); font-size: 13px; }
+.sc-prompt-body .you { color: var(--fg-3); }
+.sc-prompt-body .you::before { content: "> "; color: var(--cyan); }
+.sc-prompt-body .agent { color: var(--fg); margin-top: 8px; }
+.sc-prompt-body .tool {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  background: rgba(77,124,255,.10);
+  color: var(--blue);
+  border: 1px solid rgba(77,124,255,.25);
+}
+
+/* ============== Architecture / Relay ============== */
+.relay-card {
+  background: linear-gradient(180deg, #0d1424, #08101e);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  display: grid;
+  grid-template-columns: .9fr 1.1fr;
+  gap: 40px;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+}
+.relay-card::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(500px 240px at 50% 100%, rgba(255,107,138,.10), transparent 70%);
+  pointer-events: none;
+}
+.relay-card h3 {
+  font-size: 36px;
+  margin-bottom: 14px;
+  font-weight: 700;
+}
+.relay-card p { color: var(--fg-2); font-size: 16px; margin-bottom: 18px; max-width: 50ch; }
+.relay-bullets { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.relay-bullets li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--fg-2); }
+.relay-bullets svg { flex-shrink: 0; width: 18px; height: 18px; color: var(--rose); margin-top: 1px; }
+
+.relay-diagram {
+  position: relative;
+  aspect-ratio: 5 / 4;
+  width: 100%;
+}
+.relay-diagram svg { width: 100%; height: 100%; }
+
+/* ============== Examples / Asks ============== */
+.asks-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+}
+.ask-card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+  transition: border-color .2s, transform .2s;
+}
+.ask-card:hover { border-color: var(--line-bright); transform: translateY(-2px); }
+.ask-head {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+  margin-bottom: 14px;
+}
+.ask-head .pip {
+  width: 8px; height: 8px; border-radius: 99px;
+  background: var(--ac, var(--cyan));
+  box-shadow: 0 0 12px var(--ac, var(--cyan));
+}
+.ask-text {
+  font-family: var(--ff-display);
+  font-size: 19px;
+  color: var(--fg);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+.ask-text::before { content: "“"; color: var(--ac); font-size: 28px; vertical-align: -4px; margin-right: 2px; }
+.ask-text::after { content: "”"; color: var(--ac); font-size: 28px; vertical-align: -10px; margin-left: 2px; }
+.ask-tools {
+  margin-top: 16px;
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.ask-tools .t {
+  font-family: var(--ff-mono); font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--line);
+  color: var(--fg-3);
+}
+
+/* ============== Skills ============== */
+.skills-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+}
+.skill {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  position: relative;
+  transition: border-color .2s, transform .2s;
+}
+.skill:hover { border-color: var(--line-bright); transform: translateY(-2px); }
+.skill-meta {
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--fg-4);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.skill-meta b { color: var(--ac, var(--cyan)); font-weight: 500; }
+.skill h4 { font-size: 19px; font-weight: 700; margin-bottom: 8px; }
+.skill p { font-size: 14px; color: var(--fg-3); line-height: 1.55; }
+
+/* ============== Install ============== */
+.install-card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.install-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-1);
+  overflow-x: auto;
+}
+.install-tabs button {
+  padding: 16px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-3);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color .15s, border-color .15s, background .15s;
+  font-family: var(--ff-display);
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.install-tabs button:hover { color: var(--fg); }
+.install-tabs button[aria-selected="true"] {
+  color: var(--cyan);
+  border-bottom-color: var(--cyan);
+  background: linear-gradient(180deg, transparent, rgba(79,240,208,.06));
+}
+.install-tabs svg { width: 16px; height: 16px; }
+
+.install-panel { display: none; padding: 24px 28px; position: relative; }
+.install-panel.active { display: block; }
+.install-panel pre {
+  font-family: var(--ff-mono); font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--fg);
+  overflow-x: auto;
+}
+.install-panel code .c { color: var(--fg-4); font-style: italic; }
+.install-panel code .k { color: var(--cyan); }
+.install-panel code .v { color: var(--blue); }
+.install-panel code .s { color: var(--amber); }
+
+.copy-btn {
+  position: absolute;
+  top: 16px; right: 16px;
+  padding: 6px 12px;
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--line-2);
+  color: var(--fg-3);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.copy-btn:hover { color: var(--fg); border-color: var(--line-bright); }
+.copy-btn.copied { color: var(--cyan); border-color: var(--cyan); }
+
+.install-meta {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 16px;
+  margin-top: 32px;
+}
+.im-card {
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+.im-card h4 { font-size: 16px; margin-bottom: 6px; }
+.im-card p { font-size: 14px; color: var(--fg-3); }
+
+/* ============== Pillars / Why ============== */
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.pillar {
+  background: var(--bg-2);
+  padding: 36px;
+  position: relative;
+}
+.pillar:hover { background: var(--bg-3); }
+.pillar-num {
+  font-family: var(--ff-mono);
+  font-size: 12px;
+  color: var(--fg-4);
+  letter-spacing: .12em;
+  margin-bottom: 18px;
+}
+.pillar h3 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.pillar p { color: var(--fg-3); font-size: 15px; line-height: 1.6; max-width: 50ch; }
+.pillar-icon {
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border-radius: 10px;
+  background: rgba(79,240,208,.06);
+  color: var(--cyan);
+  border: 1px solid rgba(79,240,208,.16);
+  margin-bottom: 18px;
+}
+.pillar-icon svg { width: 20px; height: 20px; }
+
+/* ============== FAQ ============== */
+.faq { display: flex; flex-direction: column; gap: 0; }
+.faq-item {
+  border-bottom: 1px solid var(--line);
+}
+.faq-item summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 24px 0;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary h3 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.faq-icon {
+  width: 30px; height: 30px;
+  border-radius: 99px;
+  border: 1px solid var(--line-2);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  transition: transform .2s, border-color .2s;
+  color: var(--fg-3);
+}
+.faq-item[open] .faq-icon { transform: rotate(45deg); border-color: var(--cyan); color: var(--cyan); }
+.faq-icon svg { width: 14px; height: 14px; }
+.faq-body {
+  padding: 0 0 24px 0;
+  color: var(--fg-3);
+  font-size: 15px;
+  max-width: 70ch;
+}
+.faq-body code {
+  font-family: var(--ff-mono);
+  font-size: 13px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  padding: 1px 6px;
+  border-radius: 5px;
+}
+
+/* ============== CTA ============== */
+.cta-card {
+  position: relative;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-lg);
+  padding: 56px;
+  text-align: center;
+  background:
+    radial-gradient(800px 300px at 50% 0%, rgba(79,240,208,.10), transparent 70%),
+    linear-gradient(180deg, #0d1525, #08101c);
+  overflow: hidden;
+}
+.cta-card::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(transparent 0, transparent calc(100% - 1px), rgba(255,255,255,.04) 100%),
+    linear-gradient(90deg, transparent 0, transparent calc(100% - 1px), rgba(255,255,255,.04) 100%);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+  pointer-events: none;
+}
+.cta-card h2 {
+  font-size: clamp(34px, 4.4vw, 52px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 14px;
+  position: relative;
+}
+.cta-card p {
+  color: var(--fg-2);
+  font-size: 17px;
+  max-width: 540px;
+  margin: 0 auto 28px;
+  position: relative;
+}
+.cta-ctas { display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; position: relative; }
+
+/* ============== Footer ============== */
+footer.footer {
+  border-top: 1px solid var(--line);
+  padding: 64px 0 28px;
+  margin-top: 80px;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,.2));
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 48px;
+}
+.foot-brand p { color: var(--fg-3); font-size: 14px; max-width: 36ch; margin-top: 14px; }
+.foot-col h5 {
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+  margin-bottom: 14px;
+}
+.foot-col ul { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.foot-col a { font-size: 14px; color: var(--fg-2); }
+.foot-col a:hover { color: var(--cyan); }
+.foot-bottom {
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; color: var(--fg-4);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.foot-bottom a { color: var(--fg-3); }
+
+/* ============== Responsive ============== */
+@media (max-width: 980px) {
+  .hero { padding-top: 60px; }
+  .hero-grid { grid-template-columns: 1fr; gap: 36px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .servers { grid-template-columns: 1fr; }
+  .server-card.featured { grid-row: auto; }
+  .relay-card { grid-template-columns: 1fr; padding: 28px; }
+  .asks-grid, .skills-grid, .install-meta { grid-template-columns: 1fr; }
+  .pillars { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .nav-links { display: none; }
+  .nav-cta .btn-ghost { display: none; }
+}
+@media (max-width: 600px) {
+  .footer-grid { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .stat { padding: 20px; }
+  .stat .num { font-size: 32px; }
+  section.block { padding: 60px 0; }
+  .cta-card { padding: 36px 24px; }
+}
+
+/* ============== Selection ============== */
+::selection { background: rgba(79,240,208,.30); color: var(--fg); }
+
+/* ============== Reduced motion ============== */
+@media (prefers-reduced-motion: reduce) {
+  .marquee { animation: none; }
+  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+}
+</style>
 </head>
 <body>
 
-  <!-- Skip Link -->
-  <a href="#main" class="skip-link">Skip to main content</a>
-
-  <!-- Nav -->
-  <nav class="nav" aria-label="Primary">
-    <div class="nav-inner">
-      <a href="/" class="nav-brand" aria-label="UniFi MCP home">
-        <img src="assets/favicon.svg" alt="" width="32" height="32">
-        <span>UniFi MCP</span>
-      </a>
-      <div class="nav-links">
-        <a href="#servers">Servers</a>
-        <a href="#install">Install</a>
-        <a href="#features">Features</a>
-        <a href="https://github.com/sirkirby/unifi-mcp/tree/main/docs">Docs</a>
-        <a href="https://github.com/sirkirby/unifi-mcp" class="nav-github" aria-label="View on GitHub">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          GitHub
-        </a>
-      </div>
-      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false" onclick="toggleMobileMenu()">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <line x1="3" y1="6" x2="21" y2="6"/>
-          <line x1="3" y1="12" x2="21" y2="12"/>
-          <line x1="3" y1="18" x2="21" y2="18"/>
+<!-- ========================== NAV ========================== -->
+<nav class="nav" aria-label="Primary">
+  <div class="nav-inner">
+    <a href="#" class="brand" aria-label="UniFi MCP home">
+      <span class="brand-mark">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 8 L6 4 L10 8 L6 12 Z"/><path d="M14 8 L10 4 M14 8 L10 12"/>
         </svg>
-      </button>
+      </span>
+      <span>UniFi MCP <small>v0.9</small></span>
+    </a>
+    <div class="nav-links">
+      <a href="#servers">Servers</a>
+      <a href="#examples">Ask the agent</a>
+      <a href="#relay">Cloud Relay</a>
+      <a href="#skills">Skills</a>
+      <a href="#install">Install</a>
+      <a href="#faq">FAQ</a>
     </div>
-  </nav>
+    <div class="nav-cta">
+      <a href="https://github.com/sirkirby/unifi-mcp" class="btn btn-ghost" aria-label="View on GitHub">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        Star on GitHub
+      </a>
+      <a href="#install" class="btn btn-primary">
+        Get started
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+      </a>
+    </div>
+  </div>
+</nav>
 
-  <!-- Mobile Menu -->
-  <div class="mobile-menu" id="mobile-menu" aria-label="Mobile navigation">
-    <a href="#servers" onclick="closeMobileMenu()">Servers</a>
-    <a href="#install" onclick="closeMobileMenu()">Install</a>
-    <a href="#features" onclick="closeMobileMenu()">Features</a>
-    <a href="https://github.com/sirkirby/unifi-mcp/tree/main/docs" onclick="closeMobileMenu()">Docs</a>
-    <a href="https://github.com/sirkirby/unifi-mcp" onclick="closeMobileMenu()">GitHub</a>
+<!-- ========================== HERO ========================== -->
+<section class="hero">
+  <div class="shell">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="dot"></span>Open source · MIT · Python 3.13+</span>
+        <h1>Give your agents <span class="accent">full access</span> to your UniFi stack — safely.</h1>
+        <p class="lead">
+          <b>UniFi MCP</b> is a suite of Model Context Protocol servers that expose your Network, Protect, and Access controllers to AI agents — <b>220+ tools</b>, preview-then-confirm mutations, and a Cloudflare relay for cloud-hosted agents.
+        </p>
+        <div class="hero-ctas">
+          <a href="#install" class="btn btn-primary btn-lg">
+            Quick install
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+          </a>
+          <a href="#examples" class="btn btn-ghost btn-lg">
+            See agent examples
+          </a>
+        </div>
+        <div class="hero-meta">
+          <span class="pill">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12v8H2z"/><path d="M5 8h6"/></svg>
+            stdio · HTTP · SSE
+          </span>
+          <span class="pill">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1l6 3v4c0 4-3 6.5-6 7-3-.5-6-3-6-7V4l6-3z"/></svg>
+            Read-only by default
+          </span>
+          <span class="pill">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+            ~200 tokens lazy load
+          </span>
+        </div>
+      </div>
+
+      <div class="hero-art">
+        <span class="hero-chip hero-chip-1"><b>INPUT</b> · UniFi controllers</span>
+        <span class="hero-chip hero-chip-2"><b>OUTPUT</b> · MCP tools</span>
+        <span class="hero-chip hero-chip-3">220+ tools wired</span>
+        <span class="hero-chip hero-chip-4">model-agnostic</span>
+        <img src="assets/hero.png" alt="Diagram showing UniFi systems flowing through an MCP gateway into an AI agent">
+      </div>
+    </div>
   </div>
 
-  <!-- Main Content -->
-  <main id="main">
+  <!-- Marquee -->
+  <div class="shell" style="margin-top:72px;">
+    <div class="marquee-label">
+      <span class="ln"></span>
+      <span>Works with any MCP-compatible client</span>
+      <span class="ln"></span>
+    </div>
+  </div>
+  <div class="marquee-band">
+    <div class="marquee" id="marquee">
+      <!-- duplicated in JS for seamless loop -->
+      <span class="item"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L2 7v10l10 5 10-5V7Z"/><path d="M2 7l10 5 10-5"/><path d="M12 22V12"/></svg>Claude Desktop</span>
+      <span class="item"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M8 9h8M8 13h6"/></svg>Claude Code</span>
+      <span class="item"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Cursor</span>
+      <span class="item"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/></svg>VS Code (MCP)</span>
+      <span class="item"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l14 7-14 7V5z"/></svg>OpenAI Agents</span>
+      <span class="item"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M9 12l2 2 4-4"/></svg>Gemini CLI</span>
+      <span class="item"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg>opencode</span>
+      <span class="item"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c5-8 15-8 20 0M2 12c5 8 15 8 20 0"/><circle cx="12" cy="12" r="3"/></svg>Codex CLI</span>
+      <span class="item"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/></svg>n8n / Zapier</span>
+      <span class="item"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>Custom agents</span>
+    </div>
+  </div>
 
-    <!-- Hero -->
-    <section class="hero">
-      <img src="assets/hero.svg" alt="UniFi MCP — network infrastructure flowing through a protocol bridge to AI agents" class="hero-img" width="1280" height="640">
-      <h1>AI-Powered UniFi Management</h1>
-      <p>MCP servers that give AI agents direct access to your UniFi infrastructure. Query, analyze, and manage your network — safely and intelligently.</p>
-      <div class="hero-ctas">
-        <a href="#install" class="btn-primary">Get Started</a>
-        <a href="https://github.com/sirkirby/unifi-mcp" class="btn-outline">
-          <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          View on GitHub
+  <!-- Stats -->
+  <div class="shell">
+    <div class="stats">
+      <div class="stat">
+        <div class="num">224<small>+</small></div>
+        <div class="lbl">Tools across 3 servers</div>
+        <div class="sub">network · protect · access</div>
+      </div>
+      <div class="stat">
+        <div class="num">~200<small>tk</small></div>
+        <div class="lbl">Lazy-load context cost</div>
+        <div class="sub">vs ~5,000 eager</div>
+      </div>
+      <div class="stat">
+        <div class="num">3<small>×</small></div>
+        <div class="lbl">Transports supported</div>
+        <div class="sub">stdio · HTTP · SSE</div>
+      </div>
+      <div class="stat">
+        <div class="num">100<small>%</small></div>
+        <div class="lbl">Open source · MIT</div>
+        <div class="sub">runs on your hardware</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================== SERVERS ========================== -->
+<section class="block" id="servers">
+  <div class="shell">
+    <div class="section-head">
+      <span class="eyebrow"><span class="dot"></span>The servers</span>
+      <h2>One monorepo. Three controllers. One agent that understands all of them.</h2>
+      <p>Each server is an independent Python package with a tightly-scoped tool surface. Mix and match — point at one controller, or fan out across an entire fleet.</p>
+    </div>
+
+    <div class="servers">
+
+      <!-- NETWORK (featured) -->
+      <article class="server-card featured" style="--ac: var(--c-network);">
+        <span class="tag tag-stable">Stable</span>
+        <div class="sc-mark">
+          <span class="bg"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="4" r="2"/><circle cx="4" cy="20" r="2"/><circle cx="20" cy="20" r="2"/><circle cx="12" cy="12" r="2"/>
+            <path d="M12 6v4M10.5 13.5L5.5 18.5M13.5 13.5l5 5M6 20h12"/>
+          </svg>
+        </div>
+        <h3>Network</h3>
+        <div class="sc-meta">
+          <b>161 tools</b><span class="dot"></span>
+          <span>unifi-network-mcp</span><span class="dot"></span>
+          <span>PyPI · Docker · Plugin</span>
+        </div>
+        <p class="desc">Full UniFi Network controller coverage. Devices, clients, firewall, port-forwards, VLANs, WLANs, DPI stats, traffic identification, alarms, and policy templates — all readable, with mutations gated by preview-then-confirm.</p>
+        <div class="sc-tools">
+          <span class="chip acc">unifi.list_clients</span>
+          <span class="chip">unifi.get_firewall_policies</span>
+          <span class="chip acc">unifi.create_port_forward</span>
+          <span class="chip">unifi.dpi_stats</span>
+          <span class="chip acc">unifi.run_diagnostic</span>
+          <span class="chip">+156 more</span>
+        </div>
+
+        <div class="sc-prompt">
+          <div class="sc-prompt-head">
+            <span class="dots"><i></i><i></i><i></i></span>
+            <span>agent · network</span>
+          </div>
+          <div class="sc-prompt-body">
+            <div class="you">Block IoT devices from the internet between midnight and 6 AM</div>
+            <div class="agent">
+              I'll add a scheduled firewall rule on the IoT VLAN. Preview:
+              <span class="tool">unifi.create_firewall_policy · WAN · IoT VLAN · 00:00-06:00</span>
+            </div>
+          </div>
+        </div>
+
+        <a href="https://github.com/sirkirby/unifi-mcp/tree/main/apps/network" class="sc-link" style="margin-top:24px;">
+          Explore Network
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
         </a>
-      </div>
-      <div class="hero-badge">
-        <a href="https://github.com/sirkirby/unifi-mcp" aria-label="GitHub stars">
-          <img src="https://img.shields.io/github/stars/sirkirby/unifi-mcp?style=flat&color=006FFF&labelColor=111827" alt="GitHub stars" width="90" height="24">
+      </article>
+
+      <!-- PROTECT -->
+      <article class="server-card" style="--ac: var(--c-protect);">
+        <span class="tag tag-beta">Beta</span>
+        <div class="sc-mark">
+          <span class="bg"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7h11l4 3v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+            <circle cx="9" cy="13" r="3"/>
+            <path d="M3 7l3-3h6l3 3"/>
+          </svg>
+        </div>
+        <h3>Protect</h3>
+        <div class="sc-meta">
+          <b>34 tools</b><span class="dot"></span>
+          <span>unifi-protect-mcp</span>
+        </div>
+        <p class="desc">Cameras, snapshots, motion events, smart detections, recordings, and live event streams. Hand your agent a question — get back a timeline, not 800 frames.</p>
+        <div class="sc-tools">
+          <span class="chip acc">protect.list_cameras</span>
+          <span class="chip acc">protect.smart_detections</span>
+          <span class="chip">protect.snapshot</span>
+          <span class="chip">protect.timeline</span>
+        </div>
+        <a href="https://github.com/sirkirby/unifi-mcp/tree/main/apps/protect" class="sc-link">
+          Explore Protect
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
         </a>
+      </article>
+
+      <!-- ACCESS -->
+      <article class="server-card" style="--ac: var(--c-access);">
+        <span class="tag tag-beta">Beta</span>
+        <div class="sc-mark">
+          <span class="bg"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="3" width="14" height="18" rx="2"/>
+            <path d="M9 21V14a3 3 0 0 1 6 0v7"/>
+            <circle cx="16" cy="11" r="1"/>
+          </svg>
+        </div>
+        <h3>Access</h3>
+        <div class="sc-meta">
+          <b>29 tools</b><span class="dot"></span>
+          <span>unifi-access-mcp</span>
+        </div>
+        <p class="desc">Doors, hubs, readers, credentials, visitors, and policies. Issue a guest pass, audit a badge timeline, or revoke a credential — in plain English.</p>
+        <div class="sc-tools">
+          <span class="chip acc">access.list_doors</span>
+          <span class="chip acc">access.create_visitor</span>
+          <span class="chip">access.event_stream</span>
+          <span class="chip">access.policies</span>
+        </div>
+        <a href="https://github.com/sirkirby/unifi-mcp/tree/main/apps/access" class="sc-link">
+          Explore Access
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ========================== EXAMPLES ========================== -->
+<section class="block" id="examples">
+  <div class="shell">
+    <div class="section-head">
+      <span class="eyebrow"><span class="dot"></span>Talk to your network</span>
+      <h2>Plain-English asks. Real controller actions.</h2>
+      <p>Every prompt routes to one or more tools, with a preview of what will change before it touches your controller.</p>
+    </div>
+
+    <div class="asks-grid">
+      <div class="ask-card" style="--ac: var(--c-network);">
+        <div class="ask-head"><span class="pip"></span>Network</div>
+        <p class="ask-text">Show me every client on the Guest VLAN with signal strength under -70 dBm.</p>
+        <div class="ask-tools">
+          <span class="t">list_clients</span>
+          <span class="t">get_vlan</span>
+          <span class="t">filter_by_rssi</span>
+        </div>
       </div>
-    </section>
 
-    <!-- Server Cards -->
-    <section class="servers" id="servers">
-      <h2>Servers</h2>
-      <p>One monorepo, multiple MCP servers — each tailored to a UniFi application.</p>
-      <div class="server-grid">
-
-        <!-- Network -->
-        <div class="server-card server-card--network">
-          <div class="server-card-header">
-            <svg class="server-card-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-              <circle cx="20" cy="8" r="4" stroke="var(--network)" stroke-width="2" fill="var(--network)" fill-opacity="0.15"/>
-              <circle cx="8" cy="32" r="4" stroke="var(--network)" stroke-width="2" fill="var(--network)" fill-opacity="0.15"/>
-              <circle cx="32" cy="32" r="4" stroke="var(--network)" stroke-width="2" fill="var(--network)" fill-opacity="0.15"/>
-              <line x1="20" y1="12" x2="8" y2="28" stroke="var(--network)" stroke-width="1.5" opacity="0.6"/>
-              <line x1="20" y1="12" x2="32" y2="28" stroke="var(--network)" stroke-width="1.5" opacity="0.6"/>
-              <line x1="8" y1="32" x2="32" y2="32" stroke="var(--network)" stroke-width="1.5" opacity="0.4"/>
-            </svg>
-            <h3>Network</h3>
-          </div>
-          <div class="server-card-meta">
-            <span class="badge badge-stable">Stable</span>
-            <span class="server-card-tools">91 tools</span>
-          </div>
-          <p>Full UniFi Network controller coverage. Devices, clients, firewall policies, WLANs, port forwarding, VLANs, DPI stats, and more.</p>
-          <a href="https://github.com/sirkirby/unifi-mcp/tree/main/apps/network" class="server-card-link">Explore Network &rarr;</a>
+      <div class="ask-card" style="--ac: var(--c-network);">
+        <div class="ask-head"><span class="pip"></span>Network</div>
+        <p class="ask-text">Audit my firewall policies — flag redundant or conflicting rules.</p>
+        <div class="ask-tools">
+          <span class="t">get_firewall_policies</span>
+          <span class="t">benchmark_audit</span>
+          <span class="t">topology_analysis</span>
         </div>
-
-        <!-- Protect -->
-        <div class="server-card server-card--protect">
-          <div class="server-card-header">
-            <svg class="server-card-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-              <path d="M20 4L6 12v10c0 8 6 14.5 14 16.5 8-2 14-8.5 14-16.5V12L20 4z" stroke="var(--protect)" stroke-width="2" fill="var(--protect)" fill-opacity="0.1" stroke-linejoin="round"/>
-              <circle cx="20" cy="20" r="5" stroke="var(--protect)" stroke-width="2" fill="none"/>
-              <circle cx="20" cy="20" r="1.5" fill="var(--protect)"/>
-            </svg>
-            <h3>Protect</h3>
-          </div>
-          <div class="server-card-meta">
-            <span class="badge badge-beta">Beta</span>
-            <span class="server-card-tools">34 tools</span>
-          </div>
-          <p>UniFi Protect camera management. Live snapshots, event timelines, motion detection, smart alerts, and recording access.</p>
-          <a href="https://github.com/sirkirby/unifi-mcp/tree/main/apps/protect" class="server-card-link">Explore Protect &rarr;</a>
-        </div>
-
-        <!-- Access -->
-        <div class="server-card server-card--access">
-          <div class="server-card-header">
-            <svg class="server-card-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-              <rect x="12" y="4" width="16" height="12" rx="3" stroke="var(--access)" stroke-width="2" fill="var(--access)" fill-opacity="0.1"/>
-              <rect x="10" y="16" width="20" height="20" rx="2" stroke="var(--access)" stroke-width="2" fill="var(--access)" fill-opacity="0.1"/>
-              <circle cx="20" cy="26" r="3" stroke="var(--access)" stroke-width="2"/>
-              <line x1="20" y1="29" x2="20" y2="33" stroke="var(--access)" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <h3>Access</h3>
-          </div>
-          <div class="server-card-meta">
-            <span class="badge badge-beta">Beta</span>
-            <span class="server-card-tools">29 tools</span>
-          </div>
-          <p>Door access control, visitor management, and credential provisioning for UniFi Access hubs, locks, and readers.</p>
-          <a href="https://github.com/sirkirby/unifi-mcp/tree/main/apps/access" class="server-card-link">Explore Access &rarr;</a>
-        </div>
-
-        <!-- Relay -->
-        <div class="server-card server-card--relay">
-          <div class="server-card-header">
-            <svg class="server-card-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-              <circle cx="10" cy="20" r="5" stroke="var(--relay)" stroke-width="2" fill="var(--relay)" fill-opacity="0.15"/>
-              <circle cx="30" cy="20" r="5" stroke="var(--relay)" stroke-width="2" fill="var(--relay)" fill-opacity="0.15"/>
-              <line x1="15" y1="18" x2="25" y2="18" stroke="var(--relay)" stroke-width="1.5" opacity="0.6"/>
-              <line x1="15" y1="22" x2="25" y2="22" stroke="var(--relay)" stroke-width="1.5" opacity="0.6"/>
-              <polyline points="23,15 27,18 23,21" stroke="var(--relay)" stroke-width="1.5" fill="none" opacity="0.8"/>
-              <polyline points="17,19 13,22 17,25" stroke="var(--relay)" stroke-width="1.5" fill="none" opacity="0.8"/>
-            </svg>
-            <h3>Cloud Relay</h3>
-          </div>
-          <div class="server-card-meta">
-            <span class="badge badge-beta">Beta</span>
-          </div>
-          <p>Bridge your local MCP servers to cloud agents via Cloudflare Workers. Multi-location support with annotation-based fan-out.</p>
-          <a href="https://github.com/sirkirby/unifi-mcp/tree/main/packages/unifi-mcp-relay" class="server-card-link">Explore Relay &rarr;</a>
-          <a href="https://github.com/sirkirby/unifi-mcp-worker" class="server-card-link">Explore Worker &rarr;</a>
-        </div>
-
-        <!-- Drive -->
-        <div class="server-card server-card--drive">
-          <div class="server-card-header">
-            <svg class="server-card-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-              <rect x="4" y="10" width="32" height="20" rx="3" stroke="var(--drive)" stroke-width="2" fill="var(--drive)" fill-opacity="0.1"/>
-              <line x1="4" y1="24" x2="36" y2="24" stroke="var(--drive)" stroke-width="1.5" opacity="0.4"/>
-              <circle cx="30" cy="27" r="2" fill="var(--drive)" opacity="0.8"/>
-              <circle cx="24" cy="27" r="2" fill="var(--drive)" opacity="0.5"/>
-              <line x1="8" y1="16" x2="20" y2="16" stroke="var(--drive)" stroke-width="1.5" opacity="0.4"/>
-              <line x1="8" y1="20" x2="16" y2="20" stroke="var(--drive)" stroke-width="1.5" opacity="0.3"/>
-            </svg>
-            <h3>Drive</h3>
-          </div>
-          <div class="server-card-meta">
-            <span class="badge badge-planned">Planned</span>
-          </div>
-          <p>Network-attached storage management for UniFi Drive. File operations, storage monitoring, and backup automation.</p>
-        </div>
-
       </div>
-    </section>
 
-    <!-- Quick Install -->
-    <section class="install" id="install">
-      <h2>Quick Install</h2>
-      <p>Get up and running in under a minute with your preferred method.</p>
-      <div class="tab-container">
-        <div class="tab-bar" role="tablist" aria-label="Installation methods">
-          <button role="tab" id="tab-plugin" aria-selected="true" aria-controls="panel-plugin" tabindex="0" onclick="switchTab('plugin')">Claude Code</button>
-          <button role="tab" id="tab-uvx" aria-selected="false" aria-controls="panel-uvx" tabindex="-1" onclick="switchTab('uvx')">uvx</button>
-          <button role="tab" id="tab-docker" aria-selected="false" aria-controls="panel-docker" tabindex="-1" onclick="switchTab('docker')">Docker</button>
-          <button role="tab" id="tab-claude" aria-selected="false" aria-controls="panel-claude" tabindex="-1" onclick="switchTab('claude')">Claude Desktop</button>
+      <div class="ask-card" style="--ac: var(--c-protect);">
+        <div class="ask-head"><span class="pip"></span>Protect</div>
+        <p class="ask-text">Summarize smart-detection events from the front-door camera today — people and vehicles only.</p>
+        <div class="ask-tools">
+          <span class="t">smart_detections</span>
+          <span class="t">filter_by_class</span>
+          <span class="t">summarize</span>
         </div>
-        <div role="tabpanel" id="panel-plugin" class="tab-panel active" aria-labelledby="tab-plugin">
-          <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
-          <pre><code><span class="comment"># Add the marketplace (one-time)</span>
-/plugin marketplace add sirkirby/unifi-mcp
+      </div>
 
-<span class="comment"># Install a server plugin</span>
-/plugin install unifi-network@unifi-plugins
-
-<span class="comment"># Run interactive setup</span>
-/unifi-network:setup</code></pre>
+      <div class="ask-card" style="--ac: var(--c-access);">
+        <div class="ask-head"><span class="pip"></span>Access</div>
+        <p class="ask-text">Create a visitor pass for John Smith — main entrance, tomorrow 9 AM to 5 PM.</p>
+        <div class="ask-tools">
+          <span class="t">create_visitor</span>
+          <span class="t">assign_door_policy</span>
+          <span class="t">preview_change</span>
         </div>
-        <div role="tabpanel" id="panel-uvx" class="tab-panel" aria-labelledby="tab-uvx" hidden>
-          <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
-          <pre><code><span class="comment"># Network server</span>
-uvx unifi-network-mcp@latest
+      </div>
 
-<span class="comment"># Protect server</span>
-uvx unifi-protect-mcp@latest
+      <div class="ask-card" style="--ac: var(--c-relay);">
+        <div class="ask-head"><span class="pip"></span>Cross-product</div>
+        <p class="ask-text">Everything that happened at the front entrance in the last hour — clients, cameras, doors.</p>
+        <div class="ask-tools">
+          <span class="t">access.events</span>
+          <span class="t">protect.timeline</span>
+          <span class="t">network.clients_at</span>
+        </div>
+      </div>
 
-<span class="comment"># Access server</span>
-uvx unifi-access-mcp@latest</code></pre>
+      <div class="ask-card" style="--ac: var(--c-network);">
+        <div class="ask-head"><span class="pip"></span>Diagnostics</div>
+        <p class="ask-text">A switch went offline at 2 AM — was there physical activity nearby?</p>
+        <div class="ask-tools">
+          <span class="t">device_alarms</span>
+          <span class="t">protect.events_near</span>
+          <span class="t">correlate</span>
         </div>
-        <div role="tabpanel" id="panel-docker" class="tab-panel" aria-labelledby="tab-docker" hidden>
-          <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
-          <pre><code>docker run -i --rm \
-  -e UNIFI_NETWORK_HOST=192.168.1.1 \
-  -e UNIFI_NETWORK_USERNAME=admin \
-  -e UNIFI_NETWORK_PASSWORD=your-password \
-  ghcr.io/sirkirby/unifi-network-mcp:latest</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================== RELAY ========================== -->
+<section class="block" id="relay">
+  <div class="shell">
+    <div class="section-head">
+      <span class="eyebrow"><span class="dot" style="background:var(--rose);box-shadow:0 0 12px var(--rose);"></span>Cloud Relay · Beta</span>
+      <h2>Cloud agents, local controllers — without exposing a single port.</h2>
+      <p>The relay sidecar opens an outbound tunnel to a Cloudflare Worker. Cloud-hosted agents call your local UniFi servers as if they were next door.</p>
+    </div>
+
+    <div class="relay-card">
+      <div>
+        <h3>Multi-location, fan-out by annotation.</h3>
+        <p>Tag each location at the relay. Read-only tools fan out across all of them. Mutations stay scoped to the location you targeted explicitly.</p>
+        <ul class="relay-bullets">
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+            <span>Outbound-only — no firewall holes, no DDNS, no public IP.</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+            <span>Per-location annotations let agents target <code style="font-family:var(--ff-mono);font-size:12px;">@office</code> vs <code style="font-family:var(--ff-mono);font-size:12px;">@home</code>.</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+            <span>Worker installs in one command: <code style="font-family:var(--ff-mono);font-size:12px;">unifi-mcp-worker install</code>.</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+            <span>Same tool surface as local — agents don't know they're remote.</span>
+          </li>
+        </ul>
+        <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
+          <a href="https://github.com/sirkirby/unifi-mcp/tree/main/packages/unifi-mcp-relay" class="btn btn-ghost">Relay sidecar →</a>
+          <a href="https://github.com/sirkirby/unifi-mcp-worker" class="btn btn-ghost">Worker gateway →</a>
         </div>
-        <div role="tabpanel" id="panel-claude" class="tab-panel" aria-labelledby="tab-claude" hidden>
-          <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">Copy</button>
-          <pre><code>{
-  "mcpServers": {
-    "unifi-network": {
-      "command": "uvx",
-      "args": ["unifi-network-mcp@latest"],
-      "env": {
-        "UNIFI_NETWORK_HOST": "192.168.1.1",
-        "UNIFI_NETWORK_USERNAME": "admin",
-        "UNIFI_NETWORK_PASSWORD": "your-password"
+      </div>
+
+      <div class="relay-diagram" aria-hidden="true">
+        <svg viewBox="0 0 500 400" fill="none">
+          <defs>
+            <linearGradient id="wireA" x1="0" x2="1">
+              <stop offset="0" stop-color="#4ff0d0" stop-opacity="0"/>
+              <stop offset=".5" stop-color="#4ff0d0" stop-opacity=".8"/>
+              <stop offset="1" stop-color="#4ff0d0" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="wireB" x1="0" x2="1">
+              <stop offset="0" stop-color="#ff6b8a" stop-opacity="0"/>
+              <stop offset=".5" stop-color="#ff6b8a" stop-opacity=".8"/>
+              <stop offset="1" stop-color="#ff6b8a" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="wireC" x1="0" x2="1">
+              <stop offset="0" stop-color="#4d7cff" stop-opacity="0"/>
+              <stop offset=".5" stop-color="#4d7cff" stop-opacity=".8"/>
+              <stop offset="1" stop-color="#4d7cff" stop-opacity="0"/>
+            </linearGradient>
+            <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+              <stop offset="0" stop-color="#4ff0d0" stop-opacity=".3"/>
+              <stop offset="1" stop-color="#4ff0d0" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!-- LEFT: locations -->
+          <g>
+            <rect x="20" y="60" width="120" height="56" rx="10" fill="#0f1525" stroke="#243052"/>
+            <text x="80" y="84" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#5b6786" letter-spacing=".08em">@HOME</text>
+            <text x="80" y="102" text-anchor="middle" font-family="Inter" font-size="13" font-weight="600" fill="#e8edf7">UDM Pro</text>
+
+            <rect x="20" y="172" width="120" height="56" rx="10" fill="#0f1525" stroke="#243052"/>
+            <text x="80" y="196" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#5b6786" letter-spacing=".08em">@OFFICE</text>
+            <text x="80" y="214" text-anchor="middle" font-family="Inter" font-size="13" font-weight="600" fill="#e8edf7">Dream Machine</text>
+
+            <rect x="20" y="284" width="120" height="56" rx="10" fill="#0f1525" stroke="#243052"/>
+            <text x="80" y="308" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#5b6786" letter-spacing=".08em">@CABIN</text>
+            <text x="80" y="326" text-anchor="middle" font-family="Inter" font-size="13" font-weight="600" fill="#e8edf7">Cloud Gateway</text>
+          </g>
+
+          <!-- wires from locations to relay -->
+          <path d="M140 88 C190 88 200 200 245 200" stroke="url(#wireA)" stroke-width="1.5" fill="none"/>
+          <path d="M140 200 L245 200" stroke="url(#wireA)" stroke-width="1.5" fill="none"/>
+          <path d="M140 312 C190 312 200 200 245 200" stroke="url(#wireA)" stroke-width="1.5" fill="none"/>
+
+          <!-- middle relay node -->
+          <circle cx="250" cy="200" r="60" fill="url(#glow)"/>
+          <rect x="220" y="170" width="60" height="60" rx="14" fill="#0f1525" stroke="#4ff0d0" stroke-width="1.2"/>
+          <text x="250" y="195" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#5b6786" letter-spacing=".08em">RELAY</text>
+          <text x="250" y="212" text-anchor="middle" font-family="Inter Tight" font-size="14" font-weight="700" fill="#4ff0d0">MCP</text>
+          <circle cx="250" cy="200" r="36" fill="none" stroke="#4ff0d0" stroke-width=".6" opacity=".4">
+            <animate attributeName="r" values="36;46;36" dur="3s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values=".4;0;.4" dur="3s" repeatCount="indefinite"/>
+          </circle>
+
+          <!-- wire to worker -->
+          <path d="M280 200 L355 200" stroke="url(#wireB)" stroke-width="1.5" fill="none"/>
+
+          <!-- worker node -->
+          <rect x="355" y="174" width="60" height="52" rx="12" fill="#0f1525" stroke="#ff6b8a" stroke-width="1.2"/>
+          <text x="385" y="195" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#5b6786" letter-spacing=".08em">CF WORKER</text>
+          <text x="385" y="212" text-anchor="middle" font-family="Inter Tight" font-size="13" font-weight="700" fill="#ff6b8a">Edge</text>
+
+          <!-- wire to agents -->
+          <path d="M415 200 L460 130" stroke="url(#wireC)" stroke-width="1.5" fill="none"/>
+          <path d="M415 200 L460 200" stroke="url(#wireC)" stroke-width="1.5" fill="none"/>
+          <path d="M415 200 L460 270" stroke="url(#wireC)" stroke-width="1.5" fill="none"/>
+
+          <!-- right: agents -->
+          <g font-family="JetBrains Mono" font-size="11" fill="#b8c1d6">
+            <circle cx="466" cy="130" r="6" fill="#0f1525" stroke="#4d7cff" stroke-width="1"/>
+            <text x="478" y="134">claude.ai</text>
+            <circle cx="466" cy="200" r="6" fill="#0f1525" stroke="#4d7cff" stroke-width="1"/>
+            <text x="478" y="204">cursor</text>
+            <circle cx="466" cy="270" r="6" fill="#0f1525" stroke="#4d7cff" stroke-width="1"/>
+            <text x="478" y="274">n8n</text>
+          </g>
+
+          <!-- moving dots -->
+          <circle r="2.5" fill="#4ff0d0">
+            <animateMotion dur="3s" repeatCount="indefinite" path="M140 88 C190 88 200 200 245 200"/>
+          </circle>
+          <circle r="2.5" fill="#4ff0d0">
+            <animateMotion dur="3.4s" repeatCount="indefinite" path="M140 200 L245 200"/>
+          </circle>
+          <circle r="2.5" fill="#ff6b8a">
+            <animateMotion dur="2.4s" repeatCount="indefinite" path="M280 200 L355 200"/>
+          </circle>
+          <circle r="2.5" fill="#4d7cff">
+            <animateMotion dur="2.6s" repeatCount="indefinite" path="M415 200 L460 130"/>
+          </circle>
+          <circle r="2.5" fill="#4d7cff">
+            <animateMotion dur="2.2s" repeatCount="indefinite" path="M415 200 L460 270"/>
+          </circle>
+
+          <!-- labels -->
+          <text x="80" y="40" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#5b6786" letter-spacing=".12em">YOUR LAN</text>
+          <text x="250" y="280" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#5b6786" letter-spacing=".12em">SIDECAR</text>
+          <text x="385" y="250" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#5b6786" letter-spacing=".12em">CLOUDFLARE</text>
+          <text x="475" y="320" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#5b6786" letter-spacing=".12em">CLOUD AGENTS</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================== SKILLS ========================== -->
+<section class="block" id="skills">
+  <div class="shell">
+    <div class="section-head">
+      <span class="eyebrow"><span class="dot"></span>Agent Skills</span>
+      <h2>More than tools. Plays your agent already knows how to run.</h2>
+      <p>Each plugin ships with skills — reference docs plus deterministic Python scripts — so common operations are reliable, audit-able, and don't burn context.</p>
+    </div>
+
+    <div class="skills-grid">
+      <div class="skill" style="--ac: var(--c-network);">
+        <div class="skill-meta"><b>unifi-network</b> · 12 references</div>
+        <h4>Network Health Check</h4>
+        <p>Batch diagnostics across devices, health subsystems, and alarms — with reference docs for interpreting alarm types and device states.</p>
+      </div>
+      <div class="skill" style="--ac: var(--c-network);">
+        <div class="skill-meta"><b>unifi-network</b> · templates</div>
+        <h4>Firewall Manager</h4>
+        <p>Natural-language firewall management with policy templates, config snapshots, change tracking, and rollback.</p>
+      </div>
+      <div class="skill" style="--ac: var(--c-network);">
+        <div class="skill-meta"><b>unifi-network</b> · 16 benchmarks</div>
+        <h4>Firewall Auditor</h4>
+        <p>Security audit with 100-point scoring, topology analysis, redundancy detection, and trend tracking over time.</p>
+      </div>
+      <div class="skill" style="--ac: var(--c-protect);">
+        <div class="skill-meta"><b>unifi-protect</b> · cross-product</div>
+        <h4>Security Digest</h4>
+        <p>Summarizes camera, door, and network events with severity classification and correlation rules across products.</p>
+      </div>
+      <div class="skill" style="--ac: var(--c-access);">
+        <div class="skill-meta"><b>unifi-access</b> · streaming</div>
+        <h4>Access Control</h4>
+        <p>Doors, credentials, visitors, and policies — with real-time event streaming and activity summaries.</p>
+      </div>
+      <div class="skill" style="--ac: var(--c-relay);">
+        <div class="skill-meta"><b>cross-product</b> · NEW</div>
+        <h4>Incident Timeline</h4>
+        <p>Correlates Network clients, Protect events, and Access scans into a single timeline for "what happened when" investigations.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================== INSTALL ========================== -->
+<section class="block" id="install">
+  <div class="shell">
+    <div class="section-head">
+      <span class="eyebrow"><span class="dot"></span>Quick install</span>
+      <h2>Up and running in under a minute.</h2>
+      <p>Pick the path that fits your client. The plugin route is the most opinionated — it ships an MCP server, agent skills, and a guided setup command.</p>
+    </div>
+
+    <div class="install-card">
+      <div class="install-tabs" role="tablist">
+        <button role="tab" id="tab-plugin" aria-selected="true" aria-controls="panel-plugin" onclick="switchTab('plugin')">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1l6 3v4c0 4-3 6.5-6 7-3-.5-6-3-6-7V4l6-3z"/></svg>
+          Claude Code
+        </button>
+        <button role="tab" id="tab-uvx" aria-selected="false" aria-controls="panel-uvx" onclick="switchTab('uvx')">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12v8H2z"/><path d="M5 7l2 1-2 1M9 9h2"/></svg>
+          uvx
+        </button>
+        <button role="tab" id="tab-docker" aria-selected="false" aria-controls="panel-docker" onclick="switchTab('docker')">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="3" height="3"/><rect x="6" y="6" width="3" height="3"/><rect x="10" y="6" width="3" height="3"/><rect x="6" y="2" width="3" height="3"/><path d="M14 9c0 3-3 5-7 5-3 0-5-1-5-3"/></svg>
+          Docker
+        </button>
+        <button role="tab" id="tab-claude" aria-selected="false" aria-controls="panel-claude" onclick="switchTab('claude')">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M5 7c1-2 5-2 6 0M6 11c1 1 3 1 4 0"/></svg>
+          Claude Desktop
+        </button>
+        <button role="tab" id="tab-pip" aria-selected="false" aria-controls="panel-pip" onclick="switchTab('pip')">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6c0-2 2-3 5-3s5 1 5 3M3 10c0 2 2 3 5 3s5-1 5-3"/><path d="M3 6v4M13 6v4"/></svg>
+          pip / pipx
+        </button>
+      </div>
+
+      <div role="tabpanel" id="panel-plugin" class="install-panel active">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><code><span class="c"># 1. Add the marketplace (one-time)</span>
+<span class="k">/plugin</span> marketplace add <span class="s">sirkirby/unifi-mcp</span>
+
+<span class="c"># 2. Install the server plugin you want</span>
+<span class="k">/plugin</span> install <span class="s">unifi-network@unifi-plugins</span>
+
+<span class="c"># 3. Run the guided setup</span>
+<span class="k">/unifi-network:setup</span></code></pre>
+      </div>
+      <div role="tabpanel" id="panel-uvx" class="install-panel" hidden>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><code><span class="c"># Run any server directly — no install step</span>
+uvx <span class="s">unifi-network-mcp@latest</span>
+uvx <span class="s">unifi-protect-mcp@latest</span>
+uvx <span class="s">unifi-access-mcp@latest</span>
+
+<span class="c"># Required env</span>
+<span class="k">UNIFI_HOST</span>=<span class="v">192.168.1.1</span>
+<span class="k">UNIFI_USERNAME</span>=<span class="v">admin</span>
+<span class="k">UNIFI_PASSWORD</span>=<span class="v">your-password</span></code></pre>
+      </div>
+      <div role="tabpanel" id="panel-docker" class="install-panel" hidden>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><code><span class="k">docker</span> run -i --rm \
+  -e <span class="k">UNIFI_HOST</span>=<span class="v">192.168.1.1</span> \
+  -e <span class="k">UNIFI_USERNAME</span>=<span class="v">admin</span> \
+  -e <span class="k">UNIFI_PASSWORD</span>=<span class="v">your-password</span> \
+  <span class="s">ghcr.io/sirkirby/unifi-network-mcp:latest</span>
+
+<span class="c"># Or use the bundled docker-compose for all three servers:</span>
+<span class="k">curl</span> -O https://raw.githubusercontent.com/sirkirby/unifi-mcp/main/docker/docker-compose.yml
+<span class="k">docker</span> compose up -d</code></pre>
+      </div>
+      <div role="tabpanel" id="panel-claude" class="install-panel" hidden>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><code><span class="c">// claude_desktop_config.json</span>
+{
+  <span class="s">"mcpServers"</span>: {
+    <span class="s">"unifi-network"</span>: {
+      <span class="s">"command"</span>: <span class="v">"uvx"</span>,
+      <span class="s">"args"</span>: [<span class="v">"unifi-network-mcp@latest"</span>],
+      <span class="s">"env"</span>: {
+        <span class="s">"UNIFI_HOST"</span>: <span class="v">"192.168.1.1"</span>,
+        <span class="s">"UNIFI_USERNAME"</span>: <span class="v">"admin"</span>,
+        <span class="s">"UNIFI_PASSWORD"</span>: <span class="v">"your-password"</span>
       }
     }
   }
 }</code></pre>
-        </div>
       </div>
-    </section>
+      <div role="tabpanel" id="panel-pip" class="install-panel" hidden>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><code><span class="c"># Install with pipx (recommended) or pip</span>
+pipx install <span class="s">unifi-network-mcp</span>
+pipx install <span class="s">unifi-protect-mcp</span>
+pipx install <span class="s">unifi-access-mcp</span>
 
-    <!-- Features -->
-    <section class="features" id="features">
-      <h2>Why UniFi MCP?</h2>
-      <p>Built for AI agents. Designed for safety. Optimized for LLM efficiency.</p>
-      <div class="features-grid">
-
-        <div class="feature">
-          <div class="feature-header">
-            <span class="feature-dot feature-dot--blue"></span>
-            <h3>150+ Tools</h3>
-          </div>
-          <p>Comprehensive coverage across Network, Protect, and Access controllers. Devices, clients, firewall, cameras, doors, events, and more.</p>
-        </div>
-
-        <div class="feature">
-          <div class="feature-header">
-            <span class="feature-dot feature-dot--teal"></span>
-            <h3>Safe by Default</h3>
-          </div>
-          <p>Read-only by default. Mutations require explicit opt-in and a preview-then-confirm flow before any changes hit your controller.</p>
-        </div>
-
-        <div class="feature">
-          <div class="feature-header">
-            <span class="feature-dot feature-dot--purple"></span>
-            <h3>Context Optimized</h3>
-          </div>
-          <p>Lazy tool loading uses ~200 tokens vs ~5,000 for eager mode. Built for LLM efficiency from the ground up.</p>
-        </div>
-
-        <div class="feature">
-          <div class="feature-header">
-            <span class="feature-dot feature-dot--amber"></span>
-            <h3>Multi-Transport</h3>
-          </div>
-          <p>stdio, Streamable HTTP, and SSE. Run locally with Claude Desktop or expose remotely for automation platforms.</p>
-        </div>
-
-        <div class="feature">
-          <div class="feature-header">
-            <span class="feature-dot feature-dot--blue"></span>
-            <h3>Docker Ready</h3>
-          </div>
-          <p>Pre-built containers for both servers with a docker-compose file included. Deploy in minutes.</p>
-        </div>
-
-        <div class="feature">
-          <div class="feature-header">
-            <span class="feature-dot feature-dot--teal"></span>
-            <h3>Open Source</h3>
-          </div>
-          <p>MIT licensed and community-driven. Contributions welcome — from new tools to entire server implementations.</p>
-        </div>
-
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="footer-inner">
-      <div class="footer-grid">
-        <div>
-          <h4>Project</h4>
-          <ul>
-            <li><a href="https://github.com/sirkirby/unifi-mcp">GitHub Repository</a></li>
-            <li><a href="https://github.com/sirkirby/unifi-mcp/tree/main/docs">Documentation</a></li>
-            <li><a href="https://github.com/sirkirby/unifi-mcp/blob/main/CONTRIBUTING.md">Contributing</a></li>
-            <li><a href="https://github.com/sirkirby/unifi-mcp/blob/main/LICENSE">MIT License</a></li>
-            <li><a href="/privacy">Privacy Policy</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4>Resources</h4>
-          <ul>
-            <li><a href="https://pypi.org/project/unifi-network-mcp/">Network on PyPI</a></li>
-            <li><a href="https://pypi.org/project/unifi-protect-mcp/">Protect on PyPI</a></li>
-            <li><a href="https://pypi.org/project/unifi-access-mcp/">Access on PyPI</a></li>
-            <li><a href="https://github.com/sirkirby/unifi-mcp/blob/main/docker-compose.yml">Docker Setup</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4>Community</h4>
-          <ul>
-            <li><a href="https://github.com/sirkirby/unifi-mcp/issues">Issues</a></li>
-            <li><a href="https://github.com/sirkirby/unifi-mcp/discussions">Discussions</a></li>
-            <li><a href="https://buymeacoffee.com/sirkirby">Buy Me a Coffee</a></li>
-          </ul>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <span>Built with <a href="https://claude.ai/claude-code">Claude Code</a></span>
-        <span>MIT License &copy; 2025-2026</span>
+<span class="c"># Then point your MCP client at the binary on $PATH:</span>
+<span class="k">unifi-network-mcp</span></code></pre>
       </div>
     </div>
-  </footer>
 
-  <script>
-    /* ===== Tab Switching ===== */
-    function switchTab(id) {
-      var tabs = document.querySelectorAll('.tab-bar [role="tab"]');
-      var panels = document.querySelectorAll('.tab-panel');
+    <div class="install-meta">
+      <div class="im-card">
+        <h4>Multi-controller? Use prefixed env.</h4>
+        <p>Each server reads <code style="font-family:var(--ff-mono);font-size:12.5px;color:var(--cyan);">UNIFI_NETWORK_*</code>, <code style="font-family:var(--ff-mono);font-size:12.5px;color:var(--cyan);">UNIFI_PROTECT_*</code>, <code style="font-family:var(--ff-mono);font-size:12.5px;color:var(--cyan);">UNIFI_ACCESS_*</code> first, then falls back to shared <code style="font-family:var(--ff-mono);font-size:12.5px;color:var(--cyan);">UNIFI_*</code>.</p>
+      </div>
+      <div class="im-card">
+        <h4>Read-only by default.</h4>
+        <p>Mutations require an explicit opt-in flag and run preview-then-confirm. Nothing changes on your controller until you say go.</p>
+      </div>
+      <div class="im-card">
+        <h4>Lazy tool loading.</h4>
+        <p>The default mode loads ~200 tokens of meta-tools. Real tools are loaded on demand, by category — keep your context budget for the work.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-      tabs.forEach(function(tab) {
-        var isSelected = tab.id === 'tab-' + id;
-        tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
-        tab.setAttribute('tabindex', isSelected ? '0' : '-1');
-      });
+<!-- ========================== PILLARS / WHY ========================== -->
+<section class="block" id="why">
+  <div class="shell">
+    <div class="section-head">
+      <span class="eyebrow"><span class="dot"></span>Why this exists</span>
+      <h2>Built for agents. Designed for your controller's safety.</h2>
+      <p>UniFi MCP is a deliberate design — not a wrapper around an SDK. Every tool is shaped for how LLMs reason about infrastructure.</p>
+    </div>
 
-      panels.forEach(function(panel) {
-        var isActive = panel.id === 'panel-' + id;
-        panel.classList.toggle('active', isActive);
-        if (isActive) {
-          panel.removeAttribute('hidden');
-        } else {
-          panel.setAttribute('hidden', '');
-        }
-      });
-    }
+    <div class="pillars">
+      <div class="pillar">
+        <div class="pillar-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3 8-8 10-5-2-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <div class="pillar-num">01 — Safety</div>
+        <h3>Read-only is the default. Always.</h3>
+        <p>Mutations are opt-in per server, gated by a preview-then-confirm flow. Your agent shows its work and waits for approval before any change touches the controller.</p>
+      </div>
 
-    /* ===== Arrow Key Navigation ===== */
-    document.querySelector('.tab-bar').addEventListener('keydown', function(e) {
-      var tabs = Array.from(this.querySelectorAll('[role="tab"]'));
-      var currentIndex = tabs.indexOf(document.activeElement);
+      <div class="pillar">
+        <div class="pillar-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+        <div class="pillar-num">02 — Efficiency</div>
+        <h3>Lazy tool loading, by design.</h3>
+        <p>Eager mode dumps ~5,000 tokens of tool definitions into context on connect. Lazy mode starts at ~200 and loads tool groups on demand — the difference between a slow first turn and an instant one.</p>
+      </div>
 
-      if (currentIndex === -1) return;
+      <div class="pillar">
+        <div class="pillar-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </div>
+        <div class="pillar-num">03 — Composability</div>
+        <h3>Three servers. One coherent surface.</h3>
+        <p>Network, Protect, and Access share the same permission model, the same confirmation flow, and the same naming conventions. An agent that can drive one can drive all of them.</p>
+      </div>
 
-      var newIndex;
-      if (e.key === 'ArrowRight') {
-        newIndex = (currentIndex + 1) % tabs.length;
-      } else if (e.key === 'ArrowLeft') {
-        newIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-      } else {
-        return;
-      }
+      <div class="pillar">
+        <div class="pillar-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h6l3-7 4 14 3-7h4"/></svg>
+        </div>
+        <div class="pillar-num">04 — Transports</div>
+        <h3>stdio, HTTP, SSE — your call.</h3>
+        <p>Run locally next to Claude Desktop, expose over Streamable HTTP for self-hosted automation platforms, or stream over SSE for browser agents.</p>
+      </div>
 
-      e.preventDefault();
-      tabs[newIndex].focus();
-      var tabId = tabs[newIndex].id.replace('tab-', '');
-      switchTab(tabId);
+      <div class="pillar">
+        <div class="pillar-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c2-4 6-7 9-7s7 3 9 7c-2 4-6 7-9 7s-7-3-9-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div class="pillar-num">05 — Observability</div>
+        <h3>Every tool call is logged.</h3>
+        <p>Per-server logs with structured request/response, redaction for secrets, and a CLI for replaying calls — so when an agent does something surprising, you can find out exactly what happened.</p>
+      </div>
+
+      <div class="pillar">
+        <div class="pillar-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        </div>
+        <div class="pillar-num">06 — Open</div>
+        <h3>MIT, on your hardware.</h3>
+        <p>No SaaS, no telemetry, no account. Clone the repo, run the server, point an agent at it. Your controllers stay yours.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================== FAQ ========================== -->
+<section class="block" id="faq">
+  <div class="shell" style="max-width: 920px;">
+    <div class="section-head">
+      <span class="eyebrow"><span class="dot"></span>FAQ</span>
+      <h2>Common questions, short answers.</h2>
+    </div>
+
+    <div class="faq">
+      <details class="faq-item" open>
+        <summary>
+          <h3>What's the Model Context Protocol (MCP), exactly?</h3>
+          <span class="faq-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M8 3v10"/></svg></span>
+        </summary>
+        <div class="faq-body">MCP is an open protocol that lets AI agents discover and call tools exposed by a server, with structured arguments and structured responses. Anthropic publishes the spec, but it's vendor-neutral — anything that speaks MCP can use these servers.</div>
+      </details>
+      <details class="faq-item">
+        <summary>
+          <h3>Is this affiliated with Ubiquiti?</h3>
+          <span class="faq-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M8 3v10"/></svg></span>
+        </summary>
+        <div class="faq-body">No. UniFi MCP is an independent open-source project. It talks to UniFi controllers' standard APIs the same way the official mobile and web apps do, but it's built and maintained by the community.</div>
+      </details>
+      <details class="faq-item">
+        <summary>
+          <h3>Does it need cloud access or a Ubiquiti account?</h3>
+          <span class="faq-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M8 3v10"/></svg></span>
+        </summary>
+        <div class="faq-body">No. The servers connect directly to your local controller using a local admin account. The optional Cloud Relay is the only piece that talks outbound — and only because <em>you</em> opt in to give a remote agent access.</div>
+      </details>
+      <details class="faq-item">
+        <summary>
+          <h3>How safe is this? Can my agent brick my network?</h3>
+          <span class="faq-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M8 3v10"/></svg></span>
+        </summary>
+        <div class="faq-body">Read-only by default. Mutations require both an explicit opt-in flag <em>and</em> a preview-then-confirm step where you see the exact change before it runs. Nothing happens silently.</div>
+      </details>
+      <details class="faq-item">
+        <summary>
+          <h3>Which UniFi controllers are supported?</h3>
+          <span class="faq-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M8 3v10"/></svg></span>
+        </summary>
+        <div class="faq-body">Anything running modern UniFi OS — UDM, UDM Pro, UDM SE, UCG-Ultra, Cloud Gateways, and standalone CloudKey deployments. The core libraries auto-detect controller type and version.</div>
+      </details>
+      <details class="faq-item">
+        <summary>
+          <h3>Can I run my own MCP client / build agents on top?</h3>
+          <span class="faq-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M8 3v10"/></svg></span>
+        </summary>
+        <div class="faq-body">Absolutely. The servers expose stdio, Streamable HTTP, and SSE. Examples for Python, n8n, and direct OpenAI Agents are in <code>examples/</code>.</div>
+      </details>
+      <details class="faq-item">
+        <summary>
+          <h3>How do I contribute?</h3>
+          <span class="faq-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M8 3v10"/></svg></span>
+        </summary>
+        <div class="faq-body">PRs welcome. Read <code>CONTRIBUTING.md</code> for the monorepo workflow — including how to scaffold a new tool, run the test suite across all three servers, and submit a tool for review.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ========================== CTA ========================== -->
+<section class="block" style="padding-top: 40px;">
+  <div class="shell">
+    <div class="cta-card">
+      <h2>Stop clicking. Start asking.</h2>
+      <p>One command, one config, one agent that actually understands your network.</p>
+      <div class="cta-ctas">
+        <a href="#install" class="btn btn-primary btn-lg">
+          Install in 60 seconds
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+        <a href="https://github.com/sirkirby/unifi-mcp" class="btn btn-ghost btn-lg">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Read the source
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================== FOOTER ========================== -->
+<footer class="footer">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="foot-brand">
+        <div class="brand">
+          <span class="brand-mark">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8 L6 4 L10 8 L6 12 Z"/><path d="M14 8 L10 4 M14 8 L10 12"/></svg>
+          </span>
+          <span>UniFi MCP <small>v0.9</small></span>
+        </div>
+        <p>An open-source toolkit for giving AI agents safe, structured access to UniFi controllers. Independent project · MIT license.</p>
+      </div>
+      <div class="foot-col">
+        <h5>Servers</h5>
+        <ul>
+          <li><a href="https://pypi.org/project/unifi-network-mcp/">Network on PyPI</a></li>
+          <li><a href="https://pypi.org/project/unifi-protect-mcp/">Protect on PyPI</a></li>
+          <li><a href="https://pypi.org/project/unifi-access-mcp/">Access on PyPI</a></li>
+          <li><a href="https://pypi.org/project/unifi-mcp-relay/">Cloud Relay</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h5>Project</h5>
+        <ul>
+          <li><a href="https://github.com/sirkirby/unifi-mcp">GitHub</a></li>
+          <li><a href="https://github.com/sirkirby/unifi-mcp/tree/main/docs">Docs</a></li>
+          <li><a href="https://github.com/sirkirby/unifi-mcp/blob/main/CONTRIBUTING.md">Contributing</a></li>
+          <li><a href="privacy.html">Privacy</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h5>Community</h5>
+        <ul>
+          <li><a href="https://github.com/sirkirby/unifi-mcp/issues">Issues</a></li>
+          <li><a href="https://github.com/sirkirby/unifi-mcp/discussions">Discussions</a></li>
+          <li><a href="https://buymeacoffee.com/sirkirby">Buy me a coffee</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>MIT License · © 2025–2026 contributors</span>
+      <span>Not affiliated with Ubiquiti Inc. UniFi is a trademark of its respective owner.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* Tabs */
+function switchTab(id) {
+  var tabs = document.querySelectorAll('.install-tabs [role="tab"]');
+  var panels = document.querySelectorAll('.install-panel');
+  tabs.forEach(function(t) {
+    var sel = t.id === 'tab-' + id;
+    t.setAttribute('aria-selected', sel ? 'true' : 'false');
+    t.tabIndex = sel ? 0 : -1;
+  });
+  panels.forEach(function(p) {
+    var act = p.id === 'panel-' + id;
+    p.classList.toggle('active', act);
+    if (act) p.removeAttribute('hidden'); else p.setAttribute('hidden', '');
+  });
+}
+
+/* Copy */
+function copyCode(btn) {
+  var panel = btn.closest('.install-panel');
+  var code = panel.querySelector('code').innerText;
+  var done = function() {
+    btn.classList.add('copied');
+    btn.textContent = 'Copied';
+    setTimeout(function(){ btn.classList.remove('copied'); btn.textContent = 'Copy'; }, 1800);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(done).catch(function() {
+      var ta = document.createElement('textarea'); ta.value = code; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch(e){}
+      document.body.removeChild(ta);
     });
+  }
+}
 
-    /* ===== Copy to Clipboard ===== */
-    function copyCode(btn) {
-      var panel = btn.closest('.tab-panel');
-      var code = panel.querySelector('code').textContent;
-
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(code).then(function() {
-          showCopied(btn);
-        }).catch(function() {
-          fallbackCopy(code, btn);
-        });
-      } else {
-        fallbackCopy(code, btn);
-      }
-    }
-
-    function fallbackCopy(text, btn) {
-      var textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      try {
-        document.execCommand('copy');
-        showCopied(btn);
-      } catch (e) {
-        // Silently fail
-      }
-      document.body.removeChild(textarea);
-    }
-
-    function showCopied(btn) {
-      var original = btn.textContent;
-      btn.textContent = 'Copied!';
-      setTimeout(function() {
-        btn.textContent = original;
-      }, 2000);
-    }
-
-    /* ===== Mobile Menu Toggle ===== */
-    function toggleMobileMenu() {
-      var menu = document.getElementById('mobile-menu');
-      var hamburger = document.querySelector('.hamburger');
-      var isOpen = menu.classList.toggle('open');
-      hamburger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    }
-
-    function closeMobileMenu() {
-      var menu = document.getElementById('mobile-menu');
-      var hamburger = document.querySelector('.hamburger');
-      menu.classList.remove('open');
-      hamburger.setAttribute('aria-expanded', 'false');
-    }
-  </script>
+/* Marquee duplicate for seamless loop */
+(function () {
+  var m = document.getElementById('marquee');
+  if (!m) return;
+  m.innerHTML = m.innerHTML + m.innerHTML;
+})();
+</script>
 
 </body>
 </html>
