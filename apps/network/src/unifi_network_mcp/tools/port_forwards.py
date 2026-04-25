@@ -67,8 +67,8 @@ async def list_port_forwards() -> Dict[str, Any]:  # Removed context, adjusted r
                 "enabled": r.get("enabled"),
                 "src_port": r.get("dst_port"),  # Note: UniFi uses dst_port for external
                 "dst_port": r.get("fwd_port"),  # Note: UniFi uses fwd_port for internal
-                "protocol": r.get("protocol"),
-                "dest_ip": r.get("fwd_ip"),
+                "protocol": r.get("proto"),
+                "dest_ip": r.get("fwd"),
             }
             for r in rules_raw
         ]

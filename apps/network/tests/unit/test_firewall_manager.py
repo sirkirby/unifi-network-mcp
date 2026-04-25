@@ -206,3 +206,64 @@ class TestUpdateFirewallPolicyEndpoint:
             await firewall_manager.update_firewall_policy("pol001", {"logging": True})
 
         assert policy.raw == original_raw
+
+
+# ---------------------------------------------------------------------------
+# ID-lookup iteration robustness — issue #151
+#
+# `next((x for x in items if x.id == target), None)` over aiounifi item
+# objects raises KeyError when any item in the list has a `raw` dict missing
+# `_id` (the property does `self.raw["_id"]` directly). Lazy iteration meant
+# one malformed item poisoned lookups for every item positioned at-or-after
+# it — earlier matches still resolved, later matches returned "not found".
+# Lookup paths now use `r.raw.get("_id")` so iteration tolerates malformed
+# entries.
+# ---------------------------------------------------------------------------
+
+from aiounifi.models.port_forward import PortForward  # noqa: E402
+from aiounifi.models.traffic_route import TrafficRoute  # noqa: E402
+
+
+class TestPortForwardLookupRobustness:
+    """get_port_forward_by_id must not be poisoned by a malformed sibling rule."""
+
+    @pytest.mark.asyncio
+    async def test_finds_rule_after_malformed_entry(self, firewall_manager):
+        """A rule positioned after a malformed (no `_id`) entry must still resolve."""
+        good_pre = PortForward({"_id": "pf-pre", "name": "pre"})
+        malformed = PortForward({"name": "broken-no-id", "fwd_port": "1", "dst_port": "1"})
+        good_post = PortForward({"_id": "pf-post", "name": "post"})
+
+        with patch.object(
+            firewall_manager,
+            "get_port_forwards",
+            new_callable=AsyncMock,
+            return_value=[good_pre, malformed, good_post],
+        ):
+            pre = await firewall_manager.get_port_forward_by_id("pf-pre")
+            post = await firewall_manager.get_port_forward_by_id("pf-post")
+            missing = await firewall_manager.get_port_forward_by_id("pf-does-not-exist")
+
+        assert pre is good_pre
+        assert post is good_post  # would be None before the fix
+        assert missing is None
+
+
+class TestTrafficRouteLookupRobustness:
+    """update_/toggle_ traffic_route must not be poisoned by a malformed sibling route."""
+
+    @pytest.mark.asyncio
+    async def test_update_finds_route_after_malformed_entry(self, firewall_manager, mock_connection):
+        good_target = TrafficRoute(copy.deepcopy(SAMPLE_ROUTE_RAW))
+        malformed = TrafficRoute({"description": "broken-no-id", "enabled": True})
+
+        with patch.object(
+            firewall_manager,
+            "get_traffic_routes",
+            new_callable=AsyncMock,
+            return_value=[malformed, good_target],
+        ):
+            result = await firewall_manager.update_traffic_route("route001", {"description": "Updated"})
+
+        assert result is True
+        mock_connection.request.assert_called_once()

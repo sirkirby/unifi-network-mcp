@@ -201,7 +201,10 @@ class NetworkManager:
     async def get_wlan_details(self, wlan_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information for a specific wireless network as a dictionary."""
         wlans = await self.get_wlans()
-        wlan_obj: Optional[Wlan] = next((w for w in wlans if w.id == wlan_id), None)
+        wlan_obj: Optional[Wlan] = next(
+            (w for w in wlans if isinstance(w.raw, dict) and w.raw.get("_id") == wlan_id),
+            None,
+        )
         if not wlan_obj:
             logger.warning("WLAN %s not found in cached/fetched list.", wlan_id)
             return None

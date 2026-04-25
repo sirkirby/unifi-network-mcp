@@ -86,7 +86,10 @@ class FirewallManager:
         """
         try:
             policies = await self.get_firewall_policies(include_predefined=True)
-            policy: Optional[FirewallPolicy] = next((p for p in policies if p.id == policy_id), None)
+            policy: Optional[FirewallPolicy] = next(
+                (p for p in policies if isinstance(p.raw, dict) and p.raw.get("_id") == policy_id),
+                None,
+            )
 
             if not policy:
                 logger.error("Firewall policy %s not found.", policy_id)
@@ -131,7 +134,10 @@ class FirewallManager:
 
         try:
             all_policies = await self.get_firewall_policies(include_predefined=True)
-            policy_to_update: Optional[FirewallPolicy] = next((p for p in all_policies if p.id == policy_id), None)
+            policy_to_update: Optional[FirewallPolicy] = next(
+                (p for p in all_policies if isinstance(p.raw, dict) and p.raw.get("_id") == policy_id),
+                None,
+            )
 
             if not policy_to_update:
                 logger.error("Firewall policy %s not found for update.", policy_id)
@@ -218,7 +224,10 @@ class FirewallManager:
         try:
             # Fetch existing route data using the V2-based method
             routes = await self.get_traffic_routes()
-            route_to_update_obj: Optional[TrafficRoute] = next((r for r in routes if r.id == route_id), None)
+            route_to_update_obj: Optional[TrafficRoute] = next(
+                (r for r in routes if isinstance(r.raw, dict) and r.raw.get("_id") == route_id),
+                None,
+            )
 
             if not route_to_update_obj:
                 logger.error("Traffic route %s not found for update.", route_id)
@@ -270,7 +279,10 @@ class FirewallManager:
         """
         try:
             routes = await self.get_traffic_routes()
-            route: Optional[TrafficRoute] = next((r for r in routes if r.id == route_id), None)
+            route: Optional[TrafficRoute] = next(
+                (r for r in routes if isinstance(r.raw, dict) and r.raw.get("_id") == route_id),
+                None,
+            )
 
             if not route:
                 logger.error("Traffic route %s not found.", route_id)
@@ -433,7 +445,10 @@ class FirewallManager:
         """
         try:
             rules = await self.get_port_forwards()
-            return next((rule for rule in rules if rule.id == rule_id), None)
+            return next(
+                (r for r in rules if isinstance(r.raw, dict) and r.raw.get("_id") == rule_id),
+                None,
+            )
         except Exception as e:
             logger.error("Error getting port forward by ID %s: %s", rule_id, e)
             return None
