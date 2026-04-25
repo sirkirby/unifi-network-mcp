@@ -1,4 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#006FFF"/><stop offset="1" stop-color="#00D4AA"/></linearGradient></defs>
-<path d="M 9,8 L 9,20 C 9,24.4 12.1,27 16,27 C 19.9,27 23,24.4 23,20 L 23,8" stroke="url(#g)" stroke-width="4" stroke-linecap="round" fill="none"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f1525"></stop>
+      <stop offset="1" stop-color="#060912"></stop>
+    </linearGradient>
+    <linearGradient id="stroke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4ff0d0"></stop>
+      <stop offset="1" stop-color="#4d7cff"></stop>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4ff0d0" stop-opacity=".35"></stop>
+      <stop offset="1" stop-color="#4d7cff" stop-opacity="0"></stop>
+    </linearGradient>
+  </defs>
+
+  
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bg)" stroke="url(#stroke)" stroke-width="1.5" stroke-opacity=".6"></rect>
+
+  
+  <rect x="2" y="2" width="60" height="34" rx="14" fill="url(#glow)"></rect>
+
+  
+  <g stroke="url(#stroke)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M14 32 L26 20 L38 32 L26 44 Z"></path>
+    <path d="M50 32 L38 20"></path>
+    <path d="M50 32 L38 44"></path>
+  </g>
+
+  
+  <circle cx="26" cy="32" r="2.6" fill="#4ff0d0"></circle>
+  <circle cx="50" cy="32" r="2" fill="#4d7cff"></circle>
 </svg>
