@@ -43,6 +43,14 @@ const MYCO_FETCH_TIMEOUT_MS = 3000;
 /** Tail window read from opencode when building the end-of-turn assistant summary. */
 const SESSION_IDLE_TAIL_LIMIT = 12;
 
+/**
+ * Widened retry window when the initial tail returns no assistant text.
+ * Happens when the last 12 events are all tool calls, or compaction just
+ * rewrote history. A NULL response_summary is worse than spending one
+ * extra round-trip to recover a real one.
+ */
+const SESSION_IDLE_TAIL_LIMIT_RETRY = 60;
+
 /** Max size of resume context injection to keep resumed sessions lean. */
 const RESUME_CONTEXT_MAX_CHARS = 4000;
 
@@ -156,6 +164,9 @@ const activeOpencodeSessions = new Set<string>();
 /** Resume injections are process-local and should run at most once per session. */
 const resumeInjectedSessions = new Set<string>();
 
+/** Parent batch of the current turn, or null between turns. Non-null => a turn is in progress. */
+let currentParentBatchId: number | null = null;
+
 /** Read the Myco daemon port from .myco/daemon.json in the project directory. */
 function readDaemonPortFromDisk(directory: string): number | null {
   try {
@@ -238,22 +249,50 @@ async function postJson(
   }
 }
 
+// <myco:shared-helpers>
+// ---------------------------------------------------------------------------
+// Shared plugin helpers — single source of truth for buffer/POST + batch kinds.
+//
+// This block is maintained in
+//   src/symbionts/templates/_shared/plugin-helpers.ts.snippet
+// and injected into each plugin file at install time by SymbiontInstaller.
+// The plugin files on disk also carry an inline copy between the
+// `// <myco:shared-helpers>` markers so they stay valid TypeScript for
+// Vitest imports; a unit test enforces the inline copy matches the snippet.
+//
+// Contract: the snippet assumes the containing file has already defined
+//   - `postJson(directory: string, path: string, body): Promise<{ok, data?}>`
+//   - no other imports from the outer file
+// and exposes
+//   - `BATCH_KIND` constants + `BatchKind` type
+//   - `bufferEvent(dir, sessionId, event)` — best-effort JSONL append
+//   - `isIgnoredResponse(data)` — true when daemon returned an "ignored" drop
+//   - `postEventWithBuffer(dir, sessionId, event)` — live POST with buffer fallback
+//
+// DO NOT edit this block inside a plugin file directly — edit the snippet
+// and run the installer (or rerun the template-sync test to update the
+// inlined copy). Changes here apply to every plugin the next time it
+// installs/updates.
+// ---------------------------------------------------------------------------
+
 /**
- * Append an event to the local buffer at .myco/buffer/<session-id>.jsonl.
- *
- * Used as a fallback when the daemon HTTP POST fails (daemon down, network
- * error, timeout). The daemon replays buffered events via reconcileBufferBatches
- * at startup, so events captured here are NOT lost — they land in the vault
- * the next time the daemon comes back up. Mirrors the fallback pattern in
- * src/hooks/send-event.ts + src/capture/buffer.ts that every other symbiont
- * uses (claude-code, cursor, codex, etc.) via the hook CLI path.
- *
- * Without this fallback, opencode would have a significant parity gap — all
- * other symbionts preserve events across daemon downtime, but opencode events
- * would be silently dropped the moment the daemon was unreachable.
- *
- * The entry shape matches EventBuffer.append(): event payload with session_id
- * stripped (it's in the filename) and an auto-injected ISO timestamp.
+ * Discriminated vocabulary for `prompt_batches.kind`. Mirrors
+ * `BATCH_KIND` in src/db/queries/batches.ts — plugins can't import daemon
+ * code, so the constants are inlined here and kept in sync via the shared
+ * snippet + its sync test.
+ */
+const BATCH_KIND = {
+  INITIAL: "initial",
+  STEERING: "steering",
+  INTERRUPT: "interrupt",
+} as const;
+type BatchKind = typeof BATCH_KIND[keyof typeof BATCH_KIND];
+
+/**
+ * Append an event to `.myco/buffer/<session-id>.jsonl` for replay by the
+ * daemon's startup reconciler. On-disk shape intentionally matches
+ * `src/capture/buffer.ts`'s EventBuffer — the plugin can't import it because
+ * of the zero-runtime-dep constraint, so the protocol is the contract.
  */
 function bufferEvent(
   directory: string,
@@ -272,44 +311,37 @@ function bufferEvent(
       timestamp: payload.timestamp ?? new Date().toISOString(),
     });
     appendFileSync(filePath, line + "\n");
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[myco] Failed to buffer event:", err);
-  }
-}
-
-/**
- * POST a capture event to the daemon with buffer fallback on failure.
- * Used for user_prompt and tool_use events — both are replayed from the
- * buffer by reconcileBufferBatches when the daemon restarts.
- *
- * Two failure modes route to the buffer:
- *   1. Transport failure — HTTP non-200, timeout, network error. `result.ok`
- *      is false and we buffer exactly as you'd expect.
- *   2. Server-side drop — HTTP 200 with body `{ ok: true, ignored: reason }`.
- *      The daemon chose not to persist the event (capture rules, phantom
- *      detection, etc.), but we've seen rule bugs silently discard entire
- *      live sessions this way. Treat "ignored" as a drop and buffer it so
- *      `reconcileBufferBatches` can recover on the next restart once the
- *      underlying cause is fixed.
- */
-async function postEventWithBuffer(
-  directory: string,
-  sessionId: string,
-  event: Record<string, unknown>,
-): Promise<void> {
-  const result = await postJson(directory, "/events", event);
-  if (!result.ok || isIgnoredResponse(result.data)) {
-    bufferEvent(directory, sessionId, event);
+  } catch {
+    // Best-effort — never crash the host agent.
   }
 }
 
 /** True when the daemon returned 200 but signalled it dropped the event. */
 function isIgnoredResponse(data: unknown): boolean {
-  if (!isRecord(data)) return false;
-  const ignored = data.ignored;
+  if (data === null || typeof data !== "object") return false;
+  const ignored = (data as { ignored?: unknown }).ignored;
   return typeof ignored === "string" && ignored.length > 0;
 }
+
+/**
+ * POST a capture event to the daemon, buffering to disk on failure. Both
+ * transport failures and server-side "ignored" responses route to the
+ * buffer — rule bugs have silently dropped whole live sessions before, and
+ * the buffer is the recovery path once the cause is fixed.
+ */
+async function postEventWithBuffer(
+  directory: string,
+  sessionId: string,
+  event: Record<string, unknown>,
+): Promise<unknown> {
+  const result = await postJson(directory, "/events", event);
+  if (!result.ok || isIgnoredResponse(result.data)) {
+    bufferEvent(directory, sessionId, event);
+    return undefined;
+  }
+  return result.data;
+}
+// </myco:shared-helpers>
 
 /** Register an opencode session with the daemon. */
 async function mycoRegisterSession(
@@ -337,24 +369,31 @@ async function mycoUnregisterSession(directory: string, sessionId: string): Prom
  * Opencode has no on-disk transcript for Myco to mine, so images attached by
  * the user in the TUI must travel with the prompt event itself. Other symbionts
  * (claude-code, cursor) extract images from their JSONL transcripts at stop time.
- *
- * Falls back to the local buffer if the daemon is unreachable so events are
- * replayed on daemon restart (same resilience the other symbionts get via
- * src/hooks/send-event.ts).
  */
 async function mycoPostUserPrompt(
   directory: string,
   sessionId: string,
   prompt: string,
   images: Array<{ data: string; mediaType: string }>,
-): Promise<void> {
-  await postEventWithBuffer(directory, sessionId, {
+): Promise<{ batchId?: number }> {
+  const kind: BatchKind = currentParentBatchId !== null ? BATCH_KIND.STEERING : BATCH_KIND.INITIAL;
+  const parentPromptBatchId = kind === BATCH_KIND.INITIAL ? null : currentParentBatchId;
+
+  const result = await postEventWithBuffer(directory, sessionId, {
     type: "user_prompt",
     session_id: sessionId,
     agent: "opencode",
     prompt,
+    kind,
+    parent_prompt_batch_id: parentPromptBatchId,
     ...(images.length > 0 ? { images } : {}),
   });
+
+  const batchId = (result as { batchId?: number } | undefined)?.batchId;
+  if (kind === BATCH_KIND.INITIAL && batchId != null) {
+    currentParentBatchId = batchId;
+  }
+  return { batchId };
 }
 
 /** Post a tool use event. Falls back to the local buffer on failure. */
@@ -375,17 +414,65 @@ async function mycoPostToolUse(
   });
 }
 
-/** Post a stop event with the last assistant message as the response summary. */
+/**
+ * Fetch the last assistant text from an opencode session for use as the
+ * response summary on the next Stop.
+ *
+ * Starts with a small tail window (SESSION_IDLE_TAIL_LIMIT) because most
+ * idle events have recent assistant text within a dozen messages. When that
+ * window contains no assistant text — the turn ended with a tool call,
+ * compaction just rewrote history, etc. — retries once with a wider window
+ * rather than giving up and persisting a NULL response_summary.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchResponseSummary(client: any, directory: string, sessionId: string): Promise<string> {
+  const fetchAt = async (limit: number): Promise<string> => {
+    try {
+      const result = await client.session.messages({
+        path: { id: sessionId },
+        query: { directory, limit },
+      });
+      const messages = ((result as { data?: SessionMessage[] } | undefined)?.data ?? []) as SessionMessage[];
+      return collectAssistantSummaryFromMessages(messages);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[myco] Failed to fetch messages for summary:", err);
+      return "";
+    }
+  };
+
+  let summary = await fetchAt(SESSION_IDLE_TAIL_LIMIT);
+  if (!summary) summary = await fetchAt(SESSION_IDLE_TAIL_LIMIT_RETRY);
+  return summary;
+}
+
+/**
+ * Post a stop event, synchronously buffering to disk before the async POST.
+ *
+ * Covers two failure modes:
+ *   1. Daemon unreachable — the buffered entry is replayed at the daemon's
+ *      next startup reconcile.
+ *   2. Bun process exits before the POST settles — `server.instance.disposed`
+ *      fires on TUI close, and the runtime can tear down before awaited
+ *      fetches complete. The synchronous buffer write survives regardless.
+ *
+ * Duplicate work is harmless: the reconciler's setResponseSummary is
+ * idempotent, so even if both the live POST and the buffered replay land,
+ * the summary is written exactly once.
+ */
 async function mycoPostStop(
   directory: string,
   sessionId: string,
   lastAssistantMessage: string | undefined,
 ): Promise<void> {
-  await postJson(directory, "/events/stop", {
+  const payload = {
+    type: "stop" as const,
     session_id: sessionId,
     agent: "opencode",
     last_assistant_message: lastAssistantMessage,
-  });
+  };
+  bufferEvent(directory, sessionId, payload);
+  await postJson(directory, "/events/stop", payload);
 }
 
 /**
@@ -598,15 +685,28 @@ export const MycoPlugin = async ({ client, directory, worktree }: { client: any;
         // daemon can mark them completed immediately rather than waiting for
         // the stale-session maintenance sweep (1-hour threshold).
         //
-        // Fire-and-forget-parallel: the Bun process is about to exit, so we
-        // can't rely on awaited fetches completing. Promise.all gives the
-        // unregister calls their best shot at landing before teardown; any
-        // that don't make it fall back to the session-maintenance job.
+        // Two things happen per session: (1) a Stop so the latest batch gets
+        // a response_summary from whatever assistant text exists, and
+        // (2) Unregister so the session row closes. Stop runs first — if it
+        // lands, processStopEvent closes batches correctly; if it misses
+        // (daemon down), the buffer fallback replays on next startup.
+        //
+        // The Bun process is about to exit, so we can't rely on awaited
+        // fetches completing. Promise.all gives both calls their best shot
+        // at landing before teardown.
         if (activeOpencodeSessions.size === 0) return;
         const toClose = Array.from(activeOpencodeSessions);
         activeOpencodeSessions.clear();
         for (const id of toClose) resumeInjectedSessions.delete(id);
-        await Promise.all(toClose.map((id) => mycoUnregisterSession(directory, id)));
+        await Promise.all(
+          toClose.flatMap((id) => [
+            (async () => {
+              const summary = await fetchResponseSummary(client, directory, id);
+              await mycoPostStop(directory, id, summary || undefined);
+            })(),
+            mycoUnregisterSession(directory, id),
+          ]),
+        );
         return;
       }
 
@@ -614,27 +714,9 @@ export const MycoPlugin = async ({ client, directory, worktree }: { client: any;
         const sessionId = event.properties?.sessionID;
         if (!sessionId) return;
 
-        // Fetch the last assistant message for a response summary.
-        let responseSummary = "";
-        try {
-          // `limit` is a tail-limit in opencode's server (returns the last N
-          // messages in chronological order — verified empirically against
-          // opencode v1.4.1 via `opencode serve`). The tail window is large
-          // enough to capture a multi-message assistant block at end-of-turn
-          // without reading the full session history on every idle event.
-          const result = await client.session.messages({
-            path: { id: sessionId },
-            query: { directory, limit: SESSION_IDLE_TAIL_LIMIT },
-          });
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const messages = ((result as any)?.data ?? []) as SessionMessage[];
-          responseSummary = collectAssistantSummaryFromMessages(messages);
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error("[myco] Failed to fetch messages for summary:", err);
-        }
-
+        const responseSummary = await fetchResponseSummary(client, directory, sessionId);
         await mycoPostStop(directory, sessionId, responseSummary || undefined);
+        currentParentBatchId = null;
         return;
       }
 
