@@ -90,6 +90,6 @@ docs/specs/
 .mcpregistry_*
 
 # Myco managed (machine-specific)
-.agents/skills/myco
 .agents/skills/myco-rules
+.agents/skills/myco
 .wrangler/

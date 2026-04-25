@@ -19,16 +19,25 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
-// Resolve the myco command name.
+// Defensively pin cwd to the project root. Cursor's hook spawn drops stdin
+// when the command uses shell operators, so our installed hook commands
+// invoke this guard directly (no `cd "$(...)" &&` prefix). The chdir keeps
+// vault resolution working even when the spawning agent's cwd isn't set.
+try { process.chdir(path.resolve(__dirname, '..')); } catch { /* best effort */ }
+
+// Resolve which myco binary to invoke.
 //
-// Source of truth is `.myco/runtime.command` — a one-line plain-text file
-// containing the command to invoke (e.g. `myco`, `myco-dev`, or a user's
-// own alias). When absent or empty, the default is `myco`.
+// `.myco/runtime.command` is the source of truth — a one-line plain-text
+// file holding either a PATH-resolvable name (`myco`, the default for
+// globally-installed users) or an absolute path (`/Users/chris/.local/
+// bin/myco-dev`, what `make dev-link` writes). Absolute paths bypass
+// PATH entirely, which matters because GUI-launched agents (Cursor,
+// Claude Code desktop, etc.) run under macOS launchd and inherit a
+// minimal PATH that typically doesn't include `~/.local/bin`.
 //
-// We resolve the file path via __dirname so the guard doesn't depend on
-// the agent's current working directory. Lifecycle hook wrappers `cd` to
-// project root before invoking us, but not every agent keeps that contract
-// reliably under every shell — __dirname removes the dependency entirely.
+// We locate the alias file via __dirname so the guard doesn't depend on
+// cwd. Hook wrappers `cd` to the project root before invoking us, but
+// not every agent keeps that contract across every shell.
 let bin = 'myco';
 try {
   const aliasPath = path.resolve(__dirname, '..', '.myco', 'runtime.command');

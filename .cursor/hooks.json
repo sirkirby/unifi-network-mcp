@@ -2,66 +2,67 @@
   "hooks": {
     "sessionStart": [
       {
-        "command": "cd \"${CURSOR_PROJECT_DIR:-.}\" && node .agents/myco-run.cjs hook session-start --symbiont cursor",
+        "command": "node .agents/myco-run.cjs hook session-start --symbiont cursor",
         "type": "command",
         "timeout": 10
       }
     ],
     "beforeSubmitPrompt": [
       {
-        "command": "cd \"${CURSOR_PROJECT_DIR:-.}\" && node .agents/myco-run.cjs hook user-prompt-submit --symbiont cursor",
+        "command": "node .agents/myco-run.cjs hook user-prompt-submit --symbiont cursor",
         "type": "command",
         "timeout": 5
       }
     ],
     "postToolUse": [
       {
-        "command": "cd \"${CURSOR_PROJECT_DIR:-.}\" && node .agents/myco-run.cjs hook post-tool-use --symbiont cursor",
+        "command": "node .agents/myco-run.cjs hook post-tool-use --symbiont cursor",
         "type": "command",
         "timeout": 5
       }
     ],
     "postToolUseFailure": [
       {
-        "command": "cd \"${CURSOR_PROJECT_DIR:-.}\" && node .agents/myco-run.cjs hook post-tool-use-failure --symbiont cursor",
+        "command": "node .agents/myco-run.cjs hook post-tool-use-failure --symbiont cursor",
         "type": "command",
         "timeout": 5
       }
     ],
     "stop": [
       {
-        "command": "cd \"${CURSOR_PROJECT_DIR:-.}\" && node .agents/myco-run.cjs hook stop --symbiont cursor",
+        "command": "node .agents/myco-run.cjs hook stop --symbiont cursor",
         "type": "command",
         "timeout": 30
       }
     ],
     "sessionEnd": [
       {
-        "command": "cd \"${CURSOR_PROJECT_DIR:-.}\" && node .agents/myco-run.cjs hook session-end --symbiont cursor",
+        "command": "node .agents/myco-run.cjs hook session-end --symbiont cursor",
         "type": "command",
         "timeout": 10
       }
     ],
     "subagentStart": [
       {
-        "command": "cd \"${CURSOR_PROJECT_DIR:-.}\" && node .agents/myco-run.cjs hook subagent-start --symbiont cursor",
+        "command": "node .agents/myco-run.cjs hook subagent-start --symbiont cursor",
         "type": "command",
         "timeout": 5
       }
     ],
     "subagentStop": [
       {
-        "command": "cd \"${CURSOR_PROJECT_DIR:-.}\" && node .agents/myco-run.cjs hook subagent-stop --symbiont cursor",
+        "command": "node .agents/myco-run.cjs hook subagent-stop --symbiont cursor",
         "type": "command",
         "timeout": 10
       }
     ],
     "preCompact": [
       {
-        "command": "cd \"${CURSOR_PROJECT_DIR:-.}\" && node .agents/myco-run.cjs hook pre-compact --symbiont cursor",
+        "command": "node .agents/myco-run.cjs hook pre-compact --symbiont cursor",
         "type": "command",
         "timeout": 5
       }
     ]
-  }
+  },
+  "version": 1
 }

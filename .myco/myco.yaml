@@ -23,26 +23,6 @@ agent:
   event_tasks_enabled: true
   provider:
     type: anthropic
-  tasks:
-    skill-generate:
-      provider:
-        type: anthropic
-      phases:
-        draft:
-          maxTurns: 20
-        validate:
-          maxTurns: 30
-      schedule:
-        enabled: false
-    skill-evolve:
-      provider:
-        type: anthropic
-      schedule:
-        enabled: true
-    skill-survey:
-      provider:
-        type: anthropic
-    vault-evolve: {}
 context:
   digest_tier: 5000
   session_start_digest_enabled: false
@@ -54,6 +34,8 @@ backup:
 maintenance:
   auto_optimize: true
   auto_optimize_interval_hours: 24
+update:
+  channel: stable
 team:
   enabled: false
   interval_minutes: 15
@@ -77,12 +59,3 @@ appearance:
   mode: dark
   font: default
   density: normal
-symbionts:
-  claude-code:
-    enabled: true
-  codex:
-    enabled: true
-  gemini:
-    enabled: true
-  opencode:
-    enabled: true
