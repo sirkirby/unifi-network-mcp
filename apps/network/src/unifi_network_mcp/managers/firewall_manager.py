@@ -703,7 +703,7 @@ class FirewallManager:
             raise ConnectionError("Not connected to controller")
         try:
             # Network 10.2+ exposes zones at /firewall/zone-matrix (returns
-            # zone metadata plus inter-zone policy counts).
+            # zone metadata plus an inter-zone policy-count matrix).
             # Older firmware exposed a flat list at /firewall/zones; try that
             # as a fallback so this works across versions.
             try:
@@ -717,6 +717,15 @@ class FirewallManager:
                 api_request = ApiRequestV2(method="get", path="/firewall/zones")
                 resp = await self._connection.request(api_request)
             data = resp if isinstance(resp, list) else resp.get("data", []) if isinstance(resp, dict) else []
+            # The zone-matrix endpoint includes a `data` field per zone that
+            # contains the policy-count matrix to every other zone (O(N^2)
+            # payload). For a zones listing we only want the zone metadata,
+            # so drop the matrix field if present. The matrix is still
+            # available via a dedicated tool if needed.
+            data = [
+                {k: v for k, v in zone.items() if k != "data"} if isinstance(zone, dict) else zone
+                for zone in data
+            ]
             self._connection._update_cache(cache_key, data)
             return data
         except Exception as e:
