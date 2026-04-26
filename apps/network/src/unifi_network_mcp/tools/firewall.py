@@ -747,10 +747,23 @@ async def create_simple_firewall_policy(
 async def list_firewall_zones() -> Dict[str, Any]:
     try:
         zones = await firewall_manager.get_firewall_zones()
+        formatted = [
+            {
+                "id": z.get("_id"),
+                "name": z.get("name"),
+                "zone_key": z.get("zone_key", ""),
+            }
+            for z in zones
+        ]
+        return {
+            "success": True,
+            "site": firewall_manager._connection.site,
+            "count": len(formatted),
+            "zones": formatted,
+        }
     except Exception as exc:
         logger.error("Error listing firewall zones: %s", exc, exc_info=True)
         return {"success": False, "error": f"Failed to list firewall zones: {exc}"}
-    return {"success": True, "count": len(zones), "zones": zones}
 
 
 # ---- Firewall Groups (address-group, port-group) ----
