@@ -702,8 +702,20 @@ class FirewallManager:
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
         try:
-            api_request = ApiRequestV2(method="get", path="/firewall/zones")
-            resp = await self._connection.request(api_request)
+            # Network 10.2+ exposes zones at /firewall/zone-matrix (returns
+            # zone metadata plus inter-zone policy counts).
+            # Older firmware exposed a flat list at /firewall/zones; try that
+            # as a fallback so this works across versions.
+            try:
+                api_request = ApiRequestV2(method="get", path="/firewall/zone-matrix")
+                resp = await self._connection.request(api_request)
+            except Exception as primary_exc:
+                logger.debug(
+                    "Primary /firewall/zone-matrix failed (%s), falling back to /firewall/zones",
+                    primary_exc,
+                )
+                api_request = ApiRequestV2(method="get", path="/firewall/zones")
+                resp = await self._connection.request(api_request)
             data = resp if isinstance(resp, list) else resp.get("data", []) if isinstance(resp, dict) else []
             self._connection._update_cache(cache_key, data)
             return data
