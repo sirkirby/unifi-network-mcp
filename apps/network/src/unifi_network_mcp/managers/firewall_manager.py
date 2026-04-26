@@ -708,7 +708,7 @@ class FirewallManager:
             self._connection._update_cache(cache_key, data)
             return data
         except Exception as e:
-            logger.error("Error fetching firewall zones: %s", e)
+            logger.error("Error fetching firewall zones: %s", e, exc_info=True)
             raise
 
     # ---- Firewall Groups (v1 REST: address-group, port-group) ----
