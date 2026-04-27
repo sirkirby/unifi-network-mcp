@@ -78,18 +78,16 @@ class TestAclManager:
         """Test get_acl_rules returns empty list on error."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        rules = await acl_manager.get_acl_rules()
-
-        assert rules == []
-
+        with pytest.raises(Exception):
+            await acl_manager.get_acl_rules()
     @pytest.mark.asyncio
     async def test_get_acl_rules_not_connected(self, acl_manager, mock_connection):
         """Test get_acl_rules returns empty list when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        rules = await acl_manager.get_acl_rules()
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await acl_manager.get_acl_rules()
 
-        assert rules == []
         mock_connection.request.assert_not_called()
 
     @pytest.mark.asyncio
@@ -130,19 +128,16 @@ class TestAclManager:
         """Test get_acl_rule_by_id returns None when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        rule = await acl_manager.get_acl_rule_by_id("r1")
-
-        assert rule is None
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await acl_manager.get_acl_rule_by_id("r1")
 
     @pytest.mark.asyncio
     async def test_get_acl_rule_by_id_handles_error(self, acl_manager, mock_connection):
         """Test get_acl_rule_by_id returns None on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        rule = await acl_manager.get_acl_rule_by_id("r1")
-
-        assert rule is None
-
+        with pytest.raises(Exception):
+            await acl_manager.get_acl_rule_by_id("r1")
     # ---- create_acl_rule ----
 
     @pytest.mark.asyncio
@@ -178,35 +173,31 @@ class TestAclManager:
         """Test create_acl_rule returns None when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await acl_manager.create_acl_rule(
-            {
-                "name": "Test",
-                "acl_index": 0,
-                "action": "ALLOW",
-                "mac_acl_network_id": "net1",
-                "type": "MAC",
-            }
-        )
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await acl_manager.create_acl_rule(
+                {
+                    "name": "Test",
+                    "acl_index": 0,
+                    "action": "ALLOW",
+                    "mac_acl_network_id": "net1",
+                    "type": "MAC",
+                }
+            )
     @pytest.mark.asyncio
     async def test_create_acl_rule_handles_error(self, acl_manager, mock_connection):
         """Test create_acl_rule returns None on API error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await acl_manager.create_acl_rule(
-            {
-                "name": "Test",
-                "acl_index": 0,
-                "action": "ALLOW",
-                "mac_acl_network_id": "net1",
-                "type": "MAC",
-            }
-        )
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await acl_manager.create_acl_rule(
+                {
+                    "name": "Test",
+                    "acl_index": 0,
+                    "action": "ALLOW",
+                    "mac_acl_network_id": "net1",
+                    "type": "MAC",
+                }
+            )
     @pytest.mark.asyncio
     async def test_create_acl_rule_handles_data_wrapper(self, acl_manager, mock_connection):
         """Test create_acl_rule handles response with data key."""
@@ -245,19 +236,16 @@ class TestAclManager:
         """Test update_acl_rule returns False when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await acl_manager.update_acl_rule("r1", {"name": "Test"})
-
-        assert result is False
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await acl_manager.update_acl_rule("r1", {"name": "Test"})
 
     @pytest.mark.asyncio
     async def test_update_acl_rule_handles_error(self, acl_manager, mock_connection):
         """Test update_acl_rule returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await acl_manager.update_acl_rule("r1", {"name": "Test"})
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await acl_manager.update_acl_rule("r1", {"name": "Test"})
     @pytest.mark.asyncio
     async def test_update_acl_rule_fetches_and_merges(self, acl_manager, mock_connection):
         """Test update_acl_rule fetches current rule, merges updates, PUTs full object."""
@@ -325,19 +313,16 @@ class TestAclManager:
         """Test delete_acl_rule returns False when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await acl_manager.delete_acl_rule("r1")
-
-        assert result is False
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await acl_manager.delete_acl_rule("r1")
 
     @pytest.mark.asyncio
     async def test_delete_acl_rule_handles_error(self, acl_manager, mock_connection):
         """Test delete_acl_rule returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await acl_manager.delete_acl_rule("r1")
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await acl_manager.delete_acl_rule("r1")
     # ---- API path verification ----
 
     @pytest.mark.asyncio

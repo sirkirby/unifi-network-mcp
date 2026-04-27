@@ -74,10 +74,8 @@ class TestGetSystemInfo:
         """Test that an exception returns an empty dict."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        result = await system_manager.get_system_info()
-
-        assert result == {}
-
+        with pytest.raises(Exception):
+            await system_manager.get_system_info()
     @pytest.mark.asyncio
     async def test_cache_hit(self, system_manager, mock_connection):
         """Test that cached data is returned without making a request."""
@@ -162,11 +160,8 @@ class TestGetControllerStatus:
         """Test that an exception returns an empty dict."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await system_manager.get_controller_status()
-
-        assert result == {}
-
-
+        with pytest.raises(Exception):
+            await system_manager.get_controller_status()
 class TestCheckFirmwareUpdates:
     """Tests for SystemManager.check_firmware_updates()."""
 
@@ -229,11 +224,8 @@ class TestCheckFirmwareUpdates:
         """Test that an exception returns an empty dict."""
         mock_connection.request.side_effect = Exception("Timeout")
 
-        result = await system_manager.check_firmware_updates()
-
-        assert result == {}
-
-
+        with pytest.raises(Exception):
+            await system_manager.check_firmware_updates()
 class TestGetNetworkHealth:
     """Tests for SystemManager.get_network_health().
 
@@ -316,9 +308,8 @@ class TestGetNetworkHealth:
         """Test that an exception returns an empty list."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        result = await system_manager.get_network_health()
-
-        assert result == []
+        with pytest.raises(Exception):
+            await system_manager.get_network_health()
         mock_connection.request.assert_called_once()
 
     @pytest.mark.asyncio

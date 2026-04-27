@@ -54,8 +54,7 @@ class OonManager:
             return cached_data
 
         if not await self._connection.ensure_connected():
-            return []
-
+            raise ConnectionError("Not connected to controller")
         try:
             api_request = ApiRequestV2(method="get", path=OON_PATH_LIST)
             response = await self._connection.request(api_request)
@@ -76,7 +75,7 @@ class OonManager:
                 logger.debug("OON policies not available (controller may not support them): %s", e)
                 return []
             logger.error("Error getting OON policies: %s", e)
-            return []
+            raise
 
     async def get_oon_policy_by_id(self, policy_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific OON policy by ID.
@@ -88,7 +87,7 @@ class OonManager:
             The OON policy dictionary, or None if not found.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequestV2(method="get", path=f"{OON_PATH_SINGLE}/{policy_id}")
@@ -106,7 +105,7 @@ class OonManager:
             return next((p for p in policies if p.get("id", p.get("_id")) == policy_id), None)
         except Exception as e:
             logger.error("Error getting OON policy %s: %s", policy_id, e)
-            return None
+            raise
 
     async def create_oon_policy(self, policy_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new OON policy.
@@ -124,7 +123,7 @@ class OonManager:
             The created OON policy dictionary, or None on failure.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         if not policy_data.get("name"):
             logger.error("Missing required field 'name' for OON policy")
@@ -164,7 +163,7 @@ class OonManager:
                 return None
         except Exception as e:
             logger.error("Error creating OON policy: %s", e, exc_info=True)
-            return None
+            raise
 
     async def update_oon_policy(self, policy_id: str, update_data: Dict[str, Any]) -> bool:
         """Update an existing OON policy by merging updates with current state.
@@ -177,7 +176,7 @@ class OonManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
         if not update_data:
             return True
 
@@ -196,7 +195,7 @@ class OonManager:
             return True
         except Exception as e:
             logger.error("Error updating OON policy %s: %s", policy_id, e, exc_info=True)
-            return False
+            raise
 
     async def toggle_oon_policy(self, policy_id: str) -> Optional[bool]:
         """Toggle an OON policy's enabled state.
@@ -211,7 +210,7 @@ class OonManager:
             The new enabled state (True/False), or None on failure.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         try:
             policy = await self.get_oon_policy_by_id(policy_id)
@@ -229,7 +228,7 @@ class OonManager:
             return new_state
         except Exception as e:
             logger.error("Error toggling OON policy %s: %s", policy_id, e, exc_info=True)
-            return None
+            raise
 
     async def delete_oon_policy(self, policy_id: str) -> bool:
         """Delete an OON policy.
@@ -241,7 +240,7 @@ class OonManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
 
         try:
             # DELETE may return 204 No Content
@@ -252,7 +251,7 @@ class OonManager:
             return True
         except Exception as e:
             logger.error("Error deleting OON policy %s: %s", policy_id, e, exc_info=True)
-            return False
+            raise
 
     def _invalidate_cache(self):
         """Invalidate all OON policy caches."""

@@ -63,9 +63,9 @@ class TestEventManagerV2:
     @pytest.mark.asyncio
     async def test_get_events_handles_error(self, event_manager, mock_connection):
         mock_connection.request.side_effect = Exception("Network error")
-        events = await event_manager.get_events()
-        assert events == []
 
+        with pytest.raises(Exception):
+            await event_manager.get_events()
     @pytest.mark.asyncio
     async def test_get_alarms_v2(self, event_manager, mock_connection):
         mock_connection.request.return_value = [
@@ -143,9 +143,9 @@ class TestEventManagerLegacy:
     @pytest.mark.asyncio
     async def test_get_events_handles_error(self, event_manager, mock_connection):
         mock_connection.request.side_effect = Exception("Network error")
-        events = await event_manager.get_events()
-        assert events == []
 
+        with pytest.raises(Exception):
+            await event_manager.get_events()
     @pytest.mark.asyncio
     async def test_get_alarms_returns_list(self, event_manager, mock_connection):
         mock_alarms = [
@@ -213,9 +213,9 @@ class TestEventManagerCommon:
     @pytest.mark.asyncio
     async def test_archive_alarm_failure(self, event_manager, mock_connection):
         mock_connection.request.side_effect = Exception("API error")
-        result = await event_manager.archive_alarm("alarm123")
-        assert result is False
 
+        with pytest.raises(Exception):
+            await event_manager.archive_alarm("alarm123")
     @pytest.mark.asyncio
     async def test_archive_all_alarms_success(self, event_manager, mock_connection):
         mock_connection.request.return_value = {}
@@ -225,9 +225,9 @@ class TestEventManagerCommon:
     @pytest.mark.asyncio
     async def test_archive_all_alarms_failure(self, event_manager, mock_connection):
         mock_connection.request.side_effect = Exception("API error")
-        result = await event_manager.archive_all_alarms()
-        assert result is False
 
+        with pytest.raises(Exception):
+            await event_manager.archive_all_alarms()
     @pytest.mark.asyncio
     async def test_auto_detect_v2(self, event_manager, mock_connection):
         """Test that v2 API is detected when system-log/count succeeds."""

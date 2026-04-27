@@ -52,10 +52,8 @@ class TestForgetClient:
         """Test forget client returns False on API error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await client_manager.forget_client("AA:BB:CC:DD:EE:FF")
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await client_manager.forget_client("AA:BB:CC:DD:EE:FF")
     @pytest.mark.asyncio
     async def test_forget_client_invalidates_cache(self, client_manager, mock_connection):
         """Test that cache is invalidated after forgetting a client."""

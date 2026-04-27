@@ -88,10 +88,8 @@ class TestHotspotManager:
         """Test get_vouchers returns empty list on error."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        vouchers = await hotspot_manager.get_vouchers()
-
-        assert vouchers == []
-
+        with pytest.raises(Exception):
+            await hotspot_manager.get_vouchers()
     @pytest.mark.asyncio
     async def test_get_voucher_details_found(self, hotspot_manager, mock_connection):
         """Test get_voucher_details returns voucher when found."""
@@ -175,10 +173,8 @@ class TestHotspotManager:
         """Test create_voucher returns None on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await hotspot_manager.create_voucher(expire_minutes=60)
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await hotspot_manager.create_voucher(expire_minutes=60)
     @pytest.mark.asyncio
     async def test_revoke_voucher_success(self, hotspot_manager, mock_connection):
         """Test revoke_voucher returns True on success."""
@@ -206,6 +202,5 @@ class TestHotspotManager:
         """Test revoke_voucher returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await hotspot_manager.revoke_voucher("voucher123")
-
-        assert result is False
+        with pytest.raises(Exception):
+            await hotspot_manager.revoke_voucher("voucher123")

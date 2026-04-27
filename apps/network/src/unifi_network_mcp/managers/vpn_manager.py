@@ -111,7 +111,7 @@ class VpnManager:
             return networks
         except Exception as e:
             logger.error("Error fetching network configurations: %s", e)
-            return []
+            raise
 
     async def get_vpn_configs(self, include_clients: bool = True, include_servers: bool = True) -> List[Dict[str, Any]]:
         """Get VPN configurations from the controller.
@@ -157,7 +157,7 @@ class VpnManager:
 
         except Exception as e:
             logger.error("Error getting VPN configurations: %s", e)
-            return []
+            raise
 
     async def get_vpn_clients(self) -> List[Dict[str, Any]]:
         """Get list of VPN client configurations for the current site.
@@ -246,7 +246,7 @@ class VpnManager:
 
         except Exception as e:
             logger.error("Error updating VPN configuration %s: %s", config_id, e)
-            return False
+            raise
 
     async def update_vpn_client_state(self, client_id: str, enabled: bool) -> bool:
         """Update the enabled state of a VPN client.

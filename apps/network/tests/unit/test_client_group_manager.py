@@ -63,18 +63,16 @@ class TestClientGroupManager:
         """Test get_client_groups returns empty list on error."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        groups = await client_group_manager.get_client_groups()
-
-        assert groups == []
-
+        with pytest.raises(Exception):
+            await client_group_manager.get_client_groups()
     @pytest.mark.asyncio
     async def test_get_client_groups_not_connected(self, client_group_manager, mock_connection):
         """Test get_client_groups returns empty list when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        groups = await client_group_manager.get_client_groups()
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await client_group_manager.get_client_groups()
 
-        assert groups == []
         mock_connection.request.assert_not_called()
 
     @pytest.mark.asyncio
@@ -103,19 +101,16 @@ class TestClientGroupManager:
         """Test get_client_group_by_id returns None when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        group = await client_group_manager.get_client_group_by_id("g1")
-
-        assert group is None
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await client_group_manager.get_client_group_by_id("g1")
 
     @pytest.mark.asyncio
     async def test_get_client_group_by_id_handles_error(self, client_group_manager, mock_connection):
         """Test get_client_group_by_id returns None on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        group = await client_group_manager.get_client_group_by_id("g1")
-
-        assert group is None
-
+        with pytest.raises(Exception):
+            await client_group_manager.get_client_group_by_id("g1")
     # ---- create_client_group ----
 
     @pytest.mark.asyncio
@@ -147,31 +142,27 @@ class TestClientGroupManager:
         """Test create_client_group returns None when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await client_group_manager.create_client_group(
-            {
-                "name": "Test",
-                "members": [],
-                "type": "CLIENTS",
-            }
-        )
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await client_group_manager.create_client_group(
+                {
+                    "name": "Test",
+                    "members": [],
+                    "type": "CLIENTS",
+                }
+            )
     @pytest.mark.asyncio
     async def test_create_client_group_handles_error(self, client_group_manager, mock_connection):
         """Test create_client_group returns None on API error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await client_group_manager.create_client_group(
-            {
-                "name": "Test",
-                "members": [],
-                "type": "CLIENTS",
-            }
-        )
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await client_group_manager.create_client_group(
+                {
+                    "name": "Test",
+                    "members": [],
+                    "type": "CLIENTS",
+                }
+            )
     @pytest.mark.asyncio
     async def test_create_client_group_handles_data_wrapper(self, client_group_manager, mock_connection):
         """Test create_client_group handles response with data key."""
@@ -208,19 +199,16 @@ class TestClientGroupManager:
         """Test update_client_group returns False when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await client_group_manager.update_client_group("g1", {"name": "Test"})
-
-        assert result is False
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await client_group_manager.update_client_group("g1", {"name": "Test"})
 
     @pytest.mark.asyncio
     async def test_update_client_group_handles_error(self, client_group_manager, mock_connection):
         """Test update_client_group returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await client_group_manager.update_client_group("g1", {"name": "Test"})
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await client_group_manager.update_client_group("g1", {"name": "Test"})
     @pytest.mark.asyncio
     async def test_update_client_group_fetches_and_merges(self, client_group_manager, mock_connection):
         """Test update_client_group fetches current group, merges, PUTs full object."""
@@ -279,19 +267,16 @@ class TestClientGroupManager:
         """Test delete_client_group returns False when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await client_group_manager.delete_client_group("g1")
-
-        assert result is False
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await client_group_manager.delete_client_group("g1")
 
     @pytest.mark.asyncio
     async def test_delete_client_group_handles_error(self, client_group_manager, mock_connection):
         """Test delete_client_group returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await client_group_manager.delete_client_group("g1")
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await client_group_manager.delete_client_group("g1")
     # ---- API path verification ----
 
     @pytest.mark.asyncio

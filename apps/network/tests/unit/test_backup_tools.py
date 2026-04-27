@@ -67,10 +67,8 @@ class TestBackupTools:
         """Test create_backup returns None on error."""
         mock_connection.request.side_effect = Exception("Connection failed")
 
-        result = await system_manager.create_backup()
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await system_manager.create_backup()
     # ---- List Backups ----
 
     @pytest.mark.asyncio
@@ -101,10 +99,8 @@ class TestBackupTools:
         """Test list_backups returns empty list on error."""
         mock_connection.request.side_effect = Exception("Connection failed")
 
-        result = await system_manager.list_backups()
-
-        assert result == []
-
+        with pytest.raises(Exception):
+            await system_manager.list_backups()
     # ---- Delete Backup ----
 
     @pytest.mark.asyncio
@@ -126,10 +122,8 @@ class TestBackupTools:
         """Test delete_backup returns False on error."""
         mock_connection.request.side_effect = Exception("Failed")
 
-        result = await system_manager.delete_backup("nonexistent.unf")
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await system_manager.delete_backup("nonexistent.unf")
     # ---- Auto-Backup Settings ----
 
     @pytest.mark.asyncio
@@ -184,10 +178,8 @@ class TestBackupTools:
         """Test update_autobackup_settings returns False on error."""
         mock_connection.request.side_effect = Exception("Failed")
 
-        result = await system_manager.update_autobackup_settings({"autobackup_enabled": True})
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await system_manager.update_autobackup_settings({"autobackup_enabled": True})
     # ---- API Path Verification ----
 
     @pytest.mark.asyncio

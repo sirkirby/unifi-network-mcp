@@ -64,18 +64,16 @@ class TestContentFilterManager:
         """Test get_content_filters returns empty list on error."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        filters = await content_filter_manager.get_content_filters()
-
-        assert filters == []
-
+        with pytest.raises(Exception):
+            await content_filter_manager.get_content_filters()
     @pytest.mark.asyncio
     async def test_get_content_filters_not_connected(self, content_filter_manager, mock_connection):
         """Test get_content_filters returns empty list when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        filters = await content_filter_manager.get_content_filters()
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await content_filter_manager.get_content_filters()
 
-        assert filters == []
         mock_connection.request.assert_not_called()
 
     @pytest.mark.asyncio
@@ -118,10 +116,8 @@ class TestContentFilterManager:
         """Test get_content_filter_by_id returns None on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        profile = await content_filter_manager.get_content_filter_by_id("f1")
-
-        assert profile is None
-
+        with pytest.raises(Exception):
+            await content_filter_manager.get_content_filter_by_id("f1")
     # ---- update_content_filter ----
 
     @pytest.mark.asyncio
@@ -143,19 +139,16 @@ class TestContentFilterManager:
         """Test update_content_filter returns False when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await content_filter_manager.update_content_filter("f1", {"name": "Test"})
-
-        assert result is False
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await content_filter_manager.update_content_filter("f1", {"name": "Test"})
 
     @pytest.mark.asyncio
     async def test_update_content_filter_handles_error(self, content_filter_manager, mock_connection):
         """Test update_content_filter returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await content_filter_manager.update_content_filter("f1", {"name": "Test"})
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await content_filter_manager.update_content_filter("f1", {"name": "Test"})
     @pytest.mark.asyncio
     async def test_update_content_filter_fetches_and_merges(self, content_filter_manager, mock_connection):
         """Test update_content_filter fetches current profile, merges, PUTs full object."""
@@ -218,19 +211,16 @@ class TestContentFilterManager:
         """Test delete_content_filter returns False when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await content_filter_manager.delete_content_filter("f1")
-
-        assert result is False
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await content_filter_manager.delete_content_filter("f1")
 
     @pytest.mark.asyncio
     async def test_delete_content_filter_handles_error(self, content_filter_manager, mock_connection):
         """Test delete_content_filter returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await content_filter_manager.delete_content_filter("f1")
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await content_filter_manager.delete_content_filter("f1")
     # ---- API path verification ----
 
     @pytest.mark.asyncio

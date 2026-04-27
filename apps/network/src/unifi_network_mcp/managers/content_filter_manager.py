@@ -50,8 +50,7 @@ class ContentFilterManager:
             return cached_data
 
         if not await self._connection.ensure_connected():
-            return []
-
+            raise ConnectionError("Not connected to controller")
         try:
             api_request = ApiRequestV2(method="get", path="/content-filtering")
             response = await self._connection.request(api_request)
@@ -68,7 +67,7 @@ class ContentFilterManager:
             return filters
         except Exception as e:
             logger.error("Error getting content filters: %s", e)
-            return []
+            raise
 
     async def get_content_filter_by_id(self, filter_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific content filtering profile by ID.
@@ -96,7 +95,7 @@ class ContentFilterManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
         if not update_data:
             return True
 
@@ -115,7 +114,7 @@ class ContentFilterManager:
             return True
         except Exception as e:
             logger.error("Error updating content filter %s: %s", filter_id, e, exc_info=True)
-            return False
+            raise
 
     async def delete_content_filter(self, filter_id: str) -> bool:
         """Delete a content filtering profile.
@@ -127,7 +126,7 @@ class ContentFilterManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequestV2(method="delete", path=f"/content-filtering/{filter_id}")
@@ -137,7 +136,7 @@ class ContentFilterManager:
             return True
         except Exception as e:
             logger.error("Error deleting content filter %s: %s", filter_id, e, exc_info=True)
-            return False
+            raise
 
     def _invalidate_cache(self):
         """Invalidate all content filter caches."""

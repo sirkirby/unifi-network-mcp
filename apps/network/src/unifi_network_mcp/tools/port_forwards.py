@@ -625,7 +625,12 @@ async def create_simple_port_forward(
             "message": "Set confirm=true to apply.",
         }
 
-    created = await firewall_manager.create_port_forward(payload)
+    try:
+        created = await firewall_manager.create_port_forward(payload)
+    except Exception as exc:
+        logger.error("Error creating simple port forward: %s", exc, exc_info=True)
+        return {"success": False, "error": f"Failed to create port forward: {exc}"}
+
     if created is None or not isinstance(created, dict):
         return {
             "success": False,

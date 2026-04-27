@@ -432,7 +432,7 @@ class ConnectionManager:
     async def request(self, api_request: ApiRequest | ApiRequestV2, return_raw: bool = False) -> Any:
         """Make a request to the controller API, handling raw responses."""
         if not await self.ensure_connected() or not self.controller:
-            raise ConnectionError("Unifi Controller is not connected.")
+            raise ConnectionError("Not connected to controller")
 
         # Apply override if we have better detection (FR-003: use cached detection)
         original_is_unifi_os = None

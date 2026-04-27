@@ -43,8 +43,7 @@ class AclManager:
             return cached_data
 
         if not await self._connection.ensure_connected():
-            return []
-
+            raise ConnectionError("Not connected to controller")
         try:
             api_request = ApiRequestV2(method="get", path="/acl-rules")
             response = await self._connection.request(api_request)
@@ -64,7 +63,7 @@ class AclManager:
             return rules
         except Exception as e:
             logger.error("Error getting ACL rules: %s", e)
-            return []
+            raise
 
     async def get_acl_rule_by_id(self, rule_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific ACL rule by ID.
@@ -82,7 +81,7 @@ class AclManager:
             return next((r for r in rules if r.get("_id") == rule_id), None)
         except Exception as e:
             logger.error("Error getting ACL rule %s: %s", rule_id, e)
-            return None
+            raise
 
     async def create_acl_rule(self, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new MAC ACL rule.
@@ -102,7 +101,7 @@ class AclManager:
             The created ACL rule dictionary, or None on failure.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         required_keys = {"name", "acl_index", "action", "mac_acl_network_id", "type"}
         missing = required_keys - rule_data.keys()
@@ -136,7 +135,7 @@ class AclManager:
                 return None
         except Exception as e:
             logger.error("Error creating ACL rule: %s", e, exc_info=True)
-            return None
+            raise
 
     async def update_acl_rule(self, rule_id: str, update_data: Dict[str, Any]) -> bool:
         """Update an existing MAC ACL rule by merging updates with current state.
@@ -152,7 +151,7 @@ class AclManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
         if not update_data:
             return True  # No action needed
 
@@ -171,7 +170,7 @@ class AclManager:
             return True
         except Exception as e:
             logger.error("Error updating ACL rule %s: %s", rule_id, e, exc_info=True)
-            return False
+            raise
 
     async def delete_acl_rule(self, rule_id: str) -> bool:
         """Delete a MAC ACL rule.
@@ -183,7 +182,7 @@ class AclManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequestV2(method="delete", path=f"/acl-rules/{rule_id}")
@@ -193,7 +192,7 @@ class AclManager:
             return True
         except Exception as e:
             logger.error("Error deleting ACL rule %s: %s", rule_id, e, exc_info=True)
-            return False
+            raise
 
     def _invalidate_cache(self):
         """Invalidate all ACL rule caches."""
