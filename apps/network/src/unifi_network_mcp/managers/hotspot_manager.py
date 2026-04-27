@@ -66,7 +66,7 @@ class HotspotManager:
             return vouchers
         except Exception as e:
             logger.error("Error getting vouchers: %s", e)
-            return []
+            raise
 
     async def get_voucher_details(self, voucher_id: str) -> Optional[Dict[str, Any]]:
         """Get details for a specific voucher by ID.
@@ -85,7 +85,7 @@ class HotspotManager:
             return voucher
         except Exception as e:
             logger.error("Error getting voucher details for %s: %s", voucher_id, e)
-            return None
+            raise
 
     async def create_voucher(
         self,
@@ -160,7 +160,7 @@ class HotspotManager:
 
         except Exception as e:
             logger.error("Error creating voucher: %s", e, exc_info=True)
-            return None
+            raise
 
     async def revoke_voucher(self, voucher_id: str) -> bool:
         """Revoke/delete a voucher by its ID.
@@ -193,4 +193,4 @@ class HotspotManager:
 
         except Exception as e:
             logger.error("Error revoking voucher %s: %s", voucher_id, e, exc_info=True)
-            return False
+            raise

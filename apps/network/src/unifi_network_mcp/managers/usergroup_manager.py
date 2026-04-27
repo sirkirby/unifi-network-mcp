@@ -55,7 +55,7 @@ class UsergroupManager:
             return usergroups
         except Exception as e:
             logger.error("Error getting user groups: %s", e)
-            return []
+            raise
 
     async def get_usergroup_details(self, group_id: str) -> Optional[Dict[str, Any]]:
         """Get details for a specific user group by ID.
@@ -74,7 +74,7 @@ class UsergroupManager:
             return group
         except Exception as e:
             logger.error("Error getting user group details for %s: %s", group_id, e)
-            return None
+            raise
 
     async def create_usergroup(
         self,
@@ -125,7 +125,7 @@ class UsergroupManager:
 
         except Exception as e:
             logger.error("Error creating user group: %s", e, exc_info=True)
-            return None
+            raise
 
     async def update_usergroup(
         self,
@@ -183,4 +183,4 @@ class UsergroupManager:
 
         except Exception as e:
             logger.error("Error updating user group %s: %s", group_id, e, exc_info=True)
-            return False
+            raise

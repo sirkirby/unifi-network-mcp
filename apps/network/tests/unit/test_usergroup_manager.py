@@ -72,10 +72,8 @@ class TestUsergroupManager:
         """Test get_usergroups returns empty list on error."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        groups = await usergroup_manager.get_usergroups()
-
-        assert groups == []
-
+        with pytest.raises(Exception):
+            await usergroup_manager.get_usergroups()
     @pytest.mark.asyncio
     async def test_get_usergroup_details_found(self, usergroup_manager, mock_connection):
         """Test get_usergroup_details returns group when found."""
@@ -141,10 +139,8 @@ class TestUsergroupManager:
         """Test create_usergroup returns None on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await usergroup_manager.create_usergroup(name="Test")
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await usergroup_manager.create_usergroup(name="Test")
     @pytest.mark.asyncio
     async def test_update_usergroup_success(self, usergroup_manager, mock_connection):
         """Test update_usergroup with valid parameters."""
@@ -177,9 +173,7 @@ class TestUsergroupManager:
             group_id="nonexistent",
             name="Test",
         )
-
         assert result is False
-
     @pytest.mark.asyncio
     async def test_update_usergroup_no_updates(self, usergroup_manager, mock_connection):
         """Test update_usergroup returns False when no updates provided."""
@@ -203,12 +197,11 @@ class TestUsergroupManager:
 
     @pytest.mark.asyncio
     async def test_update_usergroup_handles_error(self, usergroup_manager, mock_connection):
-        """Test update_usergroup returns False on error."""
+        """Test update_usergroup raises on API error."""
         mock_connection.request.side_effect = [
             [{"_id": "g1", "name": "Test"}],  # get_usergroups succeeds
             Exception("API error"),  # update fails
         ]
 
-        result = await usergroup_manager.update_usergroup(group_id="g1", name="New")
-
-        assert result is False
+        with pytest.raises(Exception, match="API error"):
+            await usergroup_manager.update_usergroup(group_id="g1", name="New")

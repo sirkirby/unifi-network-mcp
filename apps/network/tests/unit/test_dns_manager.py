@@ -62,10 +62,8 @@ class TestDnsManager:
         """Test list_dns_records returns empty list on error."""
         mock_connection.request.side_effect = Exception("Connection failed")
 
-        result = await dns_manager.list_dns_records()
-
-        assert result == []
-
+        with pytest.raises(Exception):
+            await dns_manager.list_dns_records()
     # ---- Get DNS Record ----
 
     @pytest.mark.asyncio
@@ -112,10 +110,8 @@ class TestDnsManager:
         """Test create_dns_record returns None on error."""
         mock_connection.request.side_effect = Exception("Failed")
 
-        result = await dns_manager.create_dns_record({"key": "fail.example.com"})
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await dns_manager.create_dns_record({"key": "fail.example.com"})
     # ---- Update DNS Record ----
 
     @pytest.mark.asyncio
@@ -148,10 +144,8 @@ class TestDnsManager:
         """Test update_dns_record returns False on error."""
         mock_connection.request.side_effect = Exception("Failed")
 
-        result = await dns_manager.update_dns_record("r1", {"value": "10.0.0.2"})
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await dns_manager.update_dns_record("r1", {"value": "10.0.0.2"})
     # ---- Delete DNS Record ----
 
     @pytest.mark.asyncio
@@ -173,10 +167,8 @@ class TestDnsManager:
         """Test delete_dns_record returns False on error."""
         mock_connection.request.side_effect = Exception("Failed")
 
-        result = await dns_manager.delete_dns_record("r1")
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await dns_manager.delete_dns_record("r1")
     # ---- API Path Verification ----
 
     @pytest.mark.asyncio

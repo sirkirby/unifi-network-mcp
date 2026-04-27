@@ -425,37 +425,29 @@ class TestStatsManagerEnhanced:
         """Test get_gateway_stats returns empty list on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await stats_manager.get_gateway_stats()
-
-        assert result == []
-
+        with pytest.raises(Exception):
+            await stats_manager.get_gateway_stats()
     @pytest.mark.asyncio
     async def test_get_ips_events_handles_error(self, stats_manager, mock_connection):
         """Test get_ips_events returns empty list on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await stats_manager.get_ips_events()
-
-        assert result == []
-
+        with pytest.raises(Exception):
+            await stats_manager.get_ips_events()
     @pytest.mark.asyncio
     async def test_get_dashboard_handles_error(self, stats_manager, mock_connection):
         """Test get_dashboard returns empty list on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await stats_manager.get_dashboard()
-
-        assert result == []
-
+        with pytest.raises(Exception):
+            await stats_manager.get_dashboard()
     @pytest.mark.asyncio
     async def test_get_client_wifi_details_handles_error(self, stats_manager, mock_connection):
         """Test get_client_wifi_details returns None on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await stats_manager.get_client_wifi_details("aa:bb:cc:dd:ee:ff")
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await stats_manager.get_client_wifi_details("aa:bb:cc:dd:ee:ff")
     # ---- Cache tests ----
 
     @pytest.mark.asyncio
@@ -517,10 +509,8 @@ class TestDeviceManagerSpeedtest:
         """Test trigger_speedtest returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await device_manager.trigger_speedtest("aa:bb:cc:dd:ee:ff")
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await device_manager.trigger_speedtest("aa:bb:cc:dd:ee:ff")
     @pytest.mark.asyncio
     async def test_get_speedtest_status(self, device_manager, mock_connection):
         """Test get_speedtest_status sends correct command."""
@@ -538,6 +528,5 @@ class TestDeviceManagerSpeedtest:
         """Test get_speedtest_status returns empty dict on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await device_manager.get_speedtest_status("aa:bb:cc:dd:ee:ff")
-
-        assert result == {}
+        with pytest.raises(Exception):
+            await device_manager.get_speedtest_status("aa:bb:cc:dd:ee:ff")

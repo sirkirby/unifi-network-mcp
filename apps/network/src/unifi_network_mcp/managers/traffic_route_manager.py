@@ -61,7 +61,7 @@ class TrafficRouteManager:
             return routes
         except Exception as e:
             logger.error("Error getting traffic routes: %s", e)
-            return []
+            raise
 
     async def get_traffic_route_details(self, route_id: str) -> Optional[Dict[str, Any]]:
         """Get details for a specific traffic route by ID.
@@ -80,7 +80,7 @@ class TrafficRouteManager:
             return route
         except Exception as e:
             logger.error("Error getting traffic route details for %s: %s", route_id, e)
-            return None
+            raise
 
     async def update_traffic_route(self, route_id: str, enabled: Optional[bool] = None, **kwargs) -> bool:
         """Update a traffic route.
@@ -129,7 +129,7 @@ class TrafficRouteManager:
 
         except Exception as e:
             logger.error("Error updating traffic route %s: %s", route_id, e, exc_info=True)
-            return False
+            raise
 
     async def toggle_traffic_route(self, route_id: str) -> bool:
         """Toggle a traffic route's enabled state.
@@ -190,4 +190,4 @@ class TrafficRouteManager:
                 e,
                 exc_info=True,
             )
-            return False
+            raise

@@ -282,11 +282,8 @@ class TestDeviceManagerUpdateRadio:
         mock_connection.controller.devices.values.return_value = [ap]
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await device_manager.update_device_radio(ap.mac, "na", {"tx_power_mode": "high"})
-
-        assert result is False
-
-
+        with pytest.raises(Exception):
+            await device_manager.update_device_radio(ap.mac, "na", {"tx_power_mode": "high"})
 class TestUpdateDeviceRadioTool:
     """Tests for the unifi_update_device_radio tool function validation logic."""
 

@@ -72,7 +72,7 @@ class NetworkManager:
         except Exception as e:
             # Log original error for V1 endpoint failure
             logger.error("Error getting networks via V1 /rest/networkconf: %s", e, exc_info=True)
-            return []
+            raise
 
     async def get_network_details(self, network_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information for a specific network."""
@@ -117,7 +117,7 @@ class NetworkManager:
 
         except Exception as e:
             logger.error("Error creating network: %s", e, exc_info=True)
-            return None
+            raise
 
     async def update_network(self, network_id: str, update_data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         """Update a network configuration by merging updates with existing data.
@@ -132,7 +132,7 @@ class NetworkManager:
             API 400 body) so the caller can surface it instead of a generic guess.
         """
         if not await self._connection.ensure_connected():
-            return False, "Failed to update network: controller connection unavailable"
+            raise ConnectionError("Not connected to controller")
         if not update_data:
             logger.warning("No update data provided for network %s.", network_id)
             return True, None  # No action needed
@@ -159,7 +159,7 @@ class NetworkManager:
             return True, None
         except Exception as e:
             logger.error("Error updating network %s: %s", network_id, e, exc_info=True)
-            return False, str(e)
+            raise
 
     async def delete_network(self, network_id: str) -> bool:
         """Delete a network.
@@ -178,7 +178,7 @@ class NetworkManager:
             return True
         except Exception as e:
             logger.error("Error deleting network %s: %s", network_id, e)
-            return False
+            raise
 
     async def get_wlans(self) -> List[Wlan]:
         """Get list of wireless networks (WLANs) for the current site."""
@@ -196,7 +196,7 @@ class NetworkManager:
             return wlans
         except Exception as e:
             logger.error("Error getting WLANs: %s", e)
-            return []
+            raise
 
     async def get_wlan_details(self, wlan_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information for a specific wireless network as a dictionary."""
@@ -255,7 +255,7 @@ class NetworkManager:
 
         except Exception as e:
             logger.error("Error creating WLAN: %s", e)
-            return None  # Return None on error
+            raise
 
     async def update_wlan(self, wlan_id: str, update_data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         """Update a WLAN configuration by merging updates with existing data.
@@ -270,7 +270,7 @@ class NetworkManager:
             caller can surface it instead of a generic guess.
         """
         if not await self._connection.ensure_connected():
-            return False, "Failed to update WLAN: controller connection unavailable"
+            raise ConnectionError("Not connected to controller")
         if not update_data:
             logger.warning("No update data provided for WLAN %s.", wlan_id)
             return True, None  # No action needed
@@ -297,7 +297,7 @@ class NetworkManager:
             return True, None
         except Exception as e:
             logger.error("Error updating WLAN %s: %s", wlan_id, e, exc_info=True)
-            return False, str(e)
+            raise
 
     async def delete_wlan(self, wlan_id: str) -> bool:
         """Delete a wireless network.
@@ -316,7 +316,7 @@ class NetworkManager:
             return True
         except Exception as e:
             logger.error("Error deleting WLAN %s: %s", wlan_id, e)
-            return False
+            raise
 
     async def toggle_wlan(self, wlan_id: str) -> bool:
         """Toggle a wireless network on/off.
@@ -345,7 +345,7 @@ class NetworkManager:
             return True
         except Exception as e:
             logger.error("Error toggling WLAN %s: %s", wlan_id, e)
-            return False
+            raise
 
     async def list_ap_groups(self) -> List[Dict[str, Any]]:
         """List all AP groups.
@@ -374,7 +374,7 @@ class NetworkManager:
             return groups
         except Exception as e:
             logger.error("Error listing AP groups: %s", e)
-            return []
+            raise
 
     async def get_ap_group_details(self, group_id: str) -> Optional[Dict[str, Any]]:
         """Get details of a specific AP group by ID.
@@ -394,7 +394,7 @@ class NetworkManager:
             return None
         except Exception as e:
             logger.error("Error getting AP group %s: %s", group_id, e)
-            return None
+            raise
 
     async def create_ap_group(self, group_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new AP group.
@@ -430,7 +430,7 @@ class NetworkManager:
                 return None
         except Exception as e:
             logger.error("Error creating AP group: %s", e, exc_info=True)
-            return None
+            raise
 
     async def update_ap_group(self, group_id: str, update_data: Dict[str, Any]) -> bool:
         """Update an existing AP group by merging updates with current state.
@@ -460,7 +460,7 @@ class NetworkManager:
             return True
         except Exception as e:
             logger.error("Error updating AP group %s: %s", group_id, e, exc_info=True)
-            return False
+            raise
 
     async def delete_ap_group(self, group_id: str) -> bool:
         """Delete an AP group.
@@ -479,4 +479,4 @@ class NetworkManager:
             return True
         except Exception as e:
             logger.error("Error deleting AP group %s: %s", group_id, e, exc_info=True)
-            return False
+            raise

@@ -47,8 +47,7 @@ class FirewallManager:
             return cached_data
 
         if not await self._connection.ensure_connected():
-            return []
-
+            raise ConnectionError("Not connected to controller")
         try:
             api_request = ApiRequestV2(method="get", path="/firewall-policies")
 
@@ -73,7 +72,7 @@ class FirewallManager:
             return result
         except Exception as e:
             logger.error("Error getting firewall policies: %s", e)
-            return []
+            raise
 
     async def toggle_firewall_policy(self, policy_id: str) -> bool:
         """Toggle a firewall policy on/off.
@@ -113,7 +112,7 @@ class FirewallManager:
             return True
         except Exception as e:
             logger.error("Error toggling firewall policy %s: %s", policy_id, e)
-            return False
+            raise
 
     async def update_firewall_policy(self, policy_id: str, updates: Dict[str, Any]) -> bool:
         """Update specific fields of a firewall policy.
@@ -126,7 +125,7 @@ class FirewallManager:
             bool: True if successful, False otherwise.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
 
         if not updates:
             logger.warning("No updates provided for firewall policy %s.", policy_id)
@@ -166,7 +165,7 @@ class FirewallManager:
             return True
         except Exception as e:
             logger.error("Error updating firewall policy %s: %s", policy_id, e, exc_info=True)
-            return False
+            raise
 
     async def get_traffic_routes(self) -> List[TrafficRoute]:
         """Get all traffic routes.
@@ -180,8 +179,7 @@ class FirewallManager:
             return cached_data
 
         if not await self._connection.ensure_connected():
-            return []
-
+            raise ConnectionError("Not connected to controller")
         try:
             api_request = ApiRequestV2(method="get", path="/trafficroutes")
 
@@ -203,7 +201,7 @@ class FirewallManager:
             return result
         except Exception as e:
             logger.error("Error getting traffic routes: %s", e)
-            return []
+            raise
 
     async def update_traffic_route(self, route_id: str, updates: Dict[str, Any]) -> bool:
         """Update specific fields of a traffic route using the V2 API.
@@ -216,7 +214,7 @@ class FirewallManager:
             bool: True if successful, False otherwise.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
         if not updates:
             logger.warning("No updates provided for traffic route %s.", route_id)
             return True  # No action needed, considered success
@@ -266,7 +264,7 @@ class FirewallManager:
             return True
         except Exception as e:
             logger.error("Error updating traffic route %s via V2: %s", route_id, e, exc_info=True)
-            return False
+            raise
 
     async def toggle_traffic_route(self, route_id: str) -> bool:
         """Toggle a traffic route on/off.
@@ -301,7 +299,7 @@ class FirewallManager:
 
         except Exception as e:
             logger.error("Error toggling traffic route %s: %s", route_id, e, exc_info=True)
-            return False
+            raise
 
     async def create_traffic_route(self, route_data: Dict[str, Any]) -> Optional[Dict]:
         """Create a new traffic route. Returns the created route data dict or None.
@@ -386,7 +384,7 @@ class FirewallManager:
             bool: True if successful, False otherwise.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
         try:
             # Use V2 endpoint for deletion
             api_request = ApiRequestV2(method="delete", path=f"/trafficroutes/{route_id}")
@@ -399,7 +397,7 @@ class FirewallManager:
         except Exception as e:
             # Handle specific "not found" errors if possible?
             logger.error("Error deleting traffic route %s: %s", route_id, e, exc_info=True)
-            return False
+            raise
 
     async def get_port_forwards(self) -> List[PortForward]:
         """Get all port forwarding rules.
@@ -412,8 +410,7 @@ class FirewallManager:
             return cached_data
 
         if not await self._connection.ensure_connected():
-            return []
-
+            raise ConnectionError("Not connected to controller")
         try:
             api_request = ApiRequest(method="get", path="/rest/portforward")
             response = await self._connection.request(api_request)
@@ -432,7 +429,7 @@ class FirewallManager:
             return result
         except Exception as e:
             logger.error("Error getting port forwards: %s", e)
-            return []
+            raise
 
     async def get_port_forward_by_id(self, rule_id: str) -> Optional[PortForward]:
         """Get a specific port forwarding rule by ID.
@@ -451,7 +448,7 @@ class FirewallManager:
             )
         except Exception as e:
             logger.error("Error getting port forward by ID %s: %s", rule_id, e)
-            return None
+            raise
 
     async def update_port_forward(self, rule_id: str, updates: Dict[str, Any]) -> bool:
         """Update specific fields of a port forwarding rule.
@@ -464,7 +461,7 @@ class FirewallManager:
             bool: True if successful, False otherwise.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
         if not updates:
             logger.warning("No updates provided for port forward %s.", rule_id)
             return True  # No action needed, considered success
@@ -506,7 +503,7 @@ class FirewallManager:
             return True
         except Exception as e:
             logger.error("Error updating port forward %s: %s", rule_id, e, exc_info=True)
-            return False
+            raise
 
     async def toggle_port_forward(self, rule_id: str) -> bool:
         """Toggle a port forwarding rule on/off.
@@ -536,7 +533,7 @@ class FirewallManager:
 
         except Exception as e:
             logger.error("Error toggling port forward %s: %s", rule_id, e, exc_info=True)
-            return False
+            raise
 
     async def create_port_forward(self, rule_data: Dict[str, Any]) -> Optional[Dict]:
         """Create a new port forwarding rule. Returns the created rule data dict or None.
@@ -589,7 +586,7 @@ class FirewallManager:
                 e,
                 exc_info=True,
             )
-            return None
+            raise
 
     async def delete_port_forward(self, rule_id: str) -> bool:
         """Delete a port forwarding rule by ID.
@@ -601,7 +598,7 @@ class FirewallManager:
             bool: True if successful, False otherwise.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
         try:
             # Use V1 endpoint as aiounifi does
             api_request = ApiRequest(
@@ -616,7 +613,7 @@ class FirewallManager:
             return True
         except Exception as e:
             logger.error("Error deleting port forward %s: %s", rule_id, e, exc_info=True)
-            return False
+            raise
 
     async def create_firewall_policy(self, policy_data: Dict[str, Any]) -> Optional[FirewallPolicy]:
         """Create a new firewall policy using the V2 API.
@@ -629,7 +626,7 @@ class FirewallManager:
             The created FirewallPolicy object, or None if creation failed.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         try:
             policy_name = policy_data.get("name", "Unnamed Policy")
@@ -681,7 +678,7 @@ class FirewallManager:
             bool: True if successful, False otherwise.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
         try:
             api_request = ApiRequestV2(method="delete", path=f"/firewall-policies/{policy_id}")
             await self._connection.request(api_request)
@@ -694,7 +691,7 @@ class FirewallManager:
             return True
         except Exception as e:
             logger.error("Error deleting firewall policy %s: %s", policy_id, e, exc_info=True)
-            return False
+            raise
 
     async def get_firewall_zones(self) -> List[Dict[str, Any]]:
         """Return list of firewall zones via V2 API."""
@@ -703,7 +700,7 @@ class FirewallManager:
         if cached is not None:
             return cached
         if not await self._connection.ensure_connected():
-            return []
+            raise ConnectionError("Not connected to controller")
         try:
             api_request = ApiRequestV2(method="get", path="/firewall/zones")
             resp = await self._connection.request(api_request)
@@ -712,7 +709,7 @@ class FirewallManager:
             return data
         except Exception as e:
             logger.error("Error fetching firewall zones: %s", e)
-            return []
+            raise
 
     # ---- Firewall Groups (v1 REST: address-group, port-group) ----
 
@@ -731,8 +728,7 @@ class FirewallManager:
             return cached
 
         if not await self._connection.ensure_connected():
-            return []
-
+            raise ConnectionError("Not connected to controller")
         try:
             api_request = ApiRequest(method="get", path="/rest/firewallgroup")
             response = await self._connection.request(api_request)
@@ -747,7 +743,7 @@ class FirewallManager:
             return data
         except Exception as e:
             logger.error("Error getting firewall groups: %s", e)
-            return []
+            raise
 
     async def get_firewall_group_by_id(self, group_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific firewall group by ID.
@@ -759,7 +755,7 @@ class FirewallManager:
             The firewall group dictionary, or None if not found.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequest(method="get", path=f"/rest/firewallgroup/{group_id}")
@@ -774,7 +770,7 @@ class FirewallManager:
             return data[0] if data else None
         except Exception as e:
             logger.error("Error getting firewall group %s: %s", group_id, e)
-            return None
+            raise
 
     async def create_firewall_group(self, group_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new firewall group.
@@ -788,7 +784,7 @@ class FirewallManager:
             The created firewall group dictionary, or None on failure.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         if not group_data.get("name") or not group_data.get("group_type"):
             logger.error("Missing required fields 'name' and/or 'group_type' for firewall group")
@@ -810,7 +806,7 @@ class FirewallManager:
             return data[0] if data else None
         except Exception as e:
             logger.error("Error creating firewall group: %s", e, exc_info=True)
-            return None
+            raise
 
     async def update_firewall_group(self, group_id: str, group_data: Dict[str, Any]) -> bool:
         """Update an existing firewall group.
@@ -824,7 +820,7 @@ class FirewallManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequest(method="put", path=f"/rest/firewallgroup/{group_id}", data=group_data)
@@ -834,7 +830,7 @@ class FirewallManager:
             return True
         except Exception as e:
             logger.error("Error updating firewall group %s: %s", group_id, e, exc_info=True)
-            return False
+            raise
 
     async def delete_firewall_group(self, group_id: str) -> bool:
         """Delete a firewall group.
@@ -846,7 +842,7 @@ class FirewallManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequest(method="delete", path=f"/rest/firewallgroup/{group_id}")
@@ -856,4 +852,4 @@ class FirewallManager:
             return True
         except Exception as e:
             logger.error("Error deleting firewall group %s: %s", group_id, e, exc_info=True)
-            return False
+            raise

@@ -63,27 +63,26 @@ class TestOonManager:
         """Test get_oon_policies returns empty list on error."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        policies = await oon_manager.get_oon_policies()
-
-        assert policies == []
-
+        with pytest.raises(Exception):
+            await oon_manager.get_oon_policies()
     @pytest.mark.asyncio
     async def test_get_oon_policies_handles_404(self, oon_manager, mock_connection):
         """Test get_oon_policies returns empty list on 404 (unsupported controller)."""
         mock_connection.request.side_effect = Exception("404 Not Found")
 
-        policies = await oon_manager.get_oon_policies()
-
-        assert policies == []
+        # 404 is a legitimate fallback path: returns empty list when the
+        # controller does not support OON policies. Other errors raise.
+        result = await oon_manager.get_oon_policies()
+        assert result == []
 
     @pytest.mark.asyncio
     async def test_get_oon_policies_not_connected(self, oon_manager, mock_connection):
         """Test get_oon_policies returns empty list when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        policies = await oon_manager.get_oon_policies()
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await oon_manager.get_oon_policies()
 
-        assert policies == []
         mock_connection.request.assert_not_called()
 
     # ---- get_oon_policy_by_id ----
@@ -103,19 +102,16 @@ class TestOonManager:
         """Test get_oon_policy_by_id returns None when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        policy = await oon_manager.get_oon_policy_by_id("p1")
-
-        assert policy is None
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await oon_manager.get_oon_policy_by_id("p1")
 
     @pytest.mark.asyncio
     async def test_get_oon_policy_by_id_handles_error(self, oon_manager, mock_connection):
         """Test get_oon_policy_by_id returns None on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        policy = await oon_manager.get_oon_policy_by_id("p1")
-
-        assert policy is None
-
+        with pytest.raises(Exception):
+            await oon_manager.get_oon_policy_by_id("p1")
     # ---- create_oon_policy ----
 
     @pytest.mark.asyncio
@@ -161,9 +157,8 @@ class TestOonManager:
         """Test create_oon_policy returns None when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await oon_manager.create_oon_policy({"name": "Test"})
-
-        assert result is None
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await oon_manager.create_oon_policy({"name": "Test"})
 
     @pytest.mark.asyncio
     async def test_create_oon_policy_handles_data_wrapper(self, oon_manager, mock_connection):
@@ -179,10 +174,8 @@ class TestOonManager:
         """Test create_oon_policy returns None on API error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await oon_manager.create_oon_policy({"name": "Test"})
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await oon_manager.create_oon_policy({"name": "Test"})
     # ---- update_oon_policy ----
 
     @pytest.mark.asyncio
@@ -204,19 +197,16 @@ class TestOonManager:
         """Test update_oon_policy returns False when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await oon_manager.update_oon_policy("p1", {"name": "Test"})
-
-        assert result is False
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await oon_manager.update_oon_policy("p1", {"name": "Test"})
 
     @pytest.mark.asyncio
     async def test_update_oon_policy_handles_error(self, oon_manager, mock_connection):
         """Test update_oon_policy returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await oon_manager.update_oon_policy("p1", {"name": "Test"})
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await oon_manager.update_oon_policy("p1", {"name": "Test"})
     @pytest.mark.asyncio
     async def test_update_oon_policy_fetches_and_merges(self, oon_manager, mock_connection):
         """Test update_oon_policy fetches current policy, merges, PUTs full object."""
@@ -251,10 +241,8 @@ class TestOonManager:
         """Test update_oon_policy returns False when policy not found."""
         mock_connection.request.side_effect = Exception("Not found")
 
-        result = await oon_manager.update_oon_policy("nonexistent", {"name": "Test"})
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await oon_manager.update_oon_policy("nonexistent", {"name": "Test"})
     @pytest.mark.asyncio
     async def test_update_oon_policy_empty_update(self, oon_manager, mock_connection):
         """Test update_oon_policy with empty data is a no-op."""
@@ -294,9 +282,9 @@ class TestOonManager:
         """Test toggle_oon_policy returns None when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await oon_manager.toggle_oon_policy("p1")
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await oon_manager.toggle_oon_policy("p1")
 
-        assert result is None
         mock_connection.request.assert_not_called()
 
     @pytest.mark.asyncio
@@ -337,19 +325,16 @@ class TestOonManager:
         """Test delete_oon_policy returns False when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await oon_manager.delete_oon_policy("p1")
-
-        assert result is False
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await oon_manager.delete_oon_policy("p1")
 
     @pytest.mark.asyncio
     async def test_delete_oon_policy_handles_error(self, oon_manager, mock_connection):
         """Test delete_oon_policy returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await oon_manager.delete_oon_policy("p1")
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await oon_manager.delete_oon_policy("p1")
     # ---- API path verification ----
 
     @pytest.mark.asyncio

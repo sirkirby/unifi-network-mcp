@@ -58,10 +58,8 @@ class TestDeviceCommands:
         """Test locate_device returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await device_manager.locate_device("aa:bb:cc:dd:ee:ff", True)
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await device_manager.locate_device("aa:bb:cc:dd:ee:ff", True)
     # ---- force_provision ----
 
     @pytest.mark.asyncio
@@ -83,6 +81,5 @@ class TestDeviceCommands:
         """Test force_provision returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await device_manager.force_provision("aa:bb:cc:dd:ee:ff")
-
-        assert result is False
+        with pytest.raises(Exception):
+            await device_manager.force_provision("aa:bb:cc:dd:ee:ff")

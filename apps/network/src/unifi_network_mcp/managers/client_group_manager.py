@@ -39,8 +39,7 @@ class ClientGroupManager:
             return cached_data
 
         if not await self._connection.ensure_connected():
-            return []
-
+            raise ConnectionError("Not connected to controller")
         try:
             api_request = ApiRequestV2(method="get", path="/network-members-groups")
             response = await self._connection.request(api_request)
@@ -57,7 +56,7 @@ class ClientGroupManager:
             return groups
         except Exception as e:
             logger.error("Error getting client groups: %s", e)
-            return []
+            raise
 
     async def get_client_group_by_id(self, group_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific client group by ID.
@@ -69,7 +68,7 @@ class ClientGroupManager:
             The client group dictionary, or None if not found.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequestV2(method="get", path=f"/network-members-group/{group_id}")
@@ -82,7 +81,7 @@ class ClientGroupManager:
             return None
         except Exception as e:
             logger.error("Error getting client group %s: %s", group_id, e)
-            return None
+            raise
 
     async def create_client_group(self, group_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new client group.
@@ -98,7 +97,7 @@ class ClientGroupManager:
             The created client group dictionary, or None on failure.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         required_keys = {"name", "members", "type"}
         missing = required_keys - group_data.keys()
@@ -131,7 +130,7 @@ class ClientGroupManager:
                 return None
         except Exception as e:
             logger.error("Error creating client group: %s", e, exc_info=True)
-            return None
+            raise
 
     async def update_client_group(self, group_id: str, update_data: Dict[str, Any]) -> bool:
         """Update an existing client group by merging updates with current state.
@@ -144,7 +143,7 @@ class ClientGroupManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
         if not update_data:
             return True
 
@@ -163,7 +162,7 @@ class ClientGroupManager:
             return True
         except Exception as e:
             logger.error("Error updating client group %s: %s", group_id, e, exc_info=True)
-            return False
+            raise
 
     async def delete_client_group(self, group_id: str) -> bool:
         """Delete a client group.
@@ -175,7 +174,7 @@ class ClientGroupManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequestV2(method="delete", path=f"/network-members-group/{group_id}")
@@ -185,7 +184,7 @@ class ClientGroupManager:
             return True
         except Exception as e:
             logger.error("Error deleting client group %s: %s", group_id, e, exc_info=True)
-            return False
+            raise
 
     def _invalidate_cache(self):
         """Invalidate all client group caches."""

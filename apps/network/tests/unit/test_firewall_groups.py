@@ -63,18 +63,15 @@ class TestFirewallGroups:
         """Test get_firewall_groups returns empty list on error."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        groups = await firewall_manager.get_firewall_groups()
-
-        assert groups == []
-
+        with pytest.raises(Exception):
+            await firewall_manager.get_firewall_groups()
     @pytest.mark.asyncio
     async def test_get_firewall_groups_not_connected(self, firewall_manager, mock_connection):
         """Test get_firewall_groups returns empty list when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        groups = await firewall_manager.get_firewall_groups()
-
-        assert groups == []
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await firewall_manager.get_firewall_groups()
 
     # ---- get_firewall_group_by_id ----
 
@@ -96,19 +93,16 @@ class TestFirewallGroups:
         """Test get_firewall_group_by_id returns None when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        group = await firewall_manager.get_firewall_group_by_id("g1")
-
-        assert group is None
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await firewall_manager.get_firewall_group_by_id("g1")
 
     @pytest.mark.asyncio
     async def test_get_firewall_group_by_id_handles_error(self, firewall_manager, mock_connection):
         """Test get_firewall_group_by_id returns None on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        group = await firewall_manager.get_firewall_group_by_id("g1")
-
-        assert group is None
-
+        with pytest.raises(Exception):
+            await firewall_manager.get_firewall_group_by_id("g1")
     @pytest.mark.asyncio
     async def test_get_firewall_group_by_id_empty_data(self, firewall_manager, mock_connection):
         """Test get_firewall_group_by_id returns None when data array is empty."""
@@ -160,23 +154,19 @@ class TestFirewallGroups:
         """Test create_firewall_group returns None when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await firewall_manager.create_firewall_group(
-            {"name": "Test", "group_type": "address-group", "group_members": []}
-        )
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await firewall_manager.create_firewall_group(
+                {"name": "Test", "group_type": "address-group", "group_members": []}
+            )
     @pytest.mark.asyncio
     async def test_create_firewall_group_handles_error(self, firewall_manager, mock_connection):
         """Test create_firewall_group returns None on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await firewall_manager.create_firewall_group(
-            {"name": "Test", "group_type": "address-group", "group_members": []}
-        )
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await firewall_manager.create_firewall_group(
+                {"name": "Test", "group_type": "address-group", "group_members": []}
+            )
     # ---- update_firewall_group ----
 
     @pytest.mark.asyncio
@@ -196,19 +186,16 @@ class TestFirewallGroups:
         """Test update_firewall_group returns False when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await firewall_manager.update_firewall_group("g1", {"name": "Test"})
-
-        assert result is False
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await firewall_manager.update_firewall_group("g1", {"name": "Test"})
 
     @pytest.mark.asyncio
     async def test_update_firewall_group_handles_error(self, firewall_manager, mock_connection):
         """Test update_firewall_group returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await firewall_manager.update_firewall_group("g1", {"name": "Test"})
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await firewall_manager.update_firewall_group("g1", {"name": "Test"})
     # ---- delete_firewall_group ----
 
     @pytest.mark.asyncio
@@ -226,19 +213,16 @@ class TestFirewallGroups:
         """Test delete_firewall_group returns False when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        result = await firewall_manager.delete_firewall_group("g1")
-
-        assert result is False
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await firewall_manager.delete_firewall_group("g1")
 
     @pytest.mark.asyncio
     async def test_delete_firewall_group_handles_error(self, firewall_manager, mock_connection):
         """Test delete_firewall_group returns False on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await firewall_manager.delete_firewall_group("g1")
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await firewall_manager.delete_firewall_group("g1")
     # ---- API path verification ----
 
     @pytest.mark.asyncio

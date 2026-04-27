@@ -75,7 +75,7 @@ class DpiManager:
                 await session.close()
         except Exception as e:
             logger.error("Error calling integration API %s: %s", path, e)
-            return None
+            raise
 
     async def get_dpi_applications(
         self,

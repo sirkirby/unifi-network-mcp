@@ -29,8 +29,7 @@ class DnsManager:
             List of DNS record dicts.
         """
         if not await self._connection.ensure_connected():
-            return []
-
+            raise ConnectionError("Not connected to controller")
         cache_key = f"{CACHE_PREFIX_DNS}_{self._connection.site}"
         cached_data = self._connection.get_cached(cache_key, timeout=300)
         if cached_data is not None:
@@ -44,7 +43,7 @@ class DnsManager:
             return result
         except Exception as e:
             logger.error("Error listing DNS records: %s", e, exc_info=True)
-            return []
+            raise
 
     async def get_dns_record(self, record_id: str) -> Optional[Dict[str, Any]]:
         """Get a DNS record by ID.
@@ -65,7 +64,7 @@ class DnsManager:
             return None
         except Exception as e:
             logger.error("Error getting DNS record %s: %s", record_id, e, exc_info=True)
-            return None
+            raise
 
     async def create_dns_record(self, record_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new static DNS record.
@@ -77,7 +76,7 @@ class DnsManager:
             Created record dict with _id, or None on failure.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequestV2(method="post", path="/static-dns", data=record_data)
@@ -90,7 +89,7 @@ class DnsManager:
             return response
         except Exception as e:
             logger.error("Error creating DNS record: %s", e, exc_info=True)
-            return None
+            raise
 
     async def update_dns_record(self, record_id: str, record_data: Dict[str, Any]) -> bool:
         """Update an existing DNS record.
@@ -105,7 +104,7 @@ class DnsManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
 
         try:
             current = await self.get_dns_record(record_id)
@@ -122,7 +121,7 @@ class DnsManager:
             return True
         except Exception as e:
             logger.error("Error updating DNS record %s: %s", record_id, e, exc_info=True)
-            return False
+            raise
 
     async def delete_dns_record(self, record_id: str) -> bool:
         """Delete a DNS record.
@@ -134,7 +133,7 @@ class DnsManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequestV2(method="delete", path=f"/static-dns/{record_id}")
@@ -143,4 +142,4 @@ class DnsManager:
             return True
         except Exception as e:
             logger.error("Error deleting DNS record %s: %s", record_id, e, exc_info=True)
-            return False
+            raise

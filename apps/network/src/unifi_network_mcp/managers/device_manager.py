@@ -30,8 +30,7 @@ class DeviceManager:
     async def get_devices(self) -> List[Device]:
         """Get list of devices for the current site."""
         if not await self._connection.ensure_connected() or not self._connection.controller:
-            return []
-
+            raise ConnectionError("Not connected to controller")
         cache_key = f"{CACHE_PREFIX_DEVICES}_{self._connection.site}"
         cached_data: Optional[List[Device]] = self._connection.get_cached(cache_key)
         if cached_data is not None:
@@ -44,7 +43,7 @@ class DeviceManager:
             return devices
         except Exception as e:
             logger.error("Error getting devices: %s", e)
-            return []
+            raise
 
     async def get_device_details(self, device_mac: str) -> Optional[Device]:
         """Get detailed information for a specific device by MAC address."""
@@ -68,7 +67,7 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error rebooting device %s: %s", device_mac, e)
-            return False
+            raise
 
     async def rename_device(self, device_mac: str, name: str) -> bool:
         """Rename a device."""
@@ -86,7 +85,7 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error renaming device %s to '%s': %s", device_mac, name, e)
-            return False
+            raise
 
     async def adopt_device(self, device_mac: str) -> bool:
         """Adopt a device by MAC address."""
@@ -102,7 +101,7 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error adopting device %s: %s", device_mac, e)
-            return False
+            raise
 
     async def upgrade_device(self, device_mac: str) -> bool:
         """Start firmware upgrade for a device by MAC address."""
@@ -118,7 +117,7 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error upgrading device %s: %s", device_mac, e)
-            return False
+            raise
 
     async def locate_device(self, device_mac: str, enabled: bool = True) -> bool:
         """Enable or disable device locate (LED blinking).
@@ -142,7 +141,7 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error setting locate mode on device %s: %s", device_mac, e)
-            return False
+            raise
 
     async def force_provision(self, device_mac: str) -> bool:
         """Force re-provision a device.
@@ -164,7 +163,7 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error force provisioning device %s: %s", device_mac, e)
-            return False
+            raise
 
     async def get_device_radio(self, device_mac: str) -> Optional[Dict[str, Any]]:
         """Get focused radio configuration and live stats for an AP.
@@ -258,7 +257,7 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error updating radio '%s' on device %s: %s", radio_id, device_mac, e)
-            return False
+            raise
 
     async def trigger_speedtest(self, gateway_mac: str) -> bool:
         """Trigger a speed test on the gateway.
@@ -280,7 +279,7 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error triggering speedtest on %s: %s", gateway_mac, e)
-            return False
+            raise
 
     async def get_speedtest_status(self, gateway_mac: str) -> Dict[str, Any]:
         """Get the status of a running speed test.
@@ -301,7 +300,7 @@ class DeviceManager:
             return response if isinstance(response, dict) else {}
         except Exception as e:
             logger.error("Error getting speedtest status for %s: %s", gateway_mac, e)
-            return {}
+            raise
 
     async def list_rogue_aps(self, within_hours: int = 24) -> List[Dict[str, Any]]:
         """List detected rogue access points.
@@ -329,7 +328,7 @@ class DeviceManager:
             return result
         except Exception as e:
             logger.error("Error listing rogue APs: %s", e)
-            return []
+            raise
 
     async def trigger_rf_scan(self, ap_mac: str) -> bool:
         """Trigger an RF spectrum scan on an access point.
@@ -351,7 +350,7 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error triggering RF scan on %s: %s", ap_mac, e)
-            return False
+            raise
 
     async def get_rf_scan_results(self, ap_mac: str) -> List[Dict[str, Any]]:
         """Get RF spectrum scan results for an access point.
@@ -378,7 +377,7 @@ class DeviceManager:
             return result
         except Exception as e:
             logger.error("Error getting RF scan results for %s: %s", ap_mac, e)
-            return []
+            raise
 
     async def list_available_channels(self) -> List[Dict[str, Any]]:
         """List available wireless channels for the current site.
@@ -402,7 +401,7 @@ class DeviceManager:
             return result
         except Exception as e:
             logger.error("Error listing available channels: %s", e)
-            return []
+            raise
 
     async def list_known_rogue_aps(self) -> List[Dict[str, Any]]:
         """List APs previously classified as known/acknowledged.
@@ -426,7 +425,7 @@ class DeviceManager:
             return result
         except Exception as e:
             logger.error("Error listing known rogue APs: %s", e)
-            return []
+            raise
 
     async def set_device_led_override(self, device_mac: str, led_override: str) -> bool:
         """Set LED override state on a device.
@@ -456,7 +455,7 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error setting LED override on device %s: %s", device_mac, e)
-            return False
+            raise
 
     async def set_device_disabled(self, device_mac: str, disabled: bool) -> bool:
         """Enable or disable a device without unadopting it.
@@ -486,7 +485,7 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error setting disabled state on device %s: %s", device_mac, e)
-            return False
+            raise
 
     async def set_site_led_enabled(self, enabled: bool) -> bool:
         """Toggle all device LEDs site-wide.
@@ -508,4 +507,4 @@ class DeviceManager:
             return True
         except Exception as e:
             logger.error("Error setting site LED state: %s", e)
-            return False
+            raise

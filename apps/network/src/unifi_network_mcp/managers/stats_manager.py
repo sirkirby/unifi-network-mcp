@@ -103,7 +103,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting network stats: %s", e)
-            return []
+            raise
 
     async def get_client_stats(
         self, client_mac: str, duration_hours: int = 1, granularity: str = "hourly"
@@ -143,7 +143,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting stats for client %s: %s", client_mac, e)
-            return []
+            raise
 
     async def get_device_stats(
         self,
@@ -222,7 +222,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting stats for device %s: %s", device_mac, e)
-            return []
+            raise
 
     async def get_top_clients(self, duration_hours: int = 24, limit: int = 10) -> List[Dict[str, Any]]:
         """Get top clients by usage.
@@ -287,7 +287,7 @@ class StatsManager:
             return cached_data
 
         if not await self._connection.ensure_connected() or not self._connection.controller:
-            return {"applications": [], "categories": []}
+            raise ConnectionError("Not connected to controller")
 
         try:
             await self._connection.controller.dpi_apps.update()
@@ -300,7 +300,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting DPI stats: %s", e)
-            return {"applications": [], "categories": []}
+            raise
 
     async def get_alerts(self, include_archived: bool = False) -> List[Event]:  # Changed return type
         """Get alerts from the controller."""
@@ -310,8 +310,7 @@ class StatsManager:
             return cached_data
 
         if not await self._connection.ensure_connected() or not self._connection.controller:
-            return []
-
+            raise ConnectionError("Not connected to controller")
         try:
             await self._connection.controller.alerts.update()
             alerts: List[Event] = list(self._connection.controller.alerts.values())
@@ -321,7 +320,7 @@ class StatsManager:
             return alerts
         except Exception as e:
             logger.error("Error getting alerts: %s", e)
-            return []
+            raise
 
     async def get_gateway_stats(self, duration_hours: int = 24, granularity: str = "hourly") -> List[Dict[str, Any]]:
         """Get gateway statistics."""
@@ -358,7 +357,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting gateway stats: %s", e)
-            return []
+            raise
 
     async def get_speedtest_results(self, duration_hours: int = 24) -> List[Dict[str, Any]]:
         """Get speed test results from the controller archive."""
@@ -389,7 +388,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting speedtest results: %s", e)
-            return []
+            raise
 
     async def get_site_dpi_traffic(self, by: str = "by_app") -> List[Dict[str, Any]]:
         """Get site-level DPI traffic statistics.
@@ -412,7 +411,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting site DPI traffic: %s", e)
-            return []
+            raise
 
     async def get_client_dpi_traffic(self, client_mac: str, by: str = "by_app") -> List[Dict[str, Any]]:
         """Get DPI traffic statistics for a specific client.
@@ -436,7 +435,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting DPI traffic for client %s: %s", client_mac, e)
-            return []
+            raise
 
     async def get_ips_events(self, duration_hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
         """Get IPS/IDS events.
@@ -467,7 +466,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting IPS events: %s", e)
-            return []
+            raise
 
     async def get_client_sessions(
         self,
@@ -509,7 +508,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting client sessions: %s", e)
-            return []
+            raise
 
     async def get_dashboard(self) -> List[Dict[str, Any]]:
         """Get the site dashboard summary."""
@@ -527,7 +526,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting dashboard: %s", e)
-            return []
+            raise
 
     async def get_anomalies(self, duration_hours: int = 24) -> List[Dict[str, Any]]:
         """Get detected anomalies.
@@ -556,7 +555,7 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting anomalies: %s", e)
-            return []
+            raise
 
     async def get_client_wifi_details(self, client_mac: str) -> Optional[Dict[str, Any]]:
         """Get detailed WiFi information for a specific client.
@@ -621,4 +620,4 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting WiFi details for client %s: %s", client_mac, e)
-            return None
+            raise

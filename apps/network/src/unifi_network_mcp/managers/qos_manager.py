@@ -44,7 +44,7 @@ class QosManager:
             return rules
         except Exception as e:
             logger.error("Error getting QoS rules: %s", e)
-            return []
+            raise
 
     async def get_qos_rule_details(self, rule_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information for a specific QoS rule."""
@@ -56,7 +56,7 @@ class QosManager:
             return rule
         except Exception as e:
             logger.error("Error getting QoS rule details for %s: %s", rule_id, e, exc_info=True)
-            return None
+            raise
 
     async def update_qos_rule(self, rule_id: str, update_data: Dict[str, Any]) -> bool:
         """Update a QoS rule by merging updates with existing data.
@@ -69,7 +69,7 @@ class QosManager:
             bool: True if successful, False otherwise
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
         if not update_data:
             logger.warning("No update data provided for QoS rule %s.", rule_id)
             return True  # No action needed
@@ -96,7 +96,7 @@ class QosManager:
             return True
         except Exception as e:
             logger.error("Error updating QoS rule %s: %s", rule_id, e, exc_info=True)
-            return False
+            raise
 
     async def create_qos_rule(self, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new QoS rule.
@@ -135,7 +135,7 @@ class QosManager:
 
         except Exception as e:
             logger.error("Error creating QoS rule: %s", e)
-            return None
+            raise
 
     async def delete_qos_rule(self, rule_id: str) -> bool:
         """Delete a QoS rule.
@@ -154,4 +154,4 @@ class QosManager:
             return True
         except Exception as e:
             logger.error("Error deleting QoS rule %s: %s", rule_id, e)
-            return False
+            raise

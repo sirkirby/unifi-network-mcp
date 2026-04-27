@@ -47,7 +47,7 @@ class SystemManager:
             return info
         except Exception as e:
             logger.error("Error getting system info: %s", e)
-            return {}
+            raise
 
     async def get_controller_status(self) -> Dict[str, Any]:
         """Get status information about the controller."""
@@ -61,7 +61,7 @@ class SystemManager:
             return {}
         except Exception as e:
             logger.error("Error getting controller status: %s", e)
-            return {}
+            raise
 
     async def create_backup(self) -> Optional[Dict[str, Any]]:
         """Create a backup of the controller configuration.
@@ -82,7 +82,7 @@ class SystemManager:
             return None
         except Exception as e:
             logger.error("Error creating backup: %s", e, exc_info=True)
-            return None
+            raise
 
     async def restore_backup(self, backup_data: bytes) -> bool:
         """Restore a controller configuration from backup.
@@ -94,9 +94,7 @@ class SystemManager:
             bool: True if successful, False otherwise
         """
         if not await self._connection.ensure_connected() or not self._connection.controller:
-            logger.error("Cannot restore backup: Controller not connected.")
-            return False
-
+            raise ConnectionError("Not connected to controller")
         try:
             form = aiohttp.FormData()
             form.add_field(
@@ -121,7 +119,7 @@ class SystemManager:
                     return False
         except Exception as e:
             logger.error("Exception during backup restore: %s", e)
-            return False
+            raise
 
     async def list_backups(self) -> List[Dict[str, Any]]:
         """List available backups on the controller.
@@ -139,7 +137,7 @@ class SystemManager:
             return []
         except Exception as e:
             logger.error("Error listing backups: %s", e, exc_info=True)
-            return []
+            raise
 
     async def delete_backup(self, filename: str) -> bool:
         """Delete a backup file from the controller.
@@ -161,7 +159,7 @@ class SystemManager:
             return True
         except Exception as e:
             logger.error("Error deleting backup '%s': %s", filename, e, exc_info=True)
-            return False
+            raise
 
     async def get_autobackup_settings(self) -> Dict[str, Any]:
         """Get auto-backup settings from the controller.
@@ -184,7 +182,7 @@ class SystemManager:
             }
         except Exception as e:
             logger.error("Error getting auto-backup settings: %s", e, exc_info=True)
-            return {}
+            raise
 
     async def update_autobackup_settings(self, settings: Dict[str, Any]) -> bool:
         """Update auto-backup settings on the controller.
@@ -200,7 +198,7 @@ class SystemManager:
             return await self.update_settings("super_mgmt", settings)
         except Exception as e:
             logger.error("Error updating auto-backup settings: %s", e, exc_info=True)
-            return False
+            raise
 
     async def check_firmware_updates(self) -> Dict[str, Any]:
         """Check for firmware updates for devices."""
@@ -217,7 +215,7 @@ class SystemManager:
             return {}
         except Exception as e:
             logger.error("Error checking firmware updates: %s", e)
-            return {}
+            raise
 
     async def upgrade_controller(self) -> bool:
         """Upgrade the controller to the latest version (requires confirmation)."""
@@ -236,7 +234,7 @@ class SystemManager:
             return success
         except Exception as e:
             logger.error("Error upgrading controller: %s", e)
-            return False
+            raise
 
     async def reboot_controller(self) -> bool:
         """Reboot the controller (requires confirmation)."""
@@ -255,7 +253,7 @@ class SystemManager:
             return success
         except Exception as e:
             logger.error("Error rebooting controller: %s", e)
-            return False
+            raise
 
     async def get_settings(self, section: str) -> List[Dict[str, Any]]:  # API returns list
         """Get system settings for a specific section.
@@ -279,7 +277,7 @@ class SystemManager:
             return settings_list
         except Exception as e:
             logger.error("Error getting %s settings: %s", section, e)
-            return []
+            raise
 
     async def update_settings(self, section: str, settings_data: Dict[str, Any]) -> bool:
         """Update system settings for a specific section.
@@ -331,7 +329,7 @@ class SystemManager:
             return success
         except Exception as e:
             logger.error("Error updating %s settings: %s", section, e)
-            return False
+            raise
 
     async def get_network_health(self) -> List[Dict[str, Any]]:
         """Return a summary of the controller network health.
@@ -369,7 +367,7 @@ class SystemManager:
             return health
         except Exception as e:
             logger.error("Error getting network health: %s", e)
-            return []
+            raise
 
     async def get_site_settings(self) -> Dict[str, Any]:
         """Retrieve general settings for the current site.
@@ -389,7 +387,7 @@ class SystemManager:
             return {"raw": settings_list}
         except Exception as e:
             logger.error("Error getting site settings: %s", e)
-            return {}
+            raise
 
     async def get_sites(self) -> List[Site]:  # Changed return type
         """Get a list of all sites in the controller."""
@@ -407,7 +405,7 @@ class SystemManager:
             return sites
         except Exception as e:
             logger.error("Error getting sites: %s", e)
-            return []
+            raise
 
     async def get_site_details(self, site_identifier: str) -> Optional[Site]:  # Changed return type
         """Get detailed information for a specific site by ID, name, or description.
@@ -480,7 +478,7 @@ class SystemManager:
                 return None
         except Exception as e:
             logger.error("Error creating site '%s': %s", name, e)
-            return None
+            raise
 
     async def update_site(self, site_id: str, description: str) -> bool:
         """Update a site's description.
@@ -523,7 +521,7 @@ class SystemManager:
             return success
         except Exception as e:
             logger.error("Error updating site %s: %s", site_id, e)
-            return False
+            raise
 
     async def delete_site(self, site_id: str) -> bool:
         """Delete a site.
@@ -574,7 +572,7 @@ class SystemManager:
             return success
         except Exception as e:
             logger.error("Error deleting site %s: %s", site_id, e)
-            return False
+            raise
 
     async def switch_site(self, site_identifier: str) -> bool:
         """Switch the active site for the connection manager.
@@ -599,7 +597,7 @@ class SystemManager:
             return True
         except Exception as e:
             logger.error("Error switching to site '%s': %s", site_identifier, e)
-            return False
+            raise
 
     async def get_admin_users(self) -> List[Dict[str, Any]]:
         """Get a list of admin users for the controller."""
@@ -616,7 +614,7 @@ class SystemManager:
             return admins
         except Exception as e:
             logger.error("Error getting admin users: %s", e)
-            return []
+            raise
 
     async def get_admin_user_details(self, user_identifier: str) -> Optional[Dict[str, Any]]:
         """Get detailed information for a specific admin user by ID or name.
@@ -698,7 +696,7 @@ class SystemManager:
                 return None
         except Exception as e:
             logger.error("Error creating admin user '%s': %s", name, e)
-            return None
+            raise
 
     async def update_admin_user(
         self,
@@ -771,7 +769,7 @@ class SystemManager:
                 return False
         except Exception as e:
             logger.error("Error updating admin user %s: %s", user_id, e)
-            return False
+            raise
 
     async def delete_admin_user(self, user_id: str) -> bool:
         """Delete an admin user.
@@ -808,7 +806,7 @@ class SystemManager:
                 return False
         except Exception as e:
             logger.error("Error deleting admin user %s: %s", user_id, e)
-            return False
+            raise
 
     async def invite_admin_user(
         self,
@@ -847,7 +845,7 @@ class SystemManager:
                 return False
         except Exception as e:
             logger.error("Error inviting admin user %s: %s", email, e)
-            return False
+            raise
 
     async def get_current_admin_user(self) -> Optional[Dict[str, Any]]:  # Keep as Dict
         """Get information about the currently logged in admin user (based on connection username)."""

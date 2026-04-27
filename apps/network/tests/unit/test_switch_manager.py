@@ -66,19 +66,16 @@ class TestSwitchManager:
         """Test get_port_profiles returns empty when not connected."""
         mock_connection.ensure_connected.return_value = False
 
-        profiles = await switch_manager.get_port_profiles()
-
-        assert profiles == []
+        with pytest.raises(ConnectionError, match="Not connected to controller"):
+            await switch_manager.get_port_profiles()
 
     @pytest.mark.asyncio
     async def test_get_port_profiles_handles_error(self, switch_manager, mock_connection):
         """Test get_port_profiles returns empty on error."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        profiles = await switch_manager.get_port_profiles()
-
-        assert profiles == []
-
+        with pytest.raises(Exception):
+            await switch_manager.get_port_profiles()
     @pytest.mark.asyncio
     async def test_get_port_profile_by_id_found(self, switch_manager, mock_connection):
         """Test get_port_profile_by_id returns profile."""

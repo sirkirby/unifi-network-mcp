@@ -25,8 +25,7 @@ class ClientManager:
     async def get_clients(self) -> List[Client]:
         """Get list of currently online clients for the current site."""
         if not await self._connection.ensure_connected() or not self._connection.controller:
-            return []
-
+            raise ConnectionError("Not connected to controller")
         cache_key = f"{CACHE_PREFIX_CLIENTS}_online_{self._connection.site}"
         cached_data: Optional[List[Client]] = self._connection.get_cached(cache_key)
         if cached_data is not None:
@@ -54,13 +53,12 @@ class ClientManager:
             return clients
         except Exception as e:
             logger.error("Error getting online clients: %s", e)
-            return []
+            raise
 
     async def get_all_clients(self) -> List[Client]:
         """Get list of all clients (including offline/historical) for the current site."""
         if not await self._connection.ensure_connected() or not self._connection.controller:
-            return []
-
+            raise ConnectionError("Not connected to controller")
         cache_key = f"{CACHE_PREFIX_CLIENTS}_all_{self._connection.site}"
         cached_data: Optional[List[Client]] = self._connection.get_cached(cache_key)
         if cached_data is not None:
@@ -87,7 +85,7 @@ class ClientManager:
             return all_clients
         except Exception as e:
             logger.error("Error getting all clients: %s", e)
-            return []
+            raise
 
     async def get_client_details(self, client_mac: str) -> Optional[Client]:
         """Get detailed information for a specific client by MAC address."""
@@ -113,7 +111,7 @@ class ClientManager:
             return True
         except Exception as e:
             logger.error("Error blocking client %s: %s", client_mac, e)
-            return False
+            raise
 
     async def unblock_client(self, client_mac: str) -> bool:
         """Unblock a client by MAC address."""
@@ -131,7 +129,7 @@ class ClientManager:
             return True
         except Exception as e:
             logger.error("Error unblocking client %s: %s", client_mac, e)
-            return False
+            raise
 
     async def rename_client(self, client_mac: str, name: str) -> bool:
         """Rename a client device."""
@@ -161,7 +159,7 @@ class ClientManager:
             return True
         except Exception as e:
             logger.error("Error renaming client %s to '%s': %s", client_mac, name, e)
-            return False
+            raise
 
     async def force_reconnect_client(self, client_mac: str) -> bool:
         """Force a client to reconnect (kick)."""
@@ -177,7 +175,7 @@ class ClientManager:
             return True
         except Exception as e:
             logger.error("Error forcing reconnect for client %s: %s", client_mac, e)
-            return False
+            raise
 
     async def forget_client(self, client_mac: str) -> bool:
         """Forget/remove a client from the controller's known client history."""
@@ -193,7 +191,7 @@ class ClientManager:
             return True
         except Exception as e:
             logger.error("Error forgetting client %s: %s", client_mac, e)
-            return False
+            raise
 
     async def get_blocked_clients(self) -> List[Client]:
         """Get a list of currently blocked clients."""
@@ -228,7 +226,7 @@ class ClientManager:
             return True
         except Exception as e:
             logger.error("Error authorizing guest %s: %s", client_mac, e)
-            return False
+            raise
 
     async def unauthorize_guest(self, client_mac: str) -> bool:
         """Unauthorize (de-authorize) a guest client."""
@@ -244,7 +242,7 @@ class ClientManager:
             return True
         except Exception as e:
             logger.error("Error unauthorizing guest %s: %s", client_mac, e)
-            return False
+            raise
 
     async def get_client_by_ip(self, ip_address: str) -> Optional[Client]:
         """Get client information by IP address.
@@ -366,4 +364,4 @@ class ClientManager:
             return True
         except Exception as e:
             logger.error("Error setting IP settings for %s: %s", client_mac, e)
-            return False
+            raise

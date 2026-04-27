@@ -55,7 +55,7 @@ class RoutingManager:
             return routes
         except Exception as e:
             logger.error("Error getting routes: %s", e)
-            return []
+            raise
 
     async def get_active_routes(self) -> List[Dict[str, Any]]:
         """Get all active routes (including system routes) from the device.
@@ -87,7 +87,7 @@ class RoutingManager:
                 logger.debug("Active routes endpoint /stat/routing not available on this controller")
             else:
                 logger.error("Error getting active routes: %s", e)
-            return []
+            raise
 
     async def get_route_details(self, route_id: str) -> Optional[Dict[str, Any]]:
         """Get details for a specific route by ID.
@@ -106,7 +106,7 @@ class RoutingManager:
             return route
         except Exception as e:
             logger.error("Error getting route details for %s: %s", route_id, e)
-            return None
+            raise
 
     async def create_route(
         self,
@@ -164,7 +164,7 @@ class RoutingManager:
 
         except Exception as e:
             logger.error("Error creating route: %s", e, exc_info=True)
-            return None
+            raise
 
     async def update_route(
         self,
@@ -229,4 +229,4 @@ class RoutingManager:
 
         except Exception as e:
             logger.error("Error updating route %s: %s", route_id, e, exc_info=True)
-            return False
+            raise

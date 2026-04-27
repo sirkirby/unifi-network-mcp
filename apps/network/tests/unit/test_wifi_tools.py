@@ -72,10 +72,8 @@ class TestDeviceManagerWifi:
         """Test list_rogue_aps returns empty list on exception."""
         mock_connection.request.side_effect = Exception("Connection failed")
 
-        result = await device_manager.list_rogue_aps()
-
-        assert result == []
-
+        with pytest.raises(Exception):
+            await device_manager.list_rogue_aps()
     # ---- Known Rogue APs ----
 
     @pytest.mark.asyncio
@@ -101,10 +99,8 @@ class TestDeviceManagerWifi:
         """Test list_known_rogue_aps returns empty list on exception."""
         mock_connection.request.side_effect = Exception("Connection failed")
 
-        result = await device_manager.list_known_rogue_aps()
-
-        assert result == []
-
+        with pytest.raises(Exception):
+            await device_manager.list_known_rogue_aps()
     # ---- RF Scan ----
 
     @pytest.mark.asyncio
@@ -126,10 +122,8 @@ class TestDeviceManagerWifi:
         """Test trigger_rf_scan returns False on exception."""
         mock_connection.request.side_effect = Exception("AP unreachable")
 
-        result = await device_manager.trigger_rf_scan("aa:bb:cc:dd:ee:ff")
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await device_manager.trigger_rf_scan("aa:bb:cc:dd:ee:ff")
     @pytest.mark.asyncio
     async def test_get_rf_scan_results(self, device_manager, mock_connection):
         """Test get_rf_scan_results calls GET /stat/spectrum-scan/{mac}."""
@@ -154,10 +148,8 @@ class TestDeviceManagerWifi:
         """Test get_rf_scan_results returns empty list on error."""
         mock_connection.request.side_effect = Exception("Not found")
 
-        result = await device_manager.get_rf_scan_results("aa:bb:cc:dd:ee:ff")
-
-        assert result == []
-
+        with pytest.raises(Exception):
+            await device_manager.get_rf_scan_results("aa:bb:cc:dd:ee:ff")
     # ---- Available Channels ----
 
     @pytest.mark.asyncio
@@ -219,10 +211,8 @@ class TestDeviceManagerWifi:
         mock_connection.controller.devices.values = MagicMock(return_value=[mock_device])
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await device_manager.set_device_led_override("aa:bb:cc:dd:ee:ff", "on")
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await device_manager.set_device_led_override("aa:bb:cc:dd:ee:ff", "on")
     # ---- Device Disabled ----
 
     @pytest.mark.asyncio
@@ -347,10 +337,8 @@ class TestNetworkManagerApGroups:
         """Test list_ap_groups returns empty list on exception."""
         mock_connection.request.side_effect = Exception("Connection failed")
 
-        result = await network_manager.list_ap_groups()
-
-        assert result == []
-
+        with pytest.raises(Exception):
+            await network_manager.list_ap_groups()
     # ---- Get AP Group Details ----
 
     @pytest.mark.asyncio
@@ -373,10 +361,8 @@ class TestNetworkManagerApGroups:
         """Test get_ap_group_details returns None when group not found."""
         mock_connection.request.side_effect = Exception("Not found")
 
-        result = await network_manager.get_ap_group_details("nonexistent")
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await network_manager.get_ap_group_details("nonexistent")
     # ---- Create AP Group ----
 
     @pytest.mark.asyncio
@@ -433,10 +419,8 @@ class TestNetworkManagerApGroups:
         """Test update_ap_group returns False when group not found."""
         mock_connection.request.side_effect = Exception("Not found")
 
-        result = await network_manager.update_ap_group("nonexistent", {"name": "New Name"})
-
-        assert result is False
-
+        with pytest.raises(Exception):
+            await network_manager.update_ap_group("nonexistent", {"name": "New Name"})
     # ---- Delete AP Group ----
 
     @pytest.mark.asyncio

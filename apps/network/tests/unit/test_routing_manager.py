@@ -70,10 +70,8 @@ class TestRoutingManager:
         """Test get_routes returns empty list on error."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        routes = await routing_manager.get_routes()
-
-        assert routes == []
-
+        with pytest.raises(Exception):
+            await routing_manager.get_routes()
     @pytest.mark.asyncio
     async def test_get_active_routes_returns_list(self, routing_manager, mock_connection):
         """Test get_active_routes returns active routing table."""
@@ -96,10 +94,8 @@ class TestRoutingManager:
         """Test get_active_routes returns empty list on error."""
         mock_connection.request.side_effect = Exception("Network error")
 
-        routes = await routing_manager.get_active_routes()
-
-        assert routes == []
-
+        with pytest.raises(Exception):
+            await routing_manager.get_active_routes()
     @pytest.mark.asyncio
     async def test_get_route_details_found(self, routing_manager, mock_connection):
         """Test get_route_details returns route when found."""
@@ -180,14 +176,12 @@ class TestRoutingManager:
         """Test create_route returns None on error."""
         mock_connection.request.side_effect = Exception("API error")
 
-        result = await routing_manager.create_route(
-            name="Test",
-            static_route_network="10.0.0.0/24",
-            static_route_nexthop="192.168.1.1",
-        )
-
-        assert result is None
-
+        with pytest.raises(Exception):
+            await routing_manager.create_route(
+                name="Test",
+                static_route_network="10.0.0.0/24",
+                static_route_nexthop="192.168.1.1",
+            )
     @pytest.mark.asyncio
     async def test_update_route_success(self, routing_manager, mock_connection):
         """Test update_route with valid parameters."""
@@ -238,9 +232,7 @@ class TestRoutingManager:
             route_id="nonexistent",
             name="Test",
         )
-
         assert result is False
-
     @pytest.mark.asyncio
     async def test_update_route_no_updates(self, routing_manager, mock_connection):
         """Test update_route with no changes still succeeds (sends full object)."""
@@ -268,12 +260,11 @@ class TestRoutingManager:
 
     @pytest.mark.asyncio
     async def test_update_route_handles_error(self, routing_manager, mock_connection):
-        """Test update_route returns False on error."""
+        """Test update_route raises on API error."""
         mock_connection.request.side_effect = [
             [{"_id": "r1", "name": "Test"}],
             Exception("API error"),
         ]
 
-        result = await routing_manager.update_route(route_id="r1", name="New")
-
-        assert result is False
+        with pytest.raises(Exception, match="API error"):
+            await routing_manager.update_route(route_id="r1", name="New")

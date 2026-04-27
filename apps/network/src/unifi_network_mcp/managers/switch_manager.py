@@ -45,8 +45,7 @@ class SwitchManager:
             return cached
 
         if not await self._connection.ensure_connected():
-            return []
-
+            raise ConnectionError("Not connected to controller")
         try:
             api_request = ApiRequest(method="get", path="/rest/portconf")
             response = await self._connection.request(api_request)
@@ -61,7 +60,7 @@ class SwitchManager:
             return data
         except Exception as e:
             logger.error("Error getting port profiles: %s", e)
-            return []
+            raise
 
     async def get_port_profile_by_id(self, profile_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific port profile by ID.
@@ -73,7 +72,7 @@ class SwitchManager:
             The port profile dictionary, or None if not found.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequest(method="get", path=f"/rest/portconf/{profile_id}")
@@ -88,7 +87,7 @@ class SwitchManager:
             return data[0] if data else None
         except Exception as e:
             logger.error("Error getting port profile %s: %s", profile_id, e)
-            return None
+            raise
 
     async def create_port_profile(self, profile_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new port profile.
@@ -100,7 +99,7 @@ class SwitchManager:
             The created port profile dictionary, or None on failure.
         """
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         if not profile_data.get("name") or not profile_data.get("forward"):
             logger.error("Missing required fields 'name' and/or 'forward' for port profile")
@@ -122,7 +121,7 @@ class SwitchManager:
             return data[0] if data else None
         except Exception as e:
             logger.error("Error creating port profile: %s", e, exc_info=True)
-            return None
+            raise
 
     async def update_port_profile(self, profile_id: str, update_data: Dict[str, Any]) -> bool:
         """Update an existing port profile by merging updates with current state.
@@ -135,7 +134,7 @@ class SwitchManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
         if not update_data:
             return True
 
@@ -154,7 +153,7 @@ class SwitchManager:
             return True
         except Exception as e:
             logger.error("Error updating port profile %s: %s", profile_id, e, exc_info=True)
-            return False
+            raise
 
     async def delete_port_profile(self, profile_id: str) -> bool:
         """Delete a port profile.
@@ -168,7 +167,7 @@ class SwitchManager:
             True on success, False on failure.
         """
         if not await self._connection.ensure_connected():
-            return False
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequest(method="delete", path=f"/rest/portconf/{profile_id}")
@@ -178,14 +177,14 @@ class SwitchManager:
             return True
         except Exception as e:
             logger.error("Error deleting port profile %s: %s", profile_id, e, exc_info=True)
-            return False
+            raise
 
     # ---- Device stat helpers ----
 
     async def _get_device_stat(self, device_mac: str) -> Optional[Dict[str, Any]]:
         """Get raw device stat data for a specific device."""
         if not await self._connection.ensure_connected():
-            return None
+            raise ConnectionError("Not connected to controller")
 
         try:
             api_request = ApiRequest(method="get", path=f"/stat/device/{device_mac}")
@@ -200,7 +199,7 @@ class SwitchManager:
             return data[0] if data else None
         except Exception as e:
             logger.error("Error getting device stat for %s: %s", device_mac, e)
-            return None
+            raise
 
     async def _get_device_id(self, device_mac: str) -> Optional[str]:
         """Get the device _id from its MAC address (needed for REST writes)."""

@@ -145,7 +145,7 @@ class EventManager:
             return []
         except Exception as e:
             logger.error("Error getting events (v2): %s", e)
-            return []
+            raise
 
     async def _get_events_legacy(
         self,
@@ -174,7 +174,7 @@ class EventManager:
             return []
         except Exception as e:
             logger.error("Error getting events (legacy): %s", e)
-            return []
+            raise
 
     async def get_alarms(
         self,
@@ -227,7 +227,7 @@ class EventManager:
             return []
         except Exception as e:
             logger.error("Error getting alarms (v2): %s", e)
-            return []
+            raise
 
     async def _get_alarms_legacy(self, archived: bool, limit: int) -> List[Dict[str, Any]]:
         """Get alarms using the legacy /stat/alarm API."""
@@ -249,7 +249,7 @@ class EventManager:
             return alarms[:limit]
         except Exception as e:
             logger.error("Error getting alarms (legacy): %s", e)
-            return []
+            raise
 
     def get_event_type_prefixes(self) -> List[Dict[str, str]]:
         """Get a list of known event type prefixes for filtering."""
@@ -291,7 +291,7 @@ class EventManager:
             return True
         except Exception as e:
             logger.error("Error archiving alarm %s: %s", alarm_id, e)
-            return False
+            raise
 
     async def archive_all_alarms(self) -> bool:
         """Archive all active alarms."""
@@ -306,4 +306,4 @@ class EventManager:
             return True
         except Exception as e:
             logger.error("Error archiving all alarms: %s", e)
-            return False
+            raise

@@ -109,9 +109,9 @@ class TestUpdateTrafficRouteMutationSafety:
         mock_connection.request = AsyncMock(side_effect=Exception("API error"))
 
         with patch.object(firewall_manager, "get_traffic_routes", new_callable=AsyncMock, return_value=[route]):
-            result = await firewall_manager.update_traffic_route("route001", {"description": "Should not persist"})
+            with pytest.raises(Exception, match="API error"):
+                await firewall_manager.update_traffic_route("route001", {"description": "Should not persist"})
 
-        assert result is False
         assert route.raw == original_raw
 
 
