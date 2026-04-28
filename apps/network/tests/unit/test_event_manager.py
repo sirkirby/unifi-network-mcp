@@ -66,6 +66,7 @@ class TestEventManagerV2:
 
         with pytest.raises(Exception):
             await event_manager.get_events()
+
     @pytest.mark.asyncio
     async def test_get_alarms_v2(self, event_manager, mock_connection):
         mock_connection.request.return_value = [
@@ -146,6 +147,7 @@ class TestEventManagerLegacy:
 
         with pytest.raises(Exception):
             await event_manager.get_events()
+
     @pytest.mark.asyncio
     async def test_get_alarms_returns_list(self, event_manager, mock_connection):
         mock_alarms = [
@@ -216,6 +218,7 @@ class TestEventManagerCommon:
 
         with pytest.raises(Exception):
             await event_manager.archive_alarm("alarm123")
+
     @pytest.mark.asyncio
     async def test_archive_all_alarms_success(self, event_manager, mock_connection):
         mock_connection.request.return_value = {}
@@ -228,6 +231,7 @@ class TestEventManagerCommon:
 
         with pytest.raises(Exception):
             await event_manager.archive_all_alarms()
+
     @pytest.mark.asyncio
     async def test_auto_detect_v2(self, event_manager, mock_connection):
         """Test that v2 API is detected when system-log/count succeeds."""

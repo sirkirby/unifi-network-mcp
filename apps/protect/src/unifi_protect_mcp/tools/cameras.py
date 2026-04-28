@@ -291,11 +291,11 @@ async def protect_toggle_recording(
 @server.tool(
     name="protect_ptz_move",
     description=(
-        "Adjusts PTZ camera position. Currently only zoom level is supported via the API. "
-        "For pan/tilt, use protect_ptz_preset to move to a saved preset position. "
+        "Moves a PTZ camera using normalized pan/tilt speeds. "
+        "Requires confirm=True to execute. Use protect_ptz_zoom for zoom movement. "
         "Only works on PTZ-capable cameras."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
     permission_category="camera",
     permission_action="update",
 )
@@ -303,25 +303,45 @@ async def protect_ptz_move(
     camera_id: Annotated[str, Field(description="Camera UUID of a PTZ-capable camera (from protect_list_cameras)")],
     pan: Annotated[
         Optional[float],
-        Field(
-            description="Pan position in degrees. Note: not currently supported via the API; use protect_ptz_preset for pan control."
-        ),
+        Field(description="Pan speed from -1000 (left) to 1000 (right). Use 0 to stop pan."),
     ] = None,
     tilt: Annotated[
         Optional[float],
-        Field(
-            description="Tilt position in degrees. Note: not currently supported via the API; use protect_ptz_preset for tilt control."
-        ),
+        Field(description="Tilt speed from -1000 (down) to 1000 (up). Use 0 to stop tilt."),
     ] = None,
-    zoom: Annotated[
-        Optional[int],
-        Field(description="Zoom level (0 = wide, higher values = more zoom). The maximum depends on the camera model."),
-    ] = None,
+    duration_ms: Annotated[
+        int,
+        Field(ge=0, le=5000, description="How long to move before automatically sending a stop command."),
+    ] = 250,
+    confirm: Annotated[
+        bool,
+        Field(description="Set to true to execute the physical PTZ movement. Defaults to false for preview."),
+    ] = False,
 ) -> Dict[str, Any]:
-    """Adjust PTZ camera position (zoom only; pan/tilt via presets)."""
-    logger.info("protect_ptz_move tool called for %s (pan=%s, tilt=%s, zoom=%s)", camera_id, pan, tilt, zoom)
+    """Move a PTZ camera with preview/confirm."""
+    logger.info(
+        "protect_ptz_move tool called for %s (pan=%s, tilt=%s, duration_ms=%s, confirm=%s)",
+        camera_id,
+        pan,
+        tilt,
+        duration_ms,
+        confirm,
+    )
     try:
-        result = await camera_manager.ptz_move(camera_id, pan=pan, tilt=tilt, zoom=zoom)
+        if not confirm:
+            camera = await camera_manager.get_camera(camera_id)
+            if not camera.get("is_ptz"):
+                return {"success": False, "error": f"Camera {camera_id} does not support PTZ"}
+            return preview_response(
+                action="move",
+                resource_type="ptz_camera",
+                resource_id=camera_id,
+                resource_name=camera.get("name"),
+                current_state={"is_ptz": camera.get("is_ptz")},
+                proposed_changes={"pan": pan or 0, "tilt": tilt or 0, "duration_ms": duration_ms},
+            )
+
+        result = await camera_manager.ptz_move(camera_id, pan=pan, tilt=tilt, duration_ms=duration_ms)
         return {"success": True, "data": result}
     except ValueError as e:
         return {"success": False, "error": str(e)}
@@ -331,12 +351,69 @@ async def protect_ptz_move(
 
 
 @server.tool(
+    name="protect_ptz_zoom",
+    description=(
+        "Zooms a PTZ camera using normalized zoom speed. "
+        "Requires confirm=True to execute. This is separate from optical zoom settings."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    permission_category="camera",
+    permission_action="update",
+)
+async def protect_ptz_zoom(
+    camera_id: Annotated[str, Field(description="Camera UUID of a PTZ-capable camera (from protect_list_cameras)")],
+    zoom_speed: Annotated[
+        int,
+        Field(ge=-1000, le=1000, description="Zoom speed from -1000 (out) to 1000 (in). Use 0 to stop zoom."),
+    ] = 0,
+    duration_ms: Annotated[
+        int,
+        Field(ge=0, le=5000, description="How long to zoom before automatically sending a stop command."),
+    ] = 250,
+    confirm: Annotated[
+        bool,
+        Field(description="Set to true to execute the physical PTZ zoom. Defaults to false for preview."),
+    ] = False,
+) -> Dict[str, Any]:
+    """Zoom a PTZ camera with preview/confirm."""
+    logger.info(
+        "protect_ptz_zoom tool called for %s (zoom_speed=%s, duration_ms=%s, confirm=%s)",
+        camera_id,
+        zoom_speed,
+        duration_ms,
+        confirm,
+    )
+    try:
+        if not confirm:
+            camera = await camera_manager.get_camera(camera_id)
+            if not camera.get("is_ptz"):
+                return {"success": False, "error": f"Camera {camera_id} does not support PTZ"}
+            return preview_response(
+                action="zoom",
+                resource_type="ptz_camera",
+                resource_id=camera_id,
+                resource_name=camera.get("name"),
+                current_state={"is_ptz": camera.get("is_ptz")},
+                proposed_changes={"zoom_speed": zoom_speed, "duration_ms": duration_ms},
+            )
+
+        result = await camera_manager.ptz_zoom(camera_id, zoom_speed=zoom_speed, duration_ms=duration_ms)
+        return {"success": True, "data": result}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error with PTZ zoom for camera %s: %s", camera_id, e, exc_info=True)
+        return {"success": False, "error": f"Failed to execute PTZ zoom: {e}"}
+
+
+@server.tool(
     name="protect_ptz_preset",
     description=(
         "Moves a PTZ camera to a saved preset position by slot number. "
-        "Returns available presets for the camera. Only works on PTZ-capable cameras."
+        "Returns available presets for the camera. Requires confirm=True to execute. "
+        "Only works on PTZ-capable cameras."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
     permission_category="camera",
     permission_action="update",
 )
@@ -348,10 +425,27 @@ async def protect_ptz_preset(
             description="Preset slot number to move the camera to. Available slots can be seen in the camera's PTZ preset list."
         ),
     ],
+    confirm: Annotated[
+        bool,
+        Field(description="Set to true to move to the preset. Defaults to false for preview."),
+    ] = False,
 ) -> Dict[str, Any]:
-    """Move PTZ camera to a preset position."""
-    logger.info("protect_ptz_preset tool called for %s (slot=%s)", camera_id, preset_slot)
+    """Move PTZ camera to a preset position with preview/confirm."""
+    logger.info("protect_ptz_preset tool called for %s (slot=%s, confirm=%s)", camera_id, preset_slot, confirm)
     try:
+        if not confirm:
+            camera = await camera_manager.get_camera(camera_id)
+            if not camera.get("is_ptz"):
+                return {"success": False, "error": f"Camera {camera_id} does not support PTZ"}
+            return preview_response(
+                action="move_to_preset",
+                resource_type="ptz_camera",
+                resource_id=camera_id,
+                resource_name=camera.get("name"),
+                current_state={"is_ptz": camera.get("is_ptz")},
+                proposed_changes={"preset_slot": preset_slot},
+            )
+
         result = await camera_manager.ptz_goto_preset(camera_id, preset_slot)
         return {"success": True, "data": result}
     except ValueError as e:
@@ -418,5 +512,5 @@ logger.info(
     "Camera tools registered: protect_list_cameras, protect_get_camera, "
     "protect_get_snapshot, protect_get_camera_streams, protect_get_camera_analytics, "
     "protect_update_camera_settings, protect_toggle_recording, "
-    "protect_ptz_move, protect_ptz_preset, protect_reboot_camera"
+    "protect_ptz_move, protect_ptz_zoom, protect_ptz_preset, protect_reboot_camera"
 )

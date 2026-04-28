@@ -6,6 +6,7 @@ update settings, and control PTZ functions via the pyunifiprotect bootstrap data
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -14,6 +15,10 @@ from uiprotect.data.types import IRLEDMode, RecordingMode
 from unifi_protect_mcp.managers.connection_manager import ProtectConnectionManager
 
 logger = logging.getLogger(__name__)
+
+PTZ_MIN_SPEED = -1000
+PTZ_MAX_SPEED = 1000
+PTZ_MAX_DURATION_MS = 5000
 
 
 class CameraManager:
@@ -35,6 +40,54 @@ class CameraManager:
         return camera
 
     @staticmethod
+    def _is_ptz(camera) -> bool:
+        return (
+            bool(camera.feature_flags.is_ptz)
+            if camera.feature_flags and hasattr(camera.feature_flags, "is_ptz")
+            else False
+        )
+
+    def _get_ptz_camera(self, camera_id: str):
+        camera = self._get_camera(camera_id)
+        if not self._is_ptz(camera):
+            raise ValueError(f"Camera {camera_id} ({camera.name}) does not support PTZ")
+        return camera
+
+    @staticmethod
+    def _validate_ptz_speed(value: Optional[float], field: str) -> int:
+        speed = int(value or 0)
+        if speed < PTZ_MIN_SPEED or speed > PTZ_MAX_SPEED:
+            raise ValueError(f"{field} must be between {PTZ_MIN_SPEED} and {PTZ_MAX_SPEED}")
+        return speed
+
+    @staticmethod
+    def _validate_ptz_duration(duration_ms: int) -> int:
+        duration = int(duration_ms)
+        if duration < 0 or duration > PTZ_MAX_DURATION_MS:
+            raise ValueError(f"duration_ms must be between 0 and {PTZ_MAX_DURATION_MS}")
+        return duration
+
+    async def _send_ptz_continuous(
+        self,
+        camera_id: str,
+        *,
+        x: int = 0,
+        y: int = 0,
+        z: int = 0,
+        duration_ms: int = 250,
+    ) -> Dict[str, Any]:
+        """Send a UniFi Protect PTZ continuous-move command and stop after duration."""
+        payload = {"type": "continuous", "payload": {"x": x, "y": y, "z": z}}
+        result = await self._cm.client.api_request(f"cameras/{camera_id}/move", method="post", json=payload)
+
+        if duration_ms and any((x, y, z)):
+            await asyncio.sleep(duration_ms / 1000)
+            stop_payload = {"type": "continuous", "payload": {"x": 0, "y": 0, "z": 0}}
+            await self._cm.client.api_request(f"cameras/{camera_id}/move", method="post", json=stop_payload)
+
+        return {"command": payload, "controller_response": result}
+
+    @staticmethod
     def _format_camera_summary(camera) -> Dict[str, Any]:
         """Format a camera into a summary dict with essential fields."""
         recording_mode = None
@@ -51,6 +104,7 @@ class CameraManager:
             "last_seen": camera.last_seen.isoformat() if camera.last_seen else None,
             "recording_mode": recording_mode,
             "is_recording": camera.is_recording,
+            "is_ptz": CameraManager._is_ptz(camera),
         }
 
     # ------------------------------------------------------------------
@@ -97,11 +151,7 @@ class CameraManager:
             smart_detect_types = [str(t.value) for t in camera.smart_detect_settings.object_types]
 
         # Feature flags for capabilities
-        is_ptz = (
-            bool(camera.feature_flags.is_ptz)
-            if camera.feature_flags and hasattr(camera.feature_flags, "is_ptz")
-            else False
-        )
+        is_ptz = self._is_ptz(camera)
 
         detail = {
             **summary,
@@ -418,13 +468,7 @@ class CameraManager:
         camera = self._get_camera(camera_id)
 
         # Verify camera is PTZ capable
-        is_ptz = (
-            bool(camera.feature_flags.is_ptz)
-            if camera.feature_flags and hasattr(camera.feature_flags, "is_ptz")
-            else False
-        )
-        if not is_ptz:
-            raise ValueError(f"Camera {camera_id} ({camera.name}) does not support PTZ")
+        self._get_ptz_camera(camera_id)
 
         # Fetch available presets for validation
         presets = await camera.get_ptz_presets()
@@ -443,45 +487,40 @@ class CameraManager:
         }
 
     async def ptz_move(
-        self, camera_id: str, pan: Optional[float] = None, tilt: Optional[float] = None, zoom: Optional[int] = None
+        self, camera_id: str, pan: Optional[float] = None, tilt: Optional[float] = None, duration_ms: int = 250
     ) -> Dict[str, Any]:
-        """Adjust PTZ position.
-
-        Note: pyunifiprotect does not expose a direct pan/tilt move API.
-        Only zoom level can be set directly via set_camera_zoom().
-        For pan/tilt, use PTZ presets via ptz_goto_preset().
-        """
-        camera = self._get_camera(camera_id)
-
-        is_ptz = (
-            bool(camera.feature_flags.is_ptz)
-            if camera.feature_flags and hasattr(camera.feature_flags, "is_ptz")
-            else False
-        )
-        if not is_ptz:
-            raise ValueError(f"Camera {camera_id} ({camera.name}) does not support PTZ")
+        """Move a PTZ camera using the Protect continuous movement API."""
+        camera = self._get_ptz_camera(camera_id)
+        x = self._validate_ptz_speed(pan, "pan")
+        y = self._validate_ptz_speed(tilt, "tilt")
+        duration = self._validate_ptz_duration(duration_ms)
 
         result: Dict[str, Any] = {
             "camera_id": camera_id,
             "camera_name": camera.name,
-            "actions_taken": [],
-            "warnings": [],
+            "movement": {"pan": x, "tilt": y, "duration_ms": duration},
         }
 
-        if pan is not None or tilt is not None:
-            result["warnings"].append(
-                "Direct pan/tilt movement is not supported by the pyunifiprotect API. "
-                "Use protect_ptz_preset to move to a named preset position instead."
-            )
-
-        if zoom is not None:
-            await camera.set_camera_zoom(int(zoom))
-            result["actions_taken"].append(f"zoom_level={zoom}")
-
-        if not result["actions_taken"] and not result["warnings"]:
-            result["warnings"].append("No actions specified. Provide at least zoom level.")
+        command = await self._send_ptz_continuous(camera_id, x=x, y=y, z=0, duration_ms=duration)
+        result["controller_response"] = command["controller_response"]
+        result["actions_taken"] = [f"pan={x}", f"tilt={y}", f"duration_ms={duration}"]
 
         return result
+
+    async def ptz_zoom(self, camera_id: str, zoom_speed: int = 0, duration_ms: int = 250) -> Dict[str, Any]:
+        """Zoom a PTZ camera using the Protect continuous movement API."""
+        camera = self._get_ptz_camera(camera_id)
+        z = self._validate_ptz_speed(zoom_speed, "zoom_speed")
+        duration = self._validate_ptz_duration(duration_ms)
+
+        command = await self._send_ptz_continuous(camera_id, x=0, y=0, z=z, duration_ms=duration)
+        return {
+            "camera_id": camera_id,
+            "camera_name": camera.name,
+            "movement": {"zoom_speed": z, "duration_ms": duration},
+            "controller_response": command["controller_response"],
+            "actions_taken": [f"zoom_speed={z}", f"duration_ms={duration}"],
+        }
 
     async def reboot_camera(self, camera_id: str) -> Dict[str, Any]:
         """Return camera info for reboot preview."""

@@ -76,6 +76,7 @@ class TestGetSystemInfo:
 
         with pytest.raises(Exception):
             await system_manager.get_system_info()
+
     @pytest.mark.asyncio
     async def test_cache_hit(self, system_manager, mock_connection):
         """Test that cached data is returned without making a request."""
@@ -162,6 +163,8 @@ class TestGetControllerStatus:
 
         with pytest.raises(Exception):
             await system_manager.get_controller_status()
+
+
 class TestCheckFirmwareUpdates:
     """Tests for SystemManager.check_firmware_updates()."""
 
@@ -226,6 +229,8 @@ class TestCheckFirmwareUpdates:
 
         with pytest.raises(Exception):
             await system_manager.check_firmware_updates()
+
+
 class TestGetNetworkHealth:
     """Tests for SystemManager.get_network_health().
 

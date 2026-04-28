@@ -656,7 +656,8 @@ class FirewallManager:
                     "Failed to create firewall policy '%s'. Unexpected V2 response format: %s", policy_name, response
                 )
                 raise RuntimeError(
-                    "Unexpected response from controller (no _id in response). Raw: %s" % json.dumps(response, default=str)
+                    "Unexpected response from controller (no _id in response). Raw: %s"
+                    % json.dumps(response, default=str)
                 )
 
         except Exception as e:
@@ -722,10 +723,7 @@ class FirewallManager:
             # payload). For a zones listing we only want the zone metadata,
             # so drop the matrix field if present. The matrix is still
             # available via a dedicated tool if needed.
-            data = [
-                {k: v for k, v in zone.items() if k != "data"} if isinstance(zone, dict) else zone
-                for zone in data
-            ]
+            data = [{k: v for k, v in zone.items() if k != "data"} if isinstance(zone, dict) else zone for zone in data]
             self._connection._update_cache(cache_key, data)
             return data
         except Exception as e:

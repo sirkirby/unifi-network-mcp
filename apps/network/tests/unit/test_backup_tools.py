@@ -69,6 +69,7 @@ class TestBackupTools:
 
         with pytest.raises(Exception):
             await system_manager.create_backup()
+
     # ---- List Backups ----
 
     @pytest.mark.asyncio
@@ -101,6 +102,7 @@ class TestBackupTools:
 
         with pytest.raises(Exception):
             await system_manager.list_backups()
+
     # ---- Delete Backup ----
 
     @pytest.mark.asyncio
@@ -124,6 +126,7 @@ class TestBackupTools:
 
         with pytest.raises(Exception):
             await system_manager.delete_backup("nonexistent.unf")
+
     # ---- Auto-Backup Settings ----
 
     @pytest.mark.asyncio
@@ -180,6 +183,7 @@ class TestBackupTools:
 
         with pytest.raises(Exception):
             await system_manager.update_autobackup_settings({"autobackup_enabled": True})
+
     # ---- API Path Verification ----
 
     @pytest.mark.asyncio

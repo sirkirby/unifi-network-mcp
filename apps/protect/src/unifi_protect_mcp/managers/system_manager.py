@@ -48,7 +48,7 @@ class SystemManager:
             "id": nvr.id,
             "name": nvr.name,
             "model": str(nvr.type),
-            "hardware_platform": nvr.hardware_platform,
+            "hardware_platform": getattr(nvr, "hardware_platform", None),
             "firmware_version": nvr.firmware_version,
             "version": str(nvr.version),
             "host": str(nvr.host) if nvr.host else None,

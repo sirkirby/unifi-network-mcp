@@ -74,6 +74,7 @@ class TestUsergroupManager:
 
         with pytest.raises(Exception):
             await usergroup_manager.get_usergroups()
+
     @pytest.mark.asyncio
     async def test_get_usergroup_details_found(self, usergroup_manager, mock_connection):
         """Test get_usergroup_details returns group when found."""
@@ -141,6 +142,7 @@ class TestUsergroupManager:
 
         with pytest.raises(Exception):
             await usergroup_manager.create_usergroup(name="Test")
+
     @pytest.mark.asyncio
     async def test_update_usergroup_success(self, usergroup_manager, mock_connection):
         """Test update_usergroup with valid parameters."""
@@ -174,6 +176,7 @@ class TestUsergroupManager:
             name="Test",
         )
         assert result is False
+
     @pytest.mark.asyncio
     async def test_update_usergroup_no_updates(self, usergroup_manager, mock_connection):
         """Test update_usergroup returns False when no updates provided."""

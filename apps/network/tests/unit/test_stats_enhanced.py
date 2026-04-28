@@ -427,6 +427,7 @@ class TestStatsManagerEnhanced:
 
         with pytest.raises(Exception):
             await stats_manager.get_gateway_stats()
+
     @pytest.mark.asyncio
     async def test_get_ips_events_handles_error(self, stats_manager, mock_connection):
         """Test get_ips_events returns empty list on error."""
@@ -434,6 +435,7 @@ class TestStatsManagerEnhanced:
 
         with pytest.raises(Exception):
             await stats_manager.get_ips_events()
+
     @pytest.mark.asyncio
     async def test_get_dashboard_handles_error(self, stats_manager, mock_connection):
         """Test get_dashboard returns empty list on error."""
@@ -441,6 +443,7 @@ class TestStatsManagerEnhanced:
 
         with pytest.raises(Exception):
             await stats_manager.get_dashboard()
+
     @pytest.mark.asyncio
     async def test_get_client_wifi_details_handles_error(self, stats_manager, mock_connection):
         """Test get_client_wifi_details returns None on error."""
@@ -448,6 +451,7 @@ class TestStatsManagerEnhanced:
 
         with pytest.raises(Exception):
             await stats_manager.get_client_wifi_details("aa:bb:cc:dd:ee:ff")
+
     # ---- Cache tests ----
 
     @pytest.mark.asyncio
@@ -511,6 +515,7 @@ class TestDeviceManagerSpeedtest:
 
         with pytest.raises(Exception):
             await device_manager.trigger_speedtest("aa:bb:cc:dd:ee:ff")
+
     @pytest.mark.asyncio
     async def test_get_speedtest_status(self, device_manager, mock_connection):
         """Test get_speedtest_status sends correct command."""

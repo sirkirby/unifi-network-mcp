@@ -203,6 +203,7 @@ def mock_cm():
     cm.host = "192.168.1.1"
     cam = _make_camera()
     cm.client.bootstrap = _make_bootstrap(cameras={"cam-001": cam})
+    cm.client.api_request = AsyncMock(return_value={"success": True})
     return cm
 
 
@@ -215,6 +216,7 @@ def mock_cm_multiple_cameras():
     cam2 = _make_camera(id="cam-002", name="Back Yard", is_recording=False, recording_mode=_FakeRecordingMode.NEVER)
     cam3 = _make_camera(id="cam-003", name="Garage", is_connected=False, state=_FakeStateType.DISCONNECTED)
     cm.client.bootstrap = _make_bootstrap(cameras={"cam-001": cam1, "cam-002": cam2, "cam-003": cam3})
+    cm.client.api_request = AsyncMock(return_value={"success": True})
     return cm
 
 
@@ -247,6 +249,7 @@ class TestCameraManagerListCameras:
         assert cam["is_connected"] is True
         assert cam["is_recording"] is True
         assert cam["recording_mode"] == "always"
+        assert cam["is_ptz"] is False
 
     @pytest.mark.asyncio
     async def test_multiple_cameras(self, mock_cm_multiple_cameras):
@@ -537,28 +540,69 @@ class TestCameraManagerPTZ:
             await mgr.ptz_goto_preset("cam-001", 99)
 
     @pytest.mark.asyncio
-    async def test_ptz_move_zoom_only(self):
+    async def test_ptz_move_pan_tilt(self):
         from unifi_protect_mcp.managers.camera_manager import CameraManager
 
         cam = _make_camera(is_ptz=True)
         cm = MagicMock()
         cm.client.bootstrap = _make_bootstrap(cameras={"cam-001": cam})
+        cm.client.api_request = AsyncMock(return_value={"success": True})
         mgr = CameraManager(cm)
-        result = await mgr.ptz_move("cam-001", zoom=5)
-        assert "zoom_level=5" in result["actions_taken"]
-        cam.set_camera_zoom.assert_awaited_once_with(5)
+        result = await mgr.ptz_move("cam-001", pan=100, tilt=-50, duration_ms=0)
+        assert result["movement"] == {"pan": 100, "tilt": -50, "duration_ms": 0}
+        cm.client.api_request.assert_awaited_once_with(
+            "cameras/cam-001/move",
+            method="post",
+            json={"type": "continuous", "payload": {"x": 100, "y": -50, "z": 0}},
+        )
 
     @pytest.mark.asyncio
-    async def test_ptz_move_pan_tilt_warning(self):
+    async def test_ptz_move_auto_stops_after_duration(self):
         from unifi_protect_mcp.managers.camera_manager import CameraManager
 
         cam = _make_camera(is_ptz=True)
         cm = MagicMock()
         cm.client.bootstrap = _make_bootstrap(cameras={"cam-001": cam})
+        cm.client.api_request = AsyncMock(return_value={"success": True})
         mgr = CameraManager(cm)
-        result = await mgr.ptz_move("cam-001", pan=10.0, tilt=5.0)
-        assert len(result["warnings"]) > 0
-        assert "not supported" in result["warnings"][0].lower()
+        with patch("unifi_protect_mcp.managers.camera_manager.asyncio.sleep", new=AsyncMock()) as sleep:
+            await mgr.ptz_move("cam-001", pan=100, duration_ms=250)
+        sleep.assert_awaited_once_with(0.25)
+        assert cm.client.api_request.await_count == 2
+        cm.client.api_request.assert_any_await(
+            "cameras/cam-001/move",
+            method="post",
+            json={"type": "continuous", "payload": {"x": 0, "y": 0, "z": 0}},
+        )
+
+    @pytest.mark.asyncio
+    async def test_ptz_zoom(self):
+        from unifi_protect_mcp.managers.camera_manager import CameraManager
+
+        cam = _make_camera(is_ptz=True)
+        cm = MagicMock()
+        cm.client.bootstrap = _make_bootstrap(cameras={"cam-001": cam})
+        cm.client.api_request = AsyncMock(return_value={"success": True})
+        mgr = CameraManager(cm)
+        result = await mgr.ptz_zoom("cam-001", zoom_speed=750, duration_ms=0)
+        assert result["movement"] == {"zoom_speed": 750, "duration_ms": 0}
+        cm.client.api_request.assert_awaited_once_with(
+            "cameras/cam-001/move",
+            method="post",
+            json={"type": "continuous", "payload": {"x": 0, "y": 0, "z": 750}},
+        )
+
+    @pytest.mark.asyncio
+    async def test_ptz_speed_validation(self):
+        from unifi_protect_mcp.managers.camera_manager import CameraManager
+
+        cam = _make_camera(is_ptz=True)
+        cm = MagicMock()
+        cm.client.bootstrap = _make_bootstrap(cameras={"cam-001": cam})
+        cm.client.api_request = AsyncMock()
+        mgr = CameraManager(cm)
+        with pytest.raises(ValueError, match="pan must be between"):
+            await mgr.ptz_move("cam-001", pan=1001)
 
 
 class TestCameraManagerReboot:
@@ -835,27 +879,70 @@ class TestProtectToggleRecordingTool:
 
 class TestProtectPTZMoveTool:
     @pytest.mark.asyncio
-    async def test_zoom(self, mock_camera_manager):
+    async def test_preview(self, mock_camera_manager):
+        from unifi_protect_mcp.tools.cameras import protect_ptz_move
+
+        mock_camera_manager.get_camera = AsyncMock(return_value={"id": "cam-001", "name": "Front Door", "is_ptz": True})
+        result = await protect_ptz_move("cam-001", pan=100, tilt=0)
+        assert result["success"] is True
+        assert result["requires_confirmation"] is True
+        assert result["preview"]["proposed"]["pan"] == 100
+
+    @pytest.mark.asyncio
+    async def test_confirm(self, mock_camera_manager):
         from unifi_protect_mcp.tools.cameras import protect_ptz_move
 
         mock_camera_manager.ptz_move = AsyncMock(
-            return_value={"camera_id": "cam-001", "actions_taken": ["zoom_level=5"], "warnings": []}
+            return_value={"camera_id": "cam-001", "actions_taken": ["pan=100", "tilt=0", "duration_ms=250"]}
         )
-        result = await protect_ptz_move("cam-001", zoom=5)
+        result = await protect_ptz_move("cam-001", pan=100, confirm=True)
         assert result["success"] is True
-        assert "zoom_level=5" in result["data"]["actions_taken"]
+        assert "pan=100" in result["data"]["actions_taken"]
 
     @pytest.mark.asyncio
     async def test_not_ptz(self, mock_camera_manager):
         from unifi_protect_mcp.tools.cameras import protect_ptz_move
 
         mock_camera_manager.ptz_move = AsyncMock(side_effect=ValueError("does not support PTZ"))
-        result = await protect_ptz_move("cam-001", zoom=5)
+        result = await protect_ptz_move("cam-001", pan=100, confirm=True)
         assert result["success"] is False
         assert "PTZ" in result["error"]
 
 
+class TestProtectPTZZoomTool:
+    @pytest.mark.asyncio
+    async def test_preview(self, mock_camera_manager):
+        from unifi_protect_mcp.tools.cameras import protect_ptz_zoom
+
+        mock_camera_manager.get_camera = AsyncMock(return_value={"id": "cam-001", "name": "Front Door", "is_ptz": True})
+        result = await protect_ptz_zoom("cam-001", zoom_speed=750)
+        assert result["success"] is True
+        assert result["requires_confirmation"] is True
+        assert result["preview"]["proposed"]["zoom_speed"] == 750
+
+    @pytest.mark.asyncio
+    async def test_confirm(self, mock_camera_manager):
+        from unifi_protect_mcp.tools.cameras import protect_ptz_zoom
+
+        mock_camera_manager.ptz_zoom = AsyncMock(
+            return_value={"camera_id": "cam-001", "actions_taken": ["zoom_speed=750", "duration_ms=250"]}
+        )
+        result = await protect_ptz_zoom("cam-001", zoom_speed=750, confirm=True)
+        assert result["success"] is True
+        assert "zoom_speed=750" in result["data"]["actions_taken"]
+
+
 class TestProtectPTZPresetTool:
+    @pytest.mark.asyncio
+    async def test_preview(self, mock_camera_manager):
+        from unifi_protect_mcp.tools.cameras import protect_ptz_preset
+
+        mock_camera_manager.get_camera = AsyncMock(return_value={"id": "cam-001", "name": "Front Door", "is_ptz": True})
+        result = await protect_ptz_preset("cam-001", preset_slot=1)
+        assert result["success"] is True
+        assert result["requires_confirmation"] is True
+        assert result["preview"]["proposed"]["preset_slot"] == 1
+
     @pytest.mark.asyncio
     async def test_success(self, mock_camera_manager):
         from unifi_protect_mcp.tools.cameras import protect_ptz_preset
@@ -863,7 +950,7 @@ class TestProtectPTZPresetTool:
         mock_camera_manager.ptz_goto_preset = AsyncMock(
             return_value={"camera_id": "cam-001", "preset_slot": 1, "available_presets": []}
         )
-        result = await protect_ptz_preset("cam-001", preset_slot=1)
+        result = await protect_ptz_preset("cam-001", preset_slot=1, confirm=True)
         assert result["success"] is True
         assert result["data"]["preset_slot"] == 1
 
@@ -872,7 +959,7 @@ class TestProtectPTZPresetTool:
         from unifi_protect_mcp.tools.cameras import protect_ptz_preset
 
         mock_camera_manager.ptz_goto_preset = AsyncMock(side_effect=ValueError("not found"))
-        result = await protect_ptz_preset("cam-001", preset_slot=99)
+        result = await protect_ptz_preset("cam-001", preset_slot=99, confirm=True)
         assert result["success"] is False
 
 

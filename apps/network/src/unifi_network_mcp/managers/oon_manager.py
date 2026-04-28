@@ -36,6 +36,89 @@ OON_PATH_LIST = "/object-oriented-network-configs"
 OON_PATH_SINGLE = "/object-oriented-network-config"
 
 
+def _normalize_oon_targets(target_type: str | None, targets: Any) -> Any:
+    """Translate friendly target inputs into the controller's target objects."""
+    if not isinstance(targets, list):
+        return targets
+
+    default_type = "NETWORK_GROUP_ID" if str(target_type).upper() == "GROUPS" else "MAC"
+    normalized: list[Any] = []
+    for target in targets:
+        if isinstance(target, str):
+            normalized.append({"type": default_type, "value": target})
+            continue
+
+        if isinstance(target, dict):
+            item = target.copy()
+            item_type = item.get("type") or default_type
+            item_value = item.get("value")
+            if item_value is None:
+                item_value = (
+                    item.pop("id", None)
+                    or item.pop("_id", None)
+                    or item.pop("mac", None)
+                    or item.pop("mac_address", None)
+                    or item.pop("macAddress", None)
+                    or item.pop("target", None)
+                    or item.pop("target_id", None)
+                    or item.pop("targetId", None)
+                )
+            normalized.append({"type": item_type, "value": item_value} if item_value is not None else item)
+            continue
+
+        normalized.append(target)
+    return normalized
+
+
+def _normalize_secure_config(secure: Any) -> Any:
+    """Translate shorthand secure config into the nested OON API shape."""
+    if not isinstance(secure, dict):
+        return secure
+
+    normalized = secure.copy()
+    internet = normalized.get("internet")
+    has_controller_shape = isinstance(internet, dict) and "mode" in internet
+    if has_controller_shape:
+        normalized.setdefault("enabled", True)
+        return normalized
+
+    if isinstance(internet, dict):
+        internet_config = internet.copy()
+    else:
+        internet_config = {}
+
+    apps = normalized.pop("apps", internet_config.get("apps", []))
+    schedule = normalized.pop("schedule", internet_config.get("schedule"))
+    internet_access_enabled = normalized.pop("internet_access_enabled", None)
+
+    has_enabled_option = bool(apps or schedule or internet_access_enabled is False)
+    if "mode" not in internet_config:
+        if internet_access_enabled is False:
+            internet_config["mode"] = "TURN_OFF_INTERNET"
+        elif apps:
+            internet_config["mode"] = "BLOCKLIST"
+        else:
+            internet_config["mode"] = "TURN_OFF_INTERNET"
+
+    if apps:
+        internet_config["apps"] = apps
+    if schedule is not None:
+        internet_config["schedule"] = schedule
+
+    normalized["internet"] = internet_config
+    normalized["enabled"] = bool(normalized.get("enabled", has_enabled_option))
+    return normalized
+
+
+def normalize_oon_create_payload(policy_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a controller-ready OON create/update payload."""
+    normalized = policy_data.copy()
+    normalized["targets"] = _normalize_oon_targets(normalized.get("target_type"), normalized.get("targets", []))
+    if "secure" in normalized:
+        normalized["secure"] = _normalize_secure_config(normalized["secure"])
+    return normalized
+
+
 class OonManager:
     """Manages OON (Object-Oriented Network) policies on the UniFi controller."""
 
@@ -130,7 +213,7 @@ class OonManager:
             return None
 
         # Strip _id/id if present — let the API assign a new one
-        create_data = policy_data.copy()
+        create_data = normalize_oon_create_payload(policy_data)
         create_data.pop("_id", None)
         create_data.pop("id", None)
 

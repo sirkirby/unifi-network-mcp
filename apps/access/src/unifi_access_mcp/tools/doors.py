@@ -119,7 +119,7 @@ async def access_unlock_door(
     name="access_lock_door",
     description=(
         "Lock a door immediately. This is a physical real-world action. "
-        "Requires confirm=true to execute. Only available via local proxy session."
+        "Requires confirm=true to execute. Uses the Access API client when available, with local proxy fallback."
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False),
     permission_category="door",

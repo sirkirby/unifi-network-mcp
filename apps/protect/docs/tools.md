@@ -17,7 +17,7 @@ In lazy mode, an additional meta-tool is available:
 
 - `protect_load_tools` -- Load a set of tools by category or name for direct calling
 
-## Cameras (10 tools)
+## Cameras (11 tools)
 
 - `protect_list_cameras` -- List all cameras with name, model, state, recording mode
 - `protect_get_camera` -- Detailed camera info: firmware, IP, MAC, IR/HDR, smart detection, PTZ
@@ -26,7 +26,8 @@ In lazy mode, an additional meta-tool is available:
 - `protect_get_camera_analytics` -- Motion and smart detection analytics with timestamps
 - `protect_update_camera_settings` -- Update IR, HDR, mic, speaker, status light, motion detection (confirm required)
 - `protect_toggle_recording` -- Enable/disable recording on a camera (confirm required)
-- `protect_ptz_move` -- Adjust PTZ camera zoom level (confirm required)
+- `protect_ptz_move` -- Move PTZ camera pan/tilt with normalized speeds (confirm required)
+- `protect_ptz_zoom` -- Zoom PTZ camera with normalized speed (confirm required)
 - `protect_ptz_preset` -- Move PTZ camera to a saved preset position (confirm required)
 - `protect_reboot_camera` -- Reboot a camera; interrupts active recordings (confirm required)
 

@@ -90,6 +90,7 @@ class TestHotspotManager:
 
         with pytest.raises(Exception):
             await hotspot_manager.get_vouchers()
+
     @pytest.mark.asyncio
     async def test_get_voucher_details_found(self, hotspot_manager, mock_connection):
         """Test get_voucher_details returns voucher when found."""
@@ -175,6 +176,7 @@ class TestHotspotManager:
 
         with pytest.raises(Exception):
             await hotspot_manager.create_voucher(expire_minutes=60)
+
     @pytest.mark.asyncio
     async def test_revoke_voucher_success(self, hotspot_manager, mock_connection):
         """Test revoke_voucher returns True on success."""

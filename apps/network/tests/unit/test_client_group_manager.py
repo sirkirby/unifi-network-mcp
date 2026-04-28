@@ -65,6 +65,7 @@ class TestClientGroupManager:
 
         with pytest.raises(Exception):
             await client_group_manager.get_client_groups()
+
     @pytest.mark.asyncio
     async def test_get_client_groups_not_connected(self, client_group_manager, mock_connection):
         """Test get_client_groups returns empty list when not connected."""
@@ -111,6 +112,7 @@ class TestClientGroupManager:
 
         with pytest.raises(Exception):
             await client_group_manager.get_client_group_by_id("g1")
+
     # ---- create_client_group ----
 
     @pytest.mark.asyncio
@@ -150,6 +152,7 @@ class TestClientGroupManager:
                     "type": "CLIENTS",
                 }
             )
+
     @pytest.mark.asyncio
     async def test_create_client_group_handles_error(self, client_group_manager, mock_connection):
         """Test create_client_group returns None on API error."""
@@ -163,6 +166,7 @@ class TestClientGroupManager:
                     "type": "CLIENTS",
                 }
             )
+
     @pytest.mark.asyncio
     async def test_create_client_group_handles_data_wrapper(self, client_group_manager, mock_connection):
         """Test create_client_group handles response with data key."""
@@ -209,6 +213,7 @@ class TestClientGroupManager:
 
         with pytest.raises(Exception):
             await client_group_manager.update_client_group("g1", {"name": "Test"})
+
     @pytest.mark.asyncio
     async def test_update_client_group_fetches_and_merges(self, client_group_manager, mock_connection):
         """Test update_client_group fetches current group, merges, PUTs full object."""
@@ -277,6 +282,7 @@ class TestClientGroupManager:
 
         with pytest.raises(Exception):
             await client_group_manager.delete_client_group("g1")
+
     # ---- API path verification ----
 
     @pytest.mark.asyncio

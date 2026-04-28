@@ -284,6 +284,8 @@ class TestDeviceManagerUpdateRadio:
 
         with pytest.raises(Exception):
             await device_manager.update_device_radio(ap.mac, "na", {"tx_power_mode": "high"})
+
+
 class TestUpdateDeviceRadioTool:
     """Tests for the unifi_update_device_radio tool function validation logic."""
 

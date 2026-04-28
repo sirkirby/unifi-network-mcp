@@ -2,12 +2,11 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from aiounifi.models.api import ApiRequest
+from aiounifi.models.api import ApiRequest, ApiRequestV2
 from aiounifi.models.dpi_restriction_app import DPIRestrictionApp  # Import DPIApp model
 from aiounifi.models.dpi_restriction_group import (
     DPIRestrictionGroup,
 )  # Import DPIGroup model
-from aiounifi.models.event import Event  # Import Event model
 
 from .client_manager import ClientManager  # Needed for get_top_clients
 from .connection_manager import ConnectionManager
@@ -302,7 +301,7 @@ class StatsManager:
             logger.error("Error getting DPI stats: %s", e)
             raise
 
-    async def get_alerts(self, include_archived: bool = False) -> List[Event]:  # Changed return type
+    async def get_alerts(self, include_archived: bool = False) -> List[Dict[str, Any]]:
         """Get alerts from the controller."""
         cache_key = f"{CACHE_PREFIX_STATS_ALERTS}_{include_archived}_{self._connection.site}"
         cached_data = self._connection.get_cached(cache_key, timeout=60)  # 1 minute cache
@@ -312,15 +311,64 @@ class StatsManager:
         if not await self._connection.ensure_connected() or not self._connection.controller:
             raise ConnectionError("Not connected to controller")
         try:
-            await self._connection.controller.alerts.update()
-            alerts: List[Event] = list(self._connection.controller.alerts.values())
-            if not include_archived:
-                alerts = [a for a in alerts if not a.raw.get("archived", False)]
-            self._connection._update_cache(cache_key, alerts, timeout=60)
-            return alerts
-        except Exception as e:
-            logger.error("Error getting alerts: %s", e)
-            raise
+            alerts = await self._get_alerts_v2()
+        except Exception as v2_error:
+            logger.debug("V2 alert lookup failed, falling back to legacy alarms: %s", v2_error)
+            alerts = await self._get_alerts_legacy(include_archived)
+
+        if not include_archived:
+            alerts = [a for a in alerts if not a.get("archived", False)]
+        self._connection._update_cache(cache_key, alerts, timeout=60)
+        return alerts
+
+    async def _get_alerts_v2(self) -> List[Dict[str, Any]]:
+        """Get alerts from the v2 system-log critical endpoint."""
+        now_ms = int(datetime.now().timestamp() * 1000)
+        from_ms = int((datetime.now() - timedelta(days=30)).timestamp() * 1000)
+        api_request = ApiRequestV2(
+            method="post",
+            path="/system-log/critical",
+            data={
+                "timestampFrom": from_ms,
+                "timestampTo": now_ms,
+                "severities": ["HIGH", "VERY_HIGH"],
+                "categories": [
+                    "CLIENT_DEVICES",
+                    "INTERNET_AND_WAN",
+                    "POWER",
+                    "SECURITY",
+                    "UNIFI_DEVICES",
+                    "SOFTWARE_UPDATES",
+                    "UNIFI_ETHERNET_PORTS",
+                    "VPN",
+                ],
+                "type": "GENERAL",
+                "pageNumber": 0,
+                "pageSize": 100,
+                "searchText": "",
+            },
+        )
+        response = await self._connection.request(api_request)
+        if isinstance(response, list) and response and isinstance(response[0], dict) and "data" in response[0]:
+            return response[0]["data"]
+        if isinstance(response, dict):
+            data = response.get("data", response.get("logs", []))
+            return data if isinstance(data, list) else []
+        if isinstance(response, list):
+            return response
+        return []
+
+    async def _get_alerts_legacy(self, include_archived: bool) -> List[Dict[str, Any]]:
+        """Get alerts from the legacy alarm endpoint."""
+        path = "/stat/alarm?archived=true" if include_archived else "/stat/alarm"
+        api_request = ApiRequest(method="get", path=path)
+        response = await self._connection.request(api_request)
+        if isinstance(response, list):
+            return response
+        if isinstance(response, dict):
+            data = response.get("data", [])
+            return data if isinstance(data, list) else []
+        return []
 
     async def get_gateway_stats(self, duration_hours: int = 24, granularity: str = "hourly") -> List[Dict[str, Any]]:
         """Get gateway statistics."""
@@ -453,20 +501,52 @@ class StatsManager:
             start_time = int((datetime.now() - timedelta(hours=duration_hours)).timestamp() * 1000)
             end_time = int(datetime.now().timestamp() * 1000)
 
-            endpoint = "/stat/ips/event"
-            payload = {
-                "start": start_time,
-                "end": end_time,
-                "_limit": limit,
-            }
-            api_request = ApiRequest(method="post", path=endpoint, data=payload)
-            response = await self._connection.request(api_request)
+            api_request = ApiRequest(
+                method="post",
+                path="/stat/ips/event",
+                data={
+                    "start": start_time,
+                    "end": end_time,
+                    "_limit": limit,
+                },
+            )
+            try:
+                response = await self._connection.request(api_request)
+            except Exception as legacy_error:
+                logger.debug("Legacy IPS endpoint failed, falling back to v2 security logs: %s", legacy_error)
+                response = await self._get_security_events_v2(start_time, end_time, limit)
             result = response if isinstance(response, list) else []
             self._connection._update_cache(cache_key, result, timeout=300)
             return result
         except Exception as e:
             logger.error("Error getting IPS events: %s", e)
             raise
+
+    async def _get_security_events_v2(self, start_time: int, end_time: int, limit: int) -> List[Dict[str, Any]]:
+        """Fallback for controllers where legacy IPS events no longer exist."""
+        api_request = ApiRequestV2(
+            method="post",
+            path="/system-log/critical",
+            data={
+                "timestampFrom": start_time,
+                "timestampTo": end_time,
+                "severities": ["HIGH", "VERY_HIGH"],
+                "categories": ["SECURITY"],
+                "type": "GENERAL",
+                "pageNumber": 0,
+                "pageSize": min(limit, 100),
+                "searchText": "",
+            },
+        )
+        response = await self._connection.request(api_request)
+        if isinstance(response, list) and response and isinstance(response[0], dict) and "data" in response[0]:
+            return response[0]["data"][:limit]
+        if isinstance(response, dict):
+            data = response.get("data", response.get("logs", []))
+            return data[:limit] if isinstance(data, list) else []
+        if isinstance(response, list):
+            return response[:limit]
+        return []
 
     async def get_client_sessions(
         self,
@@ -581,11 +661,7 @@ class StatsManager:
             clients = response if isinstance(response, list) else []
             target = client_mac.lower()
             raw = next(
-                (
-                    c
-                    for c in clients
-                    if isinstance(c, dict) and str(c.get("mac", "")).lower() == target
-                ),
+                (c for c in clients if isinstance(c, dict) and str(c.get("mac", "")).lower() == target),
                 None,
             )
             if raw is None:

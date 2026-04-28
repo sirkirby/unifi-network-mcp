@@ -287,10 +287,22 @@ class DoorManager:
     async def apply_lock_door(self, door_id: str) -> Dict[str, Any]:
         """Execute the lock operation on the controller.
 
-        Lock is only available via the proxy path (private API).
+        Tries the API client first, then falls back to the proxy path.
         """
         try:
-            if self._cm.has_proxy:
+            if self._cm.has_api_client:
+                from unifi_access_api.models.door import DoorLockRule, DoorLockRuleType
+
+                await self._cm.api_client.set_door_lock_rule(
+                    door_id,
+                    DoorLockRule(type=DoorLockRuleType.LOCK_NOW, interval=0),
+                )
+                return {
+                    "door_id": door_id,
+                    "action": "lock",
+                    "result": "success",
+                }
+            elif self._cm.has_proxy:
                 await self._cm.proxy_request("PUT", f"dashboard/locations/{door_id}/lock")
                 return {
                     "door_id": door_id,
@@ -298,7 +310,7 @@ class DoorManager:
                     "result": "success",
                 }
             else:
-                raise UniFiConnectionError("No auth path available for lock_door (proxy session required)")
+                raise UniFiConnectionError("No auth path available for lock_door")
         except (UniFiConnectionError, ValueError):
             raise
         except Exception as e:

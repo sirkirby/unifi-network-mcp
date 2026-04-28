@@ -561,7 +561,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Lock a door immediately. This is a physical real-world action. Requires confirm=true to execute. Only available via local proxy session.",
+      "description": "Lock a door immediately. This is a physical real-world action. Requires confirm=true to execute. Uses the Access API client when available, with local proxy fallback.",
       "name": "access_lock_door",
       "permission_action": "update",
       "permission_category": "door",

@@ -60,6 +60,7 @@ class TestDeviceCommands:
 
         with pytest.raises(Exception):
             await device_manager.locate_device("aa:bb:cc:dd:ee:ff", True)
+
     # ---- force_provision ----
 
     @pytest.mark.asyncio

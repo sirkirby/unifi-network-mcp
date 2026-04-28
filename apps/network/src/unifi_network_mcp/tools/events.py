@@ -10,6 +10,7 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
+from unifi_mcp_shared.confirmation import preview_response
 from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
@@ -155,7 +156,15 @@ async def archive_alarm(
 ) -> Dict[str, Any]:
     """Archive a specific alarm."""
     if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
+        return preview_response(
+            action="archive",
+            resource_type="alarm",
+            resource_id=alarm_id,
+            current_state={"archived": False},
+            proposed_changes={"archived": True},
+            resource_name=alarm_id,
+            warnings=["This will archive/dismiss the alarm."],
+        )
 
     try:
         event_manager = _get_event_manager()
@@ -187,7 +196,15 @@ async def archive_all_alarms(
 ) -> Dict[str, Any]:
     """Archive all active alarms."""
     if not confirm:
-        return {"success": False, "error": "Confirmation required. Set confirm=true."}
+        return preview_response(
+            action="archive",
+            resource_type="alarm_collection",
+            resource_id="all_active_alarms",
+            current_state={"scope": "active_alarms"},
+            proposed_changes={"archived": True},
+            resource_name="all active alarms",
+            warnings=["This will archive/dismiss every active alarm."],
+        )
 
     try:
         event_manager = _get_event_manager()

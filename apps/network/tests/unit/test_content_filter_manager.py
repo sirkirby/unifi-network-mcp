@@ -66,6 +66,7 @@ class TestContentFilterManager:
 
         with pytest.raises(Exception):
             await content_filter_manager.get_content_filters()
+
     @pytest.mark.asyncio
     async def test_get_content_filters_not_connected(self, content_filter_manager, mock_connection):
         """Test get_content_filters returns empty list when not connected."""
@@ -118,6 +119,7 @@ class TestContentFilterManager:
 
         with pytest.raises(Exception):
             await content_filter_manager.get_content_filter_by_id("f1")
+
     # ---- update_content_filter ----
 
     @pytest.mark.asyncio
@@ -149,6 +151,7 @@ class TestContentFilterManager:
 
         with pytest.raises(Exception):
             await content_filter_manager.update_content_filter("f1", {"name": "Test"})
+
     @pytest.mark.asyncio
     async def test_update_content_filter_fetches_and_merges(self, content_filter_manager, mock_connection):
         """Test update_content_filter fetches current profile, merges, PUTs full object."""
@@ -221,6 +224,7 @@ class TestContentFilterManager:
 
         with pytest.raises(Exception):
             await content_filter_manager.delete_content_filter("f1")
+
     # ---- API path verification ----
 
     @pytest.mark.asyncio

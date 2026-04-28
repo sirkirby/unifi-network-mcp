@@ -452,6 +452,21 @@ class TestLockDoor:
 
 class TestApplyLockDoor:
     @pytest.mark.asyncio
+    async def test_apply_lock_api(self, door_mgr_api, cm_api):
+        """apply_lock_door uses API client lock rule endpoint."""
+        cm_api._api_client.set_door_lock_rule = AsyncMock()
+
+        result = await door_mgr_api.apply_lock_door("door-1")
+
+        assert result["result"] == "success"
+        assert result["action"] == "lock"
+        cm_api._api_client.set_door_lock_rule.assert_awaited_once()
+        door_id, rule = cm_api._api_client.set_door_lock_rule.await_args.args
+        assert door_id == "door-1"
+        assert rule.type.value == "lock_now"
+        assert rule.interval == 0
+
+    @pytest.mark.asyncio
     async def test_apply_lock_proxy(self, door_mgr_proxy, cm_proxy):
         """apply_lock_door uses proxy with dashboard/locations lock endpoint."""
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
@@ -463,9 +478,17 @@ class TestApplyLockDoor:
         mock_req.assert_awaited_once_with("PUT", "dashboard/locations/door-1/lock")
 
     @pytest.mark.asyncio
-    async def test_apply_lock_no_proxy(self, door_mgr_api):
-        """apply_lock_door raises when proxy not available."""
+    async def test_apply_lock_no_auth(self, door_mgr_none):
+        """apply_lock_door raises when no auth path is available."""
+        with pytest.raises(UniFiConnectionError, match="No auth path"):
+            await door_mgr_none.apply_lock_door("door-1")
+
+    @pytest.mark.asyncio
+    async def test_apply_lock_api_unavailable_uses_proxy(self, door_mgr_api):
+        """apply_lock_door can no longer run after both auth paths are unavailable."""
+        door_mgr_api._cm._api_client_available = False
+        door_mgr_api._cm._api_client = None
         door_mgr_api._cm._proxy_available = False
         door_mgr_api._cm._proxy_session = None
-        with pytest.raises(UniFiConnectionError, match="proxy session required"):
+        with pytest.raises(UniFiConnectionError, match="No auth path"):
             await door_mgr_api.apply_lock_door("door-1")
