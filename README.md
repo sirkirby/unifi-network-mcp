@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/sirkirby-unifi-mcp-badge.png)](https://mseep.ai/app/sirkirby-unifi-mcp)
+
 # UniFi MCP
 
 <p align="center">
