@@ -721,9 +721,7 @@ async def create_simple_firewall_policy(
     try:
         created = await firewall_manager.create_firewall_policy(payload)
     except Exception as exc:
-        logger.error(
-            "Error creating migrated firewall policy '%s': %s", pol["name"], exc, exc_info=True
-        )
+        logger.error("Error creating migrated firewall policy '%s': %s", pol["name"], exc, exc_info=True)
         return {"success": False, "error": f"Failed to create firewall policy '{pol['name']}': {exc}"}
 
     if created is None:

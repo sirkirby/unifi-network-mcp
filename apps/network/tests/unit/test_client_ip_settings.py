@@ -197,6 +197,7 @@ class TestClientIPSettings:
             client_mac="aa:bb:cc:dd:ee:ff",
         )
         assert result is False
+
     @pytest.mark.asyncio
     async def test_marks_unnoted_client_as_noted(self, client_manager, mock_connection):
         """Test marks unnoted client as noted before setting IP."""
@@ -247,6 +248,7 @@ class TestClientIPSettings:
                 client_mac="aa:bb:cc:dd:ee:ff",
                 fixed_ip="192.168.1.100",
             )
+
     @pytest.mark.asyncio
     async def test_client_missing_id(self, client_manager, mock_connection):
         """Test returns False when client has no _id."""

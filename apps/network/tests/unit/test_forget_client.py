@@ -54,6 +54,7 @@ class TestForgetClient:
 
         with pytest.raises(Exception):
             await client_manager.forget_client("AA:BB:CC:DD:EE:FF")
+
     @pytest.mark.asyncio
     async def test_forget_client_invalidates_cache(self, client_manager, mock_connection):
         """Test that cache is invalidated after forgetting a client."""

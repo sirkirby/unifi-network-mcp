@@ -185,6 +185,19 @@ class TestSystemManagerGetSystemInfo:
         assert info["uptime_seconds"] is None
         assert info["up_since"] is None
 
+    @pytest.mark.asyncio
+    async def test_missing_hardware_platform(self):
+        from unifi_protect_mcp.managers.system_manager import SystemManager
+
+        nvr = _make_nvr()
+        del nvr.hardware_platform
+        cm = MagicMock()
+        cm.client.bootstrap = _make_bootstrap(nvr=nvr)
+
+        mgr = SystemManager(cm)
+        info = await mgr.get_system_info()
+        assert info["hardware_platform"] is None
+
 
 class TestSystemManagerGetHealth:
     @pytest.mark.asyncio

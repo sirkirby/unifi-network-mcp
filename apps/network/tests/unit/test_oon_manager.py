@@ -65,6 +65,7 @@ class TestOonManager:
 
         with pytest.raises(Exception):
             await oon_manager.get_oon_policies()
+
     @pytest.mark.asyncio
     async def test_get_oon_policies_handles_404(self, oon_manager, mock_connection):
         """Test get_oon_policies returns empty list on 404 (unsupported controller)."""
@@ -112,6 +113,7 @@ class TestOonManager:
 
         with pytest.raises(Exception):
             await oon_manager.get_oon_policy_by_id("p1")
+
     # ---- create_oon_policy ----
 
     @pytest.mark.asyncio
@@ -176,6 +178,7 @@ class TestOonManager:
 
         with pytest.raises(Exception):
             await oon_manager.create_oon_policy({"name": "Test"})
+
     # ---- update_oon_policy ----
 
     @pytest.mark.asyncio
@@ -207,6 +210,7 @@ class TestOonManager:
 
         with pytest.raises(Exception):
             await oon_manager.update_oon_policy("p1", {"name": "Test"})
+
     @pytest.mark.asyncio
     async def test_update_oon_policy_fetches_and_merges(self, oon_manager, mock_connection):
         """Test update_oon_policy fetches current policy, merges, PUTs full object."""
@@ -243,6 +247,7 @@ class TestOonManager:
 
         with pytest.raises(Exception):
             await oon_manager.update_oon_policy("nonexistent", {"name": "Test"})
+
     @pytest.mark.asyncio
     async def test_update_oon_policy_empty_update(self, oon_manager, mock_connection):
         """Test update_oon_policy with empty data is a no-op."""
@@ -335,6 +340,7 @@ class TestOonManager:
 
         with pytest.raises(Exception):
             await oon_manager.delete_oon_policy("p1")
+
     # ---- API path verification ----
 
     @pytest.mark.asyncio

@@ -76,6 +76,7 @@ class TestSwitchManager:
 
         with pytest.raises(Exception):
             await switch_manager.get_port_profiles()
+
     @pytest.mark.asyncio
     async def test_get_port_profile_by_id_found(self, switch_manager, mock_connection):
         """Test get_port_profile_by_id returns profile."""

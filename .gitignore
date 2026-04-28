@@ -59,6 +59,7 @@ pids/
 
 # Testing
 .coverage
+live-smoke-results/
 
 # Playwright MCP artifacts
 .playwright-mcp/

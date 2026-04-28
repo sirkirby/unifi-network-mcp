@@ -267,7 +267,9 @@ class AccessConnectionManager:
                         raise UniFiConnectionError(
                             f"{label} request failed after re-auth: HTTP {retry_resp.status} {method} {url}"
                         )
-                    return await retry_resp.json()
+                    payload = await retry_resp.json()
+                    self._raise_for_api_error(payload, method, url, label)
+                    return payload
 
             if resp.status != 200:
                 body = ""
@@ -278,7 +280,29 @@ class AccessConnectionManager:
                 raise UniFiConnectionError(
                     f"{label} request failed: HTTP {resp.status} {method} {url}{(' — ' + body[:200]) if body else ''}"
                 )
-            return await resp.json()
+            payload = await resp.json()
+            self._raise_for_api_error(payload, method, url, label)
+            return payload
+
+    @staticmethod
+    def _raise_for_api_error(payload: Any, method: str, url: str, label: str) -> None:
+        """Raise when Access returns an application-level error in a 200 response."""
+        if not isinstance(payload, dict) or "code" not in payload:
+            return
+
+        code = payload.get("code")
+        if code in (0, "0", 1, "1", None):
+            return
+
+        try:
+            if int(code) >= 0:
+                return
+        except (TypeError, ValueError):
+            pass
+
+        code_s = payload.get("codeS") or payload.get("error") or "UNKNOWN"
+        message = payload.get("msg") or payload.get("message") or payload.get("error") or "Access API error"
+        raise UniFiConnectionError(f"{label} request failed: API code {code} {code_s} {method} {url} — {message}")
 
     async def proxy_request(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
         """Make a request via the UniFi OS proxy path.

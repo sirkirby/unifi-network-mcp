@@ -255,6 +255,52 @@ class TestProxyRequest:
         assert call_kwargs[1]["headers"]["X-CSRF-Token"] == "test-csrf"
 
     @pytest.mark.asyncio
+    async def test_proxy_request_raises_on_api_error_payload(self, cm_proxy_only):
+        """Proxy request raises when Access returns a non-zero application code."""
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(
+            return_value={
+                "code": -17,
+                "codeS": "CODE_UNAUTHORIZED",
+                "msg": "You do not have permission to perform this action.",
+            }
+        )
+        mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_resp.__aexit__ = AsyncMock(return_value=False)
+
+        mock_session = AsyncMock()
+        mock_session.request = MagicMock(return_value=mock_resp)
+
+        cm_proxy_only._proxy_session = mock_session
+        cm_proxy_only._proxy_available = True
+        cm_proxy_only._csrf_token = "test-csrf"
+
+        with pytest.raises(UniFiConnectionError, match="API code -17 CODE_UNAUTHORIZED"):
+            await cm_proxy_only.proxy_request("GET", "visitors")
+
+    @pytest.mark.asyncio
+    async def test_proxy_request_allows_positive_success_code(self, cm_proxy_only):
+        """Proxy request accepts Access success envelopes that use code=1."""
+        expected = {"code": 1, "codeS": "SUCCESS", "msg": "success", "data": [{"id": "1"}]}
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value=expected)
+        mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_resp.__aexit__ = AsyncMock(return_value=False)
+
+        mock_session = AsyncMock()
+        mock_session.request = MagicMock(return_value=mock_resp)
+
+        cm_proxy_only._proxy_session = mock_session
+        cm_proxy_only._proxy_available = True
+        cm_proxy_only._csrf_token = "test-csrf"
+
+        result = await cm_proxy_only.proxy_request("GET", "access/info")
+
+        assert result == expected
+
+    @pytest.mark.asyncio
     async def test_proxy_request_csrf_header(self, cm_proxy_only):
         """Proxy request includes CSRF token in header."""
         mock_resp = AsyncMock()

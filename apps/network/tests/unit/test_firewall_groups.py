@@ -65,6 +65,7 @@ class TestFirewallGroups:
 
         with pytest.raises(Exception):
             await firewall_manager.get_firewall_groups()
+
     @pytest.mark.asyncio
     async def test_get_firewall_groups_not_connected(self, firewall_manager, mock_connection):
         """Test get_firewall_groups returns empty list when not connected."""
@@ -103,6 +104,7 @@ class TestFirewallGroups:
 
         with pytest.raises(Exception):
             await firewall_manager.get_firewall_group_by_id("g1")
+
     @pytest.mark.asyncio
     async def test_get_firewall_group_by_id_empty_data(self, firewall_manager, mock_connection):
         """Test get_firewall_group_by_id returns None when data array is empty."""
@@ -158,6 +160,7 @@ class TestFirewallGroups:
             await firewall_manager.create_firewall_group(
                 {"name": "Test", "group_type": "address-group", "group_members": []}
             )
+
     @pytest.mark.asyncio
     async def test_create_firewall_group_handles_error(self, firewall_manager, mock_connection):
         """Test create_firewall_group returns None on error."""
@@ -167,6 +170,7 @@ class TestFirewallGroups:
             await firewall_manager.create_firewall_group(
                 {"name": "Test", "group_type": "address-group", "group_members": []}
             )
+
     # ---- update_firewall_group ----
 
     @pytest.mark.asyncio
@@ -196,6 +200,7 @@ class TestFirewallGroups:
 
         with pytest.raises(Exception):
             await firewall_manager.update_firewall_group("g1", {"name": "Test"})
+
     # ---- delete_firewall_group ----
 
     @pytest.mark.asyncio
@@ -223,6 +228,7 @@ class TestFirewallGroups:
 
         with pytest.raises(Exception):
             await firewall_manager.delete_firewall_group("g1")
+
     # ---- API path verification ----
 
     @pytest.mark.asyncio

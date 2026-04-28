@@ -72,6 +72,7 @@ class TestRoutingManager:
 
         with pytest.raises(Exception):
             await routing_manager.get_routes()
+
     @pytest.mark.asyncio
     async def test_get_active_routes_returns_list(self, routing_manager, mock_connection):
         """Test get_active_routes returns active routing table."""
@@ -96,6 +97,7 @@ class TestRoutingManager:
 
         with pytest.raises(Exception):
             await routing_manager.get_active_routes()
+
     @pytest.mark.asyncio
     async def test_get_route_details_found(self, routing_manager, mock_connection):
         """Test get_route_details returns route when found."""
@@ -182,6 +184,7 @@ class TestRoutingManager:
                 static_route_network="10.0.0.0/24",
                 static_route_nexthop="192.168.1.1",
             )
+
     @pytest.mark.asyncio
     async def test_update_route_success(self, routing_manager, mock_connection):
         """Test update_route with valid parameters."""
@@ -233,6 +236,7 @@ class TestRoutingManager:
             name="Test",
         )
         assert result is False
+
     @pytest.mark.asyncio
     async def test_update_route_no_updates(self, routing_manager, mock_connection):
         """Test update_route with no changes still succeeds (sends full object)."""

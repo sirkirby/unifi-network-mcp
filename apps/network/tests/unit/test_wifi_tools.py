@@ -74,6 +74,7 @@ class TestDeviceManagerWifi:
 
         with pytest.raises(Exception):
             await device_manager.list_rogue_aps()
+
     # ---- Known Rogue APs ----
 
     @pytest.mark.asyncio
@@ -101,6 +102,7 @@ class TestDeviceManagerWifi:
 
         with pytest.raises(Exception):
             await device_manager.list_known_rogue_aps()
+
     # ---- RF Scan ----
 
     @pytest.mark.asyncio
@@ -124,6 +126,7 @@ class TestDeviceManagerWifi:
 
         with pytest.raises(Exception):
             await device_manager.trigger_rf_scan("aa:bb:cc:dd:ee:ff")
+
     @pytest.mark.asyncio
     async def test_get_rf_scan_results(self, device_manager, mock_connection):
         """Test get_rf_scan_results calls GET /stat/spectrum-scan/{mac}."""
@@ -150,6 +153,7 @@ class TestDeviceManagerWifi:
 
         with pytest.raises(Exception):
             await device_manager.get_rf_scan_results("aa:bb:cc:dd:ee:ff")
+
     # ---- Available Channels ----
 
     @pytest.mark.asyncio
@@ -213,6 +217,7 @@ class TestDeviceManagerWifi:
 
         with pytest.raises(Exception):
             await device_manager.set_device_led_override("aa:bb:cc:dd:ee:ff", "on")
+
     # ---- Device Disabled ----
 
     @pytest.mark.asyncio
@@ -339,6 +344,7 @@ class TestNetworkManagerApGroups:
 
         with pytest.raises(Exception):
             await network_manager.list_ap_groups()
+
     # ---- Get AP Group Details ----
 
     @pytest.mark.asyncio
@@ -363,6 +369,7 @@ class TestNetworkManagerApGroups:
 
         with pytest.raises(Exception):
             await network_manager.get_ap_group_details("nonexistent")
+
     # ---- Create AP Group ----
 
     @pytest.mark.asyncio
@@ -421,6 +428,7 @@ class TestNetworkManagerApGroups:
 
         with pytest.raises(Exception):
             await network_manager.update_ap_group("nonexistent", {"name": "New Name"})
+
     # ---- Delete AP Group ----
 
     @pytest.mark.asyncio

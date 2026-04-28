@@ -80,6 +80,7 @@ class TestAclManager:
 
         with pytest.raises(Exception):
             await acl_manager.get_acl_rules()
+
     @pytest.mark.asyncio
     async def test_get_acl_rules_not_connected(self, acl_manager, mock_connection):
         """Test get_acl_rules returns empty list when not connected."""
@@ -138,6 +139,7 @@ class TestAclManager:
 
         with pytest.raises(Exception):
             await acl_manager.get_acl_rule_by_id("r1")
+
     # ---- create_acl_rule ----
 
     @pytest.mark.asyncio
@@ -183,6 +185,7 @@ class TestAclManager:
                     "type": "MAC",
                 }
             )
+
     @pytest.mark.asyncio
     async def test_create_acl_rule_handles_error(self, acl_manager, mock_connection):
         """Test create_acl_rule returns None on API error."""
@@ -198,6 +201,7 @@ class TestAclManager:
                     "type": "MAC",
                 }
             )
+
     @pytest.mark.asyncio
     async def test_create_acl_rule_handles_data_wrapper(self, acl_manager, mock_connection):
         """Test create_acl_rule handles response with data key."""
@@ -246,6 +250,7 @@ class TestAclManager:
 
         with pytest.raises(Exception):
             await acl_manager.update_acl_rule("r1", {"name": "Test"})
+
     @pytest.mark.asyncio
     async def test_update_acl_rule_fetches_and_merges(self, acl_manager, mock_connection):
         """Test update_acl_rule fetches current rule, merges updates, PUTs full object."""
@@ -323,6 +328,7 @@ class TestAclManager:
 
         with pytest.raises(Exception):
             await acl_manager.delete_acl_rule("r1")
+
     # ---- API path verification ----
 
     @pytest.mark.asyncio
