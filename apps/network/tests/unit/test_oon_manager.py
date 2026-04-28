@@ -147,6 +147,83 @@ class TestOonManager:
         assert "id" not in api_request.data
 
     @pytest.mark.asyncio
+    async def test_create_oon_policy_normalizes_client_targets(self, oon_manager, mock_connection):
+        """Test create_oon_policy sends controller target objects."""
+        policy_data = {
+            "name": "Test",
+            "enabled": False,
+            "target_type": "CLIENTS",
+            "targets": ["aa:bb:cc:dd:ee:ff", {"type": "MAC", "id": "11:22:33:44:55:66"}],
+            "secure": {"enabled": False, "internet": {"mode": "TURN_OFF_INTERNET"}},
+        }
+        mock_connection.request.return_value = {"id": "new1", "name": "Test"}
+
+        await oon_manager.create_oon_policy(policy_data)
+
+        api_request = mock_connection.request.call_args[0][0]
+        assert api_request.data["targets"] == [
+            {"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"},
+            {"type": "MAC", "value": "11:22:33:44:55:66"},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_create_oon_policy_normalizes_group_targets(self, oon_manager, mock_connection):
+        """Test create_oon_policy maps group IDs to network group targets."""
+        policy_data = {
+            "name": "Test",
+            "enabled": False,
+            "target_type": "GROUPS",
+            "targets": ["group-1"],
+            "secure": {"enabled": False, "internet": {"mode": "TURN_OFF_INTERNET"}},
+        }
+        mock_connection.request.return_value = {"id": "new1", "name": "Test"}
+
+        await oon_manager.create_oon_policy(policy_data)
+
+        api_request = mock_connection.request.call_args[0][0]
+        assert api_request.data["targets"] == [{"type": "NETWORK_GROUP_ID", "value": "group-1"}]
+
+    @pytest.mark.asyncio
+    async def test_create_oon_policy_normalizes_secure_shorthand(self, oon_manager, mock_connection):
+        """Test create_oon_policy sends required nested secure fields."""
+        policy_data = {
+            "name": "Test",
+            "enabled": False,
+            "target_type": "CLIENTS",
+            "targets": ["aa:bb:cc:dd:ee:ff"],
+            "secure": {"internet_access_enabled": False, "apps": []},
+        }
+        mock_connection.request.return_value = {"id": "new1", "name": "Test"}
+
+        await oon_manager.create_oon_policy(policy_data)
+
+        api_request = mock_connection.request.call_args[0][0]
+        assert api_request.data["secure"] == {
+            "enabled": True,
+            "internet": {"mode": "TURN_OFF_INTERNET"},
+        }
+
+    @pytest.mark.asyncio
+    async def test_create_oon_policy_disables_empty_secure_shorthand(self, oon_manager, mock_connection):
+        """Test empty secure shorthand becomes a disabled draft config."""
+        policy_data = {
+            "name": "Test",
+            "enabled": False,
+            "target_type": "CLIENTS",
+            "targets": ["aa:bb:cc:dd:ee:ff"],
+            "secure": {"internet_access_enabled": True, "apps": []},
+        }
+        mock_connection.request.return_value = {"id": "new1", "name": "Test"}
+
+        await oon_manager.create_oon_policy(policy_data)
+
+        api_request = mock_connection.request.call_args[0][0]
+        assert api_request.data["secure"] == {
+            "enabled": False,
+            "internet": {"mode": "TURN_OFF_INTERNET"},
+        }
+
+    @pytest.mark.asyncio
     async def test_create_oon_policy_missing_name(self, oon_manager, mock_connection):
         """Test create_oon_policy returns None when name is missing."""
         result = await oon_manager.create_oon_policy({"enabled": True})
