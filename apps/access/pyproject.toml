@@ -8,10 +8,10 @@ dependencies = [
     "unifi-mcp-shared",
     "unifi-core",
     "mcp[cli]>=1.26.0,<2",
-    "aiohttp>=3.8.5",
+    "aiohttp>=3.13.4",
     "py-unifi-access>=1.1.1",
     "pyyaml>=6.0",
-    "python-dotenv>=1.0.0",
+    "python-dotenv>=1.2.2",
     "omegaconf>=2.3.0",
     "jsonschema>=4.17.0",
     "typing-extensions>=4.4.0",
@@ -51,7 +51,7 @@ include = [
 
 [dependency-groups]
 dev = [
-    "pytest>=7.0.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",
     "aioresponses>=0.7.0",
     "pytest-cov>=4.0.0",
@@ -61,7 +61,7 @@ dev = [
 [tool.rye]
 managed = true
 dev-dependencies = [
-    "pytest>=7.0.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",
     "aioresponses>=0.7.0",
     "pytest-cov>=4.0.0",
