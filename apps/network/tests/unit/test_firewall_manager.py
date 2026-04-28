@@ -267,3 +267,105 @@ class TestTrafficRouteLookupRobustness:
 
         assert result is True
         mock_connection.request.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# get_firewall_zones — Network 10.2+ /firewall/zone-matrix support (issue #154)
+#
+# - Primary path /firewall/zone-matrix succeeds → returns zone metadata with
+#   the inter-zone policy-count `data` matrix stripped.
+# - Primary path raises → fallback to legacy /firewall/zones; returns its data
+#   unmodified.
+# - Both paths fail → exception propagates (no silent empty list).
+# ---------------------------------------------------------------------------
+
+
+SAMPLE_ZONE_MATRIX_RESPONSE = [
+    {
+        "_id": "zone-internal",
+        "name": "Internal",
+        "zone_key": "internal",
+        # Inter-zone policy-count matrix the V2 endpoint embeds per zone.
+        "data": [
+            {"target_zone_id": "zone-external", "count": 3},
+            {"target_zone_id": "zone-vpn", "count": 1},
+        ],
+    },
+    {
+        "_id": "zone-external",
+        "name": "External",
+        "zone_key": "external",
+        "data": [
+            {"target_zone_id": "zone-internal", "count": 0},
+        ],
+    },
+]
+
+
+SAMPLE_LEGACY_ZONES_RESPONSE = [
+    {"_id": "zone-internal", "name": "Internal", "zone_key": "internal"},
+    {"_id": "zone-external", "name": "External", "zone_key": "external"},
+]
+
+
+class TestGetFirewallZones:
+    """Cover primary, fallback, and both-fail branches of get_firewall_zones."""
+
+    @pytest.mark.asyncio
+    async def test_zone_matrix_primary_strips_data_matrix(self, firewall_manager, mock_connection):
+        """Primary /firewall/zone-matrix succeeds; the per-zone `data` matrix is stripped."""
+        mock_connection.request = AsyncMock(return_value=copy.deepcopy(SAMPLE_ZONE_MATRIX_RESPONSE))
+
+        zones = await firewall_manager.get_firewall_zones()
+
+        # Only the primary endpoint should have been called.
+        assert mock_connection.request.call_count == 1
+        api_request = mock_connection.request.call_args[0][0]
+        assert api_request.path == "/firewall/zone-matrix"
+
+        # Metadata preserved; matrix stripped.
+        assert len(zones) == 2
+        assert zones[0]["_id"] == "zone-internal"
+        assert zones[0]["name"] == "Internal"
+        assert zones[0]["zone_key"] == "internal"
+        assert "data" not in zones[0]
+        assert "data" not in zones[1]
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_legacy_zones_on_primary_failure(self, firewall_manager, mock_connection):
+        """When /firewall/zone-matrix raises (e.g. 404 on older firmware), fall back to /firewall/zones."""
+        mock_connection.request = AsyncMock(
+            side_effect=[
+                Exception("404 from /firewall/zone-matrix"),
+                copy.deepcopy(SAMPLE_LEGACY_ZONES_RESPONSE),
+            ]
+        )
+
+        zones = await firewall_manager.get_firewall_zones()
+
+        # Both endpoints attempted, in order.
+        assert mock_connection.request.call_count == 2
+        first_path = mock_connection.request.call_args_list[0][0][0].path
+        second_path = mock_connection.request.call_args_list[1][0][0].path
+        assert first_path == "/firewall/zone-matrix"
+        assert second_path == "/firewall/zones"
+
+        # Legacy response is returned as-is (no `data` field to strip).
+        assert len(zones) == 2
+        assert zones[0]["_id"] == "zone-internal"
+        assert zones[1]["_id"] == "zone-external"
+
+    @pytest.mark.asyncio
+    async def test_raises_when_both_endpoints_fail(self, firewall_manager, mock_connection):
+        """When both endpoints fail, the exception propagates — no silent empty list."""
+        mock_connection.request = AsyncMock(
+            side_effect=[
+                Exception("404 from /firewall/zone-matrix"),
+                Exception("500 from /firewall/zones"),
+            ]
+        )
+
+        with pytest.raises(Exception, match="500 from /firewall/zones"):
+            await firewall_manager.get_firewall_zones()
+
+        assert mock_connection.request.call_count == 2

@@ -455,3 +455,66 @@ class TestDeleteFirewallPolicy:
 
         assert result["success"] is False
         assert "Connection refused" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# list_firewall_zones — projection + error surfacing (issue #154)
+# ---------------------------------------------------------------------------
+
+
+class TestListFirewallZones:
+    """Cover the tool wrapper's projection and error-surfacing behavior."""
+
+    @pytest.mark.asyncio
+    async def test_projects_zone_fields_and_includes_site(self):
+        """Tool output projects id/name/zone_key and includes the site field."""
+        mock_conn = MagicMock()
+        mock_conn.site = "default"
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_zones = AsyncMock(
+                return_value=[
+                    {"_id": "zone-internal", "name": "Internal", "zone_key": "internal"},
+                    {"_id": "zone-external", "name": "External", "zone_key": "external"},
+                ]
+            )
+            mock_fm._connection = mock_conn
+
+            from unifi_network_mcp.tools.firewall import list_firewall_zones
+
+            result = await list_firewall_zones()
+
+        assert result["success"] is True
+        assert result["site"] == "default"
+        assert result["count"] == 2
+        # Projected shape: `_id` → `id`; only id/name/zone_key surfaced.
+        assert result["zones"][0] == {
+            "id": "zone-internal",
+            "name": "Internal",
+            "zone_key": "internal",
+        }
+        assert result["zones"][1] == {
+            "id": "zone-external",
+            "name": "External",
+            "zone_key": "external",
+        }
+
+    @pytest.mark.asyncio
+    async def test_surfaces_manager_exception_as_structured_error(self):
+        """When the manager raises, the tool returns success=False with the error message — not an empty success."""
+        mock_conn = MagicMock()
+        mock_conn.site = "default"
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_zones = AsyncMock(side_effect=Exception("Controller returned 404"))
+            mock_fm._connection = mock_conn
+
+            from unifi_network_mcp.tools.firewall import list_firewall_zones
+
+            result = await list_firewall_zones()
+
+        assert result["success"] is False
+        assert "Controller returned 404" in result["error"]
+        # Crucially: no silent empty-list-as-success.
+        assert "zones" not in result or result.get("zones") in (None, [])
+        assert result.get("count", 0) == 0
