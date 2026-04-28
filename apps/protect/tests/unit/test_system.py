@@ -130,7 +130,7 @@ def mock_cm():
 class TestSystemManagerGetSystemInfo:
     @pytest.mark.asyncio
     async def test_basic_fields(self, mock_cm):
-        from unifi_protect_mcp.managers.system_manager import SystemManager
+        from unifi_core.protect.managers.system_manager import SystemManager
 
         mgr = SystemManager(mock_cm)
         info = await mgr.get_system_info()
@@ -146,7 +146,7 @@ class TestSystemManagerGetSystemInfo:
 
     @pytest.mark.asyncio
     async def test_storage_info(self, mock_cm):
-        from unifi_protect_mcp.managers.system_manager import SystemManager
+        from unifi_core.protect.managers.system_manager import SystemManager
 
         mgr = SystemManager(mock_cm)
         info = await mgr.get_system_info()
@@ -158,7 +158,7 @@ class TestSystemManagerGetSystemInfo:
 
     @pytest.mark.asyncio
     async def test_device_counts(self):
-        from unifi_protect_mcp.managers.system_manager import SystemManager
+        from unifi_core.protect.managers.system_manager import SystemManager
 
         bs = _make_bootstrap(
             cameras={"c1": _make_camera()},
@@ -174,7 +174,7 @@ class TestSystemManagerGetSystemInfo:
 
     @pytest.mark.asyncio
     async def test_none_uptime(self):
-        from unifi_protect_mcp.managers.system_manager import SystemManager
+        from unifi_core.protect.managers.system_manager import SystemManager
 
         nvr = _make_nvr(uptime=None, up_since=None)
         cm = MagicMock()
@@ -187,7 +187,7 @@ class TestSystemManagerGetSystemInfo:
 
     @pytest.mark.asyncio
     async def test_missing_hardware_platform(self):
-        from unifi_protect_mcp.managers.system_manager import SystemManager
+        from unifi_core.protect.managers.system_manager import SystemManager
 
         nvr = _make_nvr()
         del nvr.hardware_platform
@@ -202,7 +202,7 @@ class TestSystemManagerGetSystemInfo:
 class TestSystemManagerGetHealth:
     @pytest.mark.asyncio
     async def test_health_fields(self, mock_cm):
-        from unifi_protect_mcp.managers.system_manager import SystemManager
+        from unifi_core.protect.managers.system_manager import SystemManager
 
         mgr = SystemManager(mock_cm)
         health = await mgr.get_health()
@@ -217,7 +217,7 @@ class TestSystemManagerGetHealth:
 class TestSystemManagerListViewers:
     @pytest.mark.asyncio
     async def test_empty_viewers(self, mock_cm):
-        from unifi_protect_mcp.managers.system_manager import SystemManager
+        from unifi_core.protect.managers.system_manager import SystemManager
 
         mgr = SystemManager(mock_cm)
         viewers = await mgr.list_viewers()
@@ -225,7 +225,7 @@ class TestSystemManagerListViewers:
 
     @pytest.mark.asyncio
     async def test_with_viewer(self):
-        from unifi_protect_mcp.managers.system_manager import SystemManager
+        from unifi_core.protect.managers.system_manager import SystemManager
 
         viewer = _make_viewer()
         bs = _make_bootstrap(viewers={"v1": viewer})
@@ -243,7 +243,7 @@ class TestSystemManagerListViewers:
 class TestSystemManagerGetFirmwareStatus:
     @pytest.mark.asyncio
     async def test_no_devices(self, mock_cm):
-        from unifi_protect_mcp.managers.system_manager import SystemManager
+        from unifi_core.protect.managers.system_manager import SystemManager
 
         mgr = SystemManager(mock_cm)
         status = await mgr.get_firmware_status()
@@ -254,7 +254,7 @@ class TestSystemManagerGetFirmwareStatus:
 
     @pytest.mark.asyncio
     async def test_device_with_update(self):
-        from unifi_protect_mcp.managers.system_manager import SystemManager
+        from unifi_core.protect.managers.system_manager import SystemManager
 
         cam = _make_camera(
             firmware_version="4.69.50",
@@ -275,7 +275,7 @@ class TestSystemManagerGetFirmwareStatus:
 
     @pytest.mark.asyncio
     async def test_device_up_to_date(self):
-        from unifi_protect_mcp.managers.system_manager import SystemManager
+        from unifi_core.protect.managers.system_manager import SystemManager
 
         cam = _make_camera()  # same version for current and latest
         bs = _make_bootstrap(cameras={"c1": cam})

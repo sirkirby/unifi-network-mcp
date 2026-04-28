@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
+from unifi_core.access.managers.connection_manager import AccessConnectionManager
 from unifi_core.exceptions import UniFiAuthError, UniFiConnectionError
 
 # ---------------------------------------------------------------------------
@@ -113,8 +113,8 @@ class TestApiClientAuth:
         mock_client.close = AsyncMock()
 
         with (
-            patch("unifi_access_mcp.managers.connection_manager.aiohttp.ClientSession") as mock_session_cls,
-            patch("unifi_access_mcp.managers.connection_manager.aiohttp.TCPConnector"),
+            patch("unifi_core.access.managers.connection_manager.aiohttp.ClientSession") as mock_session_cls,
+            patch("unifi_core.access.managers.connection_manager.aiohttp.TCPConnector"),
             patch.dict(
                 "sys.modules", {"unifi_access_api": MagicMock(UnifiAccessApiClient=MagicMock(return_value=mock_client))}
             ),
@@ -126,7 +126,7 @@ class TestApiClientAuth:
             # Re-import after patching
             from importlib import reload
 
-            import unifi_access_mcp.managers.connection_manager as cm_mod
+            import unifi_core.access.managers.connection_manager as cm_mod
 
             reload(cm_mod)
 
@@ -150,7 +150,7 @@ class TestApiClientAuth:
     @pytest.mark.asyncio
     async def test_api_client_failure_is_non_fatal(self, cm_dual):
         """API client auth failure logs warning but doesn't raise."""
-        with patch("unifi_access_mcp.managers.connection_manager.aiohttp.ClientSession") as mock_session_cls:
+        with patch("unifi_core.access.managers.connection_manager.aiohttp.ClientSession") as mock_session_cls:
             mock_session = AsyncMock()
             mock_session.closed = False
             mock_session.close = AsyncMock()

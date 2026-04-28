@@ -2,7 +2,7 @@
 
 import pytest
 
-from unifi_mcp_shared.validators import ResourceValidator, create_response
+from unifi_core.validators import ResourceValidator, create_response
 
 
 class TestResourceValidator:

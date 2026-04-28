@@ -21,8 +21,8 @@ from typing import Any
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
-from unifi_mcp_shared.config import load_yaml_config  # noqa: F401 -- re-export for convenience
-from unifi_mcp_shared.config import setup_logging as _shared_setup_logging
+from unifi_core.config import load_yaml_config  # noqa: F401 -- re-export for convenience
+from unifi_core.config import setup_logging as _shared_setup_logging
 
 # ---------------------------------------------------------------------------
 # Environment & logging

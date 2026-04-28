@@ -11,7 +11,7 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import toggle_preview, update_preview
+from unifi_core.confirmation import toggle_preview, update_preview
 from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ def _get_traffic_route_manager():
     """Lazy-load the traffic route manager to avoid circular imports."""
     global _traffic_route_manager
     if _traffic_route_manager is None:
-        from unifi_network_mcp.managers.traffic_route_manager import TrafficRouteManager
+        from unifi_core.network.managers.traffic_route_manager import TrafficRouteManager
         from unifi_network_mcp.runtime import get_connection_manager
 
         _traffic_route_manager = TrafficRouteManager(get_connection_manager())

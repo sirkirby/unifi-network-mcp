@@ -2,7 +2,7 @@
 
 import pytest
 
-from unifi_mcp_shared.confirmation import (
+from unifi_core.confirmation import (
     create_preview,
     preview_response,
     toggle_preview,

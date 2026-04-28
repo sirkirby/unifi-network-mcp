@@ -228,7 +228,7 @@ def mock_cm_multiple_cameras():
 class TestCameraManagerListCameras:
     @pytest.mark.asyncio
     async def test_empty_cameras(self):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         cm = MagicMock()
         cm.client.bootstrap = _make_bootstrap(cameras={})
@@ -238,7 +238,7 @@ class TestCameraManagerListCameras:
 
     @pytest.mark.asyncio
     async def test_single_camera(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         cameras = await mgr.list_cameras()
@@ -253,7 +253,7 @@ class TestCameraManagerListCameras:
 
     @pytest.mark.asyncio
     async def test_multiple_cameras(self, mock_cm_multiple_cameras):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm_multiple_cameras)
         cameras = await mgr.list_cameras()
@@ -267,7 +267,7 @@ class TestCameraManagerListCameras:
 class TestCameraManagerGetCamera:
     @pytest.mark.asyncio
     async def test_basic_fields(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         detail = await mgr.get_camera("cam-001")
@@ -285,7 +285,7 @@ class TestCameraManagerGetCamera:
 
     @pytest.mark.asyncio
     async def test_channels(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         detail = await mgr.get_camera("cam-001")
@@ -297,7 +297,7 @@ class TestCameraManagerGetCamera:
 
     @pytest.mark.asyncio
     async def test_smart_detect_types(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         detail = await mgr.get_camera("cam-001")
@@ -306,7 +306,7 @@ class TestCameraManagerGetCamera:
 
     @pytest.mark.asyncio
     async def test_not_found(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         with pytest.raises(ValueError, match="Camera not found"):
@@ -316,7 +316,7 @@ class TestCameraManagerGetCamera:
 class TestCameraManagerGetSnapshot:
     @pytest.mark.asyncio
     async def test_success(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         result = await mgr.get_snapshot("cam-001")
@@ -325,7 +325,7 @@ class TestCameraManagerGetSnapshot:
 
     @pytest.mark.asyncio
     async def test_with_dimensions(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         cam = mock_cm.client.bootstrap.cameras["cam-001"]
@@ -334,7 +334,7 @@ class TestCameraManagerGetSnapshot:
 
     @pytest.mark.asyncio
     async def test_none_snapshot_raises(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         cam = mock_cm.client.bootstrap.cameras["cam-001"]
         cam.get_snapshot = AsyncMock(return_value=None)
@@ -344,7 +344,7 @@ class TestCameraManagerGetSnapshot:
 
     @pytest.mark.asyncio
     async def test_not_found(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         with pytest.raises(ValueError, match="Camera not found"):
@@ -354,7 +354,7 @@ class TestCameraManagerGetSnapshot:
 class TestCameraManagerGetCameraStreams:
     @pytest.mark.asyncio
     async def test_channels_with_rtsp(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         streams = await mgr.get_camera_streams("cam-001")
@@ -371,7 +371,7 @@ class TestCameraManagerGetCameraStreams:
 
     @pytest.mark.asyncio
     async def test_not_found(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         with pytest.raises(ValueError, match="Camera not found"):
@@ -381,7 +381,7 @@ class TestCameraManagerGetCameraStreams:
 class TestCameraManagerGetCameraAnalytics:
     @pytest.mark.asyncio
     async def test_basic_analytics(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         analytics = await mgr.get_camera_analytics("cam-001")
@@ -393,7 +393,7 @@ class TestCameraManagerGetCameraAnalytics:
 
     @pytest.mark.asyncio
     async def test_with_smart_detects(self):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         ts = datetime(2026, 3, 16, 11, 45, tzinfo=timezone.utc)
         cam = _make_camera(
@@ -411,7 +411,7 @@ class TestCameraManagerGetCameraAnalytics:
 class TestCameraManagerUpdateCameraSettings:
     @pytest.mark.asyncio
     async def test_preview(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         result = await mgr.update_camera_settings("cam-001", {"status_light_on": False})
@@ -421,7 +421,7 @@ class TestCameraManagerUpdateCameraSettings:
 
     @pytest.mark.asyncio
     async def test_multiple_settings(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         result = await mgr.update_camera_settings(
@@ -440,7 +440,7 @@ class TestCameraManagerUpdateCameraSettings:
 class TestCameraManagerApplyCameraSettings:
     @pytest.mark.asyncio
     async def test_apply_status_light(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         cam = mock_cm.client.bootstrap.cameras["cam-001"]
@@ -450,7 +450,7 @@ class TestCameraManagerApplyCameraSettings:
 
     @pytest.mark.asyncio
     async def test_apply_mic_volume(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         cam = mock_cm.client.bootstrap.cameras["cam-001"]
@@ -460,7 +460,7 @@ class TestCameraManagerApplyCameraSettings:
 
     @pytest.mark.asyncio
     async def test_apply_error_handling(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         cam = mock_cm.client.bootstrap.cameras["cam-001"]
         cam.set_status_light = AsyncMock(side_effect=RuntimeError("API error"))
@@ -473,7 +473,7 @@ class TestCameraManagerApplyCameraSettings:
 class TestCameraManagerToggleRecording:
     @pytest.mark.asyncio
     async def test_preview_enable(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         result = await mgr.toggle_recording("cam-001", True)
@@ -482,7 +482,7 @@ class TestCameraManagerToggleRecording:
 
     @pytest.mark.asyncio
     async def test_preview_disable(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         result = await mgr.toggle_recording("cam-001", False)
@@ -490,7 +490,7 @@ class TestCameraManagerToggleRecording:
 
     @pytest.mark.asyncio
     async def test_apply(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         cam = mock_cm.client.bootstrap.cameras["cam-001"]
@@ -502,7 +502,7 @@ class TestCameraManagerToggleRecording:
 class TestCameraManagerPTZ:
     @pytest.mark.asyncio
     async def test_ptz_not_supported(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         with pytest.raises(ValueError, match="does not support PTZ"):
@@ -510,7 +510,7 @@ class TestCameraManagerPTZ:
 
     @pytest.mark.asyncio
     async def test_ptz_preset_success(self):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         preset = MagicMock()
         preset.slot = 1
@@ -526,7 +526,7 @@ class TestCameraManagerPTZ:
 
     @pytest.mark.asyncio
     async def test_ptz_preset_invalid_slot(self):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         preset = MagicMock()
         preset.slot = 1
@@ -541,7 +541,7 @@ class TestCameraManagerPTZ:
 
     @pytest.mark.asyncio
     async def test_ptz_move_pan_tilt(self):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         cam = _make_camera(is_ptz=True)
         cm = MagicMock()
@@ -558,14 +558,14 @@ class TestCameraManagerPTZ:
 
     @pytest.mark.asyncio
     async def test_ptz_move_auto_stops_after_duration(self):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         cam = _make_camera(is_ptz=True)
         cm = MagicMock()
         cm.client.bootstrap = _make_bootstrap(cameras={"cam-001": cam})
         cm.client.api_request = AsyncMock(return_value={"success": True})
         mgr = CameraManager(cm)
-        with patch("unifi_protect_mcp.managers.camera_manager.asyncio.sleep", new=AsyncMock()) as sleep:
+        with patch("unifi_core.protect.managers.camera_manager.asyncio.sleep", new=AsyncMock()) as sleep:
             await mgr.ptz_move("cam-001", pan=100, duration_ms=250)
         sleep.assert_awaited_once_with(0.25)
         assert cm.client.api_request.await_count == 2
@@ -577,7 +577,7 @@ class TestCameraManagerPTZ:
 
     @pytest.mark.asyncio
     async def test_ptz_zoom(self):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         cam = _make_camera(is_ptz=True)
         cm = MagicMock()
@@ -594,7 +594,7 @@ class TestCameraManagerPTZ:
 
     @pytest.mark.asyncio
     async def test_ptz_speed_validation(self):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         cam = _make_camera(is_ptz=True)
         cm = MagicMock()
@@ -608,7 +608,7 @@ class TestCameraManagerPTZ:
 class TestCameraManagerReboot:
     @pytest.mark.asyncio
     async def test_preview(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         result = await mgr.reboot_camera("cam-001")
@@ -618,7 +618,7 @@ class TestCameraManagerReboot:
 
     @pytest.mark.asyncio
     async def test_apply(self, mock_cm):
-        from unifi_protect_mcp.managers.camera_manager import CameraManager
+        from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
         cam = mock_cm.client.bootstrap.cameras["cam-001"]

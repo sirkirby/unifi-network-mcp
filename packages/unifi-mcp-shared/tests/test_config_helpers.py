@@ -2,7 +2,7 @@
 
 import pytest
 
-from unifi_mcp_shared.config_helpers import parse_config_bool
+from unifi_core.config_helpers import parse_config_bool
 
 
 class TestParseConfigBool:

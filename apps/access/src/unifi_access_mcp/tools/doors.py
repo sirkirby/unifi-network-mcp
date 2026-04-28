@@ -10,7 +10,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_access_mcp.runtime import door_manager, server
-from unifi_mcp_shared.confirmation import preview_response
+from unifi_core.confirmation import preview_response
 
 logger = logging.getLogger(__name__)
 

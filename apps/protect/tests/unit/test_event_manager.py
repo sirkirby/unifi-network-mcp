@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from uiprotect.data import EventType, ModelType, SmartDetectObjectType, WSAction
 
-from unifi_protect_mcp.managers.event_manager import EventManager
+from unifi_core.protect.managers.event_manager import EventManager
 
 
 def _make_event(**overrides) -> MagicMock:

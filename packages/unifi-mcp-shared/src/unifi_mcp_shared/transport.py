@@ -16,7 +16,7 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any
 
-from unifi_mcp_shared.config_helpers import parse_config_bool
+from unifi_core.config_helpers import parse_config_bool
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP

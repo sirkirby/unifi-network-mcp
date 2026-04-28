@@ -1,32 +1,13 @@
-"""Shared permissioned_tool decorator factory for MCP servers.
-
-Creates a decorator that always registers tools with MCP and checks
-policy gates at call time (not registration time).
-
-Example::
-
-    from unifi_mcp_shared.permissioned_tool import create_permissioned_tool
-
-    permissioned_tool = create_permissioned_tool(
-        original_tool_decorator=_original_tool_decorator,
-        policy_gate_checker=policy_gate_checker,
-        server_prefix="NETWORK",
-        register_tool_fn=register_tool,
-        diagnostics_enabled_fn=diagnostics_enabled,
-        wrap_tool_fn=wrap_tool,
-        logger=logger,
-    )
-    server.tool = permissioned_tool
-"""
+"""@permissioned_tool decorator: wraps FastMCP @server.tool() with auth/policy enforcement from unifi_core.permission."""
 
 from __future__ import annotations
 
 import inspect
-import types
 from functools import wraps
-from typing import Annotated, Any, Callable, Union, get_args, get_origin
+from typing import Any, Callable
 
-from unifi_mcp_shared.policy_gate import resolve_permission_mode
+from unifi_core.permission import _infer_input_schema
+from unifi_core.policy_gate import resolve_permission_mode
 
 
 def setup_permissioned_tool(
@@ -46,7 +27,7 @@ def setup_permissioned_tool(
 
     Returns the permissioned_tool decorator (also installed as ``server.tool``).
     """
-    from unifi_mcp_shared.policy_gate import PolicyGateChecker
+    from unifi_core.policy_gate import PolicyGateChecker
 
     original = getattr(server, "_original_tool", server.tool)
     checker = PolicyGateChecker(server_prefix=server_prefix, category_map=category_map)
@@ -173,72 +154,3 @@ def create_permissioned_tool(
         return decorator
 
     return permissioned_tool
-
-
-def _infer_input_schema(func: Callable, tool_name: str, logger: Any) -> dict[str, Any]:
-    """Infer JSON Schema input_schema from function type annotations."""
-    try:
-        sig = inspect.signature(func)
-        properties = {}
-        required = []
-
-        for param_name, param in sig.parameters.items():
-            if param_name in ("self", "cls") or param.kind in (
-                inspect.Parameter.VAR_POSITIONAL,
-                inspect.Parameter.VAR_KEYWORD,
-            ):
-                continue
-
-            param_type = "string"
-            param_description = None
-
-            if param.annotation != inspect.Parameter.empty:
-                ann = param.annotation
-
-                # Unwrap Annotated[T, Field(...)]
-                if get_origin(ann) is Annotated:
-                    annotated_args = get_args(ann)
-                    ann = annotated_args[0] if annotated_args else ann
-                    for metadata in annotated_args[1:]:
-                        if hasattr(metadata, "description") and metadata.description:
-                            param_description = metadata.description
-                            break
-
-                # Unwrap Optional / X | None unions
-                if isinstance(ann, types.UnionType) or get_origin(ann) is Union:
-                    args = get_args(ann)
-                    non_none = [a for a in args if a is not types.NoneType]
-                    if non_none:
-                        ann = non_none[0]
-
-                origin = get_origin(ann)
-                if origin is dict or ann in (dict, "dict"):
-                    param_type = "object"
-                elif origin is list or ann in (list, "list"):
-                    param_type = "array"
-                elif ann in (int, "int"):
-                    param_type = "integer"
-                elif ann in (bool, "bool"):
-                    param_type = "boolean"
-                elif ann in (float, "float"):
-                    param_type = "number"
-
-            prop: dict[str, Any] = {"type": param_type}
-            if param_description:
-                prop["description"] = param_description
-            properties[param_name] = prop
-
-            if param.default == inspect.Parameter.empty:
-                required.append(param_name)
-
-        schema: dict[str, Any] = {
-            "type": "object",
-            "properties": properties,
-        }
-        if required:
-            schema["required"] = required
-        return schema
-
-    except Exception as exc:
-        logger.debug("Could not infer input schema for %s: %s", tool_name, exc)
-        return {"type": "object", "properties": {}}

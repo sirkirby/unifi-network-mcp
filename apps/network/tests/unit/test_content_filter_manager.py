@@ -27,7 +27,7 @@ class TestContentFilterManager:
     @pytest.fixture
     def content_filter_manager(self, mock_connection):
         """Create a ContentFilterManager with mocked connection."""
-        from unifi_network_mcp.managers.content_filter_manager import ContentFilterManager
+        from unifi_core.network.managers.content_filter_manager import ContentFilterManager
 
         return ContentFilterManager(mock_connection)
 

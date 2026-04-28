@@ -136,7 +136,7 @@ class TestDeviceManagerGetRadio:
 
     @pytest.fixture
     def device_manager(self, mock_connection):
-        from unifi_network_mcp.managers.device_manager import DeviceManager
+        from unifi_core.network.managers.device_manager import DeviceManager
 
         return DeviceManager(mock_connection)
 
@@ -204,7 +204,7 @@ class TestDeviceManagerUpdateRadio:
 
     @pytest.fixture
     def device_manager(self, mock_connection):
-        from unifi_network_mcp.managers.device_manager import DeviceManager
+        from unifi_core.network.managers.device_manager import DeviceManager
 
         return DeviceManager(mock_connection)
 

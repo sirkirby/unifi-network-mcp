@@ -227,7 +227,7 @@ def mock_cm_chimes():
 class TestLightManagerListLights:
     @pytest.mark.asyncio
     async def test_empty(self):
-        from unifi_protect_mcp.managers.light_manager import LightManager
+        from unifi_core.protect.managers.light_manager import LightManager
 
         cm = MagicMock()
         cm.client.bootstrap = _make_bootstrap(lights={})
@@ -237,7 +237,7 @@ class TestLightManagerListLights:
 
     @pytest.mark.asyncio
     async def test_single_light(self, mock_cm_lights):
-        from unifi_protect_mcp.managers.light_manager import LightManager
+        from unifi_core.protect.managers.light_manager import LightManager
 
         mgr = LightManager(mock_cm_lights)
         lights = await mgr.list_lights()
@@ -252,7 +252,7 @@ class TestLightManagerListLights:
 
     @pytest.mark.asyncio
     async def test_multiple_lights(self):
-        from unifi_protect_mcp.managers.light_manager import LightManager
+        from unifi_core.protect.managers.light_manager import LightManager
 
         cm = MagicMock()
         light1 = _make_light(id="light-001", name="Front")
@@ -266,7 +266,7 @@ class TestLightManagerListLights:
 class TestLightManagerUpdateLight:
     @pytest.mark.asyncio
     async def test_preview(self, mock_cm_lights):
-        from unifi_protect_mcp.managers.light_manager import LightManager
+        from unifi_core.protect.managers.light_manager import LightManager
 
         mgr = LightManager(mock_cm_lights)
         result = await mgr.update_light("light-001", {"light_on": True})
@@ -276,7 +276,7 @@ class TestLightManagerUpdateLight:
 
     @pytest.mark.asyncio
     async def test_multiple_settings(self, mock_cm_lights):
-        from unifi_protect_mcp.managers.light_manager import LightManager
+        from unifi_core.protect.managers.light_manager import LightManager
 
         mgr = LightManager(mock_cm_lights)
         result = await mgr.update_light("light-001", {"led_level": 3, "sensitivity": 80})
@@ -285,7 +285,7 @@ class TestLightManagerUpdateLight:
 
     @pytest.mark.asyncio
     async def test_not_found(self, mock_cm_lights):
-        from unifi_protect_mcp.managers.light_manager import LightManager
+        from unifi_core.protect.managers.light_manager import LightManager
 
         mgr = LightManager(mock_cm_lights)
         with pytest.raises(ValueError, match="Light not found"):
@@ -295,7 +295,7 @@ class TestLightManagerUpdateLight:
 class TestLightManagerApply:
     @pytest.mark.asyncio
     async def test_apply_light_on(self, mock_cm_lights):
-        from unifi_protect_mcp.managers.light_manager import LightManager
+        from unifi_core.protect.managers.light_manager import LightManager
 
         mgr = LightManager(mock_cm_lights)
         light = mock_cm_lights.client.bootstrap.lights["light-001"]
@@ -305,7 +305,7 @@ class TestLightManagerApply:
 
     @pytest.mark.asyncio
     async def test_apply_led_level(self, mock_cm_lights):
-        from unifi_protect_mcp.managers.light_manager import LightManager
+        from unifi_core.protect.managers.light_manager import LightManager
 
         mgr = LightManager(mock_cm_lights)
         light = mock_cm_lights.client.bootstrap.lights["light-001"]
@@ -315,7 +315,7 @@ class TestLightManagerApply:
 
     @pytest.mark.asyncio
     async def test_apply_duration(self, mock_cm_lights):
-        from unifi_protect_mcp.managers.light_manager import LightManager
+        from unifi_core.protect.managers.light_manager import LightManager
 
         mgr = LightManager(mock_cm_lights)
         light = mock_cm_lights.client.bootstrap.lights["light-001"]
@@ -325,7 +325,7 @@ class TestLightManagerApply:
 
     @pytest.mark.asyncio
     async def test_apply_error(self, mock_cm_lights):
-        from unifi_protect_mcp.managers.light_manager import LightManager
+        from unifi_core.protect.managers.light_manager import LightManager
 
         light = mock_cm_lights.client.bootstrap.lights["light-001"]
         light.set_light = AsyncMock(side_effect=RuntimeError("API error"))
@@ -343,7 +343,7 @@ class TestLightManagerApply:
 class TestSensorManagerListSensors:
     @pytest.mark.asyncio
     async def test_empty(self):
-        from unifi_protect_mcp.managers.sensor_manager import SensorManager
+        from unifi_core.protect.managers.sensor_manager import SensorManager
 
         cm = MagicMock()
         cm.client.bootstrap = _make_bootstrap(sensors={})
@@ -353,7 +353,7 @@ class TestSensorManagerListSensors:
 
     @pytest.mark.asyncio
     async def test_single_sensor(self, mock_cm_sensors):
-        from unifi_protect_mcp.managers.sensor_manager import SensorManager
+        from unifi_core.protect.managers.sensor_manager import SensorManager
 
         mgr = SensorManager(mock_cm_sensors)
         sensors = await mgr.list_sensors()
@@ -369,7 +369,7 @@ class TestSensorManagerListSensors:
 
     @pytest.mark.asyncio
     async def test_multiple_sensors(self):
-        from unifi_protect_mcp.managers.sensor_manager import SensorManager
+        from unifi_core.protect.managers.sensor_manager import SensorManager
 
         cm = MagicMock()
         s1 = _make_sensor(id="sensor-001", name="Front Door")
@@ -381,7 +381,7 @@ class TestSensorManagerListSensors:
 
     @pytest.mark.asyncio
     async def test_sensor_with_detections(self):
-        from unifi_protect_mcp.managers.sensor_manager import SensorManager
+        from unifi_core.protect.managers.sensor_manager import SensorManager
 
         ts = datetime(2026, 3, 16, 11, 45, tzinfo=timezone.utc)
         s = _make_sensor(
@@ -407,7 +407,7 @@ class TestSensorManagerListSensors:
 class TestChimeManagerListChimes:
     @pytest.mark.asyncio
     async def test_empty(self):
-        from unifi_protect_mcp.managers.chime_manager import ChimeManager
+        from unifi_core.protect.managers.chime_manager import ChimeManager
 
         cm = MagicMock()
         cm.client.bootstrap = _make_bootstrap(chimes={})
@@ -417,7 +417,7 @@ class TestChimeManagerListChimes:
 
     @pytest.mark.asyncio
     async def test_single_chime(self, mock_cm_chimes):
-        from unifi_protect_mcp.managers.chime_manager import ChimeManager
+        from unifi_core.protect.managers.chime_manager import ChimeManager
 
         mgr = ChimeManager(mock_cm_chimes)
         chimes = await mgr.list_chimes()
@@ -434,7 +434,7 @@ class TestChimeManagerListChimes:
 class TestChimeManagerUpdateChime:
     @pytest.mark.asyncio
     async def test_preview(self, mock_cm_chimes):
-        from unifi_protect_mcp.managers.chime_manager import ChimeManager
+        from unifi_core.protect.managers.chime_manager import ChimeManager
 
         mgr = ChimeManager(mock_cm_chimes)
         result = await mgr.update_chime("chime-001", {"volume": 50})
@@ -444,7 +444,7 @@ class TestChimeManagerUpdateChime:
 
     @pytest.mark.asyncio
     async def test_not_found(self, mock_cm_chimes):
-        from unifi_protect_mcp.managers.chime_manager import ChimeManager
+        from unifi_core.protect.managers.chime_manager import ChimeManager
 
         mgr = ChimeManager(mock_cm_chimes)
         with pytest.raises(ValueError, match="Chime not found"):
@@ -454,7 +454,7 @@ class TestChimeManagerUpdateChime:
 class TestChimeManagerApply:
     @pytest.mark.asyncio
     async def test_apply_volume(self, mock_cm_chimes):
-        from unifi_protect_mcp.managers.chime_manager import ChimeManager
+        from unifi_core.protect.managers.chime_manager import ChimeManager
 
         mgr = ChimeManager(mock_cm_chimes)
         chime = mock_cm_chimes.client.bootstrap.chimes["chime-001"]
@@ -464,7 +464,7 @@ class TestChimeManagerApply:
 
     @pytest.mark.asyncio
     async def test_apply_repeat_times(self, mock_cm_chimes):
-        from unifi_protect_mcp.managers.chime_manager import ChimeManager
+        from unifi_core.protect.managers.chime_manager import ChimeManager
 
         mgr = ChimeManager(mock_cm_chimes)
         chime = mock_cm_chimes.client.bootstrap.chimes["chime-001"]
@@ -474,7 +474,7 @@ class TestChimeManagerApply:
 
     @pytest.mark.asyncio
     async def test_apply_error(self, mock_cm_chimes):
-        from unifi_protect_mcp.managers.chime_manager import ChimeManager
+        from unifi_core.protect.managers.chime_manager import ChimeManager
 
         chime = mock_cm_chimes.client.bootstrap.chimes["chime-001"]
         chime.set_volume = AsyncMock(side_effect=RuntimeError("API error"))
@@ -486,7 +486,7 @@ class TestChimeManagerApply:
 class TestChimeManagerTrigger:
     @pytest.mark.asyncio
     async def test_trigger_default(self, mock_cm_chimes):
-        from unifi_protect_mcp.managers.chime_manager import ChimeManager
+        from unifi_core.protect.managers.chime_manager import ChimeManager
 
         mgr = ChimeManager(mock_cm_chimes)
         chime = mock_cm_chimes.client.bootstrap.chimes["chime-001"]
@@ -497,7 +497,7 @@ class TestChimeManagerTrigger:
 
     @pytest.mark.asyncio
     async def test_trigger_with_overrides(self, mock_cm_chimes):
-        from unifi_protect_mcp.managers.chime_manager import ChimeManager
+        from unifi_core.protect.managers.chime_manager import ChimeManager
 
         mgr = ChimeManager(mock_cm_chimes)
         chime = mock_cm_chimes.client.bootstrap.chimes["chime-001"]
@@ -509,7 +509,7 @@ class TestChimeManagerTrigger:
 
     @pytest.mark.asyncio
     async def test_trigger_not_found(self, mock_cm_chimes):
-        from unifi_protect_mcp.managers.chime_manager import ChimeManager
+        from unifi_core.protect.managers.chime_manager import ChimeManager
 
         mgr = ChimeManager(mock_cm_chimes)
         with pytest.raises(ValueError, match="Chime not found"):

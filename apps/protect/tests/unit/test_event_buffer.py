@@ -2,7 +2,7 @@
 
 import time
 
-from unifi_protect_mcp.managers.event_manager import EventBuffer
+from unifi_core.protect.managers.event_manager import EventBuffer
 
 # ---------------------------------------------------------------------------
 # Construction

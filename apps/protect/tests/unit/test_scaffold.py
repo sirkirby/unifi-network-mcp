@@ -10,15 +10,15 @@ def test_package_importable():
 
 def test_managers_importable():
     """Verify all manager stubs can be imported."""
-    from unifi_protect_mcp.managers.camera_manager import CameraManager
-    from unifi_protect_mcp.managers.chime_manager import ChimeManager
-    from unifi_protect_mcp.managers.connection_manager import ProtectConnectionManager
-    from unifi_protect_mcp.managers.event_manager import EventManager
-    from unifi_protect_mcp.managers.light_manager import LightManager
-    from unifi_protect_mcp.managers.liveview_manager import LiveviewManager
-    from unifi_protect_mcp.managers.recording_manager import RecordingManager
-    from unifi_protect_mcp.managers.sensor_manager import SensorManager
-    from unifi_protect_mcp.managers.system_manager import SystemManager
+    from unifi_core.protect.managers.camera_manager import CameraManager
+    from unifi_core.protect.managers.chime_manager import ChimeManager
+    from unifi_core.protect.managers.connection_manager import ProtectConnectionManager
+    from unifi_core.protect.managers.event_manager import EventManager
+    from unifi_core.protect.managers.light_manager import LightManager
+    from unifi_core.protect.managers.liveview_manager import LiveviewManager
+    from unifi_core.protect.managers.recording_manager import RecordingManager
+    from unifi_core.protect.managers.sensor_manager import SensorManager
+    from unifi_core.protect.managers.system_manager import SystemManager
 
     # Verify all classes can be instantiated with a mock connection manager
     cm = ProtectConnectionManager(host="test", username="test", password="test")
@@ -98,7 +98,7 @@ def test_config_helpers_importable():
 
 def test_connection_manager_properties():
     """Verify ProtectConnectionManager stores connection params."""
-    from unifi_protect_mcp.managers.connection_manager import ProtectConnectionManager
+    from unifi_core.protect.managers.connection_manager import ProtectConnectionManager
 
     cm = ProtectConnectionManager(
         host="192.168.1.1",

@@ -21,7 +21,7 @@ class TestEventManagerV2:
 
     @pytest.fixture
     def event_manager(self, mock_connection):
-        from unifi_network_mcp.managers.event_manager import EventManager
+        from unifi_core.network.managers.event_manager import EventManager
 
         mgr = EventManager(mock_connection)
         mgr._use_v2 = True  # Force v2 mode
@@ -101,7 +101,7 @@ class TestEventManagerLegacy:
 
     @pytest.fixture
     def event_manager(self, mock_connection):
-        from unifi_network_mcp.managers.event_manager import EventManager
+        from unifi_core.network.managers.event_manager import EventManager
 
         mgr = EventManager(mock_connection)
         mgr._use_v2 = False  # Force legacy mode
@@ -186,7 +186,7 @@ class TestEventManagerCommon:
 
     @pytest.fixture
     def event_manager(self, mock_connection):
-        from unifi_network_mcp.managers.event_manager import EventManager
+        from unifi_core.network.managers.event_manager import EventManager
 
         return EventManager(mock_connection)
 

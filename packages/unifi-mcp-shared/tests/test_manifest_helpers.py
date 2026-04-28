@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from unifi_mcp_shared.manifest_helpers import get_tool_annotations
+from unifi_core.manifest_helpers import get_tool_annotations
 
 
 def _make_server(tools: dict | None = None, *, has_manager: bool = True) -> SimpleNamespace:

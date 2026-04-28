@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from unifi_protect_mcp.managers.connection_manager import ProtectConnectionManager
+from unifi_core.protect.managers.connection_manager import ProtectConnectionManager
 
 
 @pytest.fixture
@@ -115,7 +115,7 @@ class TestInitialize:
         mock_client.update = AsyncMock()
 
         with patch(
-            "unifi_protect_mcp.managers.connection_manager.ProtectApiClient",
+            "unifi_core.protect.managers.connection_manager.ProtectApiClient",
             return_value=mock_client,
         ):
             result = await cm.initialize()
@@ -140,11 +140,11 @@ class TestInitialize:
 
         with (
             patch(
-                "unifi_protect_mcp.managers.connection_manager.ProtectApiClient",
+                "unifi_core.protect.managers.connection_manager.ProtectApiClient",
                 return_value=mock_client,
             ),
             patch(
-                "unifi_protect_mcp.managers.connection_manager.retry_with_backoff",
+                "unifi_core.protect.managers.connection_manager.retry_with_backoff",
                 side_effect=ConnectionError("down after retries"),
             ),
         ):

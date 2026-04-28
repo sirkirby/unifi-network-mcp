@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
-from unifi_access_mcp.managers.credential_manager import CredentialManager
+from unifi_core.access.managers.connection_manager import AccessConnectionManager
+from unifi_core.access.managers.credential_manager import CredentialManager
 from unifi_core.exceptions import UniFiConnectionError
 
 # ---------------------------------------------------------------------------

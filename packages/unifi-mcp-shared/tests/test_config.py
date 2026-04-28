@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from unifi_mcp_shared.config import load_yaml_config, setup_logging
+from unifi_core.config import load_yaml_config, setup_logging
 
 
 class TestSetupLogging:

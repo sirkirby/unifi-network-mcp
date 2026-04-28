@@ -26,7 +26,7 @@ class TestGetSystemInfo:
     @pytest.fixture
     def system_manager(self, mock_connection):
         """Create a SystemManager with mocked connection."""
-        from unifi_network_mcp.managers.system_manager import SystemManager
+        from unifi_core.network.managers.system_manager import SystemManager
 
         return SystemManager(mock_connection)
 
@@ -116,7 +116,7 @@ class TestGetControllerStatus:
     @pytest.fixture
     def system_manager(self, mock_connection):
         """Create a SystemManager with mocked connection."""
-        from unifi_network_mcp.managers.system_manager import SystemManager
+        from unifi_core.network.managers.system_manager import SystemManager
 
         return SystemManager(mock_connection)
 
@@ -182,7 +182,7 @@ class TestCheckFirmwareUpdates:
     @pytest.fixture
     def system_manager(self, mock_connection):
         """Create a SystemManager with mocked connection."""
-        from unifi_network_mcp.managers.system_manager import SystemManager
+        from unifi_core.network.managers.system_manager import SystemManager
 
         return SystemManager(mock_connection)
 
@@ -251,7 +251,7 @@ class TestGetNetworkHealth:
     @pytest.fixture
     def system_manager(self, mock_connection):
         """Create a SystemManager with mocked connection."""
-        from unifi_network_mcp.managers.system_manager import SystemManager
+        from unifi_core.network.managers.system_manager import SystemManager
 
         return SystemManager(mock_connection)
 

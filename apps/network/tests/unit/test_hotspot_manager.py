@@ -25,7 +25,7 @@ class TestHotspotManager:
     @pytest.fixture
     def hotspot_manager(self, mock_connection):
         """Create a HotspotManager with mocked connection."""
-        from unifi_network_mcp.managers.hotspot_manager import HotspotManager
+        from unifi_core.network.managers.hotspot_manager import HotspotManager
 
         return HotspotManager(mock_connection)
 

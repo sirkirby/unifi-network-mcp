@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from unifi_mcp_shared.diagnostics import (
+from unifi_core.diagnostics import (
     _redact,
     _safe_json,
     _truncate,
