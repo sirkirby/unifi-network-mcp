@@ -4,6 +4,7 @@ dynamic = ["version"]
 description = "Shared MCP server patterns: permissions, confirmation, lazy loading, config"
 requires-python = ">=3.13"
 dependencies = [
+    "unifi-core",
     "mcp[cli]>=1.26.0,<2",
     "omegaconf>=2.3.0",
     "pyyaml>=6.0",
@@ -33,6 +34,9 @@ version-file = "src/unifi_mcp_shared/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/unifi_mcp_shared"]
+
+[tool.uv.sources]
+unifi-core = { workspace = true }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
