@@ -51,25 +51,11 @@ jobs:
         VERSION="${TAG#*/v}"
 
         DISPLAY_NAME="UniFi MCP Relay"
-        PYPI_PACKAGE="unifi-mcp-relay"
 
-        # Find previous tag for same prefix
-        PREV_TAG=$(git tag --list "${PREFIX}/v*" --sort=-version:refname | sed -n '2p')
-
-        NOTES_START_TAG_FLAG=""
-        if [ -n "$PREV_TAG" ]; then
-          NOTES_START_TAG_FLAG="--notes-start-tag $PREV_TAG"
-        fi
+        python3 scripts/generate_release_notes.py --tag "$TAG" --output /tmp/release-notes.md
 
         gh release create "$TAG" \
           --title "${DISPLAY_NAME} v${VERSION}" \
-          --generate-notes \
-          $NOTES_START_TAG_FLAG \
-          --notes "Install or upgrade:
-        \`\`\`bash
-        pip install ${PYPI_PACKAGE}==${VERSION}
-        \`\`\`
-
-        [![PyPI](https://img.shields.io/pypi/v/${PYPI_PACKAGE})](https://pypi.org/project/${PYPI_PACKAGE}/${VERSION}/)" \
+          --notes-file /tmp/release-notes.md \
           --latest=false \
           --verify-tag
