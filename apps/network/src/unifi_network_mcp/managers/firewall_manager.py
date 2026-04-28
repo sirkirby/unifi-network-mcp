@@ -702,13 +702,34 @@ class FirewallManager:
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
         try:
-            api_request = ApiRequestV2(method="get", path="/firewall/zones")
-            resp = await self._connection.request(api_request)
+            # Network 10.2+ exposes zones at /firewall/zone-matrix (returns
+            # zone metadata plus an inter-zone policy-count matrix).
+            # Older firmware exposed a flat list at /firewall/zones; try that
+            # as a fallback so this works across versions.
+            try:
+                api_request = ApiRequestV2(method="get", path="/firewall/zone-matrix")
+                resp = await self._connection.request(api_request)
+            except Exception as primary_exc:
+                logger.debug(
+                    "Primary /firewall/zone-matrix failed (%s), falling back to /firewall/zones",
+                    primary_exc,
+                )
+                api_request = ApiRequestV2(method="get", path="/firewall/zones")
+                resp = await self._connection.request(api_request)
             data = resp if isinstance(resp, list) else resp.get("data", []) if isinstance(resp, dict) else []
+            # The zone-matrix endpoint includes a `data` field per zone that
+            # contains the policy-count matrix to every other zone (O(N^2)
+            # payload). For a zones listing we only want the zone metadata,
+            # so drop the matrix field if present. The matrix is still
+            # available via a dedicated tool if needed.
+            data = [
+                {k: v for k, v in zone.items() if k != "data"} if isinstance(zone, dict) else zone
+                for zone in data
+            ]
             self._connection._update_cache(cache_key, data)
             return data
         except Exception as e:
-            logger.error("Error fetching firewall zones: %s", e)
+            logger.error("Error fetching firewall zones: %s", e, exc_info=True)
             raise
 
     # ---- Firewall Groups (v1 REST: address-group, port-group) ----
