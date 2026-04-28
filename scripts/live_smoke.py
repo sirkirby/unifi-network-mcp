@@ -144,9 +144,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--server", choices=["network", "protect", "access", "all"], required=True)
     parser.add_argument(
         "--phase",
-        choices=["inventory", "readonly", "preview", "lifecycle", "safe"],
+        choices=["inventory", "readonly", "preview", "lifecycle", "approved", "safe"],
         default="safe",
-        help="'safe' runs readonly, preview, and named safe lifecycles.",
+        help="'safe' runs readonly, preview, and named safe lifecycles. 'approved' runs explicitly approved mutations.",
     )
     parser.add_argument("--report-dir", default="live-smoke-results")
     parser.add_argument("--delay", type=float, default=0.25, help="Delay between tool calls in seconds.")
@@ -237,6 +237,43 @@ def first_value(item: dict[str, Any], keys: tuple[str, ...]) -> Any:
         value = item.get(key)
         if value not in (None, ""):
             return value
+    return None
+
+
+def looks_ptz_capable(item: dict[str, Any]) -> bool:
+    markers = (
+        "is_ptz",
+        "isPtz",
+        "is_ptz_camera",
+        "ptz",
+        "ptz_capable",
+        "has_ptz",
+        "pan_tilt_zoom",
+    )
+    for key in markers:
+        value = item.get(key)
+        if value is True or (isinstance(value, dict) and value):
+            return True
+    model_text = " ".join(str(item.get(key, "")) for key in ("name", "model", "type", "display_name")).lower()
+    return "ptz" in model_text
+
+
+def find_int_by_key(value: Any, keys: tuple[str, ...]) -> int | None:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key in keys:
+                try:
+                    return int(child)
+                except (TypeError, ValueError):
+                    pass
+            found = find_int_by_key(child, keys)
+            if found is not None:
+                return found
+    elif isinstance(value, list):
+        for child in value:
+            found = find_int_by_key(child, keys)
+            if found is not None:
+                return found
     return None
 
 
@@ -415,6 +452,8 @@ class LiveSmokeRunner:
             await self.run_previews()
         if self.args.phase in ("lifecycle", "safe"):
             await self.run_lifecycles()
+        if self.args.phase == "approved":
+            await self.run_approved()
 
     def selected_tools(self) -> list[dict[str, Any]]:
         tools = list(self.manifest["tools"])
@@ -508,6 +547,21 @@ class LiveSmokeRunner:
                 "lifecycle",
                 "Protect liveview API is validation-only",
             )
+
+    async def run_approved(self) -> None:
+        if self.server_key == "network":
+            await self.run_lifecycles()
+            await self.lifecycle_network_acl_rule()
+            await self.lifecycle_network_ap_group()
+            await self.lifecycle_network_wlan()
+            await self.lifecycle_network_port_profile()
+            await self.lifecycle_network_firewall_policy()
+            await self.lifecycle_network_oon_policy()
+            await self.lifecycle_network_voucher()
+        elif self.server_key == "protect":
+            await self.approved_protect_physical()
+        elif self.server_key == "access":
+            await self.approved_access_physical()
 
     def skip(self, tool: str, phase: str, reason: str) -> None:
         self.report.records.append(SmokeRecord(tool=tool, phase=phase, status="skipped", error=reason))
@@ -663,6 +717,55 @@ class LiveSmokeRunner:
             "access_end": end.isoformat().replace("+00:00", "Z"),
         }
 
+    def protect_camera_id(self, prefer_ptz: bool = False) -> str | None:
+        cameras = self.cache.items("cameras")
+        if prefer_ptz:
+            for camera in cameras:
+                if looks_ptz_capable(camera):
+                    value = first_value(camera, ("id", "_id", "camera_id", "uuid"))
+                    if value:
+                        return str(value)
+        for camera in cameras:
+            value = first_value(camera, ("id", "_id", "camera_id", "uuid"))
+            if value:
+                return str(value)
+        return None
+
+    def protect_preset_slot(self, camera_id: str) -> int | None:
+        payload = self.cache.by_tool.get("protect_get_camera", {})
+        detail = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(detail, dict):
+            return None
+        if str(first_value(detail, ("id", "_id", "camera_id", "uuid"))) not in ("", "None", camera_id):
+            return None
+        return find_int_by_key(detail, ("slot", "preset_slot", "presetSlot"))
+
+    def protect_recording_enabled(self, camera_id: str) -> bool | None:
+        payload = self.cache.by_tool.get("protect_get_camera", {})
+        detail = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(detail, dict):
+            return None
+        if str(first_value(detail, ("id", "_id", "camera_id", "uuid"))) not in ("", "None", camera_id):
+            return None
+        mode = str(detail.get("recording_mode") or detail.get("recordingMode") or "").lower()
+        if mode:
+            return mode not in {"never", "disabled", "off"}
+        value = detail.get("is_recording")
+        return value if isinstance(value, bool) else None
+
+    def firewall_zone_id(self, preferred_name: str) -> str | None:
+        zones = self.cache.items_from_tool("unifi_list_firewall_zones", "zones")
+        for zone in zones:
+            if str(zone.get("name", "")).lower() == preferred_name.lower():
+                value = first_value(zone, ("id", "_id", "zone_id"))
+                if value:
+                    return str(value)
+        for zone in zones:
+            value = first_value(zone, ("id", "_id", "zone_id"))
+            if value:
+                return str(value)
+        return None
+
     async def lifecycle_network_dns(self) -> None:
         stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
         key = f"{RUN_PREFIX}-{stamp}.test"
@@ -754,6 +857,270 @@ class LiveSmokeRunner:
         if delete.success:
             self.report.cleaned_resources.append({"type": "firewall_group", "id": group_id, "name": name})
 
+    async def lifecycle_network_acl_rule(self) -> None:
+        network_id = self.value_for_param("unifi_create_acl_rule", "network_id")
+        if not network_id:
+            self.skip("unifi_create_acl_rule/unifi_delete_acl_rule", "approved", "could not discover network_id")
+            return
+
+        stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+        name = f"{RUN_PREFIX}-acl-{stamp}"
+        create = await self.call(
+            "unifi_create_acl_rule",
+            {
+                "name": name,
+                "acl_index": 65000,
+                "action": "ALLOW",
+                "network_id": network_id,
+                "enabled": False,
+                "source_macs": [],
+                "destination_macs": [],
+                "confirm": True,
+            },
+            "approved:create",
+        )
+        rule_id = create.summary.get("resource_id")
+        if not rule_id:
+            self.skip("unifi_delete_acl_rule", "approved", "ACL create did not return an id")
+            return
+        self.report.created_resources.append({"type": "acl_rule", "id": rule_id, "name": name})
+        delete = await self.call("unifi_delete_acl_rule", {"rule_id": rule_id, "confirm": True}, "approved:delete")
+        if delete.success:
+            self.report.cleaned_resources.append({"type": "acl_rule", "id": rule_id, "name": name})
+
+    async def lifecycle_network_ap_group(self) -> None:
+        stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+        name = f"{RUN_PREFIX}-ap-group-{stamp}"
+        create = await self.call(
+            "unifi_create_ap_group",
+            {"group_data": {"name": name, "device_macs": [], "wlan_group_ids": []}, "confirm": True},
+            "approved:create",
+        )
+        group_id = create.summary.get("resource_id")
+        if not group_id:
+            self.skip("unifi_delete_ap_group", "approved", "AP group create did not return an id")
+            return
+        self.report.created_resources.append({"type": "ap_group", "id": group_id, "name": name})
+        delete = await self.call("unifi_delete_ap_group", {"group_id": group_id, "confirm": True}, "approved:delete")
+        if delete.success:
+            self.report.cleaned_resources.append({"type": "ap_group", "id": group_id, "name": name})
+
+    async def lifecycle_network_wlan(self) -> None:
+        ap_group_id = self.cache.id_from_tool("unifi_list_ap_groups", "ap_groups", ("_id", "id"))
+        if not ap_group_id:
+            self.skip("unifi_create_wlan/unifi_delete_wlan", "approved", "could not discover AP group id")
+            return
+
+        stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+        name = f"{RUN_PREFIX}-ssid-{stamp}"
+        create = await self.call(
+            "unifi_create_wlan",
+            {
+                "wlan_data": {
+                    "name": name,
+                    "security": "open",
+                    "enabled": False,
+                    "hide_ssid": True,
+                    "guest_policy": True,
+                    "ap_group_ids": [ap_group_id],
+                    "ap_group_mode": "groups",
+                },
+                "confirm": True,
+            },
+            "approved:create",
+        )
+        wlan_id = create.summary.get("resource_id")
+        if not wlan_id:
+            self.skip("unifi_delete_wlan", "approved", "WLAN create did not return an id")
+            return
+        self.report.created_resources.append({"type": "wlan", "id": wlan_id, "name": name})
+        delete = await self.call("unifi_delete_wlan", {"wlan_id": wlan_id, "confirm": True}, "approved:delete")
+        if delete.success:
+            self.report.cleaned_resources.append({"type": "wlan", "id": wlan_id, "name": name})
+
+    async def lifecycle_network_port_profile(self) -> None:
+        stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+        name = f"{RUN_PREFIX}-port-profile-{stamp}"
+        create = await self.call(
+            "unifi_create_port_profile",
+            {"name": name, "forward": "disabled", "poe_mode": "off", "confirm": True},
+            "approved:create",
+        )
+        profile_id = create.summary.get("resource_id")
+        if not profile_id:
+            self.skip("unifi_delete_port_profile", "approved", "port profile create did not return an id")
+            return
+        self.report.created_resources.append({"type": "port_profile", "id": profile_id, "name": name})
+        delete = await self.call(
+            "unifi_delete_port_profile",
+            {"profile_id": profile_id, "confirm": True},
+            "approved:delete",
+        )
+        if delete.success:
+            self.report.cleaned_resources.append({"type": "port_profile", "id": profile_id, "name": name})
+
+    async def lifecycle_network_firewall_policy(self) -> None:
+        source_zone = self.firewall_zone_id("Internal")
+        destination_zone = self.firewall_zone_id("External")
+        if not source_zone or not destination_zone:
+            self.skip(
+                "unifi_create_firewall_policy/unifi_delete_firewall_policy",
+                "approved",
+                "could not discover source/destination firewall zones",
+            )
+            return
+
+        stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+        name = f"{RUN_PREFIX}-fw-policy-{stamp}"
+        endpoint = {"matching_target": "ANY"}
+        create = await self.call(
+            "unifi_create_firewall_policy",
+            {
+                "policy_data": {
+                    "name": name,
+                    "action": "ALLOW",
+                    "index": 65000,
+                    "enabled": False,
+                    "logging": False,
+                    "protocol": "all",
+                    "source": {**endpoint, "zone_id": source_zone},
+                    "destination": {**endpoint, "zone_id": destination_zone},
+                },
+                "confirm": True,
+            },
+            "approved:create",
+        )
+        policy_id = create.summary.get("resource_id")
+        if not policy_id:
+            self.skip("unifi_delete_firewall_policy", "approved", "firewall policy create did not return an id")
+            return
+        self.report.created_resources.append({"type": "firewall_policy", "id": policy_id, "name": name})
+        delete = await self.call(
+            "unifi_delete_firewall_policy",
+            {"policy_id": policy_id, "confirm": True},
+            "approved:delete",
+        )
+        if delete.success:
+            self.report.cleaned_resources.append({"type": "firewall_policy", "id": policy_id, "name": name})
+
+    async def lifecycle_network_oon_policy(self) -> None:
+        client_mac = self.cache.client_mac()
+        if not client_mac:
+            self.skip("unifi_create_oon_policy/unifi_delete_oon_policy", "approved", "could not discover client MAC")
+            return
+
+        stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+        name = f"{RUN_PREFIX}-oon-{stamp}"
+        create = await self.call(
+            "unifi_create_oon_policy",
+            {
+                "name": name,
+                "target_type": "CLIENTS",
+                "targets": [{"type": "MAC", "id": client_mac}],
+                "enabled": False,
+                "secure": {"internet_access_enabled": True, "apps": []},
+                "confirm": True,
+            },
+            "approved:create",
+        )
+        policy_id = create.summary.get("resource_id")
+        if not policy_id:
+            self.skip("unifi_delete_oon_policy", "approved", "OON policy create did not return an id")
+            return
+        self.report.created_resources.append({"type": "oon_policy", "id": policy_id, "name": name})
+        delete = await self.call(
+            "unifi_delete_oon_policy", {"policy_id": policy_id, "confirm": True}, "approved:delete"
+        )
+        if delete.success:
+            self.report.cleaned_resources.append({"type": "oon_policy", "id": policy_id, "name": name})
+
+    async def lifecycle_network_voucher(self) -> None:
+        stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+        note = f"{RUN_PREFIX}-voucher-{stamp}"
+        create = await self.call(
+            "unifi_create_voucher",
+            {"expire_minutes": 10, "count": 1, "quota": 1, "note": note, "confirm": True},
+            "approved:create",
+        )
+        voucher_id = create.summary.get("resource_id")
+        if not voucher_id:
+            await self.call("unifi_list_vouchers", {}, "approved:list")
+            for voucher in self.cache.items_from_tool("unifi_list_vouchers", "vouchers"):
+                if voucher.get("note") == note:
+                    voucher_id = first_value(voucher, ("_id", "id", "voucher_id"))
+                    break
+        if not voucher_id:
+            self.skip("unifi_revoke_voucher", "approved", "voucher create did not return an id")
+            return
+        self.report.created_resources.append({"type": "voucher", "id": voucher_id, "name": note})
+        revoke = await self.call(
+            "unifi_revoke_voucher",
+            {"voucher_id": voucher_id, "confirm": True},
+            "approved:delete",
+        )
+        if revoke.success:
+            self.report.cleaned_resources.append({"type": "voucher", "id": voucher_id, "name": note})
+
+    async def approved_protect_physical(self) -> None:
+        camera_id = self.protect_camera_id()
+        if not camera_id:
+            self.skip("protect approved camera operations", "approved", "could not discover camera_id")
+            return
+
+        ptz_camera_id = self.protect_camera_id(prefer_ptz=True)
+        if ptz_camera_id:
+            await self.call("protect_get_camera", {"camera_id": ptz_camera_id}, "approved:get")
+            await self.call("protect_ptz_move", {"camera_id": ptz_camera_id, "zoom": 0}, "approved:physical")
+            preset_slot = self.protect_preset_slot(ptz_camera_id)
+            if preset_slot is not None:
+                await self.call(
+                    "protect_ptz_preset",
+                    {"camera_id": ptz_camera_id, "preset_slot": preset_slot},
+                    "approved:physical",
+                )
+            else:
+                self.skip("protect_ptz_preset", "approved", "no PTZ preset slot discovered")
+        else:
+            self.skip("protect_ptz_move/protect_ptz_preset", "approved", "no PTZ-capable camera discovered")
+
+        await self.call("protect_get_camera", {"camera_id": camera_id}, "approved:get")
+        enabled = self.protect_recording_enabled(camera_id)
+        if enabled is None:
+            enabled = True
+        await self.call(
+            "protect_toggle_recording",
+            {"camera_id": camera_id, "enabled": enabled, "confirm": False},
+            "approved:preview",
+        )
+        await self.call(
+            "protect_toggle_recording",
+            {"camera_id": camera_id, "enabled": enabled, "confirm": True},
+            "approved:physical",
+        )
+        await self.call("protect_reboot_camera", {"camera_id": camera_id, "confirm": False}, "approved:preview")
+        await self.call("protect_reboot_camera", {"camera_id": camera_id, "confirm": True}, "approved:physical")
+
+    async def approved_access_physical(self) -> None:
+        door_id = self.cache.id_from(("doors",), ("id", "_id", "door_id", "uuid"))
+        if door_id:
+            await self.call(
+                "access_unlock_door", {"door_id": door_id, "duration": 2, "confirm": False}, "approved:preview"
+            )
+            await self.call(
+                "access_unlock_door", {"door_id": door_id, "duration": 2, "confirm": True}, "approved:physical"
+            )
+            await self.call("access_lock_door", {"door_id": door_id, "confirm": False}, "approved:preview")
+            await self.call("access_lock_door", {"door_id": door_id, "confirm": True}, "approved:physical")
+        else:
+            self.skip("access_unlock_door/access_lock_door", "approved", "could not discover door_id")
+
+        device_id = self.cache.id_from(("devices",), ("id", "_id", "device_id", "uuid"))
+        if device_id:
+            await self.call("access_reboot_device", {"device_id": device_id, "confirm": False}, "approved:preview")
+            await self.call("access_reboot_device", {"device_id": device_id, "confirm": True}, "approved:physical")
+        else:
+            self.skip("access_reboot_device", "approved", "could not discover device_id")
+
     async def lifecycle_access_visitor(self) -> None:
         stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
         args = self.visitor_args(stamp)
@@ -798,12 +1165,29 @@ def summarize_payload(data: dict[str, Any]) -> dict[str, Any]:
 
 def find_resource_id(data: Any) -> str | None:
     if isinstance(data, dict):
-        for key in ("id", "_id", "record_id", "group_id", "visitor_id", "liveview_id"):
+        for key in (
+            "id",
+            "_id",
+            "record_id",
+            "group_id",
+            "rule_id",
+            "policy_id",
+            "profile_id",
+            "voucher_id",
+            "visitor_id",
+            "wlan_id",
+            "liveview_id",
+        ):
             value = data.get(key)
             if value:
                 return str(value)
-        for key in ("details", "group", "data", "result"):
+        for key in ("details", "group", "policy", "profile", "rule", "data", "result"):
             value = find_resource_id(data.get(key))
+            if value:
+                return value
+    elif isinstance(data, list):
+        for item in data:
+            value = find_resource_id(item)
             if value:
                 return value
     return None
