@@ -1,4 +1,4 @@
-# Protect Server Tool Reference (38 tools)
+# Protect Server Tool Reference (39 tools)
 
 Complete reference for `protect_*` tools. All read tools are always available. All mutations are **disabled by default** — the user must explicitly enable them because Protect controls physical security hardware.
 
@@ -32,7 +32,7 @@ Always available, regardless of registration mode.
 ## Cameras
 
 <!-- AUTO:tools:cameras -->
-10 tools.
+11 tools.
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -41,8 +41,9 @@ Always available, regardless of registration mode.
 | `protect_get_camera_streams` | Read | Returns RTSP/RTSPS stream URLs for a camera organized by channel (High, Medium, Low). |
 | `protect_get_snapshot` | Read | Fetches a JPEG snapshot from a camera. |
 | `protect_list_cameras` | Read | Lists all cameras adopted by the Protect NVR with their name, model, connection state, recording mode, and whether they are currently rec... |
-| `protect_ptz_move` | Read | Adjusts PTZ camera position. |
-| `protect_ptz_preset` | Read | Moves a PTZ camera to a saved preset position by slot number. |
+| `protect_ptz_move` | Mutate | Moves a PTZ camera using normalized pan/tilt speeds. |
+| `protect_ptz_preset` | Mutate | Moves a PTZ camera to a saved preset position by slot number. |
+| `protect_ptz_zoom` | Mutate | Zooms a PTZ camera using normalized zoom speed. |
 | `protect_reboot_camera` | Mutate | Reboots a camera. |
 | `protect_toggle_recording` | Mutate | Enables or disables recording on a camera. |
 | `protect_update_camera_settings` | Mutate | Updates camera settings such as IR LED mode, HDR mode, mic/speaker volume, status light, and motion detection. |
@@ -52,7 +53,7 @@ Always available, regardless of registration mode.
 - `protect_get_snapshot` with `include_image=true` returns base64 JPEG inline — useful for quick visual checks
 - `protect_get_camera_streams` gives RTSP URLs for video player integration — these can be shared with the user
 - Camera settings use a dict: `settings={"ir_led_mode": "auto", "hdr_mode": true, "mic_enabled": true}`
-- PTZ: only zoom works via the API. For pan/tilt, use preset positions
+- PTZ pan/tilt uses `protect_ptz_move`; PTZ zoom uses `protect_ptz_zoom`; saved positions use `protect_ptz_preset`
 
 **Permission env vars:**
 - `UNIFI_POLICY_PROTECT_CAMERAS_UPDATE=true` — enables settings, recording toggle, PTZ, reboot

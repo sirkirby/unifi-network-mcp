@@ -24,6 +24,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUN_PREFIX = "codex-smoke"
 
@@ -92,6 +94,7 @@ RISKY_OPERATION_NAMES = {
     "protect_reboot_camera",
     "protect_ptz_move",
     "protect_ptz_preset",
+    "protect_ptz_zoom",
     "protect_toggle_recording",
     "protect_trigger_chime",
     "unifi_adopt_device",
@@ -199,6 +202,7 @@ def run_all_servers(args: argparse.Namespace) -> int:
 
 
 def configure_environment() -> None:
+    load_dotenv(REPO_ROOT / ".env", override=True)
     os.environ["UNIFI_TOOL_REGISTRATION_MODE"] = "eager"
     os.environ["UNIFI_TOOL_PERMISSION_MODE"] = "confirm"
     os.environ["UNIFI_AUTO_CONFIRM"] = "false"
@@ -718,13 +722,14 @@ class LiveSmokeRunner:
         }
 
     def protect_camera_id(self, prefer_ptz: bool = False) -> str | None:
-        cameras = self.cache.items("cameras")
+        cameras = self.cache.items_from_tool("protect_list_cameras", "cameras") or self.cache.items("cameras")
         if prefer_ptz:
             for camera in cameras:
                 if looks_ptz_capable(camera):
                     value = first_value(camera, ("id", "_id", "camera_id", "uuid"))
                     if value:
                         return str(value)
+            return None
         for camera in cameras:
             value = first_value(camera, ("id", "_id", "camera_id", "uuid"))
             if value:
@@ -1070,12 +1075,21 @@ class LiveSmokeRunner:
         ptz_camera_id = self.protect_camera_id(prefer_ptz=True)
         if ptz_camera_id:
             await self.call("protect_get_camera", {"camera_id": ptz_camera_id}, "approved:get")
-            await self.call("protect_ptz_move", {"camera_id": ptz_camera_id, "zoom": 0}, "approved:physical")
+            await self.call(
+                "protect_ptz_move",
+                {"camera_id": ptz_camera_id, "pan": 200, "tilt": 0, "duration_ms": 150, "confirm": True},
+                "approved:physical",
+            )
+            await self.call(
+                "protect_ptz_zoom",
+                {"camera_id": ptz_camera_id, "zoom_speed": 0, "duration_ms": 0, "confirm": True},
+                "approved:physical",
+            )
             preset_slot = self.protect_preset_slot(ptz_camera_id)
             if preset_slot is not None:
                 await self.call(
                     "protect_ptz_preset",
-                    {"camera_id": ptz_camera_id, "preset_slot": preset_slot},
+                    {"camera_id": ptz_camera_id, "preset_slot": preset_slot, "confirm": True},
                     "approved:physical",
                 )
             else:

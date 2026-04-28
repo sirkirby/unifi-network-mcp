@@ -1,5 +1,5 @@
 {
-  "count": 38,
+  "count": 39,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "protect_acknowledge_event": "unifi_protect_mcp.tools.events",
@@ -32,6 +32,7 @@
     "protect_list_viewers": "unifi_protect_mcp.tools.system",
     "protect_ptz_move": "unifi_protect_mcp.tools.cameras",
     "protect_ptz_preset": "unifi_protect_mcp.tools.cameras",
+    "protect_ptz_zoom": "unifi_protect_mcp.tools.cameras",
     "protect_reboot_camera": "unifi_protect_mcp.tools.cameras",
     "protect_recent_events": "unifi_protect_mcp.tools.events",
     "protect_subscribe_events": "unifi_protect_mcp.tools.events",
@@ -702,10 +703,12 @@
     },
     {
       "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Adjusts PTZ camera position. Currently only zoom level is supported via the API. For pan/tilt, use protect_ptz_preset to move to a saved preset position. Only works on PTZ-capable cameras.",
+      "description": "Moves a PTZ camera using normalized pan/tilt speeds. Requires confirm=True to execute. Use protect_ptz_zoom for zoom movement. Only works on PTZ-capable cameras.",
       "name": "protect_ptz_move",
       "permission_action": "update",
       "permission_category": "camera",
@@ -716,17 +719,21 @@
               "description": "Camera UUID of a PTZ-capable camera (from protect_list_cameras)",
               "type": "string"
             },
+            "confirm": {
+              "description": "Set to true to execute the physical PTZ movement. Defaults to false for preview.",
+              "type": "boolean"
+            },
+            "duration_ms": {
+              "description": "How long to move before automatically sending a stop command.",
+              "type": "integer"
+            },
             "pan": {
-              "description": "Pan position in degrees. Note: not currently supported via the API; use protect_ptz_preset for pan control.",
+              "description": "Pan speed from -1000 (left) to 1000 (right). Use 0 to stop pan.",
               "type": "number"
             },
             "tilt": {
-              "description": "Tilt position in degrees. Note: not currently supported via the API; use protect_ptz_preset for tilt control.",
+              "description": "Tilt speed from -1000 (down) to 1000 (up). Use 0 to stop tilt.",
               "type": "number"
-            },
-            "zoom": {
-              "description": "Zoom level (0 = wide, higher values = more zoom). The maximum depends on the camera model.",
-              "type": "integer"
             }
           },
           "required": [
@@ -738,10 +745,12 @@
     },
     {
       "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Moves a PTZ camera to a saved preset position by slot number. Returns available presets for the camera. Only works on PTZ-capable cameras.",
+      "description": "Moves a PTZ camera to a saved preset position by slot number. Returns available presets for the camera. Requires confirm=True to execute. Only works on PTZ-capable cameras.",
       "name": "protect_ptz_preset",
       "permission_action": "update",
       "permission_category": "camera",
@@ -752,6 +761,10 @@
               "description": "Camera UUID of a PTZ-capable camera (from protect_list_cameras)",
               "type": "string"
             },
+            "confirm": {
+              "description": "Set to true to move to the preset. Defaults to false for preview.",
+              "type": "boolean"
+            },
             "preset_slot": {
               "description": "Preset slot number to move the camera to. Available slots can be seen in the camera's PTZ preset list.",
               "type": "integer"
@@ -760,6 +773,44 @@
           "required": [
             "camera_id",
             "preset_slot"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Zooms a PTZ camera using normalized zoom speed. Requires confirm=True to execute. This is separate from optical zoom settings.",
+      "name": "protect_ptz_zoom",
+      "permission_action": "update",
+      "permission_category": "camera",
+      "schema": {
+        "input": {
+          "properties": {
+            "camera_id": {
+              "description": "Camera UUID of a PTZ-capable camera (from protect_list_cameras)",
+              "type": "string"
+            },
+            "confirm": {
+              "description": "Set to true to execute the physical PTZ zoom. Defaults to false for preview.",
+              "type": "boolean"
+            },
+            "duration_ms": {
+              "description": "How long to zoom before automatically sending a stop command.",
+              "type": "integer"
+            },
+            "zoom_speed": {
+              "description": "Zoom speed from -1000 (out) to 1000 (in). Use 0 to stop zoom.",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "camera_id"
           ],
           "type": "object"
         }
