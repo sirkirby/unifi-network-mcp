@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from unifi_mcp_shared.event_timeline import NormalizedEvent, merge_timelines, filter_by_area
+from unifi_core.event_timeline import NormalizedEvent, merge_timelines, filter_by_area
 
 
 class TestNormalizedEvent:

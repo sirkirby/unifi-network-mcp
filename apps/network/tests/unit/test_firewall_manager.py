@@ -57,7 +57,7 @@ def mock_connection():
 
 @pytest.fixture
 def firewall_manager(mock_connection):
-    from unifi_network_mcp.managers.firewall_manager import FirewallManager
+    from unifi_core.network.managers.firewall_manager import FirewallManager
 
     return FirewallManager(mock_connection)
 

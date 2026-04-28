@@ -26,7 +26,7 @@ class TestFirewallGroups:
     @pytest.fixture
     def firewall_manager(self, mock_connection):
         """Create a FirewallManager with mocked connection."""
-        from unifi_network_mcp.managers.firewall_manager import FirewallManager
+        from unifi_core.network.managers.firewall_manager import FirewallManager
 
         return FirewallManager(mock_connection)
 

@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
-from unifi_access_mcp.managers.door_manager import _LOCATIONS_EXPAND, DoorManager
+from unifi_core.access.managers.connection_manager import AccessConnectionManager
+from unifi_core.access.managers.door_manager import _LOCATIONS_EXPAND, DoorManager
 from unifi_core.exceptions import UniFiConnectionError
 
 # ---------------------------------------------------------------------------

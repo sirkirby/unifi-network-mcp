@@ -10,7 +10,7 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import preview_response
+from unifi_core.confirmation import preview_response
 from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ def _get_event_manager():
     """Lazy-load the event manager to avoid circular imports."""
     global _event_manager
     if _event_manager is None:
-        from unifi_network_mcp.managers.event_manager import EventManager
+        from unifi_core.network.managers.event_manager import EventManager
         from unifi_network_mcp.runtime import get_connection_manager
 
         _event_manager = EventManager(get_connection_manager())

@@ -11,7 +11,7 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, update_preview
+from unifi_core.confirmation import create_preview, update_preview
 from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ def _get_routing_manager():
     """Lazy-load the routing manager to avoid circular imports."""
     global _routing_manager
     if _routing_manager is None:
-        from unifi_network_mcp.managers.routing_manager import RoutingManager
+        from unifi_core.network.managers.routing_manager import RoutingManager
         from unifi_network_mcp.runtime import get_connection_manager
 
         _routing_manager = RoutingManager(get_connection_manager())

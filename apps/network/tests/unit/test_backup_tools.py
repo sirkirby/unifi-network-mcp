@@ -26,7 +26,7 @@ class TestBackupTools:
     @pytest.fixture
     def system_manager(self, mock_connection):
         """Create a SystemManager with mocked connection."""
-        from unifi_network_mcp.managers.system_manager import SystemManager
+        from unifi_core.network.managers.system_manager import SystemManager
 
         mgr = SystemManager(mock_connection)
         return mgr

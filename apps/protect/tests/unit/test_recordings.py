@@ -91,7 +91,7 @@ def mock_cm_multi():
 class TestRecordingManagerGetRecordingStatus:
     @pytest.mark.asyncio
     async def test_single_camera(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         result = await mgr.get_recording_status(camera_id="cam-001")
@@ -103,7 +103,7 @@ class TestRecordingManagerGetRecordingStatus:
 
     @pytest.mark.asyncio
     async def test_all_cameras(self, mock_cm_multi):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm_multi)
         result = await mgr.get_recording_status()
@@ -114,7 +114,7 @@ class TestRecordingManagerGetRecordingStatus:
 
     @pytest.mark.asyncio
     async def test_camera_not_found(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         with pytest.raises(ValueError, match="Camera not found"):
@@ -122,7 +122,7 @@ class TestRecordingManagerGetRecordingStatus:
 
     @pytest.mark.asyncio
     async def test_video_stats_included(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         result = await mgr.get_recording_status(camera_id="cam-001")
@@ -134,7 +134,7 @@ class TestRecordingManagerGetRecordingStatus:
 class TestRecordingManagerListRecordings:
     @pytest.mark.asyncio
     async def test_with_time_range(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         start = datetime(2026, 3, 16, 10, 0, tzinfo=timezone.utc)
@@ -147,7 +147,7 @@ class TestRecordingManagerListRecordings:
 
     @pytest.mark.asyncio
     async def test_default_time_range(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         result = await mgr.list_recordings("cam-001")
@@ -157,7 +157,7 @@ class TestRecordingManagerListRecordings:
 
     @pytest.mark.asyncio
     async def test_camera_not_found(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         with pytest.raises(ValueError, match="Camera not found"):
@@ -165,7 +165,7 @@ class TestRecordingManagerListRecordings:
 
     @pytest.mark.asyncio
     async def test_includes_note(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         result = await mgr.list_recordings("cam-001")
@@ -176,7 +176,7 @@ class TestRecordingManagerListRecordings:
 class TestRecordingManagerExportClip:
     @pytest.mark.asyncio
     async def test_success(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         start = datetime(2026, 3, 16, 10, 0, tzinfo=timezone.utc)
@@ -189,7 +189,7 @@ class TestRecordingManagerExportClip:
 
     @pytest.mark.asyncio
     async def test_no_recording_available(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         cam = mock_cm.client.bootstrap.cameras["cam-001"]
         cam.get_video = AsyncMock(return_value=None)
@@ -202,7 +202,7 @@ class TestRecordingManagerExportClip:
 
     @pytest.mark.asyncio
     async def test_timelapse_export(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         start = datetime(2026, 3, 16, 10, 0, tzinfo=timezone.utc)
@@ -218,7 +218,7 @@ class TestRecordingManagerExportClip:
 
     @pytest.mark.asyncio
     async def test_invalid_time_range(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         start = datetime(2026, 3, 16, 12, 0, tzinfo=timezone.utc)
@@ -228,7 +228,7 @@ class TestRecordingManagerExportClip:
 
     @pytest.mark.asyncio
     async def test_exceeds_max_duration(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         start = datetime(2026, 3, 16, 0, 0, tzinfo=timezone.utc)
@@ -238,7 +238,7 @@ class TestRecordingManagerExportClip:
 
     @pytest.mark.asyncio
     async def test_camera_not_found(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         start = datetime(2026, 3, 16, 10, 0, tzinfo=timezone.utc)
@@ -250,7 +250,7 @@ class TestRecordingManagerExportClip:
 class TestRecordingManagerDeleteRecording:
     @pytest.mark.asyncio
     async def test_not_supported(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         start = datetime(2026, 3, 16, 10, 0, tzinfo=timezone.utc)
@@ -261,7 +261,7 @@ class TestRecordingManagerDeleteRecording:
 
     @pytest.mark.asyncio
     async def test_camera_not_found(self, mock_cm):
-        from unifi_protect_mcp.managers.recording_manager import RecordingManager
+        from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
         start = datetime(2026, 3, 16, 10, 0, tzinfo=timezone.utc)

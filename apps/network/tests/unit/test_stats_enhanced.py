@@ -32,7 +32,7 @@ class TestStatsManagerEnhanced:
     @pytest.fixture
     def stats_manager(self, mock_connection, mock_client_manager):
         """Create a StatsManager with mocked dependencies."""
-        from unifi_network_mcp.managers.stats_manager import StatsManager
+        from unifi_core.network.managers.stats_manager import StatsManager
 
         return StatsManager(mock_connection, mock_client_manager)
 
@@ -490,7 +490,7 @@ class TestDeviceManagerSpeedtest:
     @pytest.fixture
     def device_manager(self, mock_connection):
         """Create a DeviceManager with mocked connection."""
-        from unifi_network_mcp.managers.device_manager import DeviceManager
+        from unifi_core.network.managers.device_manager import DeviceManager
 
         return DeviceManager(mock_connection)
 

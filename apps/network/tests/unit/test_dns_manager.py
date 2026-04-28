@@ -26,7 +26,7 @@ class TestDnsManager:
     @pytest.fixture
     def dns_manager(self, mock_connection):
         """Create a DnsManager with mocked connection."""
-        from unifi_network_mcp.managers.dns_manager import DnsManager
+        from unifi_core.network.managers.dns_manager import DnsManager
 
         return DnsManager(mock_connection)
 

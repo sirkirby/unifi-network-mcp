@@ -26,7 +26,7 @@ class TestAclManager:
     @pytest.fixture
     def acl_manager(self, mock_connection):
         """Create an AclManager with mocked connection."""
-        from unifi_network_mcp.managers.acl_manager import AclManager
+        from unifi_core.network.managers.acl_manager import AclManager
 
         return AclManager(mock_connection)
 

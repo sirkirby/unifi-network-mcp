@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from unifi_mcp_shared.manifest_helpers import get_tool_annotations
+from unifi_core.manifest_helpers import get_tool_annotations
 
 # Add src to path so we can import modules
 project_root = Path(__file__).parent.parent

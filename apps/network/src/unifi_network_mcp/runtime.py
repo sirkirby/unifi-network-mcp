@@ -27,27 +27,27 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from unifi_core.auth import UniFiAuth
 from unifi_network_mcp.bootstrap import load_config, logger
-from unifi_network_mcp.managers.acl_manager import AclManager
-from unifi_network_mcp.managers.client_group_manager import ClientGroupManager
-from unifi_network_mcp.managers.client_manager import ClientManager
-from unifi_network_mcp.managers.connection_manager import ConnectionManager
-from unifi_network_mcp.managers.content_filter_manager import ContentFilterManager
-from unifi_network_mcp.managers.device_manager import DeviceManager
-from unifi_network_mcp.managers.dns_manager import DnsManager
-from unifi_network_mcp.managers.dpi_manager import DpiManager
-from unifi_network_mcp.managers.event_manager import EventManager
-from unifi_network_mcp.managers.firewall_manager import FirewallManager
-from unifi_network_mcp.managers.hotspot_manager import HotspotManager
-from unifi_network_mcp.managers.network_manager import NetworkManager
-from unifi_network_mcp.managers.oon_manager import OonManager
-from unifi_network_mcp.managers.qos_manager import QosManager
-from unifi_network_mcp.managers.routing_manager import RoutingManager
-from unifi_network_mcp.managers.stats_manager import StatsManager
-from unifi_network_mcp.managers.switch_manager import SwitchManager
-from unifi_network_mcp.managers.system_manager import SystemManager
-from unifi_network_mcp.managers.traffic_route_manager import TrafficRouteManager
-from unifi_network_mcp.managers.usergroup_manager import UsergroupManager
-from unifi_network_mcp.managers.vpn_manager import VpnManager
+from unifi_core.network.managers.acl_manager import AclManager
+from unifi_core.network.managers.client_group_manager import ClientGroupManager
+from unifi_core.network.managers.client_manager import ClientManager
+from unifi_core.network.managers.connection_manager import ConnectionManager
+from unifi_core.network.managers.content_filter_manager import ContentFilterManager
+from unifi_core.network.managers.device_manager import DeviceManager
+from unifi_core.network.managers.dns_manager import DnsManager
+from unifi_core.network.managers.dpi_manager import DpiManager
+from unifi_core.network.managers.event_manager import EventManager
+from unifi_core.network.managers.firewall_manager import FirewallManager
+from unifi_core.network.managers.hotspot_manager import HotspotManager
+from unifi_core.network.managers.network_manager import NetworkManager
+from unifi_core.network.managers.oon_manager import OonManager
+from unifi_core.network.managers.qos_manager import QosManager
+from unifi_core.network.managers.routing_manager import RoutingManager
+from unifi_core.network.managers.stats_manager import StatsManager
+from unifi_core.network.managers.switch_manager import SwitchManager
+from unifi_core.network.managers.system_manager import SystemManager
+from unifi_core.network.managers.traffic_route_manager import TrafficRouteManager
+from unifi_core.network.managers.usergroup_manager import UsergroupManager
+from unifi_core.network.managers.vpn_manager import VpnManager
 from unifi_network_mcp.tool_index import TOOL_REGISTRY
 
 # ---------------------------------------------------------------------------

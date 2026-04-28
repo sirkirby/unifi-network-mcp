@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from unifi_protect_mcp.managers.connection_manager import ProtectConnectionManager
+from unifi_core.protect.managers.connection_manager import ProtectConnectionManager
 
 
 @pytest.fixture

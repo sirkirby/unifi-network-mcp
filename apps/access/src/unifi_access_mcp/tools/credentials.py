@@ -11,7 +11,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_access_mcp.runtime import credential_manager, server
-from unifi_mcp_shared.confirmation import create_preview, preview_response
+from unifi_core.confirmation import create_preview, preview_response
 
 logger = logging.getLogger(__name__)
 

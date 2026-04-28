@@ -29,7 +29,7 @@ class TestDeviceManagerWifi:
     @pytest.fixture
     def device_manager(self, mock_connection):
         """Create a DeviceManager with mocked connection."""
-        from unifi_network_mcp.managers.device_manager import DeviceManager
+        from unifi_core.network.managers.device_manager import DeviceManager
 
         return DeviceManager(mock_connection)
 
@@ -278,7 +278,7 @@ class TestNetworkManagerWlan:
     @pytest.fixture
     def network_manager(self, mock_connection):
         """Create a NetworkManager with mocked connection."""
-        from unifi_network_mcp.managers.network_manager import NetworkManager
+        from unifi_core.network.managers.network_manager import NetworkManager
 
         return NetworkManager(mock_connection)
 
@@ -313,7 +313,7 @@ class TestNetworkManagerApGroups:
     @pytest.fixture
     def network_manager(self, mock_connection):
         """Create a NetworkManager with mocked connection."""
-        from unifi_network_mcp.managers.network_manager import NetworkManager
+        from unifi_core.network.managers.network_manager import NetworkManager
 
         return NetworkManager(mock_connection)
 

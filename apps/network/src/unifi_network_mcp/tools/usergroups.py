@@ -10,7 +10,7 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, update_preview
+from unifi_core.confirmation import create_preview, update_preview
 from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ def _get_usergroup_manager():
     """Lazy-load the usergroup manager to avoid circular imports."""
     global _usergroup_manager
     if _usergroup_manager is None:
-        from unifi_network_mcp.managers.usergroup_manager import UsergroupManager
+        from unifi_core.network.managers.usergroup_manager import UsergroupManager
         from unifi_network_mcp.runtime import get_connection_manager
 
         _usergroup_manager = UsergroupManager(get_connection_manager())

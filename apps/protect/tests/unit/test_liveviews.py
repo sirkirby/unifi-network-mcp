@@ -88,7 +88,7 @@ def mock_cm_multiple():
 class TestLiveviewManagerListLiveviews:
     @pytest.mark.asyncio
     async def test_empty(self):
-        from unifi_protect_mcp.managers.liveview_manager import LiveviewManager
+        from unifi_core.protect.managers.liveview_manager import LiveviewManager
 
         cm = MagicMock()
         cm.client.bootstrap = _make_bootstrap(liveviews={})
@@ -98,7 +98,7 @@ class TestLiveviewManagerListLiveviews:
 
     @pytest.mark.asyncio
     async def test_single_liveview(self, mock_cm):
-        from unifi_protect_mcp.managers.liveview_manager import LiveviewManager
+        from unifi_core.protect.managers.liveview_manager import LiveviewManager
 
         mgr = LiveviewManager(mock_cm)
         liveviews = await mgr.list_liveviews()
@@ -114,7 +114,7 @@ class TestLiveviewManagerListLiveviews:
 
     @pytest.mark.asyncio
     async def test_multiple_liveviews(self, mock_cm_multiple):
-        from unifi_protect_mcp.managers.liveview_manager import LiveviewManager
+        from unifi_core.protect.managers.liveview_manager import LiveviewManager
 
         mgr = LiveviewManager(mock_cm_multiple)
         liveviews = await mgr.list_liveviews()
@@ -125,7 +125,7 @@ class TestLiveviewManagerListLiveviews:
 
     @pytest.mark.asyncio
     async def test_slot_details(self, mock_cm):
-        from unifi_protect_mcp.managers.liveview_manager import LiveviewManager
+        from unifi_core.protect.managers.liveview_manager import LiveviewManager
 
         mgr = LiveviewManager(mock_cm)
         liveviews = await mgr.list_liveviews()
@@ -139,7 +139,7 @@ class TestLiveviewManagerListLiveviews:
 class TestLiveviewManagerCreateLiveview:
     @pytest.mark.asyncio
     async def test_validate_cameras(self, mock_cm):
-        from unifi_protect_mcp.managers.liveview_manager import LiveviewManager
+        from unifi_core.protect.managers.liveview_manager import LiveviewManager
 
         mgr = LiveviewManager(mock_cm)
         result = await mgr.create_liveview("Test View", ["cam-001", "cam-002"])
@@ -150,7 +150,7 @@ class TestLiveviewManagerCreateLiveview:
 
     @pytest.mark.asyncio
     async def test_invalid_camera_ids(self, mock_cm):
-        from unifi_protect_mcp.managers.liveview_manager import LiveviewManager
+        from unifi_core.protect.managers.liveview_manager import LiveviewManager
 
         mgr = LiveviewManager(mock_cm)
         result = await mgr.create_liveview("Test View", ["cam-001", "cam-999"])
@@ -159,7 +159,7 @@ class TestLiveviewManagerCreateLiveview:
 
     @pytest.mark.asyncio
     async def test_all_invalid(self, mock_cm):
-        from unifi_protect_mcp.managers.liveview_manager import LiveviewManager
+        from unifi_core.protect.managers.liveview_manager import LiveviewManager
 
         mgr = LiveviewManager(mock_cm)
         result = await mgr.create_liveview("Test View", ["cam-999"])
@@ -170,7 +170,7 @@ class TestLiveviewManagerCreateLiveview:
 class TestLiveviewManagerDeleteLiveview:
     @pytest.mark.asyncio
     async def test_preview(self, mock_cm):
-        from unifi_protect_mcp.managers.liveview_manager import LiveviewManager
+        from unifi_core.protect.managers.liveview_manager import LiveviewManager
 
         mgr = LiveviewManager(mock_cm)
         result = await mgr.delete_liveview("lv-001")
@@ -180,7 +180,7 @@ class TestLiveviewManagerDeleteLiveview:
 
     @pytest.mark.asyncio
     async def test_not_found(self, mock_cm):
-        from unifi_protect_mcp.managers.liveview_manager import LiveviewManager
+        from unifi_core.protect.managers.liveview_manager import LiveviewManager
 
         mgr = LiveviewManager(mock_cm)
         with pytest.raises(ValueError, match="Liveview not found"):

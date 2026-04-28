@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
-from unifi_protect_mcp.managers.alarm_manager import AlarmManager
+from unifi_core.protect.managers.alarm_manager import AlarmManager
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers

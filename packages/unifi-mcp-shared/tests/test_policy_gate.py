@@ -3,7 +3,7 @@
 import os
 from unittest.mock import patch
 
-from unifi_mcp_shared.policy_gate import PolicyGateChecker, resolve_permission_mode
+from unifi_core.policy_gate import PolicyGateChecker, resolve_permission_mode
 
 
 class TestPolicyGateChecker:

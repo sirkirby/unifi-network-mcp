@@ -1,6 +1,6 @@
 """Tests for the shared formatting module."""
 
-from unifi_mcp_shared.formatting import error_response, success_response
+from unifi_core.formatting import error_response, success_response
 
 
 def test_success_response():

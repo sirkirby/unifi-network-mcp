@@ -26,7 +26,7 @@ class TestClientGroupManager:
     @pytest.fixture
     def client_group_manager(self, mock_connection):
         """Create a ClientGroupManager with mocked connection."""
-        from unifi_network_mcp.managers.client_group_manager import ClientGroupManager
+        from unifi_core.network.managers.client_group_manager import ClientGroupManager
 
         return ClientGroupManager(mock_connection)
 

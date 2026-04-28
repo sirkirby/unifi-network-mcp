@@ -26,7 +26,7 @@ class TestOonManager:
     @pytest.fixture
     def oon_manager(self, mock_connection):
         """Create an OonManager with mocked connection."""
-        from unifi_network_mcp.managers.oon_manager import OonManager
+        from unifi_core.network.managers.oon_manager import OonManager
 
         return OonManager(mock_connection)
 

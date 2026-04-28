@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from unifi_network_mcp.managers.device_manager import DeviceManager
+from unifi_core.network.managers.device_manager import DeviceManager
 
 
 class TestDeviceCommands:

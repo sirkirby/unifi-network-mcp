@@ -25,7 +25,7 @@ class TestRoutingManager:
     @pytest.fixture
     def routing_manager(self, mock_connection):
         """Create a RoutingManager with mocked connection."""
-        from unifi_network_mcp.managers.routing_manager import RoutingManager
+        from unifi_core.network.managers.routing_manager import RoutingManager
 
         return RoutingManager(mock_connection)
 

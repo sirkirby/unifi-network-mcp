@@ -40,14 +40,14 @@ class TestDpiManager:
     @pytest.fixture
     def dpi_manager(self, mock_connection, mock_auth):
         """Create a DpiManager with mocked connection and auth."""
-        from unifi_network_mcp.managers.dpi_manager import DpiManager
+        from unifi_core.network.managers.dpi_manager import DpiManager
 
         return DpiManager(mock_connection, mock_auth)
 
     @pytest.fixture
     def dpi_manager_no_key(self, mock_connection, mock_auth_no_key):
         """Create a DpiManager without API key."""
-        from unifi_network_mcp.managers.dpi_manager import DpiManager
+        from unifi_core.network.managers.dpi_manager import DpiManager
 
         return DpiManager(mock_connection, mock_auth_no_key)
 

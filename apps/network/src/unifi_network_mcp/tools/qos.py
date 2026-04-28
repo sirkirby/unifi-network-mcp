@@ -9,7 +9,7 @@ from typing import Annotated, Any, Dict
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, toggle_preview, update_preview
+from unifi_core.confirmation import create_preview, toggle_preview, update_preview
 from unifi_network_mcp.runtime import qos_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry  # Added
 

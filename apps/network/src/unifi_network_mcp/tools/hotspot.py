@@ -10,7 +10,7 @@ from typing import Annotated, Any, Dict, Optional
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, preview_response
+from unifi_core.confirmation import create_preview, preview_response
 from unifi_network_mcp.runtime import server
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ def _get_hotspot_manager():
     """Lazy-load the hotspot manager to avoid circular imports."""
     global _hotspot_manager
     if _hotspot_manager is None:
-        from unifi_network_mcp.managers.hotspot_manager import HotspotManager
+        from unifi_core.network.managers.hotspot_manager import HotspotManager
         from unifi_network_mcp.runtime import get_connection_manager
 
         _hotspot_manager = HotspotManager(get_connection_manager())

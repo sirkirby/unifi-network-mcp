@@ -18,7 +18,7 @@ from unifi_mcp_relay.location_timeline import (
     handle_location_timeline,
     validate_timeline_input,
 )
-from unifi_mcp_shared.event_timeline import NormalizedEvent
+from unifi_core.event_timeline import NormalizedEvent
 
 
 class TestValidateTimelineInput:

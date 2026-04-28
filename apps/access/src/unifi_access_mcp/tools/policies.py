@@ -10,7 +10,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_access_mcp.runtime import policy_manager, server
-from unifi_mcp_shared.confirmation import update_preview
+from unifi_core.confirmation import update_preview
 
 logger = logging.getLogger(__name__)
 

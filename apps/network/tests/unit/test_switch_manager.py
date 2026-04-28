@@ -27,7 +27,7 @@ class TestSwitchManager:
     @pytest.fixture
     def switch_manager(self, mock_connection):
         """Create a SwitchManager with mocked connection."""
-        from unifi_network_mcp.managers.switch_manager import SwitchManager
+        from unifi_core.network.managers.switch_manager import SwitchManager
 
         return SwitchManager(mock_connection)
 

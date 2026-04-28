@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
+from unifi_core.access.managers.connection_manager import AccessConnectionManager
 from unifi_core.exceptions import UniFiAuthError, UniFiConnectionError
 
 # ---------------------------------------------------------------------------
@@ -126,7 +126,7 @@ class TestApiClientAuth:
             # Re-import after patching
             from importlib import reload
 
-            import unifi_access_mcp.managers.connection_manager as cm_mod
+            import unifi_core.access.managers.connection_manager as cm_mod
 
             reload(cm_mod)
 

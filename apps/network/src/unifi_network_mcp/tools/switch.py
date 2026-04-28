@@ -14,7 +14,7 @@ from typing import Annotated, Any, Dict, List
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from unifi_mcp_shared.confirmation import create_preview, update_preview
+from unifi_core.confirmation import create_preview, update_preview
 from unifi_network_mcp.runtime import server, switch_manager
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 

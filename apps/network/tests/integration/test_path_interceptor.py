@@ -11,7 +11,7 @@ from aioresponses import aioresponses
 from aiounifi.controller import Controller
 from aiounifi.models.api import ApiRequest
 
-from unifi_network_mcp.managers.connection_manager import ConnectionManager
+from unifi_core.network.managers.connection_manager import ConnectionManager
 
 
 class TestPathInterception:
@@ -193,7 +193,7 @@ class TestPathInterception:
             # Patch both the environment variable and the detection function
             with patch("unifi_network_mcp.bootstrap.UNIFI_CONTROLLER_TYPE", "proxy"):
                 with patch(
-                    "unifi_network_mcp.managers.connection_manager.detect_unifi_os_proactively",
+                    "unifi_core.network.managers.connection_manager.detect_unifi_os_proactively",
                     mock_detect,
                 ):
                     manager = ConnectionManager(
@@ -256,7 +256,7 @@ class TestPathInterception:
             # Patch both the environment variable and the detection function
             with patch("unifi_network_mcp.bootstrap.UNIFI_CONTROLLER_TYPE", "direct"):
                 with patch(
-                    "unifi_network_mcp.managers.connection_manager.detect_unifi_os_proactively",
+                    "unifi_core.network.managers.connection_manager.detect_unifi_os_proactively",
                     mock_detect,
                 ):
                     manager = ConnectionManager(

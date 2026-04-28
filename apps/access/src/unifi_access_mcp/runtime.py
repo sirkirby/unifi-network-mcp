@@ -26,14 +26,14 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
 from unifi_access_mcp.bootstrap import load_config, logger
-from unifi_access_mcp.managers.connection_manager import AccessConnectionManager
-from unifi_access_mcp.managers.credential_manager import CredentialManager
-from unifi_access_mcp.managers.device_manager import DeviceManager
-from unifi_access_mcp.managers.door_manager import DoorManager
-from unifi_access_mcp.managers.event_manager import EventManager
-from unifi_access_mcp.managers.policy_manager import PolicyManager
-from unifi_access_mcp.managers.system_manager import SystemManager
-from unifi_access_mcp.managers.visitor_manager import VisitorManager
+from unifi_core.access.managers.connection_manager import AccessConnectionManager
+from unifi_core.access.managers.credential_manager import CredentialManager
+from unifi_core.access.managers.device_manager import DeviceManager
+from unifi_core.access.managers.door_manager import DoorManager
+from unifi_core.access.managers.event_manager import EventManager
+from unifi_core.access.managers.policy_manager import PolicyManager
+from unifi_core.access.managers.system_manager import SystemManager
+from unifi_core.access.managers.visitor_manager import VisitorManager
 from unifi_access_mcp.tool_index import TOOL_REGISTRY
 from unifi_core.auth import UniFiAuth
 

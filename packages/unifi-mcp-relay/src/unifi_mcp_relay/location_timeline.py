@@ -13,7 +13,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
-from unifi_mcp_shared.event_timeline import NormalizedEvent, filter_by_area, merge_timelines
+from unifi_core.event_timeline import NormalizedEvent, filter_by_area, merge_timelines
 
 logger = logging.getLogger("unifi-mcp-relay")
 

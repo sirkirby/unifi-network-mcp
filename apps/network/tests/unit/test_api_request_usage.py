@@ -51,7 +51,15 @@ class TestManagerFilesUseCorrectApiRequestSyntax:
     @pytest.fixture
     def manager_files(self) -> list[Path]:
         """Get all manager Python files."""
-        managers_dir = Path(__file__).parent.parent.parent / "src" / "unifi_network_mcp" / "managers"
+        managers_dir = (
+            Path(__file__).parent.parent.parent.parent.parent
+            / "packages"
+            / "unifi-core"
+            / "src"
+            / "unifi_core"
+            / "network"
+            / "managers"
+        )
         return list(managers_dir.glob("*.py"))
 
     def test_no_json_parameter_in_api_request_calls(self, manager_files: list[Path]):
