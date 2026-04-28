@@ -5,8 +5,8 @@ description = "UniFi Access MCP Server"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "unifi-mcp-shared",
-    "unifi-core",
+    "unifi-mcp-shared>=0.4,<0.5",
+    "unifi-core>=0.2,<0.3",
     "mcp[cli]>=1.26.0,<2",
     "aiohttp>=3.13.4",
     "py-unifi-access>=1.1.1",
