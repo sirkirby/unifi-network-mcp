@@ -565,7 +565,7 @@ class TestCameraManagerPTZ:
         cm.client.bootstrap = _make_bootstrap(cameras={"cam-001": cam})
         cm.client.api_request = AsyncMock(return_value={"success": True})
         mgr = CameraManager(cm)
-        with patch("unifi_protect_mcp.managers.camera_manager.asyncio.sleep", new=AsyncMock()) as sleep:
+        with patch("unifi_core.protect.managers.camera_manager.asyncio.sleep", new=AsyncMock()) as sleep:
             await mgr.ptz_move("cam-001", pan=100, duration_ms=250)
         sleep.assert_awaited_once_with(0.25)
         assert cm.client.api_request.await_count == 2
