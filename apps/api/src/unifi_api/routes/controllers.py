@@ -127,6 +127,7 @@ async def patch_endpoint(request: Request, cid: str, body: ControllerPatch) -> C
             row = await update_controller(session, cipher, cid, **body.model_dump(exclude_unset=True))
             await session.commit()
             await request.app.state.manager_factory.invalidate_controller(cid)
+            request.app.state.capability_cache.invalidate(cid)
             return _row_to_out(row)
         except ControllerNotFound:
             raise HTTPException(status_code=404, detail="controller not found")
@@ -144,5 +145,28 @@ async def delete_endpoint(request: Request, cid: str) -> None:
             await delete_controller(session, cid)
             await session.commit()
             await request.app.state.manager_factory.invalidate_controller(cid)
+            request.app.state.capability_cache.invalidate(cid)
         except ControllerNotFound:
             raise HTTPException(status_code=404, detail="controller not found")
+
+
+@router.get(
+    "/controllers/{cid}/capabilities",
+    dependencies=[Depends(require_scope(Scope.READ))],
+)
+async def capabilities_endpoint(request: Request, cid: str, refresh: bool = False) -> dict:
+    cache = request.app.state.capability_cache
+    if not refresh:
+        hit = cache.get(cid)
+        if hit is not None:
+            return hit
+    sm = request.app.state.sessionmaker
+    async with sm() as session:
+        try:
+            controller = await get_controller(session, cid)
+        except ControllerNotFound:
+            raise HTTPException(status_code=404, detail="controller not found")
+    from unifi_api.services.controllers import probe_capabilities
+    payload = await probe_capabilities(controller)
+    cache.put(cid, payload)
+    return payload

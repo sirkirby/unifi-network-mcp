@@ -16,6 +16,7 @@ from unifi_api.db.session import get_sessionmaker
 from unifi_api.logging import request_id_ctx
 from unifi_api.routes import controllers as controllers_routes
 from unifi_api.routes import health
+from unifi_api.services.capability_cache import CapabilityCache
 from unifi_api.services.managers import ManagerFactory
 
 
@@ -70,6 +71,7 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.cipher = cipher
     app.state.manager_factory = ManagerFactory(app.state.sessionmaker, cipher)
     app.state.argon_cache = ArgonVerifyCache()
+    app.state.capability_cache = CapabilityCache()
 
     app.include_router(health.router, prefix="/v1")
     app.include_router(controllers_routes.router, prefix="/v1")

@@ -7,11 +7,18 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+import aiohttp
 from sqlalchemy import select, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from unifi_api.db.crypto import ColumnCipher
 from unifi_api.db.models import Controller
+
+
+KNOWN_QUIRKS_BY_PRODUCT = {
+    "protect": ["ptz_zoom_misclass"],
+    "access": ["credentials_404"],
+}
 
 
 class ControllerNotFound(Exception):
@@ -127,3 +134,61 @@ async def delete_controller(session: AsyncSession, controller_id: str) -> None:
     row = await get_controller(session, controller_id)
     await session.delete(row)
     await session.flush()
+
+
+async def probe_capabilities(controller: Controller) -> dict:
+    """Probe a controller for product presence + version + V2 API support.
+
+    Best-effort: timeouts and per-step exceptions are caught and converted
+    to a probe_error field. Always returns the full payload shape.
+    """
+    payload: dict = {
+        "id": controller.id,
+        "name": controller.name,
+        "base_url": controller.base_url,
+        "products": [],
+        "version": {"controller": None, "firmware": None},
+        "v2_api": False,
+        "sites": [],
+        "known_quirks": [],
+        "probed_at": datetime.now(timezone.utc).isoformat(),
+        "probe_error": None,
+    }
+    declared = [p for p in controller.product_kinds.split(",") if p]
+
+    timeout = aiohttp.ClientTimeout(total=5)
+    connector = aiohttp.TCPConnector(ssl=controller.verify_tls)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+            try:
+                async with session.get(f"{controller.base_url}/api/system") as r:
+                    if r.status == 200:
+                        body = await r.json(content_type=None)
+                        payload["version"]["controller"] = body.get("version") or body.get("data", {}).get("version")
+            except Exception as e:
+                payload["probe_error"] = f"system probe failed: {e}"
+
+            for product in ("network", "protect", "access"):
+                if product not in declared:
+                    continue
+                probe_path = {
+                    "network": "/proxy/network/api/s/default/stat/sysinfo",
+                    "protect": "/proxy/protect/api/cameras",
+                    "access": "/proxy/access/api/v1/developer/devices",
+                }[product]
+                try:
+                    async with session.get(f"{controller.base_url}{probe_path}") as r:
+                        if r.status < 500:
+                            payload["products"].append(product)
+                            payload["known_quirks"].extend(KNOWN_QUIRKS_BY_PRODUCT.get(product, []))
+                            if product == "network":
+                                text = await r.text()
+                                if "v2" in text.lower():
+                                    payload["v2_api"] = True
+                except Exception as e:
+                    if payload["probe_error"] is None:
+                        payload["probe_error"] = f"{product} probe failed: {e}"
+    except Exception as e:
+        payload["probe_error"] = f"probe session failed: {e}"
+
+    return payload
