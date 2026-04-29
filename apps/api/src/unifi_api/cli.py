@@ -39,17 +39,64 @@ def serve(
 def migrate(
     config_path: Path = typer.Option(_DEFAULT_CONFIG_PATH, help="Path to config.yaml"),
 ) -> None:
-    """Run alembic migrations to head."""
+    """Run alembic migrations to head. Bootstraps an admin key on first run."""
+    import asyncio
     import os
     import subprocess
+    import uuid
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+
+    from unifi_api.auth.api_key import generate_key, hash_key
+    from unifi_api.db.engine import create_engine
+    from unifi_api.db.models import ApiKey
+    from unifi_api.db.session import get_sessionmaker
 
     cfg = load_config(config_path)
+    db_key = os.environ.get("UNIFI_API_DB_KEY")
+    if not db_key:
+        typer.echo("UNIFI_API_DB_KEY environment variable is required", err=True)
+        raise typer.Exit(code=2)
+
     env = dict(os.environ)
     env["UNIFI_API_DB_PATH"] = cfg.db.path
     alembic_cwd = Path(__file__).parent.parent.parent  # apps/api
     result = subprocess.run(["alembic", "upgrade", "head"], env=env, cwd=alembic_cwd, check=False)
     if result.returncode != 0:
         raise typer.Exit(code=result.returncode)
+
+    # Bootstrap admin key if api_keys is empty
+    async def _maybe_bootstrap() -> str | None:
+        engine = create_engine(cfg.db.path)
+        sm = get_sessionmaker(engine)
+        try:
+            async with sm() as session:
+                existing = (await session.execute(select(ApiKey))).first()
+                if existing is not None:
+                    return None
+                material = generate_key()
+                session.add(
+                    ApiKey(
+                        id=str(uuid.uuid4()),
+                        prefix=material.prefix,
+                        hash=hash_key(material.plaintext),
+                        scopes="admin",
+                        name="bootstrap-admin",
+                        created_at=datetime.now(timezone.utc),
+                    )
+                )
+                await session.commit()
+            return material.plaintext
+        finally:
+            await engine.dispose()
+
+    plaintext = asyncio.run(_maybe_bootstrap())
+    if plaintext:
+        typer.echo("=" * 60)
+        typer.echo("Initial admin API key (shown once, save it now):")
+        typer.echo(plaintext)
+        typer.echo("=" * 60)
 
 
 @keys_app.command("create")
