@@ -14,16 +14,22 @@ from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
 from unifi_api.logging import request_id_ctx
+from unifi_api.routes import actions as actions_routes
 from unifi_api.routes import controllers as controllers_routes
 from unifi_api.routes import health
 from unifi_api.services.capability_cache import CapabilityCache
 from unifi_api.services.managers import ManagerFactory
+from unifi_api.services.manifest import ManifestRegistry
 
 
 def create_app(config: ApiConfig) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        # Startup — nothing yet (Task 13 adds manifest loading here)
+        # Startup — manifest registry is loaded eagerly in create_app so it's
+        # available even when the lifespan isn't run (e.g. ASGITransport tests).
+        # Loading is idempotent and fast (file reads), so re-loading here keeps
+        # the lifespan as the canonical startup hook.
+        app.state.manifest_registry = ManifestRegistry.load_from_apps()
         yield
         # Shutdown — drop manager caches first, then engine
         factory = app.state.manager_factory
@@ -72,8 +78,10 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.manager_factory = ManagerFactory(app.state.sessionmaker, cipher)
     app.state.argon_cache = ArgonVerifyCache()
     app.state.capability_cache = CapabilityCache()
+    app.state.manifest_registry = ManifestRegistry.load_from_apps()
 
     app.include_router(health.router, prefix="/v1")
     app.include_router(controllers_routes.router, prefix="/v1")
+    app.include_router(actions_routes.router, prefix="/v1")
 
     return app
