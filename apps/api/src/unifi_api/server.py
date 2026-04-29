@@ -29,6 +29,11 @@ from unifi_api.routes.resources.protect import (
     events as protect_events_routes,
     recordings as protect_recordings_routes,
 )
+from unifi_api.routes.resources.access import (
+    credentials as access_credentials_routes,
+    doors as access_doors_routes,
+    users as access_users_routes,
+)
 from unifi_api.serializers._registry import discover_serializers
 from unifi_api.services.capability_cache import CapabilityCache
 from unifi_api.services.managers import ManagerFactory
@@ -114,6 +119,12 @@ def create_app(config: ApiConfig) -> FastAPI:
         protect_cameras_routes,
         protect_events_routes,
         protect_recordings_routes,
+    ):
+        app.include_router(r.router, prefix="/v1")
+    for r in (
+        access_doors_routes,
+        access_users_routes,
+        access_credentials_routes,
     ):
         app.include_router(r.router, prefix="/v1")
 
