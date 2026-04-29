@@ -7,6 +7,7 @@ import uuid
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.cors import CORSMiddleware
 
+from unifi_api.auth.cache import ArgonVerifyCache
 from unifi_api.config import ApiConfig
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -38,6 +39,7 @@ def create_app(config: ApiConfig) -> FastAPI:
     engine = create_engine(config.db.path)
     app.state.engine = engine
     app.state.sessionmaker = get_sessionmaker(engine)
+    app.state.argon_cache = ArgonVerifyCache()
 
     @app.on_event("shutdown")
     async def _dispose_engine() -> None:
