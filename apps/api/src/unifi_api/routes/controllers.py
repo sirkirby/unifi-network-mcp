@@ -126,6 +126,7 @@ async def patch_endpoint(request: Request, cid: str, body: ControllerPatch) -> C
         try:
             row = await update_controller(session, cipher, cid, **body.model_dump(exclude_unset=True))
             await session.commit()
+            await request.app.state.manager_factory.invalidate_controller(cid)
             return _row_to_out(row)
         except ControllerNotFound:
             raise HTTPException(status_code=404, detail="controller not found")
@@ -142,5 +143,6 @@ async def delete_endpoint(request: Request, cid: str) -> None:
         try:
             await delete_controller(session, cid)
             await session.commit()
+            await request.app.state.manager_factory.invalidate_controller(cid)
         except ControllerNotFound:
             raise HTTPException(status_code=404, detail="controller not found")

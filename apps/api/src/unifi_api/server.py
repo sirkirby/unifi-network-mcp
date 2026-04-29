@@ -10,11 +10,13 @@ from starlette.middleware.cors import CORSMiddleware
 
 from unifi_api.auth.cache import ArgonVerifyCache
 from unifi_api.config import ApiConfig
+from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
 from unifi_api.logging import request_id_ctx
 from unifi_api.routes import controllers as controllers_routes
 from unifi_api.routes import health
+from unifi_api.services.managers import ManagerFactory
 
 
 def create_app(config: ApiConfig) -> FastAPI:
@@ -22,7 +24,11 @@ def create_app(config: ApiConfig) -> FastAPI:
     async def lifespan(app: FastAPI):
         # Startup — nothing yet (Task 13 adds manifest loading here)
         yield
-        # Shutdown
+        # Shutdown — drop manager caches first, then engine
+        factory = app.state.manager_factory
+        cached_ids = list({k[0] for k in factory._connection_cache.keys()})
+        for cid in cached_ids:
+            await factory.invalidate_controller(cid)
         await app.state.engine.dispose()
 
     app = FastAPI(
@@ -55,10 +61,14 @@ def create_app(config: ApiConfig) -> FastAPI:
 
     # Wire DB
     # Validate the encryption key exists at startup; service refuses to start without it.
-    ApiConfig.read_db_key()
+    db_key = ApiConfig.read_db_key()
     engine = create_engine(config.db.path)
     app.state.engine = engine
     app.state.sessionmaker = get_sessionmaker(engine)
+
+    cipher = ColumnCipher(derive_key(db_key))
+    app.state.cipher = cipher
+    app.state.manager_factory = ManagerFactory(app.state.sessionmaker, cipher)
     app.state.argon_cache = ArgonVerifyCache()
 
     app.include_router(health.router, prefix="/v1")
