@@ -1,4 +1,4 @@
-"""Protect chime serializer (Phase 4A PR2 Cluster 1).
+"""Protect chime serializers.
 
 ``ChimeManager.list_chimes`` returns plain dicts shaped by
 ``_format_chime_summary`` — fields include ``id``, ``mac`` (omitted by the
@@ -6,6 +6,13 @@ helper, but tolerated), ``name``, ``state``, ``camera_ids``,
 ``ring_settings``, ``available_tracks``. We expose a LIST view with the
 fields most useful for tabular renderers; ``camera_ids`` is renamed to
 ``paired_cameras`` per the spec.
+
+Phase 4A PR2 Cluster 2 adds ``ChimeMutationAckSerializer`` for
+``protect_trigger_chime`` and ``protect_update_chime``.
+``ChimeManager.trigger_chime`` returns
+``{chime_id, chime_name, triggered, volume, repeat_times}`` and
+``update_chime`` returns
+``{chime_id, chime_name, current_state, proposed_changes}``.
 """
 
 from typing import Any
@@ -48,3 +55,23 @@ class ChimeSerializer(Serializer):
             "ring_settings": _get(obj, "ring_settings") or [],
             "available_tracks": _get(obj, "available_tracks") or [],
         }
+
+
+@register_serializer(
+    tools={
+        "protect_trigger_chime": {"kind": RenderKind.DETAIL},
+        "protect_update_chime": {"kind": RenderKind.DETAIL},
+    },
+)
+class ChimeMutationAckSerializer(Serializer):
+    """Pass-through ack for chime trigger/update preview dicts."""
+
+    @staticmethod
+    def serialize(obj) -> dict:
+        if isinstance(obj, bool):
+            return {"success": obj}
+        if isinstance(obj, dict):
+            return obj
+        if hasattr(obj, "model_dump"):
+            return obj.model_dump()
+        return {"result": str(obj)}
