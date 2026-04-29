@@ -15,6 +15,7 @@ from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
 from unifi_api.logging import request_id_ctx
 from unifi_api.routes import actions as actions_routes
+from unifi_api.routes import catalog as catalog_routes
 from unifi_api.routes import controllers as controllers_routes
 from unifi_api.routes import health
 from unifi_api.routes.resources.network import (
@@ -107,6 +108,7 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.include_router(health.router, prefix="/v1")
     app.include_router(controllers_routes.router, prefix="/v1")
     app.include_router(actions_routes.router, prefix="/v1")
+    app.include_router(catalog_routes.router, prefix="/v1")
     for r in (
         net_clients_routes,
         net_devices_routes,
