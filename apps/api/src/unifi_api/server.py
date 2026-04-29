@@ -98,12 +98,14 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.argon_cache = ArgonVerifyCache()
     app.state.capability_cache = CapabilityCache()
     app.state.manifest_registry = ManifestRegistry.load_from_apps()
-    # Discover and register every Phase 3 serializer module, then validate
-    # against the manifest. We pass an empty set rather than the full ~219-tool
-    # manifest because Phase 3 only ships ~13 serializers; the catalog and
-    # action-endpoint paths handle missing serializers per-call. Phase 4+ may
-    # tighten this to require coverage of the full manifest.
-    app.state.serializer_registry = discover_serializers(set())
+    # Discover and register every serializer module, then validate against the
+    # full manifest. Phase 4A landed coverage for all 235 manifest tools, so
+    # strict mode is now the runtime contract: any tool added to the manifest
+    # without a registered serializer raises SerializerRegistryError at lifespan
+    # startup. The CI gate test_every_tool_has_a_serializer enforces the same
+    # invariant in apps/api/tests/.
+    manifest_tool_names = set(app.state.manifest_registry.all_tools())
+    app.state.serializer_registry = discover_serializers(manifest_tool_names)
 
     app.include_router(health.router, prefix="/v1")
     app.include_router(controllers_routes.router, prefix="/v1")
