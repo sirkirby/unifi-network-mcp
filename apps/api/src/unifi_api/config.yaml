@@ -1,0 +1,10 @@
+http:
+  host: 0.0.0.0
+  port: 8080
+  cors_origins: []
+
+logging:
+  level: INFO
+
+db:
+  path: /var/lib/unifi-api/state.db
