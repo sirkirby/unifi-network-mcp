@@ -220,7 +220,7 @@ class ManagerFactory:
             return cm
         if product == "protect":
             from unifi_core.protect.managers.connection_manager import (
-                ConnectionManager as ProtectCM,
+                ProtectConnectionManager as ProtectCM,
             )
 
             cm = ProtectCM(
@@ -235,7 +235,7 @@ class ManagerFactory:
             return cm
         if product == "access":
             from unifi_core.access.managers.connection_manager import (
-                ConnectionManager as AccessCM,
+                AccessConnectionManager as AccessCM,
             )
 
             cm = AccessCM(
