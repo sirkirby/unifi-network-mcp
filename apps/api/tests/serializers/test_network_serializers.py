@@ -1,0 +1,101 @@
+"""Network serializer unit tests — one fixture per resource."""
+
+from unifi_api.serializers._registry import (
+    serializer_registry_singleton, discover_serializers,
+)
+
+
+def _registry():
+    """Trigger discovery once for the test module."""
+    discover_serializers(manifest_tool_names=set())  # validate_manifest can be no-op for tests
+    return serializer_registry_singleton()
+
+
+def test_client_serializer_shape() -> None:
+    reg = _registry()
+    s = reg.serializer_for_resource("network", "clients")
+    sample_raw = {
+        "mac": "aa:bb:cc:dd:ee:ff",
+        "last_ip": "10.0.0.5",
+        "hostname": "laptop",
+        "is_wired": False,
+        "is_guest": False,
+        "is_online": True,
+        "last_seen": 1700000000,
+        "first_seen": 1600000000,
+    }
+    class FakeClient:
+        raw = sample_raw
+    out = s.serialize(FakeClient())
+    assert out["mac"] == "aa:bb:cc:dd:ee:ff"
+    assert out["ip"] == "10.0.0.5"
+    assert out["hostname"] == "laptop"
+    assert out["is_wired"] is False
+    assert out["status"] == "online"
+
+
+def test_device_serializer_shape() -> None:
+    reg = _registry()
+    s = reg.serializer_for_resource("network", "devices")
+    class FakeDevice:
+        raw = {
+            "mac": "11:22:33:44:55:66",
+            "name": "AP1",
+            "model": "U6-Pro",
+            "type": "uap",
+            "version": "6.5.59",
+            "uptime": 3600,
+            "state": 1,
+        }
+    out = s.serialize(FakeDevice())
+    assert out["mac"] == "11:22:33:44:55:66"
+    assert out["name"] == "AP1"
+    assert out["model"] == "U6-Pro"
+
+
+def test_network_serializer_shape() -> None:
+    reg = _registry()
+    s = reg.serializer_for_resource("network", "networks")
+    class FakeNetwork:
+        raw = {
+            "_id": "net1",
+            "name": "Default",
+            "purpose": "corporate",
+            "enabled": True,
+        }
+    out = s.serialize(FakeNetwork())
+    assert out["id"] == "net1"
+    assert out["name"] == "Default"
+
+
+def test_firewall_rule_serializer_shape() -> None:
+    reg = _registry()
+    s = reg.serializer_for_resource("network", "firewall/rules")
+    class FakeRule:
+        raw = {
+            "_id": "rule1",
+            "name": "Block IoT",
+            "action": "BLOCK",
+            "enabled": True,
+            "predefined": False,
+        }
+    out = s.serialize(FakeRule())
+    assert out["id"] == "rule1"
+    assert out["name"] == "Block IoT"
+    assert out["action"] == "BLOCK"
+
+
+def test_wlan_serializer_shape() -> None:
+    reg = _registry()
+    s = reg.serializer_for_resource("network", "wlans")
+    class FakeWlan:
+        raw = {
+            "_id": "wlan1",
+            "name": "MyWiFi",
+            "enabled": True,
+            "security": "wpapsk",
+        }
+    out = s.serialize(FakeWlan())
+    assert out["id"] == "wlan1"
+    assert out["name"] == "MyWiFi"
+    assert out["security"] == "wpapsk"
