@@ -103,24 +103,130 @@ def migrate(
 def keys_create(
     name: str = typer.Argument(..., help="Human-readable name for the key"),
     scopes: str = typer.Option("read", help="Comma-separated scopes: read,write,admin"),
+    env: str = typer.Option("live", help="Key env: live or test"),
+    config_path: Path = typer.Option(_DEFAULT_CONFIG_PATH, help="Path to config.yaml"),
 ) -> None:
     """Create a new API key. Prints the plaintext exactly once."""
-    typer.echo("(implemented in a later phase)")
-    raise typer.Exit(code=0)
+    import asyncio
+    import os
+    import uuid
+    from datetime import datetime, timezone
+
+    from unifi_api.auth.api_key import ApiKeyEnv, generate_key, hash_key
+    from unifi_api.db.engine import create_engine
+    from unifi_api.db.models import ApiKey
+    from unifi_api.db.session import get_sessionmaker
+
+    cfg = load_config(config_path)
+    if not os.environ.get("UNIFI_API_DB_KEY"):
+        typer.echo("UNIFI_API_DB_KEY required", err=True)
+        raise typer.Exit(2)
+
+    async def _create() -> str:
+        engine = create_engine(cfg.db.path)
+        sm = get_sessionmaker(engine)
+        try:
+            material = generate_key(env=ApiKeyEnv(env))
+            async with sm() as session:
+                session.add(ApiKey(
+                    id=str(uuid.uuid4()), prefix=material.prefix,
+                    hash=hash_key(material.plaintext), scopes=scopes,
+                    name=name, created_at=datetime.now(timezone.utc),
+                ))
+                await session.commit()
+            return material.plaintext
+        finally:
+            await engine.dispose()
+
+    plaintext = asyncio.run(_create())
+    typer.echo("=" * 60)
+    typer.echo(f"API key for '{name}' (shown once, save it now):")
+    typer.echo(plaintext)
+    typer.echo("=" * 60)
 
 
 @keys_app.command("list")
-def keys_list() -> None:
+def keys_list(
+    config_path: Path = typer.Option(_DEFAULT_CONFIG_PATH, help="Path to config.yaml"),
+) -> None:
     """List API keys (prefix + scopes only; never plaintext)."""
-    typer.echo("(implemented in a later phase)")
-    raise typer.Exit(code=0)
+    import asyncio
+
+    from sqlalchemy import select
+
+    from unifi_api.db.engine import create_engine
+    from unifi_api.db.models import ApiKey
+    from unifi_api.db.session import get_sessionmaker
+
+    cfg = load_config(config_path)
+
+    async def _list():
+        engine = create_engine(cfg.db.path)
+        sm = get_sessionmaker(engine)
+        try:
+            async with sm() as session:
+                rows = (await session.execute(select(ApiKey).order_by(ApiKey.created_at))).scalars().all()
+                return [(r.prefix, r.scopes, r.name, r.created_at, r.revoked_at) for r in rows]
+        finally:
+            await engine.dispose()
+
+    rows = asyncio.run(_list())
+    if not rows:
+        typer.echo("(no keys)")
+        return
+    typer.echo(f"{'PREFIX':<18} {'SCOPES':<22} {'NAME':<28} {'CREATED':<22} STATUS")
+    for prefix, scopes, name, created, revoked in rows:
+        status = "(revoked)" if revoked else "(active)"
+        typer.echo(f"{prefix:<18} {scopes:<22} {name:<28} {created.isoformat()[:19]:<22} {status}")
 
 
 @keys_app.command("revoke")
-def keys_revoke(prefix: str = typer.Argument(..., help="Prefix of the key to revoke")) -> None:
+def keys_revoke(
+    prefix: str = typer.Argument(..., help="Prefix of the key to revoke"),
+    config_path: Path = typer.Option(_DEFAULT_CONFIG_PATH, help="Path to config.yaml"),
+) -> None:
     """Revoke an API key by prefix."""
-    typer.echo("(implemented in a later phase)")
-    raise typer.Exit(code=0)
+    import asyncio
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+
+    from unifi_api.db.engine import create_engine
+    from unifi_api.db.models import ApiKey
+    from unifi_api.db.session import get_sessionmaker
+
+    cfg = load_config(config_path)
+
+    async def _revoke():
+        engine = create_engine(cfg.db.path)
+        sm = get_sessionmaker(engine)
+        try:
+            async with sm() as session:
+                rows = (await session.execute(select(ApiKey).where(ApiKey.prefix == prefix))).scalars().all()
+                if not rows:
+                    return "not_found"
+                if len(rows) > 1:
+                    return "ambiguous"
+                row = rows[0]
+                if row.revoked_at is not None:
+                    return "already_revoked"
+                row.revoked_at = datetime.now(timezone.utc)
+                await session.commit()
+                return "ok"
+        finally:
+            await engine.dispose()
+
+    result = asyncio.run(_revoke())
+    if result == "not_found":
+        typer.echo(f"no key with prefix '{prefix}'", err=True)
+        raise typer.Exit(1)
+    if result == "ambiguous":
+        typer.echo(f"multiple keys match prefix '{prefix}' — be more specific", err=True)
+        raise typer.Exit(1)
+    if result == "already_revoked":
+        typer.echo(f"key '{prefix}' was already revoked")
+        return
+    typer.echo(f"revoked key '{prefix}'. Note: revocation effective within 60 seconds against running services (argon2 cache TTL).")
 
 
 @db_app.command("backup")
