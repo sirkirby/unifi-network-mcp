@@ -6,6 +6,7 @@ Manages event log and alarm operations using the v2 system-log API
 
 import logging
 import time
+from collections import deque
 from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequest, ApiRequestV2
@@ -13,6 +14,56 @@ from aiounifi.models.api import ApiRequest, ApiRequestV2
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
+
+
+# ---------------------------------------------------------------------------
+# EventBuffer
+# ---------------------------------------------------------------------------
+
+
+class EventBuffer:
+    """Ring buffer for recent network events received via websocket.
+
+    Same contract as protect/access EventBuffer. Events are stored as plain
+    dicts with a ``_buffered_at`` timestamp for TTL-based lazy expiration.
+    """
+
+    def __init__(self, max_size: int = 100, ttl_seconds: int = 300) -> None:
+        self._buffer: deque[dict[str, Any]] = deque(maxlen=max_size)
+        self._ttl = ttl_seconds
+
+    def add(self, event: dict[str, Any]) -> None:
+        """Add *event* to the buffer, stamping it with the current time."""
+        event = {**event, "_buffered_at": time.time()}
+        self._buffer.append(event)
+
+    def get_recent(
+        self,
+        event_type: str | None = None,
+        mac: str | None = None,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return most-recent-first events, filtered and TTL-aged."""
+        cutoff = time.time() - self._ttl
+        out: list[dict[str, Any]] = []
+        for event in reversed(self._buffer):
+            if event.get("_buffered_at", 0) < cutoff:
+                continue
+            if event_type and event.get("key") != event_type:
+                continue
+            if mac and event.get("mac") != mac:
+                continue
+            out.append(event)
+            if limit and len(out) >= limit:
+                break
+        return out
+
+    def clear(self) -> None:
+        """Remove all events from the buffer."""
+        self._buffer.clear()
+
+    def __len__(self) -> int:
+        return len(self._buffer)
 
 # Default categories for the system-log v2 API
 _DEFAULT_CATEGORIES = [
