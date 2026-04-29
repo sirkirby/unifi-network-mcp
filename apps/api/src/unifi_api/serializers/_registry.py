@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
+import sys
 from typing import Iterable
 
 from unifi_api.serializers import _base
@@ -99,7 +100,16 @@ def discover_serializers(manifest_tool_names: set[str]) -> SerializerRegistry:
 
 
 def _reset_registry_for_tests() -> None:
-    """For test isolation — drops module-level registries."""
+    """For test isolation — drops module-level registries AND evicts serializer
+    submodules from sys.modules so the next discover_serializers re-imports
+    them and re-runs the @register_serializer decorators. Without the eviction,
+    importlib.import_module is a no-op for already-loaded modules and the
+    registry stays empty after reset."""
     global _singleton
     _reset_registries_for_tests()
     _singleton = None
+    for product in ("network", "protect", "access"):
+        prefix = f"unifi_api.serializers.{product}"
+        for modname in list(sys.modules.keys()):
+            if modname == prefix or modname.startswith(prefix + "."):
+                sys.modules.pop(modname, None)
