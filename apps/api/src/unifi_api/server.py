@@ -24,6 +24,11 @@ from unifi_api.routes.resources.network import (
     networks as net_networks_routes,
     wlans as net_wlans_routes,
 )
+from unifi_api.routes.resources.protect import (
+    cameras as protect_cameras_routes,
+    events as protect_events_routes,
+    recordings as protect_recordings_routes,
+)
 from unifi_api.serializers._registry import discover_serializers
 from unifi_api.services.capability_cache import CapabilityCache
 from unifi_api.services.managers import ManagerFactory
@@ -103,6 +108,12 @@ def create_app(config: ApiConfig) -> FastAPI:
         net_networks_routes,
         net_firewall_routes,
         net_wlans_routes,
+    ):
+        app.include_router(r.router, prefix="/v1")
+    for r in (
+        protect_cameras_routes,
+        protect_events_routes,
+        protect_recordings_routes,
     ):
         app.include_router(r.router, prefix="/v1")
 
