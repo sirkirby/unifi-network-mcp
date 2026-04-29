@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import time
 from collections import deque
+from collections.abc import Callable
 from typing import Any
 
 from unifi_core.exceptions import UniFiConnectionError
@@ -107,6 +108,7 @@ class EventManager:
             ttl_seconds=int(cfg.get("buffer_ttl_seconds", 300)),
         )
         self._server: Any | None = None  # FastMCP server reference for future notifications
+        self._subscribers: list[Callable[[dict], None]] = []
 
     # ------------------------------------------------------------------
     # Server / notification wiring
@@ -150,7 +152,7 @@ class EventManager:
         """Callback invoked for websocket events. Buffers the event."""
         try:
             if isinstance(event_data, dict):
-                self._buffer.add(event_data)
+                event_dict = event_data
             else:
                 # Convert to dict if it's an object
                 event_dict = {
@@ -160,8 +162,14 @@ class EventManager:
                     "user_id": getattr(event_data, "user_id", None),
                     "timestamp": getattr(event_data, "timestamp", None),
                 }
-                self._buffer.add(event_dict)
+            self._buffer.add(event_dict)
             logger.debug("[event-mgr] Buffered event from websocket")
+            # Phase 4B: fan out to subscribers
+            for cb in list(self._subscribers):
+                try:
+                    cb(event_dict)
+                except Exception:
+                    logger.debug("[event-mgr] subscriber callback failed", exc_info=True)
         except Exception:
             logger.debug("[event-mgr] Error processing websocket event", exc_info=True)
 
@@ -186,6 +194,18 @@ class EventManager:
     def buffer_size(self) -> int:
         """Current number of events in the buffer."""
         return len(self._buffer)
+
+    def add_subscriber(self, cb: Callable[[dict], None]) -> Callable[[], None]:
+        """Register *cb* to receive every buffered event. Returns unsub."""
+        self._subscribers.append(cb)
+
+        def _unsub() -> None:
+            try:
+                self._subscribers.remove(cb)
+            except ValueError:
+                pass
+
+        return _unsub
 
     # ------------------------------------------------------------------
     # REST API queries
