@@ -39,6 +39,10 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.engine = engine
     app.state.sessionmaker = get_sessionmaker(engine)
 
+    @app.on_event("shutdown")
+    async def _dispose_engine() -> None:
+        await app.state.engine.dispose()
+
     app.include_router(health.router, prefix="/v1")
 
     return app

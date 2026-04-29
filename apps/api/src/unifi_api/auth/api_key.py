@@ -11,13 +11,20 @@ import re
 import secrets
 from base64 import b32encode
 from dataclasses import dataclass
+from enum import Enum
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
 
-_KEY_PATTERN = re.compile(r"^unifi_(live|test)_[A-Z2-7]{22}$")
+KEY_PATTERN = re.compile(r"^unifi_(live|test)_[A-Z2-7]{22}$")
+KEY_PREFIX_LEN = 15
 _HASHER = PasswordHasher()
+
+
+class ApiKeyEnv(str, Enum):
+    LIVE = "live"
+    TEST = "test"
 
 
 @dataclass(frozen=True)
@@ -26,23 +33,21 @@ class ApiKeyMaterial:
     prefix: str
 
 
-def generate_key(env: str = "live") -> ApiKeyMaterial:
-    if env not in ("live", "test"):
-        raise ValueError(f"env must be 'live' or 'test', got {env!r}")
+def generate_key(env: ApiKeyEnv = ApiKeyEnv.LIVE) -> ApiKeyMaterial:
     body = b32encode(secrets.token_bytes(14)).decode("ascii").rstrip("=")[:22]
-    plaintext = f"unifi_{env}_{body}"
-    prefix = plaintext[:15]
+    plaintext = f"unifi_{env.value}_{body}"
+    prefix = plaintext[:KEY_PREFIX_LEN]
     return ApiKeyMaterial(plaintext=plaintext, prefix=prefix)
 
 
 def hash_key(plaintext: str) -> str:
-    if not _KEY_PATTERN.fullmatch(plaintext):
+    if not KEY_PATTERN.fullmatch(plaintext):
         raise ValueError("invalid key format")
     return _HASHER.hash(plaintext)
 
 
 def verify_key(plaintext: str, digest: str) -> bool:
-    if not _KEY_PATTERN.fullmatch(plaintext):
+    if not KEY_PATTERN.fullmatch(plaintext):
         raise ValueError("invalid key format")
     try:
         return _HASHER.verify(digest, plaintext)

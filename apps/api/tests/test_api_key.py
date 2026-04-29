@@ -4,17 +4,17 @@ import re
 
 import pytest
 
-from unifi_api.auth.api_key import ApiKeyMaterial, generate_key, hash_key, verify_key
+from unifi_api.auth.api_key import ApiKeyEnv, ApiKeyMaterial, generate_key, hash_key, verify_key
 
 
 def test_generate_key_has_correct_format() -> None:
-    material = generate_key(env="live")
+    material = generate_key(env=ApiKeyEnv.LIVE)
     assert re.fullmatch(r"unifi_live_[A-Z2-7]{22}", material.plaintext)
     assert material.prefix == material.plaintext[:15]
 
 
 def test_generate_key_test_env() -> None:
-    material = generate_key(env="test")
+    material = generate_key(env=ApiKeyEnv.TEST)
     assert material.plaintext.startswith("unifi_test_")
 
 
