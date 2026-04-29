@@ -10,6 +10,7 @@ from starlette.middleware.cors import CORSMiddleware
 from unifi_api.config import ApiConfig
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
+from unifi_api.routes import health
 
 
 def create_app(config: ApiConfig) -> FastAPI:
@@ -37,5 +38,7 @@ def create_app(config: ApiConfig) -> FastAPI:
     engine = create_engine(config.db.path)
     app.state.engine = engine
     app.state.sessionmaker = get_sessionmaker(engine)
+
+    app.include_router(health.router, prefix="/v1")
 
     return app
