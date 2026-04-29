@@ -150,11 +150,14 @@ def parse_args() -> argparse.Namespace:
         "--server",
         choices=["network", "protect", "access", "all"],
         required=False,
-        help="Required for MCP-direct phases. Ignored for --phase api-actions.",
+        help="Required for MCP-direct phases. Ignored for --phase api-actions / api-resources.",
     )
     parser.add_argument(
         "--phase",
-        choices=["inventory", "readonly", "preview", "lifecycle", "approved", "safe", "api-actions"],
+        choices=[
+            "inventory", "readonly", "preview", "lifecycle", "approved", "safe",
+            "api-actions", "api-resources",
+        ],
         default="safe",
         help=(
             "'safe' runs readonly, preview, and named safe lifecycles. "
@@ -162,7 +165,10 @@ def parse_args() -> argparse.Namespace:
             "'api-actions' is a manual-only phase: spins up unifi-api locally, "
             "registers the .env-configured controllers, exercises read-only tools "
             "via POST /v1/actions/{tool}, and compares to the latest MCP-direct "
-            "baseline."
+            "baseline. "
+            "'api-resources' is also manual-only: same bootstrap, but exercises "
+            "GET /v1/sites/{site}/{resource} endpoints and (where the tool "
+            "equivalent exists) compares the data payload to the action endpoint."
         ),
     )
     parser.add_argument("--report-dir", default="live-smoke-results")
@@ -171,8 +177,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--include-heavy-reads", action="store_true")
     parser.add_argument("--interactive-risky", action="store_true")
     args = parser.parse_args()
-    if args.phase != "api-actions" and not args.server:
-        parser.error("--server is required unless --phase api-actions is used")
+    if args.phase not in {"api-actions", "api-resources"} and not args.server:
+        parser.error(
+            "--server is required unless --phase api-actions or --phase api-resources is used"
+        )
     return args
 
 
@@ -1675,10 +1683,392 @@ def run_api_actions_phase(args: argparse.Namespace) -> int:
     return 1 if artifact["summary"]["regressions"] > 0 else 0
 
 
+###############################################################################
+# Phase: api-resources
+#
+# Manual-only phase. Same bootstrap as api-actions (spins up unifi-api locally,
+# registers .env-configured controllers), then exercises the GET resource
+# endpoints (clients, devices, networks, wlans, firewall rules, cameras,
+# recordings, events, doors, users, credentials). For each resource that has a
+# tool equivalent, also calls the matching action endpoint and compares the
+# data payloads — the resource version wraps in {items, next_cursor,
+# render_hint} and the action version wraps in {success: true, data,
+# render_hint}; the inner item arrays should match (the action endpoint
+# returns the full collection, the resource endpoint returns a paginated
+# slice, so the comparison checks set-of-ids/MACs).
+#
+# Like api-actions, this phase is intentionally NOT wired into CI and serves
+# as a Phase 3 release-readiness gate.
+###############################################################################
+
+
+# Sample of resource endpoints exercised through GET. Each entry is:
+#   (product, path_template, query_extras, parity_tool_name_or_None,
+#    parity_args_or_None, parity_collection_keys)
+#
+# - path_template uses {site} placeholder.
+# - parity_tool_name: when set, the matching POST /v1/actions/{tool} call is
+#   issued and the data shapes compared.
+# - parity_collection_keys: the keys under the action's data payload that hold
+#   the item collection — we look at each in order and use the first present.
+API_RESOURCES_SAMPLE: list[tuple[str, str, dict[str, Any], str | None, dict[str, Any] | None, tuple[str, ...]]] = [
+    ("network", "/v1/sites/{site}/clients",        {"limit": 10}, "unifi_list_clients",        {},                         ("clients", "items")),
+    ("network", "/v1/sites/{site}/devices",        {"limit": 10}, "unifi_list_devices",        {},                         ("devices", "items")),
+    ("network", "/v1/sites/{site}/networks",       {"limit": 10}, None,                         None,                       ()),
+    ("network", "/v1/sites/{site}/wlans",          {"limit": 10}, None,                         None,                       ()),
+    ("network", "/v1/sites/{site}/firewall/rules", {"limit": 10}, None,                         None,                       ()),
+    ("protect", "/v1/sites/{site}/cameras",        {"limit": 10}, "protect_list_cameras",       {},                         ("cameras", "items")),
+    ("access",  "/v1/sites/{site}/doors",          {"limit": 10}, "access_list_doors",          {},                         ("doors", "items")),
+    ("access",  "/v1/sites/{site}/users",          {"limit": 10}, "access_list_users",          {},                         ("users", "items")),
+]
+
+
+def _items_id_set(items: Any, id_keys: tuple[str, ...] = ("id", "_id", "mac", "uuid")) -> set[str]:
+    """Extract a set of stable identifiers from a list of dict items.
+
+    Used to compare a resource-endpoint page slice to an action-endpoint full
+    collection: the resource set should be a subset of the action set when
+    counts agree, and the *paginated* resource slice should always be ⊆ the
+    full action collection.
+    """
+    out: set[str] = set()
+    if not isinstance(items, list):
+        return out
+    for entry in items:
+        if not isinstance(entry, dict):
+            continue
+        for key in id_keys:
+            value = entry.get(key)
+            if value is not None and value != "":
+                out.add(str(value))
+                break
+    return out
+
+
+def _action_collection(payload: Any, candidate_keys: tuple[str, ...]) -> list[Any]:
+    """Pull the collection list out of an action endpoint response.
+
+    Handles both ``{"data": {...}}`` shapes and ``{...}`` directly. Walks the
+    candidate keys in order; falls back to the first list value found at the
+    top level.
+    """
+    if not isinstance(payload, dict):
+        return []
+    body = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    if not isinstance(body, dict):
+        return []
+    for key in candidate_keys:
+        value = body.get(key)
+        if isinstance(value, list):
+            return value
+    # last resort: any list-of-dicts at the top level
+    for value in body.values():
+        if isinstance(value, list) and (not value or isinstance(value[0], dict)):
+            return value
+    return []
+
+
+def run_api_resources_phase(args: argparse.Namespace) -> int:
+    """Manual-only phase: exercise GET /v1/sites/{site}/{resource} endpoints.
+
+    Returns 0 when every reachable resource endpoint returns 200 with a valid
+    {items, next_cursor, render_hint} shape. Non-zero on a shape failure or
+    HTTP 5xx. Pre-existing controller-side failures (Access UNAUTHORIZED, etc.)
+    are recorded but do NOT fail the run.
+    """
+    print("\n=== api-resources: spinning up unifi-api locally ===", flush=True)
+    tmp_dir = Path(tempfile.mkdtemp(prefix="unifi-api-resources-smoke-"))
+    db_path = tmp_dir / "state.db"
+    db_key = "smoke-" + datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    port = _pick_free_port()
+    base_url = f"http://127.0.0.1:{port}"
+
+    env = dict(os.environ)
+    env["UNIFI_API_DB_KEY"] = db_key
+    env["UNIFI_API_DB_PATH"] = str(db_path)
+
+    started_at = datetime.now(UTC).isoformat()
+    server_proc: subprocess.Popen[bytes] | None = None
+    server_log = tmp_dir / "server.log"
+    artifact: dict[str, Any] = {
+        "phase": "api-resources",
+        "started_at": started_at,
+        "finished_at": None,
+        "base_url": base_url,
+        "db_path": str(db_path),
+        "controllers": [],
+        "results": [],
+        "summary": {
+            "endpoints_exercised": 0,
+            "passed": 0,
+            "shape_failures": 0,
+            "controller_errors": 0,
+            "skipped_no_controller": 0,
+            "parity_checked": 0,
+            "parity_matches": 0,
+            "parity_mismatches": 0,
+        },
+    }
+
+    try:
+        print(f"  tmp db: {db_path}", flush=True)
+        print(f"  http port: {port}", flush=True)
+        admin_key = _bootstrap_unifi_api(env)
+        print("  unifi-api migrate ok (admin key captured)", flush=True)
+
+        with server_log.open("wb") as log_fh:
+            server_proc = subprocess.Popen(
+                [
+                    "uv", "run", "--package", "unifi-api",
+                    "unifi-api", "serve", "--port", str(port),
+                ],
+                cwd=REPO_ROOT,
+                env=env,
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+            )
+
+        if not _wait_for_health(base_url, deadline_s=30.0):
+            raise RuntimeError(
+                f"unifi-api did not become healthy within 30s; see {server_log}"
+            )
+        print("  unifi-api serve ok (/v1/health 200)", flush=True)
+
+        auth_headers = {"Authorization": f"Bearer {admin_key}"}
+
+        # Step 1: register controllers from .env (same as api-actions).
+        controller_payloads = _api_actions_controllers_from_env()
+        if not controller_payloads:
+            raise RuntimeError(
+                "No controllers found in .env (expected UNIFI_{NETWORK,PROTECT,ACCESS}_HOST)."
+            )
+        product_to_controller_id: dict[str, str] = {}
+        for product, payload in controller_payloads.items():
+            status, body = _http_request(
+                "POST", f"{base_url}/v1/controllers",
+                headers=auth_headers, body=payload,
+            )
+            if status != 201 or not isinstance(body, dict) or not body.get("id"):
+                raise RuntimeError(
+                    f"failed to register {product} controller: {status} {body!r}"
+                )
+            product_to_controller_id[product] = body["id"]
+            artifact["controllers"].append({
+                "product": product,
+                "id": body["id"],
+                "name": body.get("name"),
+                "base_url": body.get("base_url"),
+            })
+            print(f"  registered controller: {product} -> {body['id']}", flush=True)
+
+        # Step 2: exercise resource endpoints.
+        site_for_product: dict[str, str] = {
+            "network": os.environ.get("UNIFI_NETWORK_SITE") or "default",
+            "protect": "default",
+            "access": "default",
+        }
+
+        for (product, path_tpl, query_extras, parity_tool, parity_args,
+             parity_keys) in API_RESOURCES_SAMPLE:
+            if product not in product_to_controller_id:
+                artifact["summary"]["skipped_no_controller"] += 1
+                print(f"  api-resources skip: {path_tpl} (no {product} controller)", flush=True)
+                continue
+            controller_id = product_to_controller_id[product]
+            site = site_for_product[product]
+            path = path_tpl.format(site=site)
+            qs = "&".join(
+                [f"controller={controller_id}"]
+                + [f"{k}={v}" for k, v in query_extras.items()]
+            )
+            url = f"{base_url}{path}?{qs}"
+
+            t0 = time.perf_counter()
+            try:
+                status, response = _http_request(
+                    "GET", url, headers=auth_headers, timeout=120.0,
+                )
+            except Exception as exc:
+                status = 0
+                response = f"{type(exc).__name__}: {exc}"
+            duration_ms = int((time.perf_counter() - t0) * 1000)
+
+            # Resource shape: {items, next_cursor, render_hint}
+            shape_match = (
+                status == 200
+                and isinstance(response, dict)
+                and "items" in response
+                and "next_cursor" in response
+                and "render_hint" in response
+                and isinstance(response.get("items"), list)
+            )
+            items = response.get("items") if isinstance(response, dict) else None
+            item_count = len(items) if isinstance(items, list) else None
+
+            classification: str
+            error: str | None = None
+            if shape_match:
+                classification = "pass"
+            elif status == 200 and isinstance(response, dict):
+                classification = "shape_failure"
+                error = f"missing keys / wrong types in 200 body: {sorted(response.keys())}"
+            elif 500 <= (status or 0) < 600:
+                classification = "shape_failure"
+                error = f"HTTP {status}: {response!r}"
+            elif status == 0:
+                classification = "shape_failure"
+                error = f"transport: {response!r}"
+            else:
+                # 4xx — most often controller-side: 401 from Access, 503 when
+                # Protect is unreachable, etc. Recorded but not a failure.
+                classification = "controller_error"
+                error = f"HTTP {status}: {response!r}"
+
+            # Parity comparison: hit the matching action endpoint and compare
+            # item id sets. We treat the resource endpoint as a paginated
+            # subset of the action endpoint; the resource id set should be
+            # ⊆ the action id set.
+            parity: dict[str, Any] | None = None
+            if parity_tool and classification == "pass":
+                action_body = {
+                    "site": site,
+                    "controller": controller_id,
+                    "args": parity_args or {},
+                    "confirm": False,
+                }
+                try:
+                    a_status, a_response = _http_request(
+                        "POST", f"{base_url}/v1/actions/{parity_tool}",
+                        headers=auth_headers, body=action_body, timeout=120.0,
+                    )
+                except Exception as exc:
+                    a_status = 0
+                    a_response = f"{type(exc).__name__}: {exc}"
+
+                if a_status == 200 and isinstance(a_response, dict) and a_response.get("success"):
+                    action_collection = _action_collection(a_response, parity_keys)
+                    resource_ids = _items_id_set(items)
+                    action_ids = _items_id_set(action_collection)
+                    is_subset = resource_ids.issubset(action_ids) if resource_ids else True
+                    parity = {
+                        "tool": parity_tool,
+                        "action_http_status": a_status,
+                        "action_success": True,
+                        "resource_id_count": len(resource_ids),
+                        "action_id_count": len(action_ids),
+                        "resource_subset_of_action": is_subset,
+                    }
+                    artifact["summary"]["parity_checked"] += 1
+                    if is_subset:
+                        artifact["summary"]["parity_matches"] += 1
+                    else:
+                        artifact["summary"]["parity_mismatches"] += 1
+                else:
+                    parity = {
+                        "tool": parity_tool,
+                        "action_http_status": a_status,
+                        "action_success": (
+                            a_response.get("success")
+                            if isinstance(a_response, dict) else None
+                        ),
+                        "note": "action endpoint failed; parity skipped",
+                    }
+
+            artifact["results"].append({
+                "product": product,
+                "path": path,
+                "controller_id": controller_id,
+                "site": site,
+                "http_status": status,
+                "shape_match": shape_match,
+                "item_count": item_count,
+                "next_cursor_present": (
+                    bool(response.get("next_cursor"))
+                    if isinstance(response, dict) else False
+                ),
+                "render_hint_present": (
+                    response.get("render_hint") is not None
+                    if isinstance(response, dict) else False
+                ),
+                "duration_ms": duration_ms,
+                "classification": classification,
+                "error": error,
+                "parity": parity,
+            })
+
+            artifact["summary"]["endpoints_exercised"] += 1
+            if classification == "pass":
+                artifact["summary"]["passed"] += 1
+            elif classification == "shape_failure":
+                artifact["summary"]["shape_failures"] += 1
+            elif classification == "controller_error":
+                artifact["summary"]["controller_errors"] += 1
+
+            parity_note = ""
+            if parity:
+                if "resource_subset_of_action" in parity:
+                    parity_note = (
+                        f" parity={'ok' if parity['resource_subset_of_action'] else 'MISMATCH'}"
+                        f" (r={parity['resource_id_count']} a={parity['action_id_count']})"
+                    )
+                else:
+                    parity_note = " parity=skip"
+            print(
+                f"  api-resources {classification}: {path} "
+                f"http={status} items={item_count} ({duration_ms}ms){parity_note}",
+                flush=True,
+            )
+            if args.delay:
+                time.sleep(args.delay)
+
+    finally:
+        artifact["finished_at"] = datetime.now(UTC).isoformat()
+        if server_proc is not None and server_proc.poll() is None:
+            server_proc.terminate()
+            try:
+                server_proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                server_proc.kill()
+                server_proc.wait(timeout=5)
+
+        report_dir = REPO_ROOT / args.report_dir / "phase3-api-resources"
+        stamp = artifact["started_at"].replace(":", "").replace("+0000", "Z")
+        path = report_dir / f"api-resources-{stamp}.json"
+        write_json(path, artifact)
+        print(f"\nReport: {path}", flush=True)
+
+        # On failure preserve the server log; otherwise tear down the tmp dir.
+        failed = (
+            artifact["summary"]["shape_failures"] > 0
+            or artifact["summary"]["parity_mismatches"] > 0
+        )
+        try:
+            if failed:
+                kept_log = REPO_ROOT / args.report_dir / "phase3-api-resources" / f"server-log-{stamp}.txt"
+                try:
+                    if server_log.exists():
+                        kept_log.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(server_log, kept_log)
+                        print(f"Server log preserved at: {kept_log}", flush=True)
+                except Exception:
+                    pass
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+        except Exception:
+            pass
+
+    if artifact["summary"]["shape_failures"] > 0:
+        return 1
+    if artifact["summary"]["parity_mismatches"] > 0:
+        return 1
+    return 0
+
+
 def main() -> int:
     args = parse_args()
     if args.phase == "api-actions":
         return run_api_actions_phase(args)
+    if args.phase == "api-resources":
+        return run_api_resources_phase(args)
     if args.server == "all":
         return run_all_servers(args)
     return asyncio.run(run_one(args))
