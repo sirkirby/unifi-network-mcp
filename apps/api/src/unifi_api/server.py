@@ -13,6 +13,7 @@ from unifi_api.config import ApiConfig
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
 from unifi_api.logging import request_id_ctx
+from unifi_api.routes import controllers as controllers_routes
 from unifi_api.routes import health
 
 
@@ -61,5 +62,6 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.argon_cache = ArgonVerifyCache()
 
     app.include_router(health.router, prefix="/v1")
+    app.include_router(controllers_routes.router, prefix="/v1")
 
     return app
