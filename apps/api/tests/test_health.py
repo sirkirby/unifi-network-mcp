@@ -35,6 +35,9 @@ async def test_health_unauthenticated(tmp_path: Path, monkeypatch) -> None:
 async def test_health_ready_requires_admin(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
     app = create_app(_cfg(tmp_path))
+    # Tables must exist so middleware can write the auth-denial audit row.
+    async with app.state.engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/v1/health/ready")
     assert r.status_code == 401
