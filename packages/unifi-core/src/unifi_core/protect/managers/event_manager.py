@@ -104,6 +104,7 @@ class EventManager:
         self._min_confidence = int(cfg.get("smart_detection_min_confidence", 50))
         self._ws_unsub: Callable[[], None] | None = None
         self._server: Any | None = None  # FastMCP server reference for future notifications
+        self._subscribers: list[Callable[[dict], None]] = []
 
     # ------------------------------------------------------------------
     # Server / notification wiring
@@ -160,6 +161,12 @@ class EventManager:
                     event_dict.get("type"),
                     event_dict.get("camera_id"),
                 )
+                # Phase 4B: fan out to subscribers
+                for cb in list(self._subscribers):
+                    try:
+                        cb(event_dict)
+                    except Exception:
+                        logger.debug("[event-mgr] subscriber callback failed", exc_info=True)
                 # NOTE: Push notifications to MCP clients are not yet
                 # supported because ServerSession.send_resource_updated()
                 # is only accessible from within a request context.  When
@@ -248,6 +255,18 @@ class EventManager:
     def buffer_size(self) -> int:
         """Current number of events in the buffer."""
         return len(self._buffer)
+
+    def add_subscriber(self, cb: Callable[[dict], None]) -> Callable[[], None]:
+        """Register *cb* to receive every buffered event. Returns unsub."""
+        self._subscribers.append(cb)
+
+        def _unsub() -> None:
+            try:
+                self._subscribers.remove(cb)
+            except ValueError:
+                pass
+
+        return _unsub
 
     # ------------------------------------------------------------------
     # REST API queries
