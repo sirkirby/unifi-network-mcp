@@ -72,3 +72,88 @@ class DoorSerializer(Serializer):
             "lock_state": _get(obj, "lock_state") or _get(obj, "lock_relay_status"),
             "last_event": _last_event(obj),
         }
+
+
+def _door_ids_from_groups(obj: Any) -> list:
+    """Door groups may carry resources/door_ids in either field name."""
+    door_ids = _get(obj, "door_ids")
+    if isinstance(door_ids, list):
+        return door_ids
+    resources = _get(obj, "resources")
+    if isinstance(resources, list):
+        return [
+            r.get("id") if isinstance(r, dict) else r
+            for r in resources
+            if r is not None
+        ]
+    return []
+
+
+@register_serializer(
+    tools={
+        "access_list_door_groups": {"kind": RenderKind.LIST},
+    },
+)
+class DoorGroupSerializer(Serializer):
+    kind = RenderKind.LIST
+    primary_key = "id"
+    display_columns = ["name", "location"]
+    sort_default = "name"
+
+    @staticmethod
+    def serialize(obj) -> dict:
+        return {
+            "id": _get(obj, "id"),
+            "name": _get(obj, "name"),
+            "door_ids": _door_ids_from_groups(obj),
+            "location": _get(obj, "location") or _get(obj, "location_type"),
+        }
+
+
+@register_serializer(
+    tools={
+        "access_get_door_status": {"kind": RenderKind.DETAIL},
+    },
+)
+class DoorStatusSerializer(Serializer):
+    kind = RenderKind.DETAIL
+    primary_key = "door_id"
+
+    @staticmethod
+    def serialize(obj) -> dict:
+        last = _last_event(obj)
+        last_ts = last.get("timestamp") if isinstance(last, dict) else None
+        last_type = last.get("name") if isinstance(last, dict) else None
+        return {
+            "door_id": _get(obj, "door_id") or _get(obj, "id"),
+            "name": _get(obj, "name"),
+            "is_locked": _is_locked(obj),
+            "lock_state": _get(obj, "lock_state") or _get(obj, "lock_relay_status"),
+            "door_position_status": _get(obj, "door_position_status"),
+            "last_event_at": last_ts,
+            "last_event_type": last_type,
+        }
+
+
+@register_serializer(
+    tools={
+        "access_lock_door": {"kind": RenderKind.DETAIL},
+        "access_unlock_door": {"kind": RenderKind.DETAIL},
+    },
+)
+class DoorMutationAckSerializer(Serializer):
+    """DETAIL ack for lock/unlock. Manager preview returns a dict
+    (door_id + current_state + proposed_changes); pass through. Bool
+    coerces to ``{"success": bool}`` for completeness."""
+
+    kind = RenderKind.DETAIL
+
+    @staticmethod
+    def serialize(obj) -> dict:
+        if isinstance(obj, bool):
+            return {"success": obj}
+        if isinstance(obj, dict):
+            return obj
+        if obj is None:
+            return {"success": False}
+        return {"result": str(obj)}

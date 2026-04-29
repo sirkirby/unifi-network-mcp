@@ -1,0 +1,151 @@
+"""Phase 4A PR3 Cluster 1 — access doors/policies/schedules/devices/system.
+
+Each manager returns plain dicts (or list of dicts). For lock/unlock/reboot
+the manager preview returns a dict (current_state + proposed_changes); we
+pass that through. The mutation acks coerce bools to ``{"success": bool}``.
+"""
+
+from unifi_api.serializers._registry import (
+    discover_serializers,
+    serializer_registry_singleton,
+)
+
+
+def _registry():
+    discover_serializers(manifest_tool_names=set())
+    return serializer_registry_singleton()
+
+
+def test_door_group_serializer_shape() -> None:
+    reg = _registry()
+    s = reg.serializer_for_tool("access_list_door_groups")
+    sample = {
+        "id": "grp1",
+        "name": "Lobby Group",
+        "door_ids": ["door1", "door2"],
+        "location": "HQ Floor 1",
+    }
+    out = s.serialize(sample)
+    assert out["id"] == "grp1"
+    assert out["name"] == "Lobby Group"
+    assert out["door_ids"] == ["door1", "door2"]
+    assert out["location"] == "HQ Floor 1"
+
+
+def test_door_status_serializer_shape() -> None:
+    reg = _registry()
+    s = reg.serializer_for_tool("access_get_door_status")
+    sample = {
+        "id": "door1",
+        "name": "Front Door",
+        "door_position_status": "close",
+        "lock_relay_status": "lock",
+    }
+    out = s.serialize(sample)
+    assert out["door_id"] == "door1"
+    assert out["is_locked"] is True
+    assert out["lock_state"] == "lock"
+
+
+def test_policy_serializer_shape() -> None:
+    reg = _registry()
+    s = reg.serializer_for_tool("access_get_policy")
+    sample = {
+        "id": "pol1",
+        "name": "Office Hours",
+        "schedule_id": "sch1",
+        "resources": [{"id": "door1"}, {"id": "door2"}],
+        "user_group_ids": ["ug1"],
+        "status": "active",
+    }
+    out = s.serialize(sample)
+    assert out["id"] == "pol1"
+    assert out["name"] == "Office Hours"
+    assert out["schedule_id"] == "sch1"
+    assert "door_ids" in out
+    assert "user_group_ids" in out
+    assert "enabled" in out
+
+
+def test_schedule_serializer_shape() -> None:
+    reg = _registry()
+    s = reg.serializer_for_tool("access_list_schedules")
+    sample = {
+        "id": "sch1",
+        "name": "Weekdays 9-5",
+        "week_schedule": {"monday": [{"start": "09:00", "end": "17:00"}]},
+        "status": "active",
+    }
+    out = s.serialize(sample)
+    assert out["id"] == "sch1"
+    assert out["name"] == "Weekdays 9-5"
+    assert out["weekly_pattern"] == sample["week_schedule"]
+    assert out["enabled"] is True
+
+
+def test_access_device_serializer_shape() -> None:
+    reg = _registry()
+    s = reg.serializer_for_tool("access_list_devices")
+    sample = {
+        "unique_id": "dev1",
+        "name": "Front Reader",
+        "device_type": "UA-G2",
+        "is_online": True,
+        "firmware": "2.10.0",
+        "_door_name": "Front Door",
+    }
+    out = s.serialize(sample)
+    assert out["id"] == "dev1"
+    assert out["name"] == "Front Reader"
+    assert out["type"] == "UA-G2"
+    assert out["is_online"] is True
+    assert out["firmware_version"] == "2.10.0"
+    assert out["location"] == "Front Door"
+
+
+def test_access_system_info_and_health() -> None:
+    reg = _registry()
+    info = reg.serializer_for_tool("access_get_system_info")
+    info_sample = {
+        "name": "Access Application",
+        "version": "1.24.0",
+        "hostname": "udm-pro",
+        "uptime": 12345,
+    }
+    info_out = info.serialize(info_sample)
+    assert info_out["name"] == "Access Application"
+    assert info_out["version"] == "1.24.0"
+    assert info_out["hostname"] == "udm-pro"
+    assert info_out["uptime"] == 12345
+
+    health = reg.serializer_for_tool("access_get_health")
+    health_sample = {
+        "host": "10.0.0.1",
+        "is_connected": True,
+        "api_client_available": True,
+        "proxy_available": True,
+        "api_client_healthy": True,
+        "proxy_healthy": True,
+    }
+    health_out = health.serialize(health_sample)
+    assert "status" in health_out
+    assert health_out["status"] == "healthy"
+
+
+def test_access_mutation_acks() -> None:
+    reg = _registry()
+    lock = reg.serializer_for_tool("access_lock_door")
+    # Manager preview shape passes through unchanged
+    preview = {"door_id": "d1", "proposed_changes": {"action": "lock"}}
+    assert lock.serialize(preview) == preview
+    # Bool coerces to {"success": bool}
+    assert lock.serialize(True) == {"success": True}
+
+    reboot = reg.serializer_for_tool("access_reboot_device")
+    assert reboot.serialize(False) == {"success": False}
+
+    upd = reg.serializer_for_tool("access_update_policy")
+    assert upd.serialize({"policy_id": "p1", "result": "success"}) == {
+        "policy_id": "p1",
+        "result": "success",
+    }
