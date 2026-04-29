@@ -274,28 +274,30 @@ class ManagerFactory:
         ``attr_name`` matches the singleton attribute used by the MCP runtime
         modules (e.g. ``client_manager`` from ``unifi_network_mcp.runtime``).
 
-        Cached on (controller_id, product, attr_name); shares the same per
-        controller asyncio.Lock as connection-manager construction so concurrent
-        first-use doesn't double-build.
+        Cached on (controller_id, product, attr_name). Does NOT take the
+        per-controller lock here — get_connection_manager already serializes
+        the slow path (initialize()), and the rest of this function is a
+        synchronous builder call where a brief race on first-use produces
+        last-writer-wins on the cache, which is harmless because builders
+        are pure and share the cached connection manager.
+
+        Acquiring the lock here would deadlock — it's non-reentrant and
+        get_connection_manager acquires the same lock.
         """
         key = (controller_id, product, attr_name)
         cached = self._domain_cache.get(key)
         if cached is not None:
             return cached
-        async with self._locks[controller_id]:
-            cached = self._domain_cache.get(key)
-            if cached is not None:
-                return cached
-            builders = self._builders_for(product)
-            builder = builders.get(attr_name)
-            if builder is None:
-                raise UnknownManager(
-                    f"product '{product}' has no domain manager named '{attr_name}'"
-                )
-            cm = await self.get_connection_manager(session, controller_id, product)
-            instance = builder(cm)
-            self._domain_cache[key] = instance
-            return instance
+        builders = self._builders_for(product)
+        builder = builders.get(attr_name)
+        if builder is None:
+            raise UnknownManager(
+                f"product '{product}' has no domain manager named '{attr_name}'"
+            )
+        cm = await self.get_connection_manager(session, controller_id, product)
+        instance = builder(cm)
+        self._domain_cache[key] = instance
+        return instance
 
     async def invalidate_controller(self, controller_id: str) -> None:
         """Drop all cached managers for a controller and dispose their sessions."""

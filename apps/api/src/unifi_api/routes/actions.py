@@ -23,6 +23,40 @@ class ActionIn(BaseModel):
     confirm: bool = False
 
 
+def _to_jsonable(x):
+    """Best-effort coerce a manager return value to a JSON-serializable form.
+
+    The Phase 2 dispatcher (Option D AST introspection) routes from tool_name to
+    the underlying manager method, bypassing the MCP tool function's
+    response-shaping layer. Manager methods like ClientManager.get_clients()
+    return list[aiounifi.models.client.Client] (Pydantic-ish objects), not
+    dicts. This helper coerces them.
+
+    Phase 3 will add proper resource serializers; this is the v1 floor.
+    """
+    if hasattr(x, "raw"):  # aiounifi models expose .raw with the dict payload
+        return x.raw
+    if hasattr(x, "model_dump"):
+        return x.model_dump()
+    if hasattr(x, "dict") and callable(x.dict):
+        try:
+            return x.dict()
+        except Exception:
+            pass
+    return x
+
+
+def _coerce_response(result) -> dict:
+    """Normalize manager output to a {success, data} dict."""
+    if isinstance(result, dict):
+        return result
+    if isinstance(result, (list, tuple)):
+        return {"success": True, "data": [_to_jsonable(item) for item in result]}
+    if isinstance(result, (str, int, float, bool)) or result is None:
+        return {"success": True, "data": result}
+    return {"success": True, "data": _to_jsonable(result)}
+
+
 @router.post(
     "/actions/{tool_name}",
     dependencies=[Depends(require_scope(Scope.WRITE))],
@@ -61,11 +95,8 @@ async def post_action(request: Request, tool_name: str, body: ActionIn) -> dict:
                 args=body.args,
                 confirm=body.confirm,
             )
-            outcome = (
-                "success"
-                if isinstance(result, dict) and result.get("success", True)
-                else "error"
-            )
+            coerced = _coerce_response(result)
+            outcome = "success" if coerced.get("success", True) else "error"
             await write_audit(
                 session,
                 key_id_prefix=key_prefix,
@@ -74,7 +105,7 @@ async def post_action(request: Request, tool_name: str, body: ActionIn) -> dict:
                 outcome=outcome,
             )
             await session.commit()
-            return result
+            return coerced
         except ToolNotFound:
             await write_audit(
                 session,
