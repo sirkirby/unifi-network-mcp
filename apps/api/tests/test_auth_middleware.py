@@ -9,6 +9,7 @@ from fastapi import Depends, FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from unifi_api.auth.api_key import generate_key, hash_key
+from unifi_api.auth.cache import ArgonVerifyCache
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
 from unifi_api.db.engine import create_engine
@@ -27,6 +28,7 @@ async def _make_app(tmp_path: Path) -> FastAPI:
     sm = get_sessionmaker(engine)
     app = FastAPI()
     app.state.sessionmaker = sm
+    app.state.argon_cache = ArgonVerifyCache()
 
     @app.get("/protected", dependencies=[Depends(require_scope(Scope.READ))])
     async def protected():
@@ -92,3 +94,16 @@ async def test_insufficient_scope_403(tmp_path: Path) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/admin-only", headers={"Authorization": f"Bearer {plaintext}"})
     assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_cache_hit_skips_argon2(tmp_path: Path) -> None:
+    """Two consecutive requests with same key should hit cache on second call."""
+    app = await _make_app(tmp_path)
+    plaintext = await _seed_key(app, scopes="read")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r1 = await c.get("/protected", headers={"Authorization": f"Bearer {plaintext}"})
+        r2 = await c.get("/protected", headers={"Authorization": f"Bearer {plaintext}"})
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert app.state.argon_cache.get(plaintext) is not None

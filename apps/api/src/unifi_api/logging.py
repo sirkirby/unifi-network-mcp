@@ -6,10 +6,14 @@ responses on stdout. Container log drivers pick it up either way.
 
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import sys
 import time
+
+request_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
+key_id_prefix_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("key_id_prefix", default=None)
 
 
 class JsonFormatter(logging.Formatter):
@@ -20,6 +24,12 @@ class JsonFormatter(logging.Formatter):
             "level": record.levelname,
             "event": record.getMessage(),
         }
+        rid = request_id_ctx.get()
+        if rid is not None:
+            payload["request_id"] = rid
+        kpfx = key_id_prefix_ctx.get()
+        if kpfx is not None:
+            payload["key_id_prefix"] = kpfx
         # extra= kwargs land on record.__dict__ — pull anything not in the standard set
         standard = {
             "name", "msg", "args", "levelname", "levelno", "pathname", "filename",
