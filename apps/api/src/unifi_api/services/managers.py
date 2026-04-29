@@ -198,26 +198,32 @@ class ManagerFactory:
         #   - network: site, cache_timeout, max_retries, retry_delay
         #   - protect: site, api_key
         #   - access:  api_key, api_port
-        # Connections are NOT established at construction time — initialize()
-        # is called lazily by callers, so this is safe to call eagerly here.
+        # Connections are NOT established at construction time — we must call
+        # initialize() eagerly here so callers don't hang on the first
+        # authenticated request. The MCP servers do this at startup; the
+        # API service mirrors that contract. If initialize() raises (auth
+        # failure, network error, etc.) the exception propagates so callers
+        # see a clear error instead of a hang.
         if product == "network":
             from unifi_core.network.managers.connection_manager import (
                 ConnectionManager as NetCM,
             )
 
-            return NetCM(
+            cm: Any = NetCM(
                 host=host,
                 username=creds["username"],
                 password=creds["password"],
                 port=port,
                 verify_ssl=controller.verify_tls,
             )
+            await cm.initialize()
+            return cm
         if product == "protect":
             from unifi_core.protect.managers.connection_manager import (
                 ConnectionManager as ProtectCM,
             )
 
-            return ProtectCM(
+            cm = ProtectCM(
                 host=host,
                 username=creds["username"],
                 password=creds["password"],
@@ -225,12 +231,14 @@ class ManagerFactory:
                 verify_ssl=controller.verify_tls,
                 api_key=creds.get("api_token"),
             )
+            await cm.initialize()
+            return cm
         if product == "access":
             from unifi_core.access.managers.connection_manager import (
                 ConnectionManager as AccessCM,
             )
 
-            return AccessCM(
+            cm = AccessCM(
                 host=host,
                 username=creds["username"],
                 password=creds["password"],
@@ -238,6 +246,8 @@ class ManagerFactory:
                 verify_ssl=controller.verify_tls,
                 api_key=creds.get("api_token"),
             )
+            await cm.initialize()
+            return cm
         raise UnknownProduct(f"unknown product '{product}'")
 
     def _builders_for(self, product: str) -> dict[str, Callable[[Any], Any]]:

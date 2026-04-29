@@ -17,6 +17,34 @@ from unifi_api.services.managers import (
 )
 
 
+class _FakeCM:
+    """Stand-in for ConnectionManager — records initialize() invocations."""
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.init_calls = 0
+
+    async def initialize(self) -> bool:
+        self.init_calls += 1
+        return True
+
+
+def _patch_network_cm(monkeypatch) -> list[_FakeCM]:
+    """Replace the network ConnectionManager with a fake; return the
+    instance list so callers can assert against constructions."""
+    instances: list[_FakeCM] = []
+
+    def _factory(**kwargs):
+        cm = _FakeCM(**kwargs)
+        instances.append(cm)
+        return cm
+
+    from unifi_core.network.managers import connection_manager as cm_module
+
+    monkeypatch.setattr(cm_module, "ConnectionManager", _factory)
+    return instances
+
+
 async def _seed(tmp_path: Path, products: list[str] = ["network"]):
     engine = create_engine(tmp_path / "state.db")
     async with engine.begin() as conn:
@@ -39,7 +67,8 @@ async def _seed(tmp_path: Path, products: list[str] = ["network"]):
 
 
 @pytest.mark.asyncio
-async def test_factory_caches_connection_manager(tmp_path: Path) -> None:
+async def test_factory_caches_connection_manager(tmp_path: Path, monkeypatch) -> None:
+    _patch_network_cm(monkeypatch)
     engine, sm, cipher, cid = await _seed(tmp_path)
     factory = ManagerFactory(sm, cipher)
     async with sm() as session:
@@ -50,7 +79,8 @@ async def test_factory_caches_connection_manager(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_invalidate_drops_cached_instance(tmp_path: Path) -> None:
+async def test_invalidate_drops_cached_instance(tmp_path: Path, monkeypatch) -> None:
+    _patch_network_cm(monkeypatch)
     engine, sm, cipher, cid = await _seed(tmp_path)
     factory = ManagerFactory(sm, cipher)
     async with sm() as session:
@@ -63,10 +93,37 @@ async def test_invalidate_drops_cached_instance(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_unknown_product_raises(tmp_path: Path) -> None:
+async def test_unknown_product_raises(tmp_path: Path, monkeypatch) -> None:
+    _patch_network_cm(monkeypatch)
     engine, sm, cipher, cid = await _seed(tmp_path, products=["network"])
     factory = ManagerFactory(sm, cipher)
     async with sm() as session:
         with pytest.raises(UnknownProduct):
             await factory.get_connection_manager(session, cid, "drive")
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_factory_calls_initialize_on_construction(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """ConnectionManager.initialize() must be awaited after construction.
+
+    Regression guard for the Phase 2 bug where the factory built
+    ConnectionManagers but never initialized them, causing downstream
+    manager-method calls to hang trying to authenticate.
+    """
+    instances = _patch_network_cm(monkeypatch)
+    engine, sm, cipher, cid = await _seed(tmp_path, products=["network"])
+    factory = ManagerFactory(sm, cipher)
+    async with sm() as session:
+        cm = await factory.get_connection_manager(session, cid, "network")
+    assert len(instances) == 1
+    assert instances[0] is cm
+    assert instances[0].init_calls == 1
+    # Subsequent fetches use the cache — initialize must NOT be called again.
+    async with sm() as session:
+        cm2 = await factory.get_connection_manager(session, cid, "network")
+    assert cm2 is cm
+    assert instances[0].init_calls == 1
     await engine.dispose()
