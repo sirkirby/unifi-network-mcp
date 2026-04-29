@@ -7,9 +7,10 @@ Manages event log and alarm operations using the v2 system-log API
 import logging
 import time
 from collections import deque
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequest, ApiRequestV2
+from aiounifi.models.message import MessageKey
 
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
@@ -82,11 +83,157 @@ _DEFAULT_SEVERITIES = ["LOW", "MEDIUM", "HIGH", "VERY_HIGH"]
 
 
 class EventManager:
-    """Manages event log operations on the UniFi Controller."""
+    """Manages event log operations on the UniFi Controller.
 
-    def __init__(self, connection_manager: ConnectionManager):
+    REST query surface (existing) plus websocket buffer + per-subscriber
+    fan-out (new in Phase 4B). Mirrors the protect/access EventManager
+    contract: ``start_listening`` opens the websocket and registers an
+    ``_on_ws_event`` handler with ``aiounifi.Controller.messages`` (the
+    upstream MessageHandler subscribe pattern), events are normalized into
+    a stable network-event dict shape, written to a TTL ring buffer, and
+    fanned out to every callback registered via ``add_subscriber``.
+    """
+
+    def __init__(
+        self,
+        connection_manager: ConnectionManager,
+        config: dict | None = None,
+    ) -> None:
+        cfg = config or {}
         self._connection = connection_manager
+        self._cm = connection_manager  # alias mirroring protect/access naming
         self._use_v2: bool | None = None  # Auto-detect on first call
+        self._buffer = EventBuffer(
+            max_size=int(cfg.get("buffer_size", 100)),
+            ttl_seconds=int(cfg.get("buffer_ttl_seconds", 300)),
+        )
+        self._subscribers: list[Callable[[dict], None]] = []
+        self._ws_unsub: Callable[[], None] | None = None
+
+    # ------------------------------------------------------------------
+    # Websocket lifecycle
+    # ------------------------------------------------------------------
+
+    async def start_listening(self) -> None:
+        """Open the aiounifi websocket and subscribe to event/alert messages.
+
+        aiounifi exposes events through ``Controller.messages`` (a
+        ``MessageHandler``). ``messages.subscribe(callback, message_filter)``
+        returns an unsubscribe callable. We filter to ``EVENT`` + ``ALERT``
+        so only event-log payloads flow through.
+        """
+        controller = self._cm.controller
+        await controller.start_websocket()
+        self._ws_unsub = controller.messages.subscribe(
+            self._on_ws_event,
+            (MessageKey.EVENT, MessageKey.ALERT),
+        )
+        logger.info("[network-event-mgr] websocket subscription started")
+
+    async def stop_listening(self) -> None:
+        """Unsubscribe from the websocket message handler."""
+        if self._ws_unsub is not None:
+            try:
+                self._ws_unsub()
+            except Exception:
+                logger.debug(
+                    "[network-event-mgr] error unsubscribing", exc_info=True
+                )
+            self._ws_unsub = None
+            logger.info("[network-event-mgr] websocket subscription stopped")
+
+    # ------------------------------------------------------------------
+    # Event ingestion + fan-out
+    # ------------------------------------------------------------------
+
+    def _on_ws_event(self, event_obj: Any) -> None:
+        """Normalize, buffer, and fan out a websocket event.
+
+        Accepts either an aiounifi ``Message`` (with ``.data``), a raw dict,
+        or anything exposing a ``.raw`` attribute. Subscribers receive the
+        buffered dict (with ``_buffered_at`` stamped).
+        """
+        try:
+            event = self._normalize_event(event_obj)
+            if event is None:
+                return
+            self._buffer.add(event)
+            stored = next(iter(self._buffer.get_recent(limit=1)), event)
+            for cb in list(self._subscribers):
+                try:
+                    cb(stored)
+                except Exception:
+                    logger.debug(
+                        "[network-event-mgr] subscriber callback failed",
+                        exc_info=True,
+                    )
+        except Exception:
+            logger.debug(
+                "[network-event-mgr] error processing ws event", exc_info=True
+            )
+
+    def _normalize_event(self, event_obj: Any) -> dict | None:
+        """Convert an aiounifi Message / dict / Event into the stable shape."""
+        if isinstance(event_obj, dict):
+            raw = event_obj
+        else:
+            # aiounifi.Message exposes the event payload via `.data`
+            raw = getattr(event_obj, "data", None)
+            if raw is None:
+                raw = getattr(event_obj, "raw", None)
+        if not isinstance(raw, dict):
+            return None
+        return {
+            "id": raw.get("_id") or raw.get("id"),
+            "key": raw.get("key"),
+            "msg": raw.get("msg"),
+            "severity": raw.get("severity"),
+            "time": raw.get("time"),
+            "mac": raw.get("user")
+            or raw.get("ap")
+            or raw.get("sw")
+            or raw.get("gw"),
+            "ip": raw.get("ip"),
+        }
+
+    # ------------------------------------------------------------------
+    # Subscriber management
+    # ------------------------------------------------------------------
+
+    def add_subscriber(
+        self, cb: Callable[[dict], None]
+    ) -> Callable[[], None]:
+        """Register *cb* to receive every event after it is buffered.
+
+        Returns an unsubscribe callable.
+        """
+        self._subscribers.append(cb)
+
+        def _unsub() -> None:
+            try:
+                self._subscribers.remove(cb)
+            except ValueError:
+                pass
+
+        return _unsub
+
+    # ------------------------------------------------------------------
+    # Buffer access
+    # ------------------------------------------------------------------
+
+    def get_recent_from_buffer(
+        self,
+        event_type: str | None = None,
+        mac: str | None = None,
+        limit: int | None = None,
+    ) -> list[dict]:
+        return self._buffer.get_recent(
+            event_type=event_type, mac=mac, limit=limit
+        )
+
+    @property
+    def buffer_size(self) -> int:
+        return len(self._buffer)
 
     async def _detect_api_version(self) -> bool:
         """Detect whether the controller supports the v2 system-log API.
