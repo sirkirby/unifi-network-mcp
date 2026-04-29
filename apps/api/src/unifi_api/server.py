@@ -17,6 +17,7 @@ from unifi_api.logging import request_id_ctx
 from unifi_api.routes import actions as actions_routes
 from unifi_api.routes import controllers as controllers_routes
 from unifi_api.routes import health
+from unifi_api.serializers._registry import discover_serializers
 from unifi_api.services.capability_cache import CapabilityCache
 from unifi_api.services.managers import ManagerFactory
 from unifi_api.services.manifest import ManifestRegistry
@@ -79,6 +80,12 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.argon_cache = ArgonVerifyCache()
     app.state.capability_cache = CapabilityCache()
     app.state.manifest_registry = ManifestRegistry.load_from_apps()
+    # Discover and register every Phase 3 serializer module, then validate
+    # against the manifest. We pass an empty set rather than the full ~219-tool
+    # manifest because Phase 3 only ships ~13 serializers; the catalog and
+    # action-endpoint paths handle missing serializers per-call. Phase 4+ may
+    # tighten this to require coverage of the full manifest.
+    app.state.serializer_registry = discover_serializers(set())
 
     app.include_router(health.router, prefix="/v1")
     app.include_router(controllers_routes.router, prefix="/v1")

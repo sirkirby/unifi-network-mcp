@@ -106,6 +106,10 @@ class ManifestRegistry:
     def all_categories_for_product(self, product: str) -> set[str]:
         return {e.category for e in self._entries.values() if e.product == product}
 
+    def all_tools(self) -> list[str]:
+        """Return the registered tool names (sorted for deterministic output)."""
+        return sorted(self._entries.keys())
+
     def __len__(self) -> int:
         return len(self._entries)
 

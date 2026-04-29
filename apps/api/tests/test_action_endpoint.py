@@ -48,15 +48,24 @@ async def _bootstrap(tmp_path: Path):
     return app, material.plaintext, cid
 
 
+class _FakeClient:
+    """Stand-in for an aiounifi.Client with a `.raw` dict attribute."""
+
+    def __init__(self, raw: dict) -> None:
+        self.raw = raw
+
+
 @pytest.mark.asyncio
 async def test_action_endpoint_dispatches_and_audits(tmp_path, monkeypatch) -> None:
     """Happy path: known tool, valid controller, audit log entry written."""
     monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
     app, key, cid = await _bootstrap(tmp_path)
 
-    # Mock the dispatcher so we don't need real controller connectivity
+    # Mock dispatcher to return a RAW list of manager-style objects (mirrors
+    # what ClientManager.get_clients() actually returns: list[aiounifi.Client]).
+    # The action endpoint now runs the result through ClientSerializer.
     from unifi_api.services import actions as actions_svc
-    fake_dispatch = AsyncMock(return_value={"success": True, "data": [{"mac": "aa:bb"}]})
+    fake_dispatch = AsyncMock(return_value=[_FakeClient({"mac": "aa:bb", "is_online": True})])
     monkeypatch.setattr(actions_svc, "dispatch_action", fake_dispatch)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
@@ -66,7 +75,24 @@ async def test_action_endpoint_dispatches_and_audits(tmp_path, monkeypatch) -> N
                                "args": {"include_offline": True}, "confirm": False})
 
     assert r.status_code == 200, r.text
-    assert r.json() == {"success": True, "data": [{"mac": "aa:bb"}]}
+    body = r.json()
+    assert body["success"] is True
+    assert body["data"] == [
+        {
+            "mac": "aa:bb",
+            "ip": None,
+            "hostname": None,
+            "is_wired": False,
+            "is_guest": False,
+            "status": "online",
+            "last_seen": None,
+            "first_seen": None,
+            "note": None,
+            "usergroup_id": None,
+        }
+    ]
+    assert body["render_hint"]["kind"] == "list"
+    assert body["render_hint"]["primary_key"] == "mac"
 
     # Audit log row
     sm = app.state.sessionmaker
@@ -77,6 +103,39 @@ async def test_action_endpoint_dispatches_and_audits(tmp_path, monkeypatch) -> N
         action_rows = [r for r in rows if r.target == "unifi_list_clients"]
         assert len(action_rows) == 1
         assert action_rows[0].outcome == "success"
+
+
+@pytest.mark.asyncio
+async def test_action_endpoint_serializer_contract_error(tmp_path, monkeypatch) -> None:
+    """When manager returns wrong type for declared kind, endpoint returns 500."""
+    monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
+    app, key, cid = await _bootstrap(tmp_path)
+
+    # unifi_list_clients is declared kind=LIST; returning a dict should trip
+    # SerializerContractError and surface as 500 with structured detail.
+    from unifi_api.services import actions as actions_svc
+    fake_dispatch = AsyncMock(return_value={"single": "object"})
+    monkeypatch.setattr(actions_svc, "dispatch_action", fake_dispatch)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.post(
+            "/v1/actions/unifi_list_clients",
+            headers={"Authorization": f"Bearer {key}"},
+            json={"site": "default", "controller": cid, "args": {}, "confirm": False},
+        )
+    assert r.status_code == 500, r.text
+    body = r.json()
+    assert body["detail"]["kind"] == "serializer_contract_error"
+    assert body["detail"]["tool"] == "unifi_list_clients"
+
+    # Audit row should record the contract error
+    sm = app.state.sessionmaker
+    async with sm() as session:
+        rows = (await session.execute(select(AuditLog))).scalars().all()
+        action_rows = [r for r in rows if r.target == "unifi_list_clients"]
+        assert len(action_rows) == 1
+        assert action_rows[0].outcome == "error"
+        assert action_rows[0].error_kind == "serializer_contract"
 
 
 @pytest.mark.asyncio
