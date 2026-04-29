@@ -68,3 +68,27 @@ services:
     restart: unless-stopped
     profiles:
       - relay
+
+  unifi-api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      - UNIFI_API_DB_KEY=${UNIFI_API_DB_KEY:-dev-only-passphrase-change-me}
+      - UNIFI_API_DB_PATH=/var/lib/unifi-api/state.db
+      - UNIFI_API_HTTP_HOST=0.0.0.0
+      - UNIFI_API_HTTP_PORT=8080
+      - UNIFI_API_LOGGING_LEVEL=INFO
+    ports:
+      - "8080:8080"
+    volumes:
+      - unifi-api-state:/var/lib/unifi-api
+    restart: unless-stopped
+    container_name: unifi-api
+    profiles:
+      - api
+
+volumes:
+  unifi-api-state:
