@@ -7,6 +7,7 @@ construction prevents concurrent-cache-miss races.
 Public surface:
 - ManagerFactory(sessionmaker, cipher)
 - get_connection_manager(session, controller_id, product) -> ConnectionManager
+- get_domain_manager(session, controller_id, product, attr_name) -> domain manager
 - invalidate_controller(controller_id)
 """
 
@@ -15,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import defaultdict
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlparse
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -26,6 +27,120 @@ from unifi_api.db.models import Controller
 
 class UnknownProduct(Exception):
     """Raised when a requested product is not supported by the controller."""
+
+
+class UnknownManager(Exception):
+    """Raised when a requested domain manager attribute is not registered."""
+
+
+# Per-product mapping: runtime-singleton attribute name (as referenced by
+# tool modules, e.g. ``client_manager``) -> a builder callable that
+# constructs the domain manager from a connection_manager.
+#
+# Builders are lazy imports — they avoid importing unifi_core's
+# product-specific modules at startup unless the product is actually used.
+
+
+def _build_network_managers() -> dict[str, Callable[[Any], Any]]:
+    from unifi_core.network.managers.acl_manager import AclManager
+    from unifi_core.network.managers.client_group_manager import ClientGroupManager
+    from unifi_core.network.managers.client_manager import ClientManager
+    from unifi_core.network.managers.content_filter_manager import ContentFilterManager
+    from unifi_core.network.managers.device_manager import DeviceManager
+    from unifi_core.network.managers.dns_manager import DnsManager
+    from unifi_core.network.managers.dpi_manager import DpiManager
+    from unifi_core.network.managers.event_manager import EventManager
+    from unifi_core.network.managers.firewall_manager import FirewallManager
+    from unifi_core.network.managers.hotspot_manager import HotspotManager
+    from unifi_core.network.managers.network_manager import NetworkManager
+    from unifi_core.network.managers.oon_manager import OonManager
+    from unifi_core.network.managers.qos_manager import QosManager
+    from unifi_core.network.managers.routing_manager import RoutingManager
+    from unifi_core.network.managers.stats_manager import StatsManager
+    from unifi_core.network.managers.switch_manager import SwitchManager
+    from unifi_core.network.managers.system_manager import SystemManager
+    from unifi_core.network.managers.traffic_route_manager import TrafficRouteManager
+    from unifi_core.network.managers.usergroup_manager import UsergroupManager
+    from unifi_core.network.managers.vpn_manager import VpnManager
+
+    return {
+        "acl_manager": lambda cm: AclManager(cm),
+        "client_group_manager": lambda cm: ClientGroupManager(cm),
+        "client_manager": lambda cm: ClientManager(cm),
+        "content_filter_manager": lambda cm: ContentFilterManager(cm),
+        "device_manager": lambda cm: DeviceManager(cm),
+        "dns_manager": lambda cm: DnsManager(cm),
+        # DpiManager takes (cm, auth) — we pass None for auth here; tools
+        # that require auth will fail at call time. Action dispatcher path
+        # is for managers that work with bare connection. Tracked for Task 13.
+        "dpi_manager": lambda cm: DpiManager(cm, None),
+        "event_manager": lambda cm: EventManager(cm),
+        "firewall_manager": lambda cm: FirewallManager(cm),
+        "hotspot_manager": lambda cm: HotspotManager(cm),
+        "network_manager": lambda cm: NetworkManager(cm),
+        "oon_manager": lambda cm: OonManager(cm),
+        "qos_manager": lambda cm: QosManager(cm),
+        "routing_manager": lambda cm: RoutingManager(cm),
+        # StatsManager takes (cm, client_manager) — circular for now, fail
+        # at call time if needed.
+        "stats_manager": lambda cm: StatsManager(cm, ClientManager(cm)),
+        "switch_manager": lambda cm: SwitchManager(cm),
+        "system_manager": lambda cm: SystemManager(cm),
+        "traffic_route_manager": lambda cm: TrafficRouteManager(cm),
+        "usergroup_manager": lambda cm: UsergroupManager(cm),
+        "vpn_manager": lambda cm: VpnManager(cm),
+    }
+
+
+def _build_protect_managers() -> dict[str, Callable[[Any], Any]]:
+    from unifi_core.protect.managers.alarm_manager import AlarmManager
+    from unifi_core.protect.managers.camera_manager import CameraManager
+    from unifi_core.protect.managers.chime_manager import ChimeManager
+    from unifi_core.protect.managers.event_manager import EventManager
+    from unifi_core.protect.managers.light_manager import LightManager
+    from unifi_core.protect.managers.liveview_manager import LiveviewManager
+    from unifi_core.protect.managers.recording_manager import RecordingManager
+    from unifi_core.protect.managers.sensor_manager import SensorManager
+    from unifi_core.protect.managers.system_manager import SystemManager
+
+    return {
+        "alarm_manager": lambda cm: AlarmManager(cm),
+        "camera_manager": lambda cm: CameraManager(cm),
+        "chime_manager": lambda cm: ChimeManager(cm),
+        "event_manager": lambda cm: EventManager(cm),
+        "light_manager": lambda cm: LightManager(cm),
+        "liveview_manager": lambda cm: LiveviewManager(cm),
+        "recording_manager": lambda cm: RecordingManager(cm),
+        "sensor_manager": lambda cm: SensorManager(cm),
+        "system_manager": lambda cm: SystemManager(cm),
+    }
+
+
+def _build_access_managers() -> dict[str, Callable[[Any], Any]]:
+    from unifi_core.access.managers.credential_manager import CredentialManager
+    from unifi_core.access.managers.device_manager import DeviceManager
+    from unifi_core.access.managers.door_manager import DoorManager
+    from unifi_core.access.managers.event_manager import EventManager
+    from unifi_core.access.managers.policy_manager import PolicyManager
+    from unifi_core.access.managers.system_manager import SystemManager
+    from unifi_core.access.managers.visitor_manager import VisitorManager
+
+    return {
+        "credential_manager": lambda cm: CredentialManager(cm),
+        "device_manager": lambda cm: DeviceManager(cm),
+        "door_manager": lambda cm: DoorManager(cm),
+        "event_manager": lambda cm: EventManager(cm),
+        "policy_manager": lambda cm: PolicyManager(cm),
+        "system_manager": lambda cm: SystemManager(cm),
+        "visitor_manager": lambda cm: VisitorManager(cm),
+    }
+
+
+_PRODUCT_BUILDERS: dict[str, Callable[[], dict[str, Callable[[Any], Any]]]] = {
+    "network": _build_network_managers,
+    "protect": _build_protect_managers,
+    "access": _build_access_managers,
+}
 
 
 def _split_base_url(base_url: str) -> tuple[str, int]:
@@ -47,6 +162,7 @@ class ManagerFactory:
         self._connection_cache: dict[tuple[str, str], Any] = {}
         self._domain_cache: dict[tuple[str, str, str], Any] = {}
         self._locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self._builder_cache: dict[str, dict[str, Callable[[Any], Any]]] = {}
 
     async def get_connection_manager(
         self, session: AsyncSession, controller_id: str, product: str
@@ -123,6 +239,53 @@ class ManagerFactory:
                 api_key=creds.get("api_token"),
             )
         raise UnknownProduct(f"unknown product '{product}'")
+
+    def _builders_for(self, product: str) -> dict[str, Callable[[Any], Any]]:
+        """Lazy-load (and cache) the per-product domain manager builder map."""
+        cached = self._builder_cache.get(product)
+        if cached is not None:
+            return cached
+        builder_factory = _PRODUCT_BUILDERS.get(product)
+        if builder_factory is None:
+            raise UnknownProduct(f"unknown product '{product}'")
+        builders = builder_factory()
+        self._builder_cache[product] = builders
+        return builders
+
+    async def get_domain_manager(
+        self,
+        session: AsyncSession,
+        controller_id: str,
+        product: str,
+        attr_name: str,
+    ) -> Any:
+        """Resolve a per-controller domain manager by its runtime attribute name.
+
+        ``attr_name`` matches the singleton attribute used by the MCP runtime
+        modules (e.g. ``client_manager`` from ``unifi_network_mcp.runtime``).
+
+        Cached on (controller_id, product, attr_name); shares the same per
+        controller asyncio.Lock as connection-manager construction so concurrent
+        first-use doesn't double-build.
+        """
+        key = (controller_id, product, attr_name)
+        cached = self._domain_cache.get(key)
+        if cached is not None:
+            return cached
+        async with self._locks[controller_id]:
+            cached = self._domain_cache.get(key)
+            if cached is not None:
+                return cached
+            builders = self._builders_for(product)
+            builder = builders.get(attr_name)
+            if builder is None:
+                raise UnknownManager(
+                    f"product '{product}' has no domain manager named '{attr_name}'"
+                )
+            cm = await self.get_connection_manager(session, controller_id, product)
+            instance = builder(cm)
+            self._domain_cache[key] = instance
+            return instance
 
     async def invalidate_controller(self, controller_id: str) -> None:
         """Drop all cached managers for a controller and dispose their sessions."""
