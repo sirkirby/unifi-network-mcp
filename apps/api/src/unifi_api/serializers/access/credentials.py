@@ -1,8 +1,12 @@
-"""Access credential serializer.
+"""Access credential serializers.
 
 ``CredentialManager.list_credentials`` / ``get_credential`` return plain
 dicts as supplied by the proxy/API path. Field names follow the
 controller's snake-case convention.
+
+Phase 4A PR3 Cluster 2 adds ``CredentialMutationAckSerializer`` for
+``access_create_credential`` and ``access_revoke_credential`` — both
+managers return preview dicts (``{credential_*, proposed_changes, ...}``).
 """
 
 from typing import Any
@@ -42,3 +46,25 @@ class CredentialSerializer(Serializer):
             "expiry": _get(obj, "expiry"),
             "last_used": _get(obj, "last_used"),
         }
+
+
+@register_serializer(
+    tools={
+        "access_create_credential": {"kind": RenderKind.DETAIL},
+        "access_revoke_credential": {"kind": RenderKind.DETAIL},
+    },
+)
+class CredentialMutationAckSerializer(Serializer):
+    """Pass-through ack for credential preview/apply dicts."""
+
+    kind = RenderKind.DETAIL
+
+    @staticmethod
+    def serialize(obj) -> dict:
+        if isinstance(obj, bool):
+            return {"success": obj}
+        if isinstance(obj, dict):
+            return obj
+        if hasattr(obj, "model_dump"):
+            return obj.model_dump()
+        return {"result": str(obj)}
