@@ -15,8 +15,27 @@ from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
 from unifi_api.logging import request_id_ctx
 from unifi_api.routes import actions as actions_routes
+from unifi_api.routes import catalog as catalog_routes
 from unifi_api.routes import controllers as controllers_routes
 from unifi_api.routes import health
+from unifi_api.routes.resources.network import (
+    clients as net_clients_routes,
+    devices as net_devices_routes,
+    firewall_rules as net_firewall_routes,
+    networks as net_networks_routes,
+    wlans as net_wlans_routes,
+)
+from unifi_api.routes.resources.protect import (
+    cameras as protect_cameras_routes,
+    events as protect_events_routes,
+    recordings as protect_recordings_routes,
+)
+from unifi_api.routes.resources.access import (
+    credentials as access_credentials_routes,
+    doors as access_doors_routes,
+    users as access_users_routes,
+)
+from unifi_api.serializers._registry import discover_serializers
 from unifi_api.services.capability_cache import CapabilityCache
 from unifi_api.services.managers import ManagerFactory
 from unifi_api.services.manifest import ManifestRegistry
@@ -79,9 +98,36 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.argon_cache = ArgonVerifyCache()
     app.state.capability_cache = CapabilityCache()
     app.state.manifest_registry = ManifestRegistry.load_from_apps()
+    # Discover and register every Phase 3 serializer module, then validate
+    # against the manifest. We pass an empty set rather than the full ~219-tool
+    # manifest because Phase 3 only ships ~13 serializers; the catalog and
+    # action-endpoint paths handle missing serializers per-call. Phase 4+ may
+    # tighten this to require coverage of the full manifest.
+    app.state.serializer_registry = discover_serializers(set())
 
     app.include_router(health.router, prefix="/v1")
     app.include_router(controllers_routes.router, prefix="/v1")
     app.include_router(actions_routes.router, prefix="/v1")
+    app.include_router(catalog_routes.router, prefix="/v1")
+    for r in (
+        net_clients_routes,
+        net_devices_routes,
+        net_networks_routes,
+        net_firewall_routes,
+        net_wlans_routes,
+    ):
+        app.include_router(r.router, prefix="/v1")
+    for r in (
+        protect_cameras_routes,
+        protect_events_routes,
+        protect_recordings_routes,
+    ):
+        app.include_router(r.router, prefix="/v1")
+    for r in (
+        access_doors_routes,
+        access_users_routes,
+        access_credentials_routes,
+    ):
+        app.include_router(r.router, prefix="/v1")
 
     return app
