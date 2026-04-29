@@ -17,6 +17,13 @@ from unifi_api.logging import request_id_ctx
 from unifi_api.routes import actions as actions_routes
 from unifi_api.routes import controllers as controllers_routes
 from unifi_api.routes import health
+from unifi_api.routes.resources.network import (
+    clients as net_clients_routes,
+    devices as net_devices_routes,
+    firewall_rules as net_firewall_routes,
+    networks as net_networks_routes,
+    wlans as net_wlans_routes,
+)
 from unifi_api.serializers._registry import discover_serializers
 from unifi_api.services.capability_cache import CapabilityCache
 from unifi_api.services.managers import ManagerFactory
@@ -90,5 +97,13 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.include_router(health.router, prefix="/v1")
     app.include_router(controllers_routes.router, prefix="/v1")
     app.include_router(actions_routes.router, prefix="/v1")
+    for r in (
+        net_clients_routes,
+        net_devices_routes,
+        net_networks_routes,
+        net_firewall_routes,
+        net_wlans_routes,
+    ):
+        app.include_router(r.router, prefix="/v1")
 
     return app
