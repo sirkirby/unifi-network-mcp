@@ -17,7 +17,9 @@ import asyncio
 import importlib
 import json
 import os
+import shutil
 import subprocess
+import tempfile
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -144,19 +146,34 @@ class SmokeReport:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run live smoke checks against UniFi MCP tools.")
-    parser.add_argument("--server", choices=["network", "protect", "access", "all"], required=True)
+    parser.add_argument(
+        "--server",
+        choices=["network", "protect", "access", "all"],
+        required=False,
+        help="Required for MCP-direct phases. Ignored for --phase api-actions.",
+    )
     parser.add_argument(
         "--phase",
-        choices=["inventory", "readonly", "preview", "lifecycle", "approved", "safe"],
+        choices=["inventory", "readonly", "preview", "lifecycle", "approved", "safe", "api-actions"],
         default="safe",
-        help="'safe' runs readonly, preview, and named safe lifecycles. 'approved' runs explicitly approved mutations.",
+        help=(
+            "'safe' runs readonly, preview, and named safe lifecycles. "
+            "'approved' runs explicitly approved mutations. "
+            "'api-actions' is a manual-only phase: spins up unifi-api locally, "
+            "registers the .env-configured controllers, exercises read-only tools "
+            "via POST /v1/actions/{tool}, and compares to the latest MCP-direct "
+            "baseline."
+        ),
     )
     parser.add_argument("--report-dir", default="live-smoke-results")
     parser.add_argument("--delay", type=float, default=0.25, help="Delay between tool calls in seconds.")
     parser.add_argument("--tool", action="append", default=[], help="Restrict to one or more tool names.")
     parser.add_argument("--include-heavy-reads", action="store_true")
     parser.add_argument("--interactive-risky", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.phase != "api-actions" and not args.server:
+        parser.error("--server is required unless --phase api-actions is used")
+    return args
 
 
 def load_manifest(server_key: str) -> dict[str, Any]:
@@ -1224,8 +1241,444 @@ async def run_one(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+###############################################################################
+# Phase: api-actions
+#
+# Manual-only phase. Spins up the unifi-api service locally against a tmp DB,
+# registers each .env-configured controller via POST /v1/controllers, exercises
+# a sample of read-only tools via POST /v1/actions/{tool_name}, and compares
+# each response against the most recent MCP-direct baseline under
+# live-smoke-results/. Tears down the server and removes the tmp DB on exit.
+#
+# This phase is intentionally NOT wired into CI: it requires real controllers
+# and the unifi-api package, and is meant as a Phase 2 release-readiness gate.
+###############################################################################
+
+
+# Sample of read-only tools exercised through the action endpoint. Each entry
+# pairs a product (matching controller.product_kinds) with a tool name and
+# the args dict the action endpoint expects (per Phase 2 dispatcher: args are
+# the tool's actual parameters, NOT a {"args": ...} wrapper).
+API_ACTIONS_SAMPLE: list[tuple[str, str, dict[str, Any]]] = [
+    ("network", "unifi_list_clients", {}),
+    ("network", "unifi_list_devices", {}),
+    ("protect", "protect_list_cameras", {}),
+    ("protect", "protect_list_lights", {}),
+    ("access", "access_list_doors", {}),
+    ("access", "access_list_users", {}),
+]
+
+
+def _api_actions_baseline_dirs() -> dict[str, str]:
+    """Map product -> baseline artifact directory under live-smoke-results/."""
+    return {
+        "network": "network-readonly-clean",
+        "protect": "protect-readonly-clean",
+        "access": "access-readonly",
+    }
+
+
+def _load_api_actions_baseline(product: str) -> dict[str, dict[str, Any]]:
+    """Load the most recent MCP-direct baseline for a product.
+
+    Returns ``{tool_name: record_dict}`` for read-only/seed records.
+    Falls back to an empty mapping if no baseline directory exists.
+    """
+    baseline_dir = REPO_ROOT / "live-smoke-results" / _api_actions_baseline_dirs()[product]
+    if not baseline_dir.is_dir():
+        return {}
+    candidates = sorted(baseline_dir.glob("*.json"))
+    if not candidates:
+        return {}
+    payload = json.loads(candidates[-1].read_text())
+    out: dict[str, dict[str, Any]] = {}
+    for record in payload.get("records", []):
+        if record.get("phase") in {"seed", "readonly"} and record.get("tool"):
+            # Keep the most recent record per tool (records are appended).
+            out[record["tool"]] = record
+    return out
+
+
+def _api_actions_controllers_from_env() -> dict[str, dict[str, Any]]:
+    """Build controller-registration payloads from .env, one per product.
+
+    Returns ``{product: payload_dict}``. Missing products (e.g., no PROTECT
+    creds in .env) are omitted; the phase only exercises tools for products
+    actually configured.
+    """
+    load_dotenv(REPO_ROOT / ".env", override=True)
+
+    def _bool(value: str | None, default: bool = False) -> bool:
+        if value is None:
+            return default
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+
+    def _build(product: str, host_var: str, port_var: str) -> dict[str, Any] | None:
+        host = os.environ.get(host_var)
+        if not host:
+            return None
+        port = os.environ.get(port_var) or "443"
+        username = os.environ.get(f"UNIFI_{product.upper()}_USERNAME") or ""
+        password = os.environ.get(f"UNIFI_{product.upper()}_PASSWORD") or ""
+        api_key = os.environ.get(f"UNIFI_{product.upper()}_API_KEY") or None
+        verify_tls = _bool(os.environ.get(f"UNIFI_{product.upper()}_VERIFY_SSL"), False)
+        scheme = "https"
+        # Strip any scheme the user may have included in HOST.
+        host_clean = host.replace("https://", "").replace("http://", "").rstrip("/")
+        base_url = f"{scheme}://{host_clean}:{port}"
+        return {
+            "name": f"smoke-{product}",
+            "base_url": base_url,
+            "username": username,
+            "password": password,
+            "api_token": api_key,
+            "product_kinds": [product],
+            "verify_tls": verify_tls,
+            "is_default": product == "network",
+        }
+
+    payloads: dict[str, dict[str, Any]] = {}
+    for product, host_var, port_var in (
+        ("network", "UNIFI_NETWORK_HOST", "UNIFI_NETWORK_PORT"),
+        ("protect", "UNIFI_PROTECT_HOST", "UNIFI_PROTECT_PORT"),
+        ("access", "UNIFI_ACCESS_HOST", "UNIFI_ACCESS_PORT"),
+    ):
+        payload = _build(product, host_var, port_var)
+        if payload:
+            payloads[product] = payload
+    return payloads
+
+
+def _http_request(method: str, url: str, *, headers: dict[str, str] | None = None,
+                  body: dict[str, Any] | None = None, timeout: float = 60.0) -> tuple[int, dict[str, Any] | str]:
+    """Tiny stdlib HTTP client. Returns (status_code, parsed_json_or_text)."""
+    import urllib.error
+    import urllib.request
+
+    data = None
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(url, method=method, data=data)
+    req.add_header("Accept", "application/json")
+    if data is not None:
+        req.add_header("Content-Type", "application/json")
+    for k, v in (headers or {}).items():
+        req.add_header(k, v)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8") or ""
+            status = resp.getcode()
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8") if exc.fp else str(exc)
+        status = exc.code
+    if not raw:
+        return status, {}
+    try:
+        return status, json.loads(raw)
+    except json.JSONDecodeError:
+        return status, raw
+
+
+def _wait_for_health(base: str, deadline_s: float = 30.0) -> bool:
+    end = time.time() + deadline_s
+    while time.time() < end:
+        try:
+            status, _ = _http_request("GET", f"{base}/v1/health", timeout=2.0)
+            if status == 200:
+                return True
+        except Exception:
+            pass
+        time.sleep(0.3)
+    return False
+
+
+def _pick_free_port() -> int:
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def _bootstrap_unifi_api(env: dict[str, str]) -> str:
+    """Run `unifi-api migrate` and return the printed admin key plaintext."""
+    completed = subprocess.run(
+        ["uv", "run", "--package", "unifi-api", "unifi-api", "migrate"],
+        cwd=REPO_ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    plaintext: str | None = None
+    for line in completed.stdout.splitlines():
+        candidate = line.strip()
+        if candidate.startswith("unifi_live_") or candidate.startswith("unifi_test_"):
+            plaintext = candidate
+            break
+    if not plaintext:
+        raise RuntimeError(
+            "unifi-api migrate did not print an admin key. stdout was:\n"
+            + completed.stdout
+            + "\nstderr was:\n"
+            + completed.stderr
+        )
+    return plaintext
+
+
+def _summarize_action_response(response: Any) -> dict[str, Any]:
+    """Reuse summarize_payload semantics on a /v1/actions/* response."""
+    if not isinstance(response, dict):
+        return {}
+    return summarize_payload(response)
+
+
+def _baseline_count(record: dict[str, Any] | None) -> int | None:
+    if not record:
+        return None
+    summary = record.get("summary") or {}
+    for key, value in summary.items():
+        if key.endswith("_count") and isinstance(value, int):
+            return value
+    return None
+
+
+def _live_count(summary: dict[str, Any]) -> int | None:
+    for key, value in summary.items():
+        if key.endswith("_count") and isinstance(value, int):
+            return value
+    return None
+
+
+def run_api_actions_phase(args: argparse.Namespace) -> int:
+    """Manual-only phase: exercise read-only tools through POST /v1/actions/{name}.
+
+    Returns 0 on parity (every exercised tool succeeds AND matches the baseline
+    success flag). Returns non-zero when a NEW failure is observed compared to
+    the MCP-direct baseline.
+    """
+    print("\n=== api-actions: spinning up unifi-api locally ===", flush=True)
+    tmp_dir = Path(tempfile.mkdtemp(prefix="unifi-api-smoke-"))
+    db_path = tmp_dir / "state.db"
+    db_key = "smoke-" + datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    port = _pick_free_port()
+    base_url = f"http://127.0.0.1:{port}"
+
+    env = dict(os.environ)
+    env["UNIFI_API_DB_KEY"] = db_key
+    env["UNIFI_API_DB_PATH"] = str(db_path)
+
+    started_at = datetime.now(UTC).isoformat()
+    server_proc: subprocess.Popen[bytes] | None = None
+    server_log = tmp_dir / "server.log"
+    artifact: dict[str, Any] = {
+        "phase": "api-actions",
+        "started_at": started_at,
+        "finished_at": None,
+        "base_url": base_url,
+        "db_path": str(db_path),
+        "controllers": [],
+        "results": [],
+        "summary": {
+            "tools_exercised": 0,
+            "passed": 0,
+            "regressions": 0,
+            "preexisting_failures": 0,
+        },
+    }
+
+    try:
+        print(f"  tmp db: {db_path}", flush=True)
+        print(f"  http port: {port}", flush=True)
+        admin_key = _bootstrap_unifi_api(env)
+        print("  unifi-api migrate ok (admin key captured)", flush=True)
+
+        with server_log.open("wb") as log_fh:
+            server_proc = subprocess.Popen(
+                [
+                    "uv", "run", "--package", "unifi-api",
+                    "unifi-api", "serve", "--port", str(port),
+                ],
+                cwd=REPO_ROOT,
+                env=env,
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+            )
+
+        if not _wait_for_health(base_url, deadline_s=30.0):
+            raise RuntimeError(
+                f"unifi-api did not become healthy within 30s; see {server_log}"
+            )
+        print("  unifi-api serve ok (/v1/health 200)", flush=True)
+
+        auth_headers = {"Authorization": f"Bearer {admin_key}"}
+
+        # Step 1: register controllers from .env
+        controller_payloads = _api_actions_controllers_from_env()
+        if not controller_payloads:
+            raise RuntimeError(
+                "No controllers found in .env (expected UNIFI_{NETWORK,PROTECT,ACCESS}_HOST)."
+            )
+        product_to_controller_id: dict[str, str] = {}
+        for product, payload in controller_payloads.items():
+            status, body = _http_request(
+                "POST", f"{base_url}/v1/controllers",
+                headers=auth_headers, body=payload,
+            )
+            if status != 201 or not isinstance(body, dict) or not body.get("id"):
+                raise RuntimeError(
+                    f"failed to register {product} controller: {status} {body!r}"
+                )
+            product_to_controller_id[product] = body["id"]
+            artifact["controllers"].append({
+                "product": product,
+                "id": body["id"],
+                "name": body.get("name"),
+                "base_url": body.get("base_url"),
+            })
+            print(f"  registered controller: {product} -> {body['id']}", flush=True)
+
+        # Step 2: exercise the sample, comparing to baselines
+        baselines = {p: _load_api_actions_baseline(p) for p in product_to_controller_id}
+        site_for_product: dict[str, str] = {
+            "network": os.environ.get("UNIFI_NETWORK_SITE") or "default",
+            "protect": "default",
+            "access": "default",
+        }
+
+        for product, tool_name, tool_args in API_ACTIONS_SAMPLE:
+            if product not in product_to_controller_id:
+                continue
+            controller_id = product_to_controller_id[product]
+            site = site_for_product[product]
+            body = {
+                "site": site,
+                "controller": controller_id,
+                "args": tool_args,
+                "confirm": False,
+            }
+            t0 = time.perf_counter()
+            try:
+                status, response = _http_request(
+                    "POST", f"{base_url}/v1/actions/{tool_name}",
+                    headers=auth_headers, body=body, timeout=120.0,
+                )
+            except Exception as exc:
+                status = 0
+                response = f"{type(exc).__name__}: {exc}"
+            duration_ms = int((time.perf_counter() - t0) * 1000)
+
+            success: bool | None = None
+            error: str | None = None
+            summary: dict[str, Any] = {}
+            if status == 200 and isinstance(response, dict):
+                success = response.get("success")
+                if success is False:
+                    error = str(response.get("error") or "")
+                summary = _summarize_action_response(response)
+            else:
+                success = False
+                error = f"HTTP {status}: {response!r}"
+
+            baseline_record = baselines.get(product, {}).get(tool_name)
+            baseline_success = (
+                baseline_record.get("success") if isinstance(baseline_record, dict) else None
+            )
+            baseline_count = _baseline_count(baseline_record)
+            live_count = _live_count(summary)
+
+            shape_match = isinstance(response, dict) and ("success" in response)
+            count_delta: int | None = None
+            if isinstance(baseline_count, int) and isinstance(live_count, int):
+                count_delta = live_count - baseline_count
+
+            # Classification:
+            #   pass:          live success matches baseline (both True), shape matches.
+            #   preexisting:   baseline already failed (success != True). Not a regression.
+            #   regression:    baseline succeeded, but live failed.
+            classification: str
+            if success is True and (baseline_success is True or baseline_success is None):
+                classification = "pass"
+            elif baseline_success in (False, None) and success is not True:
+                classification = "preexisting" if baseline_success is False else "no_baseline"
+            else:
+                classification = "regression"
+
+            artifact["results"].append({
+                "product": product,
+                "tool": tool_name,
+                "controller_id": controller_id,
+                "site": site,
+                "http_status": status,
+                "success": success,
+                "error": error,
+                "duration_ms": duration_ms,
+                "shape_match": shape_match,
+                "live_count": live_count,
+                "baseline_success": baseline_success,
+                "baseline_count": baseline_count,
+                "count_delta": count_delta,
+                "classification": classification,
+                "summary": summary,
+            })
+
+            artifact["summary"]["tools_exercised"] += 1
+            if classification == "pass":
+                artifact["summary"]["passed"] += 1
+            elif classification == "regression":
+                artifact["summary"]["regressions"] += 1
+            elif classification in {"preexisting", "no_baseline"}:
+                artifact["summary"]["preexisting_failures"] += 1
+
+            print(
+                f"  api-actions {classification}: {tool_name} "
+                f"http={status} success={success} live_count={live_count} "
+                f"baseline_count={baseline_count} ({duration_ms}ms)",
+                flush=True,
+            )
+            if args.delay:
+                time.sleep(args.delay)
+
+    finally:
+        artifact["finished_at"] = datetime.now(UTC).isoformat()
+        if server_proc is not None and server_proc.poll() is None:
+            server_proc.terminate()
+            try:
+                server_proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                server_proc.kill()
+                server_proc.wait(timeout=5)
+
+        report_dir = REPO_ROOT / args.report_dir / "phase2-api-actions"
+        stamp = artifact["started_at"].replace(":", "").replace("+0000", "Z")
+        path = report_dir / f"api-actions-{stamp}.json"
+        write_json(path, artifact)
+        print(f"\nReport: {path}", flush=True)
+
+        # Best-effort cleanup. On regression keep the server log around for
+        # diagnosis; on clean runs remove the whole tmp dir (DB key is
+        # unique-per-run, so leftover files would only be clutter).
+        regressed = artifact["summary"]["regressions"] > 0
+        try:
+            if regressed:
+                kept_log = REPO_ROOT / args.report_dir / "phase2-api-actions" / f"server-log-{stamp}.txt"
+                try:
+                    if server_log.exists():
+                        kept_log.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(server_log, kept_log)
+                        print(f"Server log preserved at: {kept_log}", flush=True)
+                except Exception:
+                    pass
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+        except Exception:
+            pass
+
+    return 1 if artifact["summary"]["regressions"] > 0 else 0
+
+
 def main() -> int:
     args = parse_args()
+    if args.phase == "api-actions":
+        return run_api_actions_phase(args)
     if args.server == "all":
         return run_all_servers(args)
     return asyncio.run(run_one(args))
