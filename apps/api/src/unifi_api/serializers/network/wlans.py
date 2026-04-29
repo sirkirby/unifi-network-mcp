@@ -1,4 +1,8 @@
-"""WLAN/SSID serializer."""
+"""WLAN/SSID serializer.
+
+Phase 4A PR1 Cluster 3 adds the ``WlanMutationAckSerializer`` covering
+create / update / delete / toggle on ``NetworkManager``'s WLAN endpoints.
+``create_wlan`` returns the created dict; the rest return ``bool``."""
 
 from unifi_api.serializers._base import RenderKind, Serializer, register_serializer
 
@@ -31,3 +35,28 @@ class WlanSerializer(Serializer):
             "hide_ssid": bool(raw.get("hide_ssid", False)),
             "vlan_id": raw.get("vlan") or raw.get("vlan_id"),
         }
+
+
+@register_serializer(
+    tools={
+        "unifi_create_wlan": {"kind": RenderKind.DETAIL},
+        "unifi_update_wlan": {"kind": RenderKind.DETAIL},
+        "unifi_delete_wlan": {"kind": RenderKind.DETAIL},
+        "unifi_toggle_wlan": {"kind": RenderKind.DETAIL},
+    },
+)
+class WlanMutationAckSerializer(Serializer):
+    """DETAIL ack for WLAN CUD + toggle."""
+
+    @staticmethod
+    def serialize(obj) -> dict:
+        if isinstance(obj, bool):
+            return {"success": obj}
+        if isinstance(obj, dict):
+            return obj
+        raw = getattr(obj, "raw", None)
+        if isinstance(raw, dict):
+            return raw
+        if hasattr(obj, "model_dump"):
+            return obj.model_dump()
+        return {"result": str(obj)}
