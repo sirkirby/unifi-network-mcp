@@ -8,8 +8,8 @@ from aiounifi.models.firewall_policy import FirewallPolicy
 from aiounifi.models.port_forward import PortForward
 from aiounifi.models.traffic_route import TrafficRoute
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.merge import deep_merge
-
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -77,11 +77,11 @@ class FirewallManager:
     async def toggle_firewall_policy(self, policy_id: str) -> bool:
         """Toggle a firewall policy on/off.
 
-        Args:
-            policy_id: ID of the policy to toggle.
-
         Returns:
-            bool: True if successful, False otherwise.
+            bool: True if successful.
+
+        Raises:
+            UniFiNotFoundError: If the policy does not exist.
         """
         try:
             policies = await self.get_firewall_policies(include_predefined=True)
@@ -90,9 +90,8 @@ class FirewallManager:
                 None,
             )
 
-            if not policy:
-                logger.error("Firewall policy %s not found.", policy_id)
-                return False
+            if policy is None:
+                raise UniFiNotFoundError("firewall_policy", policy_id)
 
             new_state = not policy.enabled
             logger.info("Toggling firewall policy %s to %s", policy_id, "enabled" if new_state else "disabled")
@@ -138,9 +137,8 @@ class FirewallManager:
                 None,
             )
 
-            if not policy_to_update:
-                logger.error("Firewall policy %s not found for update.", policy_id)
-                return False
+            if policy_to_update is None:
+                raise UniFiNotFoundError("firewall_policy", policy_id)
 
             if not hasattr(policy_to_update, "raw") or not isinstance(policy_to_update.raw, dict):
                 logger.error("Could not get raw data for policy %s. Update aborted.", policy_id)
@@ -227,9 +225,8 @@ class FirewallManager:
                 None,
             )
 
-            if not route_to_update_obj:
-                logger.error("Traffic route %s not found for update.", route_id)
-                return False
+            if route_to_update_obj is None:
+                raise UniFiNotFoundError("traffic_route", route_id)
 
             if not hasattr(route_to_update_obj, "raw") or not isinstance(route_to_update_obj.raw, dict):
                 logger.error("Could not get raw data for traffic route %s. Update aborted.", route_id)
@@ -282,9 +279,8 @@ class FirewallManager:
                 None,
             )
 
-            if not route:
-                logger.error("Traffic route %s not found.", route_id)
-                return False
+            if route is None:
+                raise UniFiNotFoundError("traffic_route", route_id)
 
             if not hasattr(route, "raw") or not isinstance(route.raw, dict):
                 logger.error("Could not get raw data for traffic route %s. Toggle aborted.", route_id)
@@ -431,24 +427,20 @@ class FirewallManager:
             logger.error("Error getting port forwards: %s", e)
             raise
 
-    async def get_port_forward_by_id(self, rule_id: str) -> Optional[PortForward]:
+    async def get_port_forward_by_id(self, rule_id: str) -> PortForward:
         """Get a specific port forwarding rule by ID.
 
-        Args:
-            rule_id: ID of the rule to get.
-
-        Returns:
-            The PortForward object, or None if not found.
+        Raises:
+            UniFiNotFoundError: If the rule does not exist.
         """
-        try:
-            rules = await self.get_port_forwards()
-            return next(
-                (r for r in rules if isinstance(r.raw, dict) and r.raw.get("_id") == rule_id),
-                None,
-            )
-        except Exception as e:
-            logger.error("Error getting port forward by ID %s: %s", rule_id, e)
-            raise
+        rules = await self.get_port_forwards()
+        match = next(
+            (r for r in rules if isinstance(r.raw, dict) and r.raw.get("_id") == rule_id),
+            None,
+        )
+        if match is None:
+            raise UniFiNotFoundError("port_forward", rule_id)
+        return match
 
     async def update_port_forward(self, rule_id: str, updates: Dict[str, Any]) -> bool:
         """Update specific fields of a port forwarding rule.
@@ -458,7 +450,10 @@ class FirewallManager:
             updates: Dictionary of fields and new values to apply.
 
         Returns:
-            bool: True if successful, False otherwise.
+            bool: True if successful.
+
+        Raises:
+            UniFiNotFoundError: If the rule does not exist.
         """
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
@@ -467,12 +462,8 @@ class FirewallManager:
             return True  # No action needed, considered success
 
         try:
-            # Fetch existing rule data
+            # Fetch existing rule data; raises on miss.
             rule_to_update_obj = await self.get_port_forward_by_id(rule_id)
-
-            if not rule_to_update_obj:
-                logger.error("Port forward %s not found for update.", rule_id)
-                return False
 
             if not hasattr(rule_to_update_obj, "raw") or not isinstance(rule_to_update_obj.raw, dict):
                 logger.error("Could not get raw data for port forward %s. Update aborted.", rule_id)
@@ -515,10 +506,8 @@ class FirewallManager:
             bool: True if successful, False otherwise.
         """
         try:
+            # raises UniFiNotFoundError on miss
             rule = await self.get_port_forward_by_id(rule_id)
-            if not rule:
-                logger.error("Port forward rule %s not found.", rule_id)
-                return False
 
             if not hasattr(rule, "raw") or not isinstance(rule.raw, dict):
                 logger.error("Could not get raw data for port forward %s. Toggle aborted.", rule_id)

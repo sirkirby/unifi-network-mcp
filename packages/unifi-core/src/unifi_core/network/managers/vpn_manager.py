@@ -13,8 +13,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from aiounifi.models.api import ApiRequest
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.merge import deep_merge
-
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -175,34 +175,28 @@ class VpnManager:
         """
         return await self.get_vpn_configs(include_clients=False, include_servers=True)
 
-    async def get_vpn_client_details(self, client_id: str) -> Optional[Dict[str, Any]]:
+    async def get_vpn_client_details(self, client_id: str) -> Dict[str, Any]:
         """Get detailed information for a specific VPN client.
 
-        Args:
-            client_id: ID of the VPN client to get details for
-
-        Returns:
-            VPN client details if found, None otherwise
+        Raises:
+            UniFiNotFoundError: If the client does not exist.
         """
         vpn_clients = await self.get_vpn_clients()
         client = next((c for c in vpn_clients if c.get("_id") == client_id), None)
-        if not client:
-            logger.warning("VPN client %s not found", client_id)
+        if client is None:
+            raise UniFiNotFoundError("vpn_client", client_id)
         return client
 
-    async def get_vpn_server_details(self, server_id: str) -> Optional[Dict[str, Any]]:
+    async def get_vpn_server_details(self, server_id: str) -> Dict[str, Any]:
         """Get detailed information for a specific VPN server.
 
-        Args:
-            server_id: ID of the VPN server to get details for
-
-        Returns:
-            VPN server details if found, None otherwise
+        Raises:
+            UniFiNotFoundError: If the server does not exist.
         """
         vpn_servers = await self.get_vpn_servers()
         server = next((s for s in vpn_servers if s.get("_id") == server_id), None)
-        if not server:
-            logger.warning("VPN server %s not found", server_id)
+        if server is None:
+            raise UniFiNotFoundError("vpn_server", server_id)
         return server
 
     async def _update_vpn_config(self, config_id: str, update_data: Dict[str, Any]) -> bool:
@@ -258,10 +252,7 @@ class VpnManager:
         Returns:
             True if successful, False otherwise
         """
-        client = await self.get_vpn_client_details(client_id)
-        if not client:
-            logger.error("VPN client %s not found, cannot update state", client_id)
-            return False
+        client = await self.get_vpn_client_details(client_id)  # raises on miss
 
         result = await self._update_vpn_config(client_id, {"enabled": enabled})
         if result:
@@ -278,10 +269,7 @@ class VpnManager:
         Returns:
             True if successful, False otherwise
         """
-        server = await self.get_vpn_server_details(server_id)
-        if not server:
-            logger.error("VPN server %s not found, cannot update state", server_id)
-            return False
+        server = await self.get_vpn_server_details(server_id)  # raises on miss
 
         result = await self._update_vpn_config(server_id, {"enabled": enabled})
         if result:

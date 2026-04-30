@@ -269,7 +269,7 @@ class TestOonManager:
 
         result = await oon_manager.update_oon_policy("p1", {"name": "Updated"})
 
-        assert result is True
+        assert result["name"] == "Updated"
         mock_connection._invalidate_cache.assert_called()
 
     @pytest.mark.asyncio
@@ -308,7 +308,8 @@ class TestOonManager:
 
         result = await oon_manager.update_oon_policy("p1", {"name": "Kids Bedtime v2", "enabled": False})
 
-        assert result is True
+        assert result["name"] == "Kids Bedtime v2"
+        assert result["enabled"] is False
         put_call = mock_connection.request.call_args_list[1]
         put_request = put_call[0][0]
         assert put_request.method == "put"
@@ -327,11 +328,15 @@ class TestOonManager:
 
     @pytest.mark.asyncio
     async def test_update_oon_policy_empty_update(self, oon_manager, mock_connection):
-        """Test update_oon_policy with empty data is a no-op."""
+        """Test update_oon_policy with empty data returns existing without PUT."""
+        existing = {"id": "p1", "name": "Existing"}
+        mock_connection.request.return_value = existing
+
         result = await oon_manager.update_oon_policy("p1", {})
 
-        assert result is True
-        mock_connection.request.assert_not_called()
+        assert result == existing
+        # Only the GET (existence check) ran; no PUT.
+        assert mock_connection.request.call_count == 1
 
     # ---- toggle_oon_policy ----
 
@@ -371,12 +376,13 @@ class TestOonManager:
 
     @pytest.mark.asyncio
     async def test_toggle_oon_policy_not_found(self, oon_manager, mock_connection):
-        """Test toggle_oon_policy returns None when policy not found."""
+        """Test toggle_oon_policy raises UniFiNotFoundError when policy missing."""
+        from unifi_core.exceptions import UniFiNotFoundError
+
         mock_connection.request.return_value = None
 
-        result = await oon_manager.toggle_oon_policy("nonexistent")
-
-        assert result is None
+        with pytest.raises(UniFiNotFoundError):
+            await oon_manager.toggle_oon_policy("nonexistent")
 
     @pytest.mark.asyncio
     async def test_toggle_oon_policy_invalidates_cache(self, oon_manager, mock_connection):

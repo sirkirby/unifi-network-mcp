@@ -4,8 +4,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from aiounifi.models.api import ApiRequest, ApiRequestV2
 from aiounifi.models.wlan import Wlan
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.merge import deep_merge
-
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -74,12 +74,16 @@ class NetworkManager:
             logger.error("Error getting networks via V1 /rest/networkconf: %s", e, exc_info=True)
             raise
 
-    async def get_network_details(self, network_id: str) -> Optional[Dict[str, Any]]:
-        """Get detailed information for a specific network."""
+    async def get_network_details(self, network_id: str) -> Dict[str, Any]:
+        """Get detailed information for a specific network.
+
+        Raises:
+            UniFiNotFoundError: If the network does not exist.
+        """
         networks = await self.get_networks()
         network = next((n for n in networks if n.get("_id") == network_id), None)
-        if not network:
-            logger.warning("Network %s not found in cached/fetched list.", network_id)
+        if network is None:
+            raise UniFiNotFoundError("network", network_id)
         return network
 
     async def create_network(self, network_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -138,11 +142,8 @@ class NetworkManager:
             return True, None  # No action needed
 
         try:
-            # 1. Fetch existing network data
+            # 1. Existence check; raises UniFiNotFoundError on miss.
             existing_network = await self.get_network_details(network_id)
-            if not existing_network:
-                logger.error("Network %s not found for update.", network_id)
-                return False, f"Failed to update network: network {network_id} not found"
 
             # 2. Merge updates into existing data (deep merge preserves nested sub-objects)
             merged_data = deep_merge(existing_network, update_data)
@@ -198,18 +199,20 @@ class NetworkManager:
             logger.error("Error getting WLANs: %s", e)
             raise
 
-    async def get_wlan_details(self, wlan_id: str) -> Optional[Dict[str, Any]]:
-        """Get detailed information for a specific wireless network as a dictionary."""
+    async def get_wlan_details(self, wlan_id: str) -> Dict[str, Any]:
+        """Get detailed information for a specific wireless network as a dictionary.
+
+        Raises:
+            UniFiNotFoundError: If the WLAN does not exist.
+        """
         wlans = await self.get_wlans()
         wlan_obj: Optional[Wlan] = next(
             (w for w in wlans if isinstance(w.raw, dict) and w.raw.get("_id") == wlan_id),
             None,
         )
-        if not wlan_obj:
-            logger.warning("WLAN %s not found in cached/fetched list.", wlan_id)
-            return None
-        # Return the raw dictionary
-        return wlan_obj.raw if hasattr(wlan_obj, "raw") else None
+        if wlan_obj is None or not hasattr(wlan_obj, "raw") or wlan_obj.raw is None:
+            raise UniFiNotFoundError("wlan", wlan_id)
+        return wlan_obj.raw
 
     async def create_wlan(self, wlan_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new wireless network. Returns the created WLAN data dict or None."""
@@ -276,11 +279,8 @@ class NetworkManager:
             return True, None  # No action needed
 
         try:
-            # 1. Fetch existing WLAN data
+            # 1. Existence check; raises UniFiNotFoundError on miss.
             existing_wlan = await self.get_wlan_details(wlan_id)
-            if not existing_wlan:
-                logger.error("WLAN %s not found for update.", wlan_id)
-                return False, f"Failed to update WLAN: WLAN {wlan_id} not found"
 
             # 2. Merge updates (deep merge preserves nested sub-objects)
             merged_data = deep_merge(existing_wlan, update_data)
@@ -328,10 +328,8 @@ class NetworkManager:
             bool: True if successful, False otherwise
         """
         try:
+            # raises UniFiNotFoundError on miss
             wlan = await self.get_wlan_details(wlan_id)
-            if not wlan:
-                logger.error("Cannot toggle WLAN %s: Not found.", wlan_id)
-                return False
 
             new_state = not wlan.get("enabled", False)
             update_payload = {"enabled": new_state}
@@ -376,25 +374,18 @@ class NetworkManager:
             logger.error("Error listing AP groups: %s", e)
             raise
 
-    async def get_ap_group_details(self, group_id: str) -> Optional[Dict[str, Any]]:
+    async def get_ap_group_details(self, group_id: str) -> Dict[str, Any]:
         """Get details of a specific AP group by ID.
 
-        Args:
-            group_id: The ID of the AP group.
-
-        Returns:
-            The AP group dictionary, or None if not found.
+        Raises:
+            UniFiNotFoundError: If the AP group does not exist.
         """
-        try:
-            # v2 /apgroups/{id} returns 405 — fetch all and filter
-            groups = await self.list_ap_groups()
-            for group in groups:
-                if group.get("_id") == group_id:
-                    return group
-            return None
-        except Exception as e:
-            logger.error("Error getting AP group %s: %s", group_id, e)
-            raise
+        # v2 /apgroups/{id} returns 405 — fetch all and filter
+        groups = await self.list_ap_groups()
+        for group in groups:
+            if group.get("_id") == group_id:
+                return group
+        raise UniFiNotFoundError("ap_group", group_id)
 
     async def create_ap_group(self, group_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new AP group.
@@ -442,14 +433,11 @@ class NetworkManager:
         Returns:
             True on success, False on failure.
         """
-        if not update_data:
-            return True
-
         try:
+            # raises UniFiNotFoundError on miss
             existing = await self.get_ap_group_details(group_id)
-            if not existing:
-                logger.error("AP group %s not found for update.", group_id)
-                return False
+            if not update_data:
+                return True
 
             merged_data = deep_merge(existing, update_data)
 

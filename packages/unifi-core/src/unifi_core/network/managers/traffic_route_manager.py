@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequestV2
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -63,24 +64,17 @@ class TrafficRouteManager:
             logger.error("Error getting traffic routes: %s", e)
             raise
 
-    async def get_traffic_route_details(self, route_id: str) -> Optional[Dict[str, Any]]:
+    async def get_traffic_route_details(self, route_id: str) -> Dict[str, Any]:
         """Get details for a specific traffic route by ID.
 
-        Args:
-            route_id: The _id of the traffic route.
-
-        Returns:
-            Traffic route object or None if not found.
+        Raises:
+            UniFiNotFoundError: If the route does not exist.
         """
-        try:
-            all_routes = await self.get_traffic_routes()
-            route = next((r for r in all_routes if r.get("_id") == route_id), None)
-            if not route:
-                logger.debug("Traffic route %s not found.", route_id)
-            return route
-        except Exception as e:
-            logger.error("Error getting traffic route details for %s: %s", route_id, e)
-            raise
+        all_routes = await self.get_traffic_routes()
+        route = next((r for r in all_routes if r.get("_id") == route_id), None)
+        if route is None:
+            raise UniFiNotFoundError("traffic_route", route_id)
+        return route
 
     async def update_traffic_route(self, route_id: str, enabled: Optional[bool] = None, **kwargs) -> bool:
         """Update a traffic route.
@@ -97,10 +91,8 @@ class TrafficRouteManager:
             True if successful, False otherwise.
         """
         try:
+            # Existence check; raises UniFiNotFoundError on miss.
             current = await self.get_traffic_route_details(route_id)
-            if not current:
-                logger.error("Traffic route %s not found for update.", route_id)
-                return False
 
             # Start with full existing route and apply updates
             payload: Dict[str, Any] = current.copy()
@@ -134,17 +126,10 @@ class TrafficRouteManager:
     async def toggle_traffic_route(self, route_id: str) -> bool:
         """Toggle a traffic route's enabled state.
 
-        Args:
-            route_id: The _id of the traffic route to toggle.
-
-        Returns:
-            True if successful, False otherwise.
+        Raises:
+            UniFiNotFoundError: If the route does not exist.
         """
-        current = await self.get_traffic_route_details(route_id)
-        if not current:
-            logger.error("Traffic route %s not found for toggle.", route_id)
-            return False
-
+        current = await self.get_traffic_route_details(route_id)  # raises on miss
         new_state = not current.get("enabled", True)
         return await self.update_traffic_route(route_id, enabled=new_state)
 
@@ -162,10 +147,8 @@ class TrafficRouteManager:
             True if successful, False otherwise.
         """
         try:
+            # raises UniFiNotFoundError on miss
             current = await self.get_traffic_route_details(route_id)
-            if not current:
-                logger.error("Traffic route %s not found for kill switch update.", route_id)
-                return False
 
             payload: Dict[str, Any] = current.copy()
             payload["kill_switch_enabled"] = enabled

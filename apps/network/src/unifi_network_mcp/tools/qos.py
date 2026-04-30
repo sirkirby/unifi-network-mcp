@@ -10,6 +10,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import create_preview, toggle_preview, update_preview
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_network_mcp.runtime import qos_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry  # Added
 
@@ -113,24 +114,18 @@ async def get_qos_rule_details(
         }
     }
     """
+    if not rule_id:
+        return {"success": False, "error": "rule_id is required"}
     try:
-        if not rule_id:
-            return {"success": False, "error": "rule_id is required"}
-        # Assuming manager returns the raw dict or None
         rule = await qos_manager.get_qos_rule_details(rule_id)
-        if rule:
-            # Return details - ensure serializable (using json.loads/dumps for safety)
-            return {
-                "success": True,
-                "site": qos_manager._connection.site,
-                "rule_id": rule_id,
-                "details": json.loads(json.dumps(rule, default=str)),
-            }
-        else:
-            return {
-                "success": False,
-                "error": f"QoS rule with ID '{rule_id}' not found.",
-            }
+        return {
+            "success": True,
+            "site": qos_manager._connection.site,
+            "rule_id": rule_id,
+            "details": json.loads(json.dumps(rule, default=str)),
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting QoS rule %s: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get QoS rule {rule_id}: {e}"}
@@ -305,53 +300,26 @@ async def update_qos_rule(
             "error": "Update data is effectively empty or invalid.",
         }
 
+    if not confirm:
+        return update_preview(
+            resource_type="qos_rule",
+            resource_id=rule_id,
+            resource_name=rule_id,
+            current_state={},
+            updates=validated_data,
+        )
+
+    updated_fields_list = list(validated_data.keys())
     try:
-        # Fetch current rule for preview
-        current = await qos_manager.get_qos_rule_details(rule_id)
-        if not current:
-            return {
-                "success": False,
-                "error": f"QoS rule with ID '{rule_id}' not found.",
-            }
-
-        if not confirm:
-            return update_preview(
-                resource_type="qos_rule",
-                resource_id=rule_id,
-                resource_name=current.get("name"),
-                current_state=current,
-                updates=validated_data,
-            )
-
-        updated_fields_list = list(validated_data.keys())
-        logger.info("Attempting to update QoS rule '%s' with fields: %s", rule_id, ", ".join(updated_fields_list))
-    except Exception as e:
-        logger.error("Error fetching QoS rule %s for preview: %s", rule_id, e, exc_info=True)
-        return {"success": False, "error": f"Failed to fetch QoS rule {rule_id} for preview: {e}"}
-    try:
-        # Assuming qos_manager.update_qos_rule handles fetch-merge-put or accepts partial data
-        success = await qos_manager.update_qos_rule(rule_id, validated_data)
-        error_message_detail = "QoS Manager update method might need verification for partial updates."
-
-        if success:
-            updated_rule = await qos_manager.get_qos_rule_details(rule_id)
-            logger.info("Successfully updated QoS rule (%s)", rule_id)
-            return {
-                "success": True,
-                "rule_id": rule_id,
-                "updated_fields": updated_fields_list,
-                "details": json.loads(json.dumps(updated_rule, default=str)),
-            }
-        else:
-            logger.error("Failed to update QoS rule (%s). %s", rule_id, error_message_detail)
-            rule_after_update = await qos_manager.get_qos_rule_details(rule_id)
-            return {
-                "success": False,
-                "rule_id": rule_id,
-                "error": f"Failed to update QoS rule ({rule_id}). Check server logs. {error_message_detail}",
-                "details_after_attempt": json.loads(json.dumps(rule_after_update, default=str)),
-            }
-
+        merged = await qos_manager.update_qos_rule(rule_id, validated_data)
+        return {
+            "success": True,
+            "rule_id": rule_id,
+            "updated_fields": updated_fields_list,
+            "details": json.loads(json.dumps(merged, default=str)),
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating QoS rule %s: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update QoS rule {rule_id}: {e}"}

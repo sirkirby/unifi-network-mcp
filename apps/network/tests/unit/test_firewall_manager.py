@@ -234,6 +234,8 @@ class TestPortForwardLookupRobustness:
         malformed = PortForward({"name": "broken-no-id", "fwd_port": "1", "dst_port": "1"})
         good_post = PortForward({"_id": "pf-post", "name": "post"})
 
+        from unifi_core.exceptions import UniFiNotFoundError
+
         with patch.object(
             firewall_manager,
             "get_port_forwards",
@@ -242,11 +244,11 @@ class TestPortForwardLookupRobustness:
         ):
             pre = await firewall_manager.get_port_forward_by_id("pf-pre")
             post = await firewall_manager.get_port_forward_by_id("pf-post")
-            missing = await firewall_manager.get_port_forward_by_id("pf-does-not-exist")
+            with pytest.raises(UniFiNotFoundError):
+                await firewall_manager.get_port_forward_by_id("pf-does-not-exist")
 
         assert pre is good_pre
         assert post is good_post  # would be None before the fix
-        assert missing is None
 
 
 class TestTrafficRouteLookupRobustness:

@@ -16,8 +16,8 @@ from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequest
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.merge import deep_merge
-
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -62,32 +62,27 @@ class SwitchManager:
             logger.error("Error getting port profiles: %s", e)
             raise
 
-    async def get_port_profile_by_id(self, profile_id: str) -> Optional[Dict[str, Any]]:
+    async def get_port_profile_by_id(self, profile_id: str) -> Dict[str, Any]:
         """Get a specific port profile by ID.
 
-        Args:
-            profile_id: The ID of the port profile.
-
-        Returns:
-            The port profile dictionary, or None if not found.
+        Raises:
+            UniFiNotFoundError: If the profile does not exist.
         """
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
 
-        try:
-            api_request = ApiRequest(method="get", path=f"/rest/portconf/{profile_id}")
-            response = await self._connection.request(api_request)
-            data = (
-                response
-                if isinstance(response, list)
-                else response.get("data", [])
-                if isinstance(response, dict)
-                else []
-            )
-            return data[0] if data else None
-        except Exception as e:
-            logger.error("Error getting port profile %s: %s", profile_id, e)
-            raise
+        api_request = ApiRequest(method="get", path=f"/rest/portconf/{profile_id}")
+        response = await self._connection.request(api_request)
+        data = (
+            response
+            if isinstance(response, list)
+            else response.get("data", [])
+            if isinstance(response, dict)
+            else []
+        )
+        if not data:
+            raise UniFiNotFoundError("port_profile", profile_id)
+        return data[0]
 
     async def create_port_profile(self, profile_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new port profile.
@@ -123,37 +118,27 @@ class SwitchManager:
             logger.error("Error creating port profile: %s", e, exc_info=True)
             raise
 
-    async def update_port_profile(self, profile_id: str, update_data: Dict[str, Any]) -> bool:
+    async def update_port_profile(self, profile_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update an existing port profile by merging updates with current state.
 
-        Args:
-            profile_id: The ID of the port profile to update.
-            update_data: Dictionary of fields to update (partial is fine).
-
         Returns:
-            True on success, False on failure.
+            The merged profile dict.
+
+        Raises:
+            UniFiNotFoundError: If the profile does not exist.
         """
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
+
+        existing = await self.get_port_profile_by_id(profile_id)  # raises on miss
         if not update_data:
-            return True
+            return existing
 
-        try:
-            existing = await self.get_port_profile_by_id(profile_id)
-            if not existing:
-                logger.error("Port profile %s not found for update", profile_id)
-                return False
-
-            merged_data = deep_merge(existing, update_data)
-
-            api_request = ApiRequest(method="put", path=f"/rest/portconf/{profile_id}", data=merged_data)
-            await self._connection.request(api_request)
-
-            self._connection._invalidate_cache(CACHE_PREFIX_PORT_PROFILES)
-            return True
-        except Exception as e:
-            logger.error("Error updating port profile %s: %s", profile_id, e, exc_info=True)
-            raise
+        merged_data = deep_merge(existing, update_data)
+        api_request = ApiRequest(method="put", path=f"/rest/portconf/{profile_id}", data=merged_data)
+        await self._connection.request(api_request)
+        self._connection._invalidate_cache(CACHE_PREFIX_PORT_PROFILES)
+        return merged_data
 
     async def delete_port_profile(self, profile_id: str) -> bool:
         """Delete a port profile.

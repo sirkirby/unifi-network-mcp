@@ -177,11 +177,12 @@ class TestDeviceManagerGetRadio:
 
     @pytest.mark.asyncio
     async def test_returns_none_for_unknown_mac(self, device_manager, mock_connection):
+        from unifi_core.exceptions import UniFiNotFoundError
+
         mock_connection.controller.devices.values.return_value = []
 
-        result = await device_manager.get_device_radio("ff:ff:ff:ff:ff:ff")
-
-        assert result is None
+        with pytest.raises(UniFiNotFoundError):
+            await device_manager.get_device_radio("ff:ff:ff:ff:ff:ff")
 
 
 class TestDeviceManagerUpdateRadio:
@@ -250,11 +251,12 @@ class TestDeviceManagerUpdateRadio:
 
     @pytest.mark.asyncio
     async def test_returns_false_for_unknown_device(self, device_manager, mock_connection):
+        from unifi_core.exceptions import UniFiNotFoundError
+
         mock_connection.controller.devices.values.return_value = []
 
-        result = await device_manager.update_device_radio("ff:ff:ff:ff:ff:ff", "na", {"tx_power_mode": "high"})
-
-        assert result is False
+        with pytest.raises(UniFiNotFoundError):
+            await device_manager.update_device_radio("ff:ff:ff:ff:ff:ff", "na", {"tx_power_mode": "high"})
 
     @pytest.mark.asyncio
     async def test_does_not_mutate_original_radio_table(self, device_manager, mock_connection):

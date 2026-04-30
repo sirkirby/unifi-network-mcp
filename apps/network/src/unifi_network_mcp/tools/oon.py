@@ -14,6 +14,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import create_preview, update_preview
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_network_mcp.runtime import oon_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
@@ -93,19 +94,17 @@ async def get_oon_policy_details(
     Returns:
         A dictionary containing the full policy configuration.
     """
+    if not policy_id:
+        return {"success": False, "error": "policy_id is required"}
     try:
-        if not policy_id:
-            return {"success": False, "error": "policy_id is required"}
-
         policy = await oon_manager.get_oon_policy_by_id(policy_id)
-        if not policy:
-            return {"success": False, "error": f"OON policy '{policy_id}' not found."}
-
         return {
             "success": True,
             "policy_id": policy_id,
             "details": json.loads(json.dumps(policy, default=str)),
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting OON policy %s: %s", policy_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get OON policy {policy_id}: {e}"}
@@ -238,24 +237,23 @@ async def update_oon_policy(
     if not validated_data:
         return {"success": False, "error": "Update data is effectively empty or invalid."}
 
-    current = await oon_manager.get_oon_policy_by_id(policy_id)
-    if not current:
-        return {"success": False, "error": f"OON policy '{policy_id}' not found."}
-
     if not confirm:
         return update_preview(
             resource_type="oon_policy",
             resource_id=policy_id,
-            resource_name=current.get("name"),
-            current_state=current,
+            resource_name=policy_id,
+            current_state={},
             updates=validated_data,
         )
 
     try:
-        success = await oon_manager.update_oon_policy(policy_id, validated_data)
-        if success:
-            return {"success": True, "message": f"OON policy '{policy_id}' updated successfully."}
-        return {"success": False, "error": f"Failed to update OON policy '{policy_id}'."}
+        merged = await oon_manager.update_oon_policy(policy_id, validated_data)
+        return {
+            "success": True,
+            "message": f"OON policy '{merged.get('name', policy_id)}' updated successfully.",
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating OON policy %s: %s", policy_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update OON policy '{policy_id}': {e}"}

@@ -107,12 +107,13 @@ class TestHotspotManager:
 
     @pytest.mark.asyncio
     async def test_get_voucher_details_not_found(self, hotspot_manager, mock_connection):
-        """Test get_voucher_details returns None when not found."""
+        """Test get_voucher_details raises UniFiNotFoundError when not found."""
+        from unifi_core.exceptions import UniFiNotFoundError
+
         mock_connection.request.return_value = [{"_id": "v1"}]
 
-        voucher = await hotspot_manager.get_voucher_details("nonexistent")
-
-        assert voucher is None
+        with pytest.raises(UniFiNotFoundError):
+            await hotspot_manager.get_voucher_details("nonexistent")
 
     @pytest.mark.asyncio
     async def test_create_voucher_basic(self, hotspot_manager, mock_connection):

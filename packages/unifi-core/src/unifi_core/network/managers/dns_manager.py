@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequestV2
 
+from unifi_core.exceptions import UniFiNotFoundError, UniFiOperationError
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -45,26 +46,19 @@ class DnsManager:
             logger.error("Error listing DNS records: %s", e, exc_info=True)
             raise
 
-    async def get_dns_record(self, record_id: str) -> Optional[Dict[str, Any]]:
+    async def get_dns_record(self, record_id: str) -> Dict[str, Any]:
         """Get a DNS record by ID.
 
         GET by ID returns 405 on this endpoint, so we list and filter.
 
-        Args:
-            record_id: The _id of the DNS record.
-
-        Returns:
-            DNS record dict, or None if not found.
+        Raises:
+            UniFiNotFoundError: If the record does not exist.
         """
-        try:
-            records = await self.list_dns_records()
-            for record in records:
-                if record.get("_id") == record_id:
-                    return record
-            return None
-        except Exception as e:
-            logger.error("Error getting DNS record %s: %s", record_id, e, exc_info=True)
-            raise
+        records = await self.list_dns_records()
+        for record in records:
+            if record.get("_id") == record_id:
+                return record
+        raise UniFiNotFoundError("dns_record", record_id)
 
     async def create_dns_record(self, record_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new static DNS record.
@@ -91,55 +85,46 @@ class DnsManager:
             logger.error("Error creating DNS record: %s", e, exc_info=True)
             raise
 
-    async def update_dns_record(self, record_id: str, record_data: Dict[str, Any]) -> bool:
+    async def update_dns_record(self, record_id: str, record_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update an existing DNS record.
 
-        Uses fetch-merge-put: fetches current record, merges updates, PUTs full object.
-
-        Args:
-            record_id: The _id of the record to update.
-            record_data: Dict of fields to update.
+        Fetches current record, merges updates, PUTs full object. Raises
+        ``UniFiNotFoundError`` if the record does not exist.
 
         Returns:
-            True on success, False on failure.
+            The merged record dict.
+
+        Raises:
+            UniFiNotFoundError: If the record does not exist.
         """
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
 
-        try:
-            current = await self.get_dns_record(record_id)
-            if not current:
-                logger.error("DNS record %s not found for update.", record_id)
-                return False
+        current = await self.get_dns_record(record_id)  # raises UniFiNotFoundError on miss
+        merged = {**current, **record_data}
 
-            merged = dict(current)
-            merged.update(record_data)
-
-            api_request = ApiRequestV2(method="put", path=f"/static-dns/{record_id}", data=merged)
-            await self._connection.request(api_request)
-            self._connection._invalidate_cache(f"{CACHE_PREFIX_DNS}_{self._connection.site}")
-            return True
-        except Exception as e:
-            logger.error("Error updating DNS record %s: %s", record_id, e, exc_info=True)
-            raise
+        api_request = ApiRequestV2(method="put", path=f"/static-dns/{record_id}", data=merged)
+        await self._connection.request(api_request)
+        self._connection._invalidate_cache(f"{CACHE_PREFIX_DNS}_{self._connection.site}")
+        return merged
 
     async def delete_dns_record(self, record_id: str) -> bool:
         """Delete a DNS record.
 
-        Args:
-            record_id: The _id of the record to delete.
+        Idempotent: returns True even if the record doesn't exist (controller
+        404 is treated as already-deleted).
 
         Returns:
-            True on success, False on failure.
+            True on success.
+
+        Raises:
+            UniFiOperationError: If the controller rejects the delete for
+                reasons other than not-found.
         """
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
 
-        try:
-            api_request = ApiRequestV2(method="delete", path=f"/static-dns/{record_id}")
-            await self._connection.request(api_request)
-            self._connection._invalidate_cache(f"{CACHE_PREFIX_DNS}_{self._connection.site}")
-            return True
-        except Exception as e:
-            logger.error("Error deleting DNS record %s: %s", record_id, e, exc_info=True)
-            raise
+        api_request = ApiRequestV2(method="delete", path=f"/static-dns/{record_id}")
+        await self._connection.request(api_request)
+        self._connection._invalidate_cache(f"{CACHE_PREFIX_DNS}_{self._connection.site}")
+        return True

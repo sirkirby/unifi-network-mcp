@@ -12,6 +12,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import create_preview, preview_response, update_preview
+from unifi_core.exceptions import UniFiNotFoundError
 
 # Import the global FastMCP server instance, config, and managers
 from unifi_network_mcp.runtime import device_manager, server
@@ -272,16 +273,13 @@ async def get_device_details(
     """Implementation for getting device details."""
     try:
         device = await device_manager.get_device_details(mac_address)
-        if device:
-            return {
-                "success": True,
-                "site": device_manager._connection.site,
-                "device": device.raw if hasattr(device, "raw") else device,
-            }
         return {
-            "success": False,
-            "error": f"Device not found with MAC address: {mac_address}",
+            "success": True,
+            "site": device_manager._connection.site,
+            "device": device.raw if hasattr(device, "raw") else device,
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting device details for %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to get device details for {mac_address}: {e}"}
@@ -305,60 +303,27 @@ async def reboot_device(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for rebooting a device."""
+    if not confirm:
+        return preview_response(
+            action="reboot",
+            resource_type="device",
+            resource_id=mac_address,
+            resource_name=mac_address,
+            current_state={},
+            proposed_changes={"action": "reboot - device will restart"},
+            warnings=["Device will be offline for 1-2 minutes during reboot"],
+        )
+
     try:
-        # Fetch device details to provide context in the preview
-        device = await device_manager.get_device_details(mac_address)
-        if not device:
-            return {
-                "success": False,
-                "error": f"Device not found with MAC address: {mac_address}",
-            }
-
-        # Extract device info for preview
-        device_raw = device.raw if hasattr(device, "raw") else device
-        device_name = device_raw.get("name", device_raw.get("model", "Unknown"))
-        device_state = device_raw.get("state", 0)
-        device_model = device_raw.get("model", "")
-
-        state_map = {
-            0: "offline",
-            1: "online",
-            2: "pending_adoption",
-            4: "managed_by_other/adopting",
-            5: "provisioning",
-            6: "upgrading",
-            11: "error/heartbeat_missed",
-        }
-        device_status = state_map.get(device_state, f"unknown_state ({device_state})")
-
-        if not confirm:
-            return preview_response(
-                action="reboot",
-                resource_type="device",
-                resource_id=mac_address,
-                resource_name=device_name,
-                current_state={
-                    "status": device_status,
-                    "model": device_model,
-                    "ip": device_raw.get("ip", ""),
-                },
-                proposed_changes={"action": "reboot - device will restart"},
-                warnings=["Device will be offline for 1-2 minutes during reboot"],
-            )
-
-        logger.info("Attempting to reboot device: %s", mac_address)
         success = await device_manager.reboot_device(mac_address)
-
         if success:
             return {
                 "success": True,
                 "message": f"Reboot initiated for device: {mac_address}",
             }
-        else:
-            return {
-                "success": False,
-                "error": f"Failed to reboot device: {mac_address}",
-            }
+        return {"success": False, "error": f"Failed to reboot device: {mac_address}"}
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error rebooting device %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to reboot device {mac_address}: {e}"}
@@ -383,32 +348,16 @@ async def rename_device(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for renaming a device."""
+    if not confirm:
+        return update_preview(
+            resource_type="device",
+            resource_id=mac_address,
+            resource_name=mac_address,
+            current_state={},
+            updates={"name": name},
+        )
+
     try:
-        # Fetch device details to provide context in the preview
-        device = await device_manager.get_device_details(mac_address)
-        if not device:
-            return {
-                "success": False,
-                "error": f"Device not found with MAC address: {mac_address}",
-            }
-
-        # Extract device info for preview
-        device_raw = device.raw if hasattr(device, "raw") else device
-        current_name = device_raw.get("name", device_raw.get("model", "Unknown"))
-
-        if not confirm:
-            return update_preview(
-                resource_type="device",
-                resource_id=mac_address,
-                resource_name=current_name,
-                current_state={
-                    "name": current_name,
-                    "model": device_raw.get("model", ""),
-                    "type": device_raw.get("type", ""),
-                },
-                updates={"name": name},
-            )
-
         success = await device_manager.rename_device(mac_address, name)
         if success:
             return {
@@ -416,6 +365,8 @@ async def rename_device(
                 "message": f"Device {mac_address} renamed to '{name}' successfully.",
             }
         return {"success": False, "error": f"Failed to rename device {mac_address}."}
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error renaming device %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to rename device {mac_address}: {e}"}
@@ -443,38 +394,18 @@ async def adopt_device(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for adopting a device."""
+    if not confirm:
+        return create_preview(
+            resource_type="device_adoption",
+            resource_name=mac_address,
+            resource_data={"mac": mac_address},
+            warnings=[
+                "Device will be adopted into this site",
+                "Device may reboot during adoption process",
+            ],
+        )
+
     try:
-        # Fetch device details to provide context in the preview
-        device = await device_manager.get_device_details(mac_address)
-        if not device:
-            return {
-                "success": False,
-                "error": f"Device not found with MAC address: {mac_address}",
-            }
-
-        # Extract device info for preview
-        device_raw = device.raw if hasattr(device, "raw") else device
-        device_name = device_raw.get("name", device_raw.get("model", "Unknown"))
-        device_state = device_raw.get("state", 0)
-
-        if not confirm:
-            return create_preview(
-                resource_type="device_adoption",
-                resource_name=device_name,
-                resource_data={
-                    "mac": mac_address,
-                    "name": device_name,
-                    "model": device_raw.get("model", ""),
-                    "type": device_raw.get("type", ""),
-                    "ip": device_raw.get("ip", ""),
-                    "current_state": device_state,
-                },
-                warnings=[
-                    "Device will be adopted into this site",
-                    "Device may reboot during adoption process",
-                ],
-            )
-
         success = await device_manager.adopt_device(mac_address)
         if success:
             return {
@@ -482,6 +413,8 @@ async def adopt_device(
                 "message": f"Adoption initiated for device: {mac_address}",
             }
         return {"success": False, "error": f"Failed to adopt device {mac_address}."}
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error adopting device %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to adopt device {mac_address}: {e}"}
@@ -509,57 +442,31 @@ async def upgrade_device(
     ] = False,
 ) -> Dict[str, Any]:
     """Implementation for upgrading a device."""
+    if not confirm:
+        return preview_response(
+            action="upgrade",
+            resource_type="device",
+            resource_id=mac_address,
+            resource_name=mac_address,
+            current_state={},
+            proposed_changes={"action": "firmware upgrade"},
+            warnings=[
+                "Device will be offline during firmware upgrade",
+                "Upgrade process may take several minutes",
+                "Do not power off device during upgrade",
+            ],
+        )
+
     try:
-        # Fetch device details to provide context in the preview
-        device = await device_manager.get_device_details(mac_address)
-        if not device:
-            return {
-                "success": False,
-                "error": f"Device not found with MAC address: {mac_address}",
-            }
-
-        # Extract device info for preview
-        device_raw = device.raw if hasattr(device, "raw") else device
-        device_name = device_raw.get("name", device_raw.get("model", "Unknown"))
-        current_version = device_raw.get("version", "unknown")
-
-        # Get upgrade information
-        upgrade_info = device_raw.get("upgrade") or device_raw.get("upgradable")
-        if isinstance(upgrade_info, bool):
-            upgrade_info = "available" if upgrade_info else "none"
-
-        upgrade_to_version = device_raw.get("upgrade_to_firmware", "latest available")
-
-        if not confirm:
-            return preview_response(
-                action="upgrade",
-                resource_type="device",
-                resource_id=mac_address,
-                resource_name=device_name,
-                current_state={
-                    "firmware_version": current_version,
-                    "model": device_raw.get("model", ""),
-                    "upgrade_available": upgrade_info,
-                },
-                proposed_changes={
-                    "action": "firmware upgrade",
-                    "target_version": upgrade_to_version,
-                },
-                warnings=[
-                    "Device will be offline during firmware upgrade",
-                    "Upgrade process may take several minutes",
-                    "Do not power off device during upgrade",
-                ],
-            )
-
         success = await device_manager.upgrade_device(mac_address)
         if success:
-            info_msg = f" (Upgrade info: {upgrade_info})" if upgrade_info else ""
             return {
                 "success": True,
-                "message": f"Upgrade initiated for device: {mac_address}{info_msg}",
+                "message": f"Upgrade initiated for device: {mac_address}",
             }
         return {"success": False, "error": f"Failed to upgrade device {mac_address}."}
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error upgrading device %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to upgrade device {mac_address}: {e}"}
@@ -595,13 +502,15 @@ async def get_device_radio(
         if result is None:
             return {
                 "success": False,
-                "error": f"Device {mac_address} not found or is not an access point.",
+                "error": f"Device {mac_address} is not an access point.",
             }
         return {
             "success": True,
             "site": device_manager._connection.site,
             **result,
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting radio info for %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to get radio info for device {mac_address}: {e}"}
@@ -786,6 +695,8 @@ async def update_device_radio(
                 "updated_fields": list(updates.keys()),
             }
         return {"success": False, "error": f"Failed to update radio '{radio}' on device {mac_address}."}
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating radio on %s: %s", mac_address, e, exc_info=True)
         return {"success": False, "error": f"Failed to update radio on device {mac_address}: {e}"}

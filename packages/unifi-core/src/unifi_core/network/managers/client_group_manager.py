@@ -12,8 +12,8 @@ from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequestV2
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.merge import deep_merge
-
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -58,30 +58,38 @@ class ClientGroupManager:
             logger.error("Error getting client groups: %s", e)
             raise
 
-    async def get_client_group_by_id(self, group_id: str) -> Optional[Dict[str, Any]]:
+    async def get_client_group_by_id(self, group_id: str) -> Dict[str, Any]:
         """Get a specific client group by ID.
 
-        Args:
-            group_id: The ID of the client group.
-
-        Returns:
-            The client group dictionary, or None if not found.
+        Raises:
+            UniFiNotFoundError: If the group does not exist.
         """
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
 
+        api_request = ApiRequestV2(method="get", path=f"/network-members-group/{group_id}")
         try:
-            api_request = ApiRequestV2(method="get", path=f"/network-members-group/{group_id}")
             response = await self._connection.request(api_request)
+        except Exception:
+            response = None
 
-            if isinstance(response, list):
-                return response[0] if response else None
-            if isinstance(response, dict):
-                return response if "id" in response or "_id" in response else response.get("data", None)
-            return None
-        except Exception as e:
-            logger.error("Error getting client group %s: %s", group_id, e)
-            raise
+        match: Optional[Dict[str, Any]] = None
+        if isinstance(response, list) and response:
+            match = response[0]
+        elif isinstance(response, dict):
+            if "id" in response or "_id" in response:
+                match = response
+            else:
+                match = response.get("data", None)
+
+        if match is None:
+            # Fallback: search the list (handles 405 / soft errors on by-id endpoint).
+            groups = await self.get_client_groups()
+            match = next((g for g in groups if g.get("_id", g.get("id")) == group_id), None)
+
+        if match is None:
+            raise UniFiNotFoundError("client_group", group_id)
+        return match
 
     async def create_client_group(self, group_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new client group.
@@ -132,37 +140,27 @@ class ClientGroupManager:
             logger.error("Error creating client group: %s", e, exc_info=True)
             raise
 
-    async def update_client_group(self, group_id: str, update_data: Dict[str, Any]) -> bool:
+    async def update_client_group(self, group_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update an existing client group by merging updates with current state.
 
-        Args:
-            group_id: The ID of the client group to update.
-            update_data: Dictionary of fields to update (partial is fine).
-
         Returns:
-            True on success, False on failure.
+            The merged group dict.
+
+        Raises:
+            UniFiNotFoundError: If the group does not exist.
         """
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
+
+        existing = await self.get_client_group_by_id(group_id)  # raises on miss
         if not update_data:
-            return True
+            return existing
 
-        try:
-            existing = await self.get_client_group_by_id(group_id)
-            if not existing:
-                logger.error("Client group %s not found for update", group_id)
-                return False
-
-            merged_data = deep_merge(existing, update_data)
-
-            api_request = ApiRequestV2(method="put", path=f"/network-members-group/{group_id}", data=merged_data)
-            await self._connection.request(api_request)
-
-            self._invalidate_cache()
-            return True
-        except Exception as e:
-            logger.error("Error updating client group %s: %s", group_id, e, exc_info=True)
-            raise
+        merged_data = deep_merge(existing, update_data)
+        api_request = ApiRequestV2(method="put", path=f"/network-members-group/{group_id}", data=merged_data)
+        await self._connection.request(api_request)
+        self._invalidate_cache()
+        return merged_data
 
     async def delete_client_group(self, group_id: str) -> bool:
         """Delete a client group.

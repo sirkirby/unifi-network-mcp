@@ -13,6 +13,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import create_preview, update_preview
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_network_mcp.runtime import dns_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
@@ -67,13 +68,13 @@ async def get_dns_record_details(
     logger.info("unifi_get_dns_record_details tool called (record_id=%s)", record_id)
     try:
         record = await dns_manager.get_dns_record(record_id)
-        if not record:
-            return {"success": False, "error": f"DNS record '{record_id}' not found."}
         return {
             "success": True,
             "record_id": record_id,
             "details": json.loads(json.dumps(record, default=str)),
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting DNS record %s: %s", record_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get DNS record {record_id}: {e}"}
@@ -165,27 +166,23 @@ async def update_dns_record(
     if not validated_data:
         return {"success": False, "error": "No valid fields to update after validation."}
 
+    if not confirm:
+        return update_preview(
+            resource_type="dns_record",
+            resource_id=record_id,
+            resource_name=record_id,
+            current_state={},
+            updates=validated_data,
+        )
+
     try:
-        current = await dns_manager.get_dns_record(record_id)
-        if not current:
-            return {"success": False, "error": f"DNS record '{record_id}' not found."}
-
-        if not confirm:
-            return update_preview(
-                resource_type="dns_record",
-                resource_id=record_id,
-                resource_name=current.get("key", record_id),
-                current_state=current,
-                updates=validated_data,
-            )
-
-        success = await dns_manager.update_dns_record(record_id, validated_data)
-        if success:
-            return {
-                "success": True,
-                "message": f"DNS record '{current.get('key', record_id)}' updated successfully.",
-            }
-        return {"success": False, "error": f"Failed to update DNS record '{record_id}'."}
+        merged = await dns_manager.update_dns_record(record_id, validated_data)
+        return {
+            "success": True,
+            "message": f"DNS record '{merged.get('key', record_id)}' updated successfully.",
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating DNS record %s: %s", record_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update DNS record {record_id}: {e}"}
@@ -207,21 +204,21 @@ async def delete_dns_record(
 ) -> Dict[str, Any]:
     """Delete a DNS record."""
     logger.info("unifi_delete_dns_record tool called (record_id=%s, confirm=%s)", record_id, confirm)
-    try:
-        if not confirm:
-            record = await dns_manager.get_dns_record(record_id)
-            name = record.get("key", record_id) if record else record_id
-            return create_preview(
-                resource_type="dns_record",
-                resource_data={"record_id": record_id},
-                resource_name=name,
-                warnings=["This will permanently delete the DNS record."],
-            )
+    if not confirm:
+        return create_preview(
+            resource_type="dns_record",
+            resource_data={"record_id": record_id},
+            resource_name=record_id,
+            warnings=["This will permanently delete the DNS record."],
+        )
 
+    try:
         success = await dns_manager.delete_dns_record(record_id)
         if success:
             return {"success": True, "message": f"DNS record '{record_id}' deleted successfully."}
         return {"success": False, "error": f"Failed to delete DNS record '{record_id}'."}
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error deleting DNS record %s: %s", record_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to delete DNS record '{record_id}': {e}"}

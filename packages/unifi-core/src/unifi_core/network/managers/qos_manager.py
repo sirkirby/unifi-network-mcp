@@ -3,8 +3,8 @@ from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequestV2
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.merge import deep_merge
-
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -46,57 +46,43 @@ class QosManager:
             logger.error("Error getting QoS rules: %s", e)
             raise
 
-    async def get_qos_rule_details(self, rule_id: str) -> Optional[Dict[str, Any]]:
-        """Get detailed information for a specific QoS rule."""
-        try:
-            all_rules = await self.get_qos_rules()
-            rule = next((r for r in all_rules if r.get("_id") == rule_id), None)
-            if not rule:
-                logger.warning("QoS rule %s not found in fetched list.", rule_id)
-            return rule
-        except Exception as e:
-            logger.error("Error getting QoS rule details for %s: %s", rule_id, e, exc_info=True)
-            raise
+    async def get_qos_rule_details(self, rule_id: str) -> Dict[str, Any]:
+        """Get detailed information for a specific QoS rule.
 
-    async def update_qos_rule(self, rule_id: str, update_data: Dict[str, Any]) -> bool:
+        Raises:
+            UniFiNotFoundError: If the rule does not exist.
+        """
+        all_rules = await self.get_qos_rules()
+        rule = next((r for r in all_rules if r.get("_id") == rule_id), None)
+        if rule is None:
+            raise UniFiNotFoundError("qos_rule", rule_id)
+        return rule
+
+    async def update_qos_rule(self, rule_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update a QoS rule by merging updates with existing data.
 
-        Args:
-            rule_id: ID of the rule to update
-            update_data: Dictionary of fields to update
-
         Returns:
-            bool: True if successful, False otherwise
+            The merged rule dict.
+
+        Raises:
+            UniFiNotFoundError: If the rule does not exist.
         """
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
+
+        existing_rule = await self.get_qos_rule_details(rule_id)  # raises on miss
         if not update_data:
-            logger.warning("No update data provided for QoS rule %s.", rule_id)
-            return True  # No action needed
+            return existing_rule
 
-        try:
-            # 1. Fetch existing rule data
-            existing_rule = await self.get_qos_rule_details(rule_id)
-            if not existing_rule:
-                logger.error("QoS rule %s not found for update.", rule_id)
-                return False
-
-            # 2. Merge updates into existing data (deep merge preserves nested sub-objects)
-            merged_data = deep_merge(existing_rule, update_data)
-
-            # 3. Send the full merged data using V2 PUT
-            api_request = ApiRequestV2(
-                method="put",
-                path=f"/qos-rules/{rule_id}",
-                data=merged_data,  # Send full merged object
-            )
-            await self._connection.request(api_request)
-            logger.info("Update command sent for QoS rule %s with merged data.", rule_id)
-            self._connection._invalidate_cache(f"{CACHE_PREFIX_QOS}_{self._connection.site}")
-            return True
-        except Exception as e:
-            logger.error("Error updating QoS rule %s: %s", rule_id, e, exc_info=True)
-            raise
+        merged_data = deep_merge(existing_rule, update_data)
+        api_request = ApiRequestV2(
+            method="put",
+            path=f"/qos-rules/{rule_id}",
+            data=merged_data,
+        )
+        await self._connection.request(api_request)
+        self._connection._invalidate_cache(f"{CACHE_PREFIX_QOS}_{self._connection.site}")
+        return merged_data
 
     async def create_qos_rule(self, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new QoS rule.

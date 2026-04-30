@@ -11,23 +11,10 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import create_preview, update_preview
-from unifi_network_mcp.runtime import server
+from unifi_core.exceptions import UniFiNotFoundError
+from unifi_network_mcp.runtime import server, usergroup_manager
 
 logger = logging.getLogger(__name__)
-
-# Lazy import to avoid circular dependencies
-_usergroup_manager = None
-
-
-def _get_usergroup_manager():
-    """Lazy-load the usergroup manager to avoid circular imports."""
-    global _usergroup_manager
-    if _usergroup_manager is None:
-        from unifi_core.network.managers.usergroup_manager import UsergroupManager
-        from unifi_network_mcp.runtime import get_connection_manager
-
-        _usergroup_manager = UsergroupManager(get_connection_manager())
-    return _usergroup_manager
 
 
 @server.tool(
@@ -41,7 +28,6 @@ Each group specifies upload/download speed caps in Kbps.""",
 async def list_usergroups() -> Dict[str, Any]:
     """List all user groups."""
     try:
-        usergroup_manager = _get_usergroup_manager()
         groups = await usergroup_manager.get_usergroups()
 
         # Format groups for readability
@@ -89,19 +75,14 @@ async def get_usergroup_details(
 ) -> Dict[str, Any]:
     """Get details for a specific user group."""
     try:
-        usergroup_manager = _get_usergroup_manager()
         group = await usergroup_manager.get_usergroup_details(group_id)
-
-        if group:
-            return {
-                "success": True,
-                "site": usergroup_manager._connection.site,
-                "usergroup": group,
-            }
         return {
-            "success": False,
-            "error": f"User group not found with ID: {group_id}",
+            "success": True,
+            "site": usergroup_manager._connection.site,
+            "usergroup": group,
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting user group details for %s: %s", group_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get user group details for {group_id}: {e}"}
@@ -156,7 +137,6 @@ async def create_usergroup(
         )
 
     try:
-        usergroup_manager = _get_usergroup_manager()
         group = await usergroup_manager.create_usergroup(
             name=name.strip(),
             down_limit_kbps=down_limit_kbps,
@@ -211,32 +191,24 @@ async def update_usergroup(
             "error": "At least one field must be provided (name, down_limit_kbps, or up_limit_kbps).",
         }
 
+    updates = {}
+    if name is not None:
+        updates["name"] = name
+    if up_limit_kbps is not None:
+        updates["up_limit_kbps"] = up_limit_kbps
+    if down_limit_kbps is not None:
+        updates["down_limit_kbps"] = down_limit_kbps
+
+    if not confirm:
+        return update_preview(
+            resource_type="usergroup",
+            resource_id=group_id,
+            resource_name=group_id,
+            current_state={},
+            updates=updates,
+        )
+
     try:
-        usergroup_manager = _get_usergroup_manager()
-
-        # Fetch current state for preview
-        if not confirm:
-            current = await usergroup_manager.get_usergroup_details(group_id)
-            if not current:
-                return {"success": False, "error": "User group not found"}
-
-            updates = {}
-            if name is not None:
-                updates["name"] = name
-            if up_limit_kbps is not None:
-                updates["up_limit_kbps"] = up_limit_kbps
-            if down_limit_kbps is not None:
-                updates["down_limit_kbps"] = down_limit_kbps
-
-            return update_preview(
-                resource_type="usergroup",
-                resource_id=group_id,
-                resource_name=current.get("name"),
-                current_state=current,
-                updates=updates,
-            )
-
-        # Execute the update when confirmed
         success = await usergroup_manager.update_usergroup(
             group_id=group_id,
             name=name.strip() if name else None,
@@ -248,17 +220,11 @@ async def update_usergroup(
             return {
                 "success": True,
                 "message": f"User group {group_id} updated successfully.",
-                "updates": {
-                    k: v
-                    for k, v in {
-                        "name": name,
-                        "down_limit_kbps": down_limit_kbps,
-                        "up_limit_kbps": up_limit_kbps,
-                    }.items()
-                    if v is not None
-                },
+                "updates": updates,
             }
         return {"success": False, "error": f"Failed to update user group {group_id}."}
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating user group %s: %s", group_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update user group {group_id}: {e}"}

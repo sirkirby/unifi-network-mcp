@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequest
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -68,24 +69,17 @@ class HotspotManager:
             logger.error("Error getting vouchers: %s", e)
             raise
 
-    async def get_voucher_details(self, voucher_id: str) -> Optional[Dict[str, Any]]:
+    async def get_voucher_details(self, voucher_id: str) -> Dict[str, Any]:
         """Get details for a specific voucher by ID.
 
-        Args:
-            voucher_id: The _id of the voucher.
-
-        Returns:
-            Voucher object or None if not found.
+        Raises:
+            UniFiNotFoundError: If the voucher does not exist.
         """
-        try:
-            all_vouchers = await self.get_vouchers()
-            voucher = next((v for v in all_vouchers if v.get("_id") == voucher_id), None)
-            if not voucher:
-                logger.debug("Voucher %s not found.", voucher_id)
-            return voucher
-        except Exception as e:
-            logger.error("Error getting voucher details for %s: %s", voucher_id, e)
-            raise
+        all_vouchers = await self.get_vouchers()
+        voucher = next((v for v in all_vouchers if v.get("_id") == voucher_id), None)
+        if voucher is None:
+            raise UniFiNotFoundError("voucher", voucher_id)
+        return voucher
 
     async def create_voucher(
         self,

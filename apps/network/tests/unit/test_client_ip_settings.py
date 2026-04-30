@@ -179,14 +179,16 @@ class TestClientIPSettings:
 
     @pytest.mark.asyncio
     async def test_client_not_found(self, client_manager, mock_connection):
-        """Test returns False when client not found."""
+        """Test raises UniFiNotFoundError when client missing."""
+        from unifi_core.exceptions import UniFiNotFoundError
+
         mock_connection.controller.clients_all.values.return_value = []
 
-        result = await client_manager.set_client_ip_settings(
-            client_mac="xx:xx:xx:xx:xx:xx",
-            fixed_ip="192.168.1.100",
-        )
-        assert result is False
+        with pytest.raises(UniFiNotFoundError):
+            await client_manager.set_client_ip_settings(
+                client_mac="xx:xx:xx:xx:xx:xx",
+                fixed_ip="192.168.1.100",
+            )
 
     @pytest.mark.asyncio
     async def test_no_settings_provided(self, client_manager, mock_connection, mock_client):

@@ -8,6 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from unifi_core.exceptions import UniFiNotFoundError
+
 
 class TestSwitchManager:
     """Tests for the SwitchManager class."""
@@ -112,7 +114,7 @@ class TestSwitchManager:
 
     @pytest.mark.asyncio
     async def test_update_port_profile_success(self, switch_manager, mock_connection):
-        """Test update_port_profile with valid data."""
+        """Test update_port_profile returns merged dict."""
         existing = {"_id": "p1", "name": "Original", "forward": "all"}
         mock_connection.request.side_effect = [
             [existing],  # GET returns list
@@ -121,7 +123,8 @@ class TestSwitchManager:
 
         result = await switch_manager.update_port_profile("p1", {"name": "Updated"})
 
-        assert result is True
+        assert result["name"] == "Updated"
+        assert result["forward"] == "all"
         mock_connection._invalidate_cache.assert_called()
 
     @pytest.mark.asyncio
@@ -141,7 +144,8 @@ class TestSwitchManager:
 
         result = await switch_manager.update_port_profile("pp1", {"name": "Renamed", "poe_mode": "off"})
 
-        assert result is True
+        assert result["name"] == "Renamed"
+        assert result["poe_mode"] == "off"
         put_call = mock_connection.request.call_args_list[1]
         put_request = put_call[0][0]
         assert put_request.method == "put"
@@ -151,20 +155,23 @@ class TestSwitchManager:
 
     @pytest.mark.asyncio
     async def test_update_port_profile_not_found(self, switch_manager, mock_connection):
-        """Test update_port_profile returns False when profile not found."""
+        """Test update_port_profile raises UniFiNotFoundError when profile missing."""
         mock_connection.request.return_value = []
 
-        result = await switch_manager.update_port_profile("nonexistent", {"name": "Test"})
-
-        assert result is False
+        with pytest.raises(UniFiNotFoundError):
+            await switch_manager.update_port_profile("nonexistent", {"name": "Test"})
 
     @pytest.mark.asyncio
     async def test_update_port_profile_empty_update(self, switch_manager, mock_connection):
-        """Test update_port_profile with empty data is a no-op."""
+        """Test update_port_profile with empty data returns existing without PUT."""
+        existing = {"_id": "p1", "name": "Original"}
+        mock_connection.request.return_value = [existing]
+
         result = await switch_manager.update_port_profile("p1", {})
 
-        assert result is True
-        mock_connection.request.assert_not_called()
+        assert result == existing
+        # Only the GET (for get_port_profile_by_id) ran; no PUT.
+        assert mock_connection.request.call_count == 1
 
     @pytest.mark.asyncio
     async def test_delete_port_profile_success(self, switch_manager, mock_connection):

@@ -114,12 +114,13 @@ class TestRoutingManager:
 
     @pytest.mark.asyncio
     async def test_get_route_details_not_found(self, routing_manager, mock_connection):
-        """Test get_route_details returns None when not found."""
+        """Test get_route_details raises UniFiNotFoundError when not found."""
+        from unifi_core.exceptions import UniFiNotFoundError
+
         mock_connection.request.return_value = [{"_id": "r1"}]
 
-        route = await routing_manager.get_route_details("nonexistent")
-
-        assert route is None
+        with pytest.raises(UniFiNotFoundError):
+            await routing_manager.get_route_details("nonexistent")
 
     @pytest.mark.asyncio
     async def test_create_route_basic(self, routing_manager, mock_connection):
@@ -228,14 +229,16 @@ class TestRoutingManager:
 
     @pytest.mark.asyncio
     async def test_update_route_not_found(self, routing_manager, mock_connection):
-        """Test update_route returns False when route not found."""
+        """Test update_route raises UniFiNotFoundError when route missing."""
+        from unifi_core.exceptions import UniFiNotFoundError
+
         mock_connection.request.return_value = []
 
-        result = await routing_manager.update_route(
-            route_id="nonexistent",
-            name="Test",
-        )
-        assert result is False
+        with pytest.raises(UniFiNotFoundError):
+            await routing_manager.update_route(
+                route_id="nonexistent",
+                name="Test",
+            )
 
     @pytest.mark.asyncio
     async def test_update_route_no_updates(self, routing_manager, mock_connection):

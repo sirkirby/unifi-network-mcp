@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from aiounifi.models.api import ApiRequest
 from aiounifi.models.device import Device
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -45,16 +46,25 @@ class DeviceManager:
             logger.error("Error getting devices: %s", e)
             raise
 
-    async def get_device_details(self, device_mac: str) -> Optional[Device]:
-        """Get detailed information for a specific device by MAC address."""
+    async def get_device_details(self, device_mac: str) -> Device:
+        """Get detailed information for a specific device by MAC address.
+
+        Raises:
+            UniFiNotFoundError: If the device does not exist.
+        """
         devices = await self.get_devices()
         device: Optional[Device] = next((d for d in devices if d.mac == device_mac), None)
-        if not device:
-            logger.debug("Device details for MAC %s not found in devices list.", device_mac)
+        if device is None:
+            raise UniFiNotFoundError("device", device_mac)
         return device
 
     async def reboot_device(self, device_mac: str) -> bool:
-        """Reboot a device by MAC address."""
+        """Reboot a device by MAC address.
+
+        Raises:
+            UniFiNotFoundError: If the device does not exist.
+        """
+        await self.get_device_details(device_mac)  # existence check; raises on miss
         try:
             api_request = ApiRequest(
                 method="post",
@@ -70,11 +80,15 @@ class DeviceManager:
             raise
 
     async def rename_device(self, device_mac: str, name: str) -> bool:
-        """Rename a device."""
+        """Rename a device.
+
+        Raises:
+            UniFiNotFoundError: If the device does not exist.
+        """
         try:
-            device = await self.get_device_details(device_mac)
-            if not device or "_id" not in device.raw:
-                logger.error("Cannot rename device %s: Not found or missing ID.", device_mac)
+            device = await self.get_device_details(device_mac)  # raises on miss
+            if "_id" not in device.raw:
+                logger.error("Cannot rename device %s: missing _id in raw payload.", device_mac)
                 return False
             device_id = device.raw["_id"]
 
@@ -88,7 +102,12 @@ class DeviceManager:
             raise
 
     async def adopt_device(self, device_mac: str) -> bool:
-        """Adopt a device by MAC address."""
+        """Adopt a device by MAC address.
+
+        Raises:
+            UniFiNotFoundError: If the device does not exist.
+        """
+        await self.get_device_details(device_mac)  # existence check; raises on miss
         try:
             api_request = ApiRequest(
                 method="post",
@@ -104,7 +123,12 @@ class DeviceManager:
             raise
 
     async def upgrade_device(self, device_mac: str) -> bool:
-        """Start firmware upgrade for a device by MAC address."""
+        """Start firmware upgrade for a device by MAC address.
+
+        Raises:
+            UniFiNotFoundError: If the device does not exist.
+        """
+        await self.get_device_details(device_mac)  # existence check; raises on miss
         try:
             api_request = ApiRequest(
                 method="post",
@@ -168,11 +192,12 @@ class DeviceManager:
     async def get_device_radio(self, device_mac: str) -> Optional[Dict[str, Any]]:
         """Get focused radio configuration and live stats for an AP.
 
-        Returns None if device is not found or is not an access point.
+        Returns None if the device exists but is not an access point.
+
+        Raises:
+            UniFiNotFoundError: If the device does not exist.
         """
-        device = await self.get_device_details(device_mac)
-        if not device:
-            return None
+        device = await self.get_device_details(device_mac)  # raises on miss
         device_type = device.raw.get("type", "")
         if not device_type.startswith("uap"):
             return None
@@ -228,9 +253,9 @@ class DeviceManager:
             True on success, False on failure.
         """
         try:
-            device = await self.get_device_details(device_mac)
-            if not device or "_id" not in device.raw:
-                logger.error("Cannot update radio for %s: device not found or missing ID.", device_mac)
+            device = await self.get_device_details(device_mac)  # raises on miss
+            if "_id" not in device.raw:
+                logger.error("Cannot update radio for %s: missing _id in raw payload.", device_mac)
                 return False
             device_id = device.raw["_id"]
 

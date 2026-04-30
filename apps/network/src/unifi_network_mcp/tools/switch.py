@@ -15,6 +15,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import create_preview, update_preview
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_network_mcp.runtime import server, switch_manager
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
@@ -75,14 +76,13 @@ async def get_port_profile_details(
             return {"success": False, "error": "profile_id is required"}
 
         profile = await switch_manager.get_port_profile_by_id(profile_id)
-        if not profile:
-            return {"success": False, "error": f"Port profile '{profile_id}' not found."}
-
         return {
             "success": True,
             "profile_id": profile_id,
             "details": json.loads(json.dumps(profile, default=str)),
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting port profile %s: %s", profile_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get port profile {profile_id}: {e}"}
@@ -189,24 +189,23 @@ async def update_port_profile(
     if not validated_data:
         return {"success": False, "error": "Update data is effectively empty or invalid."}
 
-    current = await switch_manager.get_port_profile_by_id(profile_id)
-    if not current:
-        return {"success": False, "error": f"Port profile '{profile_id}' not found."}
-
     if not confirm:
         return update_preview(
             resource_type="port_profile",
             resource_id=profile_id,
-            resource_name=current.get("name"),
-            current_state=current,
+            resource_name=profile_id,
+            current_state={},
             updates=validated_data,
         )
 
     try:
-        success = await switch_manager.update_port_profile(profile_id, validated_data)
-        if success:
-            return {"success": True, "message": f"Port profile '{profile_id}' updated successfully."}
-        return {"success": False, "error": f"Failed to update port profile '{profile_id}'."}
+        merged = await switch_manager.update_port_profile(profile_id, validated_data)
+        return {
+            "success": True,
+            "message": f"Port profile '{merged.get('name', profile_id)}' updated successfully.",
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating port profile %s: %s", profile_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update port profile '{profile_id}': {e}"}

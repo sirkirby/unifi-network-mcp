@@ -12,25 +12,10 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import create_preview, update_preview
-from unifi_network_mcp.runtime import server
+from unifi_core.exceptions import UniFiNotFoundError
+from unifi_network_mcp.runtime import routing_manager, server
 
 logger = logging.getLogger(__name__)
-
-# Lazy import to avoid circular dependencies
-_routing_manager = None
-
-
-def _get_routing_manager():
-    """Lazy-load the routing manager to avoid circular imports."""
-    global _routing_manager
-    if _routing_manager is None:
-        from unifi_core.network.managers.routing_manager import RoutingManager
-        from unifi_network_mcp.runtime import get_connection_manager
-
-        _routing_manager = RoutingManager(get_connection_manager())
-    return _routing_manager
-
-
 def _validate_cidr(network: str) -> bool:
     """Validate a CIDR network notation."""
     pattern = r"^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$"
@@ -40,16 +25,12 @@ def _validate_cidr(network: str) -> bool:
     ip_parts = parts[0].split(".")
     prefix = int(parts[1])
     return all(0 <= int(p) <= 255 for p in ip_parts) and 0 <= prefix <= 32
-
-
 def _validate_ip(ip: str) -> bool:
     """Validate an IP address."""
     pattern = r"^(\d{1,3}\.){3}\d{1,3}$"
     if not re.match(pattern, ip):
         return False
     return all(0 <= int(p) <= 255 for p in ip.split("."))
-
-
 @server.tool(
     name="unifi_list_routes",
     description="""List all user-defined static routes for the current site.
@@ -61,7 +42,7 @@ These are manually configured routes, not dynamic or system routes.""",
 async def list_routes() -> Dict[str, Any]:
     """List all user-defined static routes."""
     try:
-        routing_manager = _get_routing_manager()
+        
         routes = await routing_manager.get_routes()
 
         # Format routes for readability
@@ -87,8 +68,6 @@ async def list_routes() -> Dict[str, Any]:
     except Exception as e:
         logger.error("Error listing routes: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list routes: {e}"}
-
-
 @server.tool(
     name="unifi_list_active_routes",
     description="""List all active routes from the device routing table.
@@ -103,7 +82,7 @@ Returns empty list if unavailable.""",
 async def list_active_routes() -> Dict[str, Any]:
     """List all active routes from the routing table."""
     try:
-        routing_manager = _get_routing_manager()
+        
         routes = await routing_manager.get_active_routes()
 
         return {
@@ -115,8 +94,6 @@ async def list_active_routes() -> Dict[str, Any]:
     except Exception as e:
         logger.error("Error listing active routes: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to list active routes: {e}"}
-
-
 @server.tool(
     name="unifi_get_route_details",
     description="Get detailed information about a specific static route by its ID",
@@ -127,24 +104,17 @@ async def get_route_details(
 ) -> Dict[str, Any]:
     """Get details for a specific route."""
     try:
-        routing_manager = _get_routing_manager()
         route = await routing_manager.get_route_details(route_id)
-
-        if route:
-            return {
-                "success": True,
-                "site": routing_manager._connection.site,
-                "route": route,
-            }
         return {
-            "success": False,
-            "error": f"Route not found with ID: {route_id}",
+            "success": True,
+            "site": routing_manager._connection.site,
+            "route": route,
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting route details for %s: %s", route_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get route details for {route_id}: {e}"}
-
-
 @server.tool(
     name="unifi_create_route",
     description="""Create a new static route for advanced routing configuration.
@@ -203,7 +173,7 @@ async def create_route(
         )
 
     try:
-        routing_manager = _get_routing_manager()
+        
         route = await routing_manager.create_route(
             name=name.strip(),
             static_route_network=network,
@@ -223,8 +193,6 @@ async def create_route(
     except Exception as e:
         logger.error("Error creating route: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to create route: {e}"}
-
-
 @server.tool(
     name="unifi_update_route",
     description="""Update an existing static route's properties.
@@ -278,48 +246,28 @@ async def update_route(
     if distance is not None and (distance < 1 or distance > 255):
         return {"success": False, "error": "Distance must be between 1 and 255."}
 
+    updates = {
+        k: v
+        for k, v in {
+            "name": name.strip() if name else None,
+            "network": network,
+            "nexthop": nexthop,
+            "distance": distance,
+            "enabled": enabled,
+        }.items()
+        if v is not None
+    }
+
+    if not confirm:
+        return update_preview(
+            resource_type="static_route",
+            resource_id=route_id,
+            resource_name=route_id,
+            current_state={},
+            updates=updates,
+        )
+
     try:
-        routing_manager = _get_routing_manager()
-
-        # Fetch current route state for preview
-        current_route = await routing_manager.get_route_details(route_id)
-        if not current_route:
-            return {
-                "success": False,
-                "error": f"Route not found with ID: {route_id}",
-            }
-
-        if not confirm:
-            # Build current state from the route
-            current_state = {
-                "name": current_route.get("name"),
-                "network": current_route.get("static-route_network"),
-                "nexthop": current_route.get("static-route_nexthop"),
-                "distance": current_route.get("static-route_distance", 1),
-                "enabled": current_route.get("enabled", True),
-            }
-
-            # Build updates dict with only provided values
-            updates = {
-                k: v
-                for k, v in {
-                    "name": name.strip() if name else None,
-                    "network": network,
-                    "nexthop": nexthop,
-                    "distance": distance,
-                    "enabled": enabled,
-                }.items()
-                if v is not None
-            }
-
-            return update_preview(
-                resource_type="static_route",
-                resource_id=route_id,
-                resource_name=current_route.get("name"),
-                current_state=current_state,
-                updates=updates,
-            )
-
         success = await routing_manager.update_route(
             route_id=route_id,
             name=name.strip() if name else None,
@@ -333,19 +281,11 @@ async def update_route(
             return {
                 "success": True,
                 "message": f"Route {route_id} updated successfully.",
-                "updates": {
-                    k: v
-                    for k, v in {
-                        "name": name,
-                        "network": network,
-                        "nexthop": nexthop,
-                        "distance": distance,
-                        "enabled": enabled,
-                    }.items()
-                    if v is not None
-                },
+                "updates": updates,
             }
         return {"success": False, "error": f"Failed to update route {route_id}."}
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating route %s: %s", route_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update route {route_id}: {e}"}

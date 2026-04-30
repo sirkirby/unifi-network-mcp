@@ -18,6 +18,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import create_preview, update_preview
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_network_mcp.runtime import content_filter_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
@@ -101,14 +102,13 @@ async def get_content_filter_details(
             return {"success": False, "error": "filter_id is required"}
 
         profile = await content_filter_manager.get_content_filter_by_id(filter_id)
-        if not profile:
-            return {"success": False, "error": f"Content filter '{filter_id}' not found."}
-
         return {
             "success": True,
             "filter_id": filter_id,
             "details": json.loads(json.dumps(profile, default=str)),
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting content filter %s: %s", filter_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get content filter {filter_id}: {e}"}
@@ -154,24 +154,23 @@ async def update_content_filter(
     if not validated_data:
         return {"success": False, "error": "Update data is effectively empty or invalid."}
 
-    current = await content_filter_manager.get_content_filter_by_id(filter_id)
-    if not current:
-        return {"success": False, "error": f"Content filter '{filter_id}' not found."}
-
     if not confirm:
         return update_preview(
             resource_type="content_filter",
             resource_id=filter_id,
-            resource_name=current.get("name"),
-            current_state=current,
+            resource_name=filter_id,
+            current_state={},
             updates=validated_data,
         )
 
     try:
-        success = await content_filter_manager.update_content_filter(filter_id, validated_data)
-        if success:
-            return {"success": True, "message": f"Content filter '{filter_id}' updated successfully."}
-        return {"success": False, "error": f"Failed to update content filter '{filter_id}'."}
+        merged = await content_filter_manager.update_content_filter(filter_id, validated_data)
+        return {
+            "success": True,
+            "message": f"Content filter '{merged.get('name', filter_id)}' updated successfully.",
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating content filter %s: %s", filter_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update content filter '{filter_id}': {e}"}

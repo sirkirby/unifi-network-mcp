@@ -12,23 +12,10 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import toggle_preview, update_preview
-from unifi_network_mcp.runtime import server
+from unifi_core.exceptions import UniFiNotFoundError
+from unifi_network_mcp.runtime import server, traffic_route_manager
 
 logger = logging.getLogger(__name__)
-
-# Lazy import to avoid circular dependencies
-_traffic_route_manager = None
-
-
-def _get_traffic_route_manager():
-    """Lazy-load the traffic route manager to avoid circular imports."""
-    global _traffic_route_manager
-    if _traffic_route_manager is None:
-        from unifi_core.network.managers.traffic_route_manager import TrafficRouteManager
-        from unifi_network_mcp.runtime import get_connection_manager
-
-        _traffic_route_manager = TrafficRouteManager(get_connection_manager())
-    return _traffic_route_manager
 
 
 @server.tool(
@@ -42,7 +29,7 @@ IP addresses, regions, or target devices. Often used for VPN routing.""",
 async def list_traffic_routes() -> Dict[str, Any]:
     """List all traffic routes."""
     try:
-        traffic_route_manager = _get_traffic_route_manager()
+        
         routes = await traffic_route_manager.get_traffic_routes()
 
         # Format routes for readability
@@ -88,18 +75,15 @@ async def get_traffic_route_details(
 ) -> Dict[str, Any]:
     """Get details for a specific traffic route."""
     try:
-        traffic_route_manager = _get_traffic_route_manager()
         route = await traffic_route_manager.get_traffic_route_details(route_id)
-
-        if route:
-            return {
-                "success": True,
-                "site": traffic_route_manager._connection.site,
-                "route_id": route_id,
-                "details": route,
-            }
-        else:
-            return {"success": False, "error": f"Traffic route '{route_id}' not found."}
+        return {
+            "success": True,
+            "site": traffic_route_manager._connection.site,
+            "route_id": route_id,
+            "details": route,
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting traffic route details: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to get traffic route details: {e}"}
@@ -142,58 +126,39 @@ async def update_traffic_route(
             "error": "At least one of 'enabled' or 'kill_switch_enabled' must be provided.",
         }
 
+    updates: Dict[str, Any] = {}
+    if enabled is not None:
+        updates["enabled"] = enabled
+    if kill_switch_enabled is not None:
+        updates["kill_switch_enabled"] = kill_switch_enabled
+
+    if not confirm:
+        return update_preview(
+            resource_type="traffic_route",
+            resource_id=route_id,
+            resource_name=route_id,
+            current_state={},
+            updates=updates,
+        )
+
     try:
-        traffic_route_manager = _get_traffic_route_manager()
-
-        # Fetch current state for preview
-        current = await traffic_route_manager.get_traffic_route_details(route_id)
-        if not current:
-            return {"success": False, "error": f"Traffic route '{route_id}' not found."}
-
-        route_name = current.get("description", route_id)
-
-        # Build update dict for preview and execution
-        updates: Dict[str, Any] = {}
-        if enabled is not None:
-            updates["enabled"] = enabled
-        if kill_switch_enabled is not None:
-            updates["kill_switch_enabled"] = kill_switch_enabled
-
-        # Return preview when confirm=false
-        if not confirm:
-            return update_preview(
-                resource_type="traffic_route",
-                resource_id=route_id,
-                resource_name=route_name,
-                current_state={
-                    "enabled": current.get("enabled"),
-                    "kill_switch_enabled": current.get("kill_switch_enabled"),
-                    "network_id": current.get("network_id"),
-                },
-                updates=updates,
-            )
-
         success = await traffic_route_manager.update_traffic_route(route_id, **updates)
-
         if success:
-            route = await traffic_route_manager.get_traffic_route_details(route_id)
-            desc = route.get("description", route_id) if route else route_id
-
             changes = []
             if enabled is not None:
                 changes.append(f"enabled={'on' if enabled else 'off'}")
             if kill_switch_enabled is not None:
                 changes.append(f"kill_switch={'on' if kill_switch_enabled else 'off'}")
-
             return {
                 "success": True,
-                "message": f"Traffic route '{desc}' updated: {', '.join(changes)}.",
+                "message": f"Traffic route '{route_id}' updated: {', '.join(changes)}.",
             }
-        else:
-            return {
-                "success": False,
-                "error": f"Failed to update traffic route {route_id}.",
-            }
+        return {
+            "success": False,
+            "error": f"Failed to update traffic route {route_id}.",
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating traffic route: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to update traffic route: {e}"}
@@ -218,7 +183,7 @@ async def toggle_traffic_route(
 ) -> Dict[str, Any]:
     """Toggle a traffic route's enabled state."""
     try:
-        traffic_route_manager = _get_traffic_route_manager()
+        
 
         # Get current state for preview/message
         current = await traffic_route_manager.get_traffic_route_details(route_id)

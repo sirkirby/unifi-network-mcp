@@ -23,8 +23,8 @@ from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequestV2
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.merge import deep_merge
-
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -160,35 +160,34 @@ class OonManager:
             logger.error("Error getting OON policies: %s", e)
             raise
 
-    async def get_oon_policy_by_id(self, policy_id: str) -> Optional[Dict[str, Any]]:
+    async def get_oon_policy_by_id(self, policy_id: str) -> Dict[str, Any]:
         """Get a specific OON policy by ID.
 
-        Args:
-            policy_id: The ID of the OON policy.
-
-        Returns:
-            The OON policy dictionary, or None if not found.
+        Raises:
+            UniFiNotFoundError: If the policy does not exist.
         """
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
 
+        api_request = ApiRequestV2(method="get", path=f"{OON_PATH_SINGLE}/{policy_id}")
         try:
-            api_request = ApiRequestV2(method="get", path=f"{OON_PATH_SINGLE}/{policy_id}")
             response = await self._connection.request(api_request)
+        except Exception:
+            response = None
 
-            if isinstance(response, list) and response:
-                return response[0]
-            if isinstance(response, dict):
-                result = response if ("id" in response or "_id" in response) else response.get("data", None)
-                if result:
-                    return result
+        if isinstance(response, list) and response:
+            return response[0]
+        if isinstance(response, dict):
+            result = response if ("id" in response or "_id" in response) else response.get("data", None)
+            if result:
+                return result
 
-            # Fallback: search in list
-            policies = await self.get_oon_policies()
-            return next((p for p in policies if p.get("id", p.get("_id")) == policy_id), None)
-        except Exception as e:
-            logger.error("Error getting OON policy %s: %s", policy_id, e)
-            raise
+        # Fallback: search in list
+        policies = await self.get_oon_policies()
+        match = next((p for p in policies if p.get("id", p.get("_id")) == policy_id), None)
+        if match is None:
+            raise UniFiNotFoundError("oon_policy", policy_id)
+        return match
 
     async def create_oon_policy(self, policy_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new OON policy.
@@ -248,37 +247,27 @@ class OonManager:
             logger.error("Error creating OON policy: %s", e, exc_info=True)
             raise
 
-    async def update_oon_policy(self, policy_id: str, update_data: Dict[str, Any]) -> bool:
+    async def update_oon_policy(self, policy_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update an existing OON policy by merging updates with current state.
 
-        Args:
-            policy_id: The ID of the OON policy to update.
-            update_data: Dictionary of fields to update (partial is fine).
-
         Returns:
-            True on success, False on failure.
+            The merged policy dict.
+
+        Raises:
+            UniFiNotFoundError: If the policy does not exist.
         """
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
+
+        existing = await self.get_oon_policy_by_id(policy_id)  # raises on miss
         if not update_data:
-            return True
+            return existing
 
-        try:
-            existing = await self.get_oon_policy_by_id(policy_id)
-            if not existing:
-                logger.error("OON policy %s not found for update", policy_id)
-                return False
-
-            merged_data = deep_merge(existing, update_data)
-
-            api_request = ApiRequestV2(method="put", path=f"{OON_PATH_SINGLE}/{policy_id}", data=merged_data)
-            await self._connection.request(api_request)
-
-            self._invalidate_cache()
-            return True
-        except Exception as e:
-            logger.error("Error updating OON policy %s: %s", policy_id, e, exc_info=True)
-            raise
+        merged_data = deep_merge(existing, update_data)
+        api_request = ApiRequestV2(method="put", path=f"{OON_PATH_SINGLE}/{policy_id}", data=merged_data)
+        await self._connection.request(api_request)
+        self._invalidate_cache()
+        return merged_data
 
     async def toggle_oon_policy(self, policy_id: str) -> Optional[bool]:
         """Toggle an OON policy's enabled state.
@@ -295,23 +284,14 @@ class OonManager:
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
 
-        try:
-            policy = await self.get_oon_policy_by_id(policy_id)
-            if not policy:
-                logger.error("OON policy %s not found for toggle", policy_id)
-                return None
+        policy = await self.get_oon_policy_by_id(policy_id)  # raises on miss
+        new_state = not policy.get("enabled", False)
+        policy["enabled"] = new_state
 
-            new_state = not policy.get("enabled", False)
-            policy["enabled"] = new_state
-
-            api_request = ApiRequestV2(method="put", path=f"{OON_PATH_SINGLE}/{policy_id}", data=policy)
-            await self._connection.request(api_request)
-
-            self._invalidate_cache()
-            return new_state
-        except Exception as e:
-            logger.error("Error toggling OON policy %s: %s", policy_id, e, exc_info=True)
-            raise
+        api_request = ApiRequestV2(method="put", path=f"{OON_PATH_SINGLE}/{policy_id}", data=policy)
+        await self._connection.request(api_request)
+        self._invalidate_cache()
+        return new_state
 
     async def delete_oon_policy(self, policy_id: str) -> bool:
         """Delete an OON policy.
