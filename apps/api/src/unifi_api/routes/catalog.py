@@ -69,3 +69,31 @@ async def get_render_hints(request: Request) -> dict:
         by_kind.setdefault(kind, {"kind": kind, "tools": [], "resources": []})
         by_kind[kind]["resources"].append({"product": product, "path": resource})
     return {"items": list(by_kind.values())}
+
+
+@router.get("/catalog/resources", dependencies=[Depends(require_scope(Scope.READ))])
+async def get_resources(request: Request) -> dict:
+    """Discoverability endpoint: every registered resource path with render_hint.
+
+    Lists every (product, resource_path) pair from the serializer registry.
+    For paths with placeholders (e.g., 'clients/{mac}'), renders as a path
+    template under /v1/sites/{site_id}/.
+    """
+    serializer_registry = request.app.state.serializer_registry
+    items = []
+    for product, resource in serializer_registry.all_resources():
+        try:
+            hint = serializer_registry.render_hint_for_resource(product, resource)
+        except Exception:
+            hint = {"kind": "empty"}
+        if "{" in resource:
+            base, tmpl = resource.split("/", 1)
+            path = f"/v1/sites/{{site_id}}/{base}/{tmpl}"
+        else:
+            path = f"/v1/sites/{{site_id}}/{resource}"
+        items.append({
+            "product": product,
+            "resource_path": path,
+            "render_hint": hint,
+        })
+    return {"items": items}

@@ -19,6 +19,7 @@ logger = logging.getLogger("unifi-api.streams")
 @dataclass
 class StreamSubscriber:
     queue: asyncio.Queue[dict] = field(default_factory=lambda: asyncio.Queue(maxsize=256))
+    filter_fn: Callable[[dict], bool] | None = None
 
 
 class SubscriberPool:
@@ -58,6 +59,8 @@ class SubscriberPool:
 
     def _broadcast(self, key: tuple[str, str], event: dict) -> None:
         for sub in list(self._pools.get(key, [])):
+            if sub.filter_fn is not None and not sub.filter_fn(event):
+                continue
             try:
                 sub.queue.put_nowait(event)
             except asyncio.QueueFull:

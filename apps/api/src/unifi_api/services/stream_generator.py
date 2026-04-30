@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Callable
 
 from unifi_api.services.streams import StreamSubscriber, SubscriberPool
 
@@ -37,9 +37,16 @@ async def sse_event_stream(
     serializer: Any,
     last_event_id: str | None = None,
     keepalive_interval: float = 30.0,
+    filter_fn: Callable[[dict], bool] | None = None,
 ) -> AsyncIterator[bytes]:
-    """Replay buffer (filtered by last_event_id) then live tail with keepalive."""
+    """Replay buffer (filtered by last_event_id) then live tail with keepalive.
+
+    Optional filter_fn is applied to both replay-buffer events and live-tail
+    events (via the StreamSubscriber.filter_fn honored by SubscriberPool._broadcast).
+    """
     sub: StreamSubscriber = await pool.attach(controller_id, product, manager)
+    if filter_fn is not None:
+        sub.filter_fn = filter_fn
     try:
         # 1. Replay buffer (manager returns most-recent-first; reverse to oldest-first)
         replay = list(reversed(manager.get_recent_from_buffer()))
@@ -52,6 +59,8 @@ async def sse_event_stream(
                 elif str(evt.get("id")) == str(last_event_id):
                     seen = True
             replay = tail if seen else replay
+        if filter_fn is not None:
+            replay = [e for e in replay if filter_fn(e)]
         for evt in replay:
             yield format_sse_frame(event=evt, product=product, serializer=serializer)
 

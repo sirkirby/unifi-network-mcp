@@ -75,8 +75,11 @@ from unifi_api.routes.resources.access import (
 )
 from unifi_api.routes.streams import (
     access as access_streams_routes,
+    access_per_door as access_per_door_routes,
     network as net_streams_routes,
+    network_per_device as net_per_device_routes,
     protect as protect_streams_routes,
+    protect_per_camera as protect_per_camera_routes,
 )
 from unifi_api.serializers._registry import discover_serializers
 from unifi_api.services.capability_cache import CapabilityCache
@@ -258,6 +261,9 @@ def create_app(config: ApiConfig) -> FastAPI:
         net_streams_routes,
         protect_streams_routes,
         access_streams_routes,
+        net_per_device_routes,
+        protect_per_camera_routes,
+        access_per_door_routes,
     ):
         app.include_router(r.router, prefix="/v1")
 
