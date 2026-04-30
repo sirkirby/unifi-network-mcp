@@ -116,6 +116,65 @@ async def list_alarms(
 
 
 @server.tool(
+    name="unifi_recent_events",
+    description=(
+        "Get recent events from the in-memory websocket buffer. This is fast "
+        "(no API call) and returns events received via the real-time websocket "
+        "stream. Supports filtering by event_type prefix, client/device mac, "
+        "and limit. Use this for real-time monitoring; use unifi_list_events "
+        "for historical queries."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def unifi_recent_events(
+    event_type: Annotated[
+        Optional[str],
+        Field(
+            description="Filter by event type prefix (e.g., 'EVT_WU_' for wireless user events). Use unifi_get_event_types for valid prefixes."
+        ),
+    ] = None,
+    mac: Annotated[
+        Optional[str],
+        Field(description="Filter events to a specific client or device by MAC address. Omit to include all."),
+    ] = None,
+    limit: Annotated[
+        Optional[int],
+        Field(description="Maximum number of events to return from the buffer. Omit to return all buffered events."),
+    ] = None,
+) -> Dict[str, Any]:
+    """Return recent events from the websocket ring buffer."""
+    logger.info("unifi_recent_events called (type=%s, mac=%s)", event_type, mac)
+    mgr = _get_event_manager()
+    events = mgr.get_recent_from_buffer(event_type=event_type, mac=mac, limit=limit)
+    return {"events": events, "count": len(events), "buffer_size": mgr.buffer_size}
+
+
+@server.tool(
+    name="unifi_subscribe_events",
+    description=(
+        "Returns a handle describing how to subscribe to live network events. "
+        "Provides the MCP resource URI for the event stream and pointers to the "
+        "buffered-event tool. Use this to set up continuous event monitoring."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def unifi_subscribe_events() -> Dict[str, Any]:
+    """Return a handle describing how to subscribe to live network events."""
+    logger.info("unifi_subscribe_events called")
+    mgr = _get_event_manager()
+    return {
+        "resource_uri": "unifi://network/events",
+        "summary_uri": "unifi://network/events/recent",
+        "buffer_size": mgr.buffer_size,
+        "instructions": (
+            "Call unifi_recent_events to read buffered events. The unifi-api "
+            "service (if running) exposes /v1/streams/network/events for live "
+            "SSE consumption."
+        ),
+    }
+
+
+@server.tool(
     name="unifi_get_event_types",
     description="""Get a list of known event type prefixes for filtering events.
 

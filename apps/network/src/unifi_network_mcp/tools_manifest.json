@@ -1,5 +1,5 @@
 {
-  "count": 167,
+  "count": 169,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "unifi_network_mcp.tools.devices",
@@ -127,6 +127,7 @@
     "unifi_lookup_by_ip": "unifi_network_mcp.tools.clients",
     "unifi_power_cycle_port": "unifi_network_mcp.tools.switch",
     "unifi_reboot_device": "unifi_network_mcp.tools.devices",
+    "unifi_recent_events": "unifi_network_mcp.tools.events",
     "unifi_rename_client": "unifi_network_mcp.tools.clients",
     "unifi_rename_device": "unifi_network_mcp.tools.devices",
     "unifi_revoke_voucher": "unifi_network_mcp.tools.hotspot",
@@ -135,6 +136,7 @@
     "unifi_set_jumbo_frames": "unifi_network_mcp.tools.switch",
     "unifi_set_site_leds": "unifi_network_mcp.tools.devices",
     "unifi_set_switch_port_profile": "unifi_network_mcp.tools.switch",
+    "unifi_subscribe_events": "unifi_network_mcp.tools.events",
     "unifi_toggle_device": "unifi_network_mcp.tools.devices",
     "unifi_toggle_firewall_policy": "unifi_network_mcp.tools.firewall",
     "unifi_toggle_oon_policy": "unifi_network_mcp.tools.oon",
@@ -3228,6 +3230,33 @@
     },
     {
       "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Get recent events from the in-memory websocket buffer. This is fast (no API call) and returns events received via the real-time websocket stream. Supports filtering by event_type prefix, client/device mac, and limit. Use this for real-time monitoring; use unifi_list_events for historical queries.",
+      "name": "unifi_recent_events",
+      "schema": {
+        "input": {
+          "properties": {
+            "event_type": {
+              "description": "Filter by event type prefix (e.g., 'EVT_WU_' for wireless user events). Use unifi_get_event_types for valid prefixes.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Maximum number of events to return from the buffer. Omit to return all buffered events.",
+              "type": "integer"
+            },
+            "mac": {
+              "description": "Filter events to a specific client or device by MAC address. Omit to include all.",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
         "destructiveHint": false,
         "idempotentHint": true,
         "openWorldHint": false,
@@ -3503,6 +3532,20 @@
             "device_mac",
             "port_overrides"
           ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Returns a handle describing how to subscribe to live network events. Provides the MCP resource URI for the event stream and pointers to the buffered-event tool. Use this to set up continuous event monitoring.",
+      "name": "unifi_subscribe_events",
+      "schema": {
+        "input": {
+          "properties": {},
           "type": "object"
         }
       }
