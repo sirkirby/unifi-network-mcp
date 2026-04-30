@@ -35,10 +35,16 @@ from unifi_api.routes.resources.access import (
     doors as access_doors_routes,
     users as access_users_routes,
 )
+from unifi_api.routes.streams import (
+    access as access_streams_routes,
+    network as net_streams_routes,
+    protect as protect_streams_routes,
+)
 from unifi_api.serializers._registry import discover_serializers
 from unifi_api.services.capability_cache import CapabilityCache
 from unifi_api.services.managers import ManagerFactory
 from unifi_api.services.manifest import ManifestRegistry
+from unifi_api.services.streams import SubscriberPool
 
 
 def create_app(config: ApiConfig) -> FastAPI:
@@ -95,6 +101,7 @@ def create_app(config: ApiConfig) -> FastAPI:
     cipher = ColumnCipher(derive_key(db_key))
     app.state.cipher = cipher
     app.state.manager_factory = ManagerFactory(app.state.sessionmaker, cipher)
+    app.state.subscriber_pool = SubscriberPool()
     app.state.argon_cache = ArgonVerifyCache()
     app.state.capability_cache = CapabilityCache()
     app.state.manifest_registry = ManifestRegistry.load_from_apps()
@@ -129,6 +136,12 @@ def create_app(config: ApiConfig) -> FastAPI:
         access_doors_routes,
         access_users_routes,
         access_credentials_routes,
+    ):
+        app.include_router(r.router, prefix="/v1")
+    for r in (
+        net_streams_routes,
+        protect_streams_routes,
+        access_streams_routes,
     ):
         app.include_router(r.router, prefix="/v1")
 
