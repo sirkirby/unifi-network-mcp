@@ -11,6 +11,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import toggle_preview, update_preview
+from unifi_core.exceptions import UniFiNotFoundError
 
 # Import the global FastMCP server instance, config, and managers
 from unifi_network_mcp.runtime import client_manager, server

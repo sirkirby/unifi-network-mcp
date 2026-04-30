@@ -4,6 +4,7 @@ from typing import List, Optional
 from aiounifi.models.api import ApiRequest
 from aiounifi.models.client import Client
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -87,16 +88,25 @@ class ClientManager:
             logger.error("Error getting all clients: %s", e)
             raise
 
-    async def get_client_details(self, client_mac: str) -> Optional[Client]:
-        """Get detailed information for a specific client by MAC address."""
+    async def get_client_details(self, client_mac: str) -> Client:
+        """Get detailed information for a specific client by MAC address.
+
+        Raises:
+            UniFiNotFoundError: If the client does not exist.
+        """
         all_clients = await self.get_all_clients()
         client: Optional[Client] = next((c for c in all_clients if c.mac == client_mac), None)
-        if not client:
-            logger.debug("Client details for MAC %s not found in clients_all list.", client_mac)
+        if client is None:
+            raise UniFiNotFoundError("client", client_mac)
         return client
 
     async def block_client(self, client_mac: str) -> bool:
-        """Block a client by MAC address."""
+        """Block a client by MAC address.
+
+        Raises:
+            UniFiNotFoundError: If the client does not exist.
+        """
+        await self.get_client_details(client_mac)  # existence check; raises on miss
         try:
             # Construct ApiRequest
             api_request = ApiRequest(
@@ -114,7 +124,12 @@ class ClientManager:
             raise
 
     async def unblock_client(self, client_mac: str) -> bool:
-        """Unblock a client by MAC address."""
+        """Unblock a client by MAC address.
+
+        Raises:
+            UniFiNotFoundError: If the client does not exist.
+        """
+        await self.get_client_details(client_mac)  # existence check; raises on miss
         try:
             # Construct ApiRequest
             api_request = ApiRequest(
@@ -132,11 +147,15 @@ class ClientManager:
             raise
 
     async def rename_client(self, client_mac: str, name: str) -> bool:
-        """Rename a client device."""
+        """Rename a client device.
+
+        Raises:
+            UniFiNotFoundError: If the client does not exist.
+        """
         try:
-            client = await self.get_client_details(client_mac)
-            if not client or "_id" not in client.raw:
-                logger.error("Cannot rename client %s: Not found or missing ID.", client_mac)
+            client = await self.get_client_details(client_mac)  # raises on miss
+            if "_id" not in client.raw:
+                logger.error("Cannot rename client %s: missing _id in raw payload.", client_mac)
                 return False
             client_id = client.raw["_id"]
 
@@ -162,7 +181,12 @@ class ClientManager:
             raise
 
     async def force_reconnect_client(self, client_mac: str) -> bool:
-        """Force a client to reconnect (kick)."""
+        """Force a client to reconnect (kick).
+
+        Raises:
+            UniFiNotFoundError: If the client does not exist.
+        """
+        await self.get_client_details(client_mac)  # existence check; raises on miss
         try:
             api_request = ApiRequest(
                 method="post",
@@ -178,7 +202,12 @@ class ClientManager:
             raise
 
     async def forget_client(self, client_mac: str) -> bool:
-        """Forget/remove a client from the controller's known client history."""
+        """Forget/remove a client from the controller's known client history.
+
+        Idempotent: forgetting an unknown MAC returns success (the controller
+        also accepts unknown MACs without erroring), preserving the
+        delete-style semantics from spec §6.3.
+        """
         try:
             api_request = ApiRequest(
                 method="post",
@@ -207,7 +236,12 @@ class ClientManager:
         down_kbps: Optional[int] = None,
         bytes_quota: Optional[int] = None,
     ) -> bool:
-        """Authorize a guest client."""
+        """Authorize a guest client.
+
+        Raises:
+            UniFiNotFoundError: If the client does not exist.
+        """
+        await self.get_client_details(client_mac)  # existence check; raises on miss
         try:
             payload = {"mac": client_mac, "cmd": "authorize-guest", "minutes": minutes}
             if up_kbps is not None:
@@ -229,7 +263,12 @@ class ClientManager:
             raise
 
     async def unauthorize_guest(self, client_mac: str) -> bool:
-        """Unauthorize (de-authorize) a guest client."""
+        """Unauthorize (de-authorize) a guest client.
+
+        Raises:
+            UniFiNotFoundError: If the client does not exist.
+        """
+        await self.get_client_details(client_mac)  # existence check; raises on miss
         try:
             api_request = ApiRequest(
                 method="post",
@@ -295,11 +334,8 @@ class ClientManager:
             True if the update was successful, False otherwise.
         """
         try:
-            # Get client to find their internal _id
+            # Get client to find their internal _id; raises UniFiNotFoundError on miss.
             client = await self.get_client_details(client_mac)
-            if not client:
-                logger.error("Cannot set IP settings for %s: Client not found", client_mac)
-                return False
 
             client_raw = client.raw if hasattr(client, "raw") else client
             if "_id" not in client_raw:
