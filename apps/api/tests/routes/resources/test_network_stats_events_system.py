@@ -182,22 +182,26 @@ async def test_get_client_dpi_traffic_with_mac(tmp_path, monkeypatch) -> None:
     assert r.json()["render_hint"]["kind"] == "timeseries"
 
 
-# ---------- DETAIL stats (3 mis-classified) ----------
+# ---------- TIMESERIES stats (PR4 dispatch override now points at
+# stats_manager.get_X_stats which returns list[point]) ----------
 
 
 @pytest.mark.asyncio
-async def test_get_device_stats_with_mac_detail(tmp_path, monkeypatch) -> None:
-    """device-stats currently DETAIL kind; dispatch routes to device_manager.get_device_details."""
+async def test_get_device_stats_with_mac_timeseries(tmp_path, monkeypatch) -> None:
+    """device-stats now TIMESERIES; dispatch override routes to stats_manager.get_device_stats."""
     monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
     app, key, cid = await _bootstrap(tmp_path)
     _stub_connection(app, cid)
 
-    async def fake_get(self, mac):
+    async def fake_stats(self, mac, *args, **kwargs):
         assert mac == "11:22:33:44:55:66"
-        return {"mac": mac, "name": "ap1", "model": "U6-LR", "type": "uap"}
+        return [
+            {"time": 1_700_000_000, "rx_bytes": 1, "tx_bytes": 2},
+            {"time": 1_700_000_300, "rx_bytes": 3, "tx_bytes": 4},
+        ]
 
-    from unifi_core.network.managers.device_manager import DeviceManager
-    monkeypatch.setattr(DeviceManager, "get_device_details", fake_get)
+    from unifi_core.network.managers.stats_manager import StatsManager
+    monkeypatch.setattr(StatsManager, "get_device_stats", fake_stats)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get(
@@ -206,23 +210,23 @@ async def test_get_device_stats_with_mac_detail(tmp_path, monkeypatch) -> None:
         )
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["render_hint"]["kind"] == "detail"
-    assert "data" in body
+    assert body["render_hint"]["kind"] == "timeseries"
+    assert isinstance(body["items"], list) and len(body["items"]) == 2
 
 
 @pytest.mark.asyncio
-async def test_get_client_stats_with_mac_detail(tmp_path, monkeypatch) -> None:
-    """client-stats currently DETAIL; dispatch routes to client_manager.get_client_details."""
+async def test_get_client_stats_with_mac_timeseries(tmp_path, monkeypatch) -> None:
+    """client-stats now TIMESERIES; dispatch override routes to stats_manager.get_client_stats."""
     monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
     app, key, cid = await _bootstrap(tmp_path)
     _stub_connection(app, cid)
 
-    async def fake_get(self, mac):
+    async def fake_stats(self, mac, *args, **kwargs):
         assert mac == "aa:bb:cc:dd:ee:ff"
-        return {"mac": mac, "hostname": "alice"}
+        return [{"timestamp": 1_700_000_000_000, "tx_bytes": 100}]
 
-    from unifi_core.network.managers.client_manager import ClientManager
-    monkeypatch.setattr(ClientManager, "get_client_details", fake_get)
+    from unifi_core.network.managers.stats_manager import StatsManager
+    monkeypatch.setattr(StatsManager, "get_client_stats", fake_stats)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get(
@@ -231,7 +235,8 @@ async def test_get_client_stats_with_mac_detail(tmp_path, monkeypatch) -> None:
         )
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["render_hint"]["kind"] == "detail"
+    assert body["render_hint"]["kind"] == "timeseries"
+    assert isinstance(body["items"], list)
 
 
 @pytest.mark.asyncio

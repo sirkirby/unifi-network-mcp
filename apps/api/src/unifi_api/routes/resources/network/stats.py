@@ -1,20 +1,16 @@
 """GET /v1/sites/{site_id}/stats/* — network stats endpoints.
 
-Phase 5A PR2 Cluster 6. Stats endpoints span TIMESERIES and DETAIL kinds.
+Phase 5A PR2 Cluster 6, amended PR4 of mgr-existence-refactor.
 
-Phase 4A registered 5 stats tools as TIMESERIES (dashboard, network, gateway,
-site_dpi_traffic, client_dpi_traffic) and 3 as DETAIL (device_stats,
-client_stats, dpi_stats) because Phase 2's AST captured the lookup method,
-not the stats fetch method. The parallel manager-refactor will eventually
-re-register the 3 DETAIL ones as TIMESERIES; the dual-kind handler below
-makes Phase 5A robust to whichever state is current at request time.
-
-For the 3 currently-DETAIL stats tools, we call the manager method that the
-AST-derived dispatch table currently routes to (verified at module import
-time): device_manager.get_device_details, client_manager.get_client_details,
-stats_manager.get_dpi_stats. When the parallel refactor lands, both the
-serializer kind and the dispatch table will update together — the route
-inherits both via the registry/dispatch.
+Stats endpoints span TIMESERIES and DETAIL kinds. After PR4:
+- TIMESERIES (7): dashboard, network, gateway, site_dpi_traffic,
+  client_dpi_traffic, **device_stats** (newly), **client_stats** (newly).
+  ``device_stats`` and ``client_stats`` now call ``stats_manager.get_X_stats``
+  directly (was ``device_manager.get_device_details`` /
+  ``client_manager.get_client_details`` pre-PR4); the dispatch override and
+  serializer kind both flipped together.
+- DETAIL (1): dpi_stats — shape is ``{applications: [], categories: []}``,
+  not a per-point timeseries.
 """
 
 from __future__ import annotations
@@ -261,22 +257,20 @@ async def get_device_stats(
     limit: int = Query(50, ge=1, le=500),
     cursor: str | None = Query(None),
 ) -> dict:
-    """DETAIL kind currently; dispatch routes to device_manager.get_device_details."""
+    """TIMESERIES; calls stats_manager.get_device_stats (PR4)."""
     require_capability(controller, "network")
     factory = request.app.state.manager_factory
     sm = request.app.state.sessionmaker
     try:
         async with sm() as session:
             mgr = await factory.get_domain_manager(
-                session, controller.id, "network", "device_manager",
+                session, controller.id, "network", "stats_manager",
             )
             cm = await factory.get_connection_manager(session, controller.id, "network")
             await _maybe_set_site(cm, site_id)
-            payload = await mgr.get_device_details(mac)
+            payload = await mgr.get_device_stats(mac)
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    if payload is None:
-        raise HTTPException(status_code=404, detail=f"device {mac} not found")
     return _stats_response(
         request, payload, "unifi_get_device_stats", limit=limit, cursor=cursor,
     )
@@ -294,22 +288,20 @@ async def get_client_stats(
     limit: int = Query(50, ge=1, le=500),
     cursor: str | None = Query(None),
 ) -> dict:
-    """DETAIL kind currently; dispatch routes to client_manager.get_client_details."""
+    """TIMESERIES; calls stats_manager.get_client_stats (PR4)."""
     require_capability(controller, "network")
     factory = request.app.state.manager_factory
     sm = request.app.state.sessionmaker
     try:
         async with sm() as session:
             mgr = await factory.get_domain_manager(
-                session, controller.id, "network", "client_manager",
+                session, controller.id, "network", "stats_manager",
             )
             cm = await factory.get_connection_manager(session, controller.id, "network")
             await _maybe_set_site(cm, site_id)
-            payload = await mgr.get_client_details(mac)
+            payload = await mgr.get_client_stats(mac)
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    if payload is None:
-        raise HTTPException(status_code=404, detail=f"client {mac} not found")
     return _stats_response(
         request, payload, "unifi_get_client_stats", limit=limit, cursor=cursor,
     )

@@ -59,28 +59,32 @@ def test_timeseries_dispatches_for_all_list_returning_stats_tools() -> None:
         assert out["render_hint"]["kind"] == "timeseries"
 
 
-# ---- DETAIL stats (dict-returning AST capture) ----
+# ---- TIMESERIES stats (PR4 dispatch override now points at list-returning
+# stats_manager.get_device_stats / get_client_stats) ----
 
 
-def test_device_stats_detail_serializer_shape() -> None:
-    """get_device_details (AST capture) returns a single device dict."""
+def test_device_stats_timeseries_serializer_shape() -> None:
     reg = _registry()
     s = reg.serializer_for_tool("unifi_get_device_stats")
-    sample = {"mac": "aa:bb:cc:dd:ee:ff", "name": "AP-1", "uptime": 3600, "rx_bytes": 1, "tx_bytes": 2}
+    sample = [
+        {"time": 1_700_000_000, "rx_bytes": 1, "tx_bytes": 2},
+        {"time": 1_700_000_300, "rx_bytes": 3, "tx_bytes": 4},
+    ]
     out = s.serialize_action(sample, tool_name="unifi_get_device_stats")
     assert out["success"] is True
-    assert out["render_hint"]["kind"] == "detail"
-    assert out["data"]["mac"] == "aa:bb:cc:dd:ee:ff"
-    assert out["data"]["uptime"] == 3600
+    assert out["render_hint"]["kind"] == "timeseries"
+    assert isinstance(out["data"], list) and len(out["data"]) == 2
+    assert out["data"][0]["ts"] == 1_700_000_000_000  # seconds → ms
 
 
-def test_client_stats_detail_serializer_shape() -> None:
+def test_client_stats_timeseries_serializer_shape() -> None:
     reg = _registry()
     s = reg.serializer_for_tool("unifi_get_client_stats")
-    sample = {"mac": "11:22:33:44:55:66", "hostname": "laptop", "tx_bytes": 100}
+    sample = [{"timestamp": 1_700_000_000_000, "tx_bytes": 100}]
     out = s.serialize_action(sample, tool_name="unifi_get_client_stats")
-    assert out["render_hint"]["kind"] == "detail"
-    assert out["data"]["mac"] == "11:22:33:44:55:66"
+    assert out["render_hint"]["kind"] == "timeseries"
+    assert out["data"][0]["ts"] == 1_700_000_000_000
+    assert out["data"][0]["tx_bytes"] == 100
 
 
 def test_dpi_stats_detail_serializer_shape() -> None:
