@@ -339,6 +339,29 @@ async def test_get_dns_record_details_404(tmp_path, monkeypatch) -> None:
     assert r.status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_get_dns_record_details_unifi_not_found(tmp_path, monkeypatch) -> None:
+    """Manager refactor PR #172: get_dns_record raises UniFiNotFoundError."""
+    monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
+    app, key, cid = await _bootstrap(tmp_path)
+    _stub_connection(app, cid)
+
+    from unifi_core.exceptions import UniFiNotFoundError
+    from unifi_core.network.managers.dns_manager import DnsManager
+
+    async def fake_get(self, record_id):
+        raise UniFiNotFoundError("dns_record", record_id)
+
+    monkeypatch.setattr(DnsManager, "get_dns_record", fake_get)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get(
+            f"/v1/sites/default/dns-records/missing?controller={cid}",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+    assert r.status_code == 404
+
+
 # ---------- VPN clients ----------
 
 

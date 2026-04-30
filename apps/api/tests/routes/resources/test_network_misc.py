@@ -154,6 +154,29 @@ async def test_get_port_forward_404(tmp_path, monkeypatch) -> None:
     assert r.status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_get_port_forward_unifi_not_found(tmp_path, monkeypatch) -> None:
+    """Manager refactor PR #172: get_port_forward_by_id raises UniFiNotFoundError."""
+    monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
+    app, key, cid = await _bootstrap(tmp_path)
+    _stub_connection(app, cid)
+
+    from unifi_core.exceptions import UniFiNotFoundError
+    from unifi_core.network.managers.firewall_manager import FirewallManager
+
+    async def fake_get(self, rule_id):
+        raise UniFiNotFoundError("port_forward", rule_id)
+
+    monkeypatch.setattr(FirewallManager, "get_port_forward_by_id", fake_get)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get(
+            f"/v1/sites/default/port-forwards/missing?controller={cid}",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+    assert r.status_code == 404
+
+
 # ---------- vouchers ----------
 
 

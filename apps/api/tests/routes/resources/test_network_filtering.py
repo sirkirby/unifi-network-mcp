@@ -275,6 +275,29 @@ async def test_get_qos_rule_details_404(tmp_path, monkeypatch) -> None:
     assert r.status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_get_qos_rule_details_unifi_not_found(tmp_path, monkeypatch) -> None:
+    """Manager refactor PR #172: get_qos_rule_details raises UniFiNotFoundError."""
+    monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
+    app, key, cid = await _bootstrap(tmp_path)
+    _stub_connection(app, cid)
+
+    from unifi_core.exceptions import UniFiNotFoundError
+    from unifi_core.network.managers.qos_manager import QosManager
+
+    async def fake_get(self, rule_id):
+        raise UniFiNotFoundError("qos_rule", rule_id)
+
+    monkeypatch.setattr(QosManager, "get_qos_rule_details", fake_get)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get(
+            f"/v1/sites/default/qos-rules/missing?controller={cid}",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+    assert r.status_code == 404
+
+
 # ---------- DPI ----------
 
 
@@ -403,6 +426,29 @@ async def test_get_content_filter_details_happy_path(tmp_path, monkeypatch) -> N
     assert body["data"]["id"] == "cf9"
 
 
+@pytest.mark.asyncio
+async def test_get_content_filter_details_unifi_not_found(tmp_path, monkeypatch) -> None:
+    """Manager refactor PR #172: get_content_filter_by_id raises UniFiNotFoundError."""
+    monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
+    app, key, cid = await _bootstrap(tmp_path)
+    _stub_connection(app, cid)
+
+    from unifi_core.exceptions import UniFiNotFoundError
+    from unifi_core.network.managers.content_filter_manager import ContentFilterManager
+
+    async def fake_get(self, filter_id):
+        raise UniFiNotFoundError("content_filter", filter_id)
+
+    monkeypatch.setattr(ContentFilterManager, "get_content_filter_by_id", fake_get)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get(
+            f"/v1/sites/default/content-filters/missing?controller={cid}",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+    assert r.status_code == 404
+
+
 # ---------- ACL ----------
 
 
@@ -460,6 +506,29 @@ async def test_get_acl_rule_details_happy_path(tmp_path, monkeypatch) -> None:
     body = r.json()
     assert body["render_hint"]["kind"] == "detail"
     assert body["data"]["id"] == "a3"
+
+
+@pytest.mark.asyncio
+async def test_get_acl_rule_details_unifi_not_found(tmp_path, monkeypatch) -> None:
+    """Manager refactor PR #172: get_acl_rule_by_id raises UniFiNotFoundError."""
+    monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
+    app, key, cid = await _bootstrap(tmp_path)
+    _stub_connection(app, cid)
+
+    from unifi_core.exceptions import UniFiNotFoundError
+    from unifi_core.network.managers.acl_manager import AclManager
+
+    async def fake_get(self, rule_id):
+        raise UniFiNotFoundError("acl_rule", rule_id)
+
+    monkeypatch.setattr(AclManager, "get_acl_rule_by_id", fake_get)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get(
+            f"/v1/sites/default/acl-rules/missing?controller={cid}",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+    assert r.status_code == 404
 
 
 # ---------- OON ----------

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from unifi_core.exceptions import UniFiNotFoundError
+
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
 from unifi_api.routes.resources._common import (
@@ -81,17 +83,20 @@ async def get_firewall_rule(
     require_capability(controller, "network")
     factory = request.app.state.manager_factory
     sm = request.app.state.sessionmaker
-    async with sm() as session:
-        mgr = await factory.get_domain_manager(
-            session, controller.id, "network", "firewall_manager",
-        )
-        cm = await factory.get_connection_manager(session, controller.id, "network")
-        if cm.site != site_id:
-            await cm.set_site(site_id)
-        # firewall_manager exposes get_firewall_policies (list) but not a
-        # singular get_firewall_policy_details. Fetch the list and filter
-        # by id; the manager already caches/normalizes the response.
-        all_rules = await mgr.get_firewall_policies(include_predefined=True)
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "network", "firewall_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "network")
+            if cm.site != site_id:
+                await cm.set_site(site_id)
+            # firewall_manager exposes get_firewall_policies (list) but not a
+            # singular get_firewall_policy_details. Fetch the list and filter
+            # by id; the manager already caches/normalizes the response.
+            all_rules = await mgr.get_firewall_policies(include_predefined=True)
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
     rule = None
     for r in all_rules:

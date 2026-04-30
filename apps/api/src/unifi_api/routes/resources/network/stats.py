@@ -21,6 +21,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from unifi_core.exceptions import UniFiNotFoundError
+
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
 from unifi_api.routes.resources._common import (
@@ -263,13 +265,16 @@ async def get_device_stats(
     require_capability(controller, "network")
     factory = request.app.state.manager_factory
     sm = request.app.state.sessionmaker
-    async with sm() as session:
-        mgr = await factory.get_domain_manager(
-            session, controller.id, "network", "device_manager",
-        )
-        cm = await factory.get_connection_manager(session, controller.id, "network")
-        await _maybe_set_site(cm, site_id)
-        payload = await mgr.get_device_details(mac)
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "network", "device_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "network")
+            await _maybe_set_site(cm, site_id)
+            payload = await mgr.get_device_details(mac)
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     if payload is None:
         raise HTTPException(status_code=404, detail=f"device {mac} not found")
     return _stats_response(
@@ -293,13 +298,16 @@ async def get_client_stats(
     require_capability(controller, "network")
     factory = request.app.state.manager_factory
     sm = request.app.state.sessionmaker
-    async with sm() as session:
-        mgr = await factory.get_domain_manager(
-            session, controller.id, "network", "client_manager",
-        )
-        cm = await factory.get_connection_manager(session, controller.id, "network")
-        await _maybe_set_site(cm, site_id)
-        payload = await mgr.get_client_details(mac)
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "network", "client_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "network")
+            await _maybe_set_site(cm, site_id)
+            payload = await mgr.get_client_details(mac)
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     if payload is None:
         raise HTTPException(status_code=404, detail=f"client {mac} not found")
     return _stats_response(

@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from unifi_core.exceptions import UniFiNotFoundError
+
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
 from unifi_api.routes.resources._common import (
@@ -82,14 +84,17 @@ async def get_acl_rule_details(
     require_capability(controller, "network")
     factory = request.app.state.manager_factory
     sm = request.app.state.sessionmaker
-    async with sm() as session:
-        mgr = await factory.get_domain_manager(
-            session, controller.id, "network", "acl_manager",
-        )
-        cm = await factory.get_connection_manager(session, controller.id, "network")
-        if cm.site != site_id:
-            await cm.set_site(site_id)
-        item = await mgr.get_acl_rule_by_id(rule_id)
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "network", "acl_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "network")
+            if cm.site != site_id:
+                await cm.set_site(site_id)
+            item = await mgr.get_acl_rule_by_id(rule_id)
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     if item is None:
         raise HTTPException(
             status_code=404, detail=f"acl rule {rule_id} not found",
