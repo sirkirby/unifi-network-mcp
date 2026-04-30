@@ -1,6 +1,7 @@
-"""GET /v1/sites/{site_id}/client-groups[/{group_id}] — network member client groups.
+"""GET /v1/sites/{site_id}/port-forwards[/{port_forward_id}] — port forwards.
 
-Phase 5A PR1 Cluster 2 — clients & user groups.
+Phase 5A PR2 Cluster 5 — port forwards / vouchers / SNMP. Backed by
+``FirewallManager.get_port_forwards`` and ``get_port_forward_by_id``.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
 router = APIRouter()
 
 
-def _group_key(obj) -> tuple:
+def _id_key(obj) -> tuple:
     raw = obj if isinstance(obj, dict) else getattr(obj, "raw", {}) or {}
     return (0, raw.get("_id") or raw.get("id") or "")
 
@@ -36,10 +37,10 @@ def _decode_cursor(cursor: str | None) -> Cursor | None:
 
 
 @router.get(
-    "/sites/{site_id}/client-groups",
+    "/sites/{site_id}/port-forwards",
     dependencies=[Depends(require_scope(Scope.READ))],
 )
-async def list_client_groups(
+async def list_port_forwards(
     request: Request,
     site_id: str,
     controller=Depends(resolve_controller),
@@ -51,37 +52,34 @@ async def list_client_groups(
     sm = request.app.state.sessionmaker
     async with sm() as session:
         mgr = await factory.get_domain_manager(
-            session, controller.id, "network", "client_group_manager",
+            session, controller.id, "network", "firewall_manager",
         )
         cm = await factory.get_connection_manager(session, controller.id, "network")
         if cm.site != site_id:
             await cm.set_site(site_id)
-        all_groups = await mgr.get_client_groups()
+        items = await mgr.get_port_forwards()
 
     cursor_obj = _decode_cursor(cursor)
     page, next_cursor = paginate(
-        list(all_groups), limit=limit, cursor=cursor_obj, key_fn=_group_key,
+        list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
-
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_list_client_groups")
-    items = [serializer.serialize(g) for g in page]
-    hint = registry.render_hint_for_tool("unifi_list_client_groups")
+    serializer = registry.serializer_for_tool("unifi_list_port_forwards")
     return {
-        "items": items,
+        "items": [serializer.serialize(i) for i in page],
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": hint,
+        "render_hint": registry.render_hint_for_tool("unifi_list_port_forwards"),
     }
 
 
 @router.get(
-    "/sites/{site_id}/client-groups/{group_id}",
+    "/sites/{site_id}/port-forwards/{port_forward_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
 )
-async def get_client_group_details(
+async def get_port_forward(
     request: Request,
     site_id: str,
-    group_id: str,
+    port_forward_id: str,
     controller=Depends(resolve_controller),
 ) -> dict:
     require_capability(controller, "network")
@@ -90,20 +88,21 @@ async def get_client_group_details(
     try:
         async with sm() as session:
             mgr = await factory.get_domain_manager(
-                session, controller.id, "network", "client_group_manager",
+                session, controller.id, "network", "firewall_manager",
             )
             cm = await factory.get_connection_manager(session, controller.id, "network")
             if cm.site != site_id:
                 await cm.set_site(site_id)
-            group = await mgr.get_client_group_by_id(group_id)
+            item = await mgr.get_port_forward_by_id(port_forward_id)
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    if group is None:
-        raise HTTPException(status_code=404, detail="client group not found")
-
+    if item is None:
+        raise HTTPException(
+            status_code=404, detail=f"port forward {port_forward_id} not found",
+        )
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_get_client_group_details")
+    serializer = registry.serializer_for_tool("unifi_get_port_forward")
     return {
-        "data": serializer.serialize(group),
-        "render_hint": registry.render_hint_for_tool("unifi_get_client_group_details"),
+        "data": serializer.serialize(item),
+        "render_hint": registry.render_hint_for_tool("unifi_get_port_forward"),
     }

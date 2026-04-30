@@ -20,21 +20,34 @@ from unifi_api.routes import catalog as catalog_routes
 from unifi_api.routes import controllers as controllers_routes
 from unifi_api.routes import health
 from unifi_api.routes.resources.network import (
+    acl as net_acl_routes,
     ap_groups as net_ap_groups_routes,
     blocked_clients as net_blocked_clients_routes,
     client_groups as net_client_groups_routes,
     clients as net_clients_routes,
+    content_filters as net_content_filters_routes,
     devices as net_devices_routes,
     dns as net_dns_routes,
+    dpi as net_dpi_routes,
+    events as net_events_routes,
+    firewall_groups as net_firewall_groups_routes,
     firewall_rules as net_firewall_routes,
+    firewall_zones as net_firewall_zones_routes,
     lldp as net_lldp_routes,
     lookup as net_lookup_routes,
     networks as net_networks_routes,
+    oon as net_oon_routes,
+    port_forwards as net_port_forwards_routes,
+    qos as net_qos_routes,
     rogue_aps as net_rogue_aps_routes,
     routes as net_routes_routes,
+    snmp as net_snmp_routes,
     speedtest as net_speedtest_routes,
+    stats as net_stats_routes,
     switch as net_switch_routes,
+    system as net_system_routes,
     user_groups as net_user_groups_routes,
+    vouchers as net_vouchers_routes,
     vpn as net_vpn_routes,
     wireless as net_wireless_routes,
     wlans as net_wlans_routes,
@@ -188,6 +201,23 @@ def create_app(config: ApiConfig) -> FastAPI:
         net_dns_routes,
         net_vpn_routes,
         net_ap_groups_routes,
+        net_firewall_groups_routes,
+        net_firewall_zones_routes,
+        net_qos_routes,
+        net_dpi_routes,
+        net_content_filters_routes,
+        net_acl_routes,
+        net_oon_routes,
+        net_port_forwards_routes,
+        net_vouchers_routes,
+        net_snmp_routes,
+        # Cluster 6: stats / events / system. The network events router owns
+        # the bare /events path for both products via a capability-aware
+        # dispatcher; it must be included before protect_events_routes so the
+        # network/protect-aware handler wins the path match.
+        net_stats_routes,
+        net_events_routes,
+        net_system_routes,
     ):
         app.include_router(r.router, prefix="/v1")
     for r in (

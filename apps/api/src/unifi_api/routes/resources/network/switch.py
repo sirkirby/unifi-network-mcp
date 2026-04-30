@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from unifi_core.exceptions import UniFiNotFoundError
+
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
 from unifi_api.routes.resources._common import (
@@ -100,14 +102,17 @@ async def get_port_profile_details(
     require_capability(controller, "network")
     factory = request.app.state.manager_factory
     sm = request.app.state.sessionmaker
-    async with sm() as session:
-        mgr = await factory.get_domain_manager(
-            session, controller.id, "network", "switch_manager",
-        )
-        cm = await factory.get_connection_manager(session, controller.id, "network")
-        if cm.site != site_id:
-            await cm.set_site(site_id)
-        profile = await mgr.get_port_profile_by_id(profile_id)
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "network", "switch_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "network")
+            if cm.site != site_id:
+                await cm.set_site(site_id)
+            profile = await mgr.get_port_profile_by_id(profile_id)
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     if profile is None:
         raise HTTPException(status_code=404, detail="port profile not found")
 
