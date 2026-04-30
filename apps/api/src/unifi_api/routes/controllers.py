@@ -170,3 +170,17 @@ async def capabilities_endpoint(request: Request, cid: str, refresh: bool = Fals
     payload = await probe_capabilities(controller)
     cache.put(cid, payload)
     return payload
+
+
+@router.post(
+    "/controllers/{cid}/probe",
+    dependencies=[Depends(require_scope(Scope.ADMIN))],
+)
+async def probe_endpoint(request: Request, cid: str) -> dict:
+    sm = request.app.state.sessionmaker
+    async with sm() as session:
+        try:
+            await get_controller(session, cid)
+        except ControllerNotFound:
+            raise HTTPException(status_code=404, detail="controller not found")
+    return await request.app.state.manager_factory.probe_controller(cid)

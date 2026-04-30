@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Any, Callable
 from urllib.parse import urlparse
 
@@ -298,6 +300,70 @@ class ManagerFactory:
         instance = builder(cm)
         self._domain_cache[key] = instance
         return instance
+
+    async def probe_controller(self, controller_id: str) -> dict:
+        """Live connectivity probe across all products the controller advertises.
+
+        Invalidates any cached connection for the controller, then reconstructs
+        each product's ConnectionManager (which calls initialize() — the network
+        round-trip). Per-product latency + success/failure.
+
+        Returns:
+            {
+              "ok": <bool — all products succeeded>,
+              "products": {<product>: {"ok": bool, "latency_ms": int, "error": <str|None>}, ...},
+              "latency_ms": <int — sum of per-product latencies>,
+              "error_kind": <"not_found" | None>,
+              "last_probed_at": <iso8601 utc str>,
+            }
+
+        If the controller does not exist, returns:
+            {"ok": False, "error_kind": "not_found", "products": {},
+             "latency_ms": 0, "last_probed_at": iso8601}
+
+        This method does NOT cache the constructed connection. After the probe,
+        the controller's connection cache is empty. The next normal request
+        will reconstruct cleanly. This is intentional (probe = fresh handshake).
+        """
+        async with self._sm() as session:
+            controller = await session.get(Controller, controller_id)
+            if controller is None:
+                return {
+                    "ok": False,
+                    "error_kind": "not_found",
+                    "products": {},
+                    "latency_ms": 0,
+                    "last_probed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            products = [p for p in controller.product_kinds.split(",") if p]
+
+        # Drop cached connections so we exercise the slow path.
+        await self.invalidate_controller(controller_id)
+
+        per_product: dict[str, dict] = {}
+        total_latency = 0
+        all_ok = True
+        for product in products:
+            start = time.perf_counter()
+            try:
+                async with self._sm() as session:
+                    await self._construct_connection_manager(session, controller_id, product)
+                latency = int((time.perf_counter() - start) * 1000)
+                per_product[product] = {"ok": True, "latency_ms": latency, "error": None}
+                total_latency += latency
+            except Exception as exc:
+                latency = int((time.perf_counter() - start) * 1000)
+                per_product[product] = {"ok": False, "latency_ms": latency, "error": str(exc)}
+                total_latency += latency
+                all_ok = False
+
+        return {
+            "ok": all_ok,
+            "products": per_product,
+            "latency_ms": total_latency,
+            "error_kind": None,
+            "last_probed_at": datetime.now(timezone.utc).isoformat(),
+        }
 
     async def invalidate_controller(self, controller_id: str) -> None:
         """Drop all cached managers for a controller and dispose their sessions."""
