@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from contextlib import asynccontextmanager
 
@@ -42,9 +43,13 @@ from unifi_api.routes.streams import (
 )
 from unifi_api.serializers._registry import discover_serializers
 from unifi_api.services.capability_cache import CapabilityCache
+from unifi_api.services.controllers import list_controllers
 from unifi_api.services.managers import ManagerFactory
 from unifi_api.services.manifest import ManifestRegistry
 from unifi_api.services.streams import SubscriberPool
+
+
+_streams_log = logging.getLogger("unifi-api.streams")
 
 
 def create_app(config: ApiConfig) -> FastAPI:
@@ -55,6 +60,39 @@ def create_app(config: ApiConfig) -> FastAPI:
         # Loading is idempotent and fast (file reads), so re-loading here keeps
         # the lifespan as the canonical startup hook.
         app.state.manifest_registry = ManifestRegistry.load_from_apps()
+
+        # Phase 4B: eagerly start event listening for every (controller, product)
+        # pair so SSE subscribers see a warm buffer on first connect. Failures
+        # are logged warnings; they don't block startup. The stream endpoint for
+        # a failed controller serves an empty buffer + tail of nothing.
+        sm = app.state.sessionmaker
+        try:
+            async with sm() as session:
+                controllers = await list_controllers(session)
+        except Exception:
+            controllers = []
+            _streams_log.warning(
+                "could not list controllers for eager start_listening", exc_info=True,
+            )
+        for controller in controllers:
+            for product in [p for p in controller.product_kinds.split(",") if p]:
+                try:
+                    async with sm() as session:
+                        mgr = await app.state.manager_factory.get_domain_manager(
+                            session, controller.id, product, "event_manager",
+                        )
+                    if hasattr(mgr, "start_listening"):
+                        await mgr.start_listening()
+                        _streams_log.info(
+                            "[streams] start_listening ok for %s/%s",
+                            controller.id, product,
+                        )
+                except Exception:
+                    _streams_log.warning(
+                        "[streams] start_listening failed for %s/%s",
+                        controller.id, product, exc_info=True,
+                    )
+
         yield
         # Shutdown — drop manager caches first, then engine
         factory = app.state.manager_factory
