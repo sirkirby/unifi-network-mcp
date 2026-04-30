@@ -12,10 +12,13 @@ Manager methods covered:
   - ``LiveviewManager.create_liveview`` / ``delete_liveview`` -> preview dicts
   - ``ChimeManager.trigger_chime`` / ``update_chime`` -> dicts
 
-For ``protect_recent_events`` and ``protect_subscribe_events`` the tool layer
-returns ``{success, data: {events: [...], ...}}`` / ``{success, data: {...}}``
-wrapper dicts. We register DETAIL pass-through serializers — these are not
-list-shaped at the serializer boundary because the wrapper *is* the payload.
+For ``protect_recent_events`` the tool layer returns
+``{success, data: {events: [...], ...}}`` wrapper dicts; we register a
+DETAIL pass-through serializer because the wrapper *is* the payload.
+
+Phase 4B PR3 Task 14 migrates ``protect_subscribe_events`` to
+``ProtectStreamSubscriptionSerializer`` (STREAM kind) returning
+``{stream_url, transport: "sse", buffer_size, instructions}``.
 """
 
 from unifi_api.serializers._registry import (
@@ -202,22 +205,22 @@ def test_subscribe_events_serializer_shape() -> None:
     }
     out = s.serialize_action(sample, tool_name="protect_subscribe_events")
     assert out["success"] is True
-    # Pass-through: at minimum surface a subscription_id-or-uri field
-    assert (
-        out["data"].get("subscription_id") == "protect://events/stream"
-        or out["data"].get("resource_uri") == "protect://events/stream"
-    )
-    assert out["render_hint"]["kind"] == "detail"
+    assert out["data"]["stream_url"] == "/v1/streams/protect/events"
+    assert out["data"]["transport"] == "sse"
+    assert out["data"]["buffer_size"] == 100
+    assert out["data"]["instructions"] == "Read the resource at ..."
+    assert out["render_hint"]["kind"] == "stream"
 
 
-def test_subscribe_events_serializer_string_input() -> None:
-    """If the manager ever returns a bare string, wrap as subscription_id."""
+def test_subscribe_events_serializer_non_dict_input() -> None:
+    """Non-dict inputs still surface the stream metadata."""
     reg = _registry()
     s = reg.serializer_for_tool("protect_subscribe_events")
     out = s.serialize_action("sub-abc-123", tool_name="protect_subscribe_events")
     assert out["success"] is True
-    assert out["data"]["subscription_id"] == "sub-abc-123"
-    assert out["render_hint"]["kind"] == "detail"
+    assert out["data"]["stream_url"] == "/v1/streams/protect/events"
+    assert out["data"]["transport"] == "sse"
+    assert out["render_hint"]["kind"] == "stream"
 
 
 def test_event_mutation_ack_acknowledge() -> None:
