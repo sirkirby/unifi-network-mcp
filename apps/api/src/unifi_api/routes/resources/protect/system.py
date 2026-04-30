@@ -1,0 +1,267 @@
+"""Protect system + alarm read endpoints.
+
+Six endpoint families collected here:
+
+- ``GET /firmware-status``           → ``protect_get_firmware_status``
+- ``GET /alarm-status``              → ``protect_alarm_get_status``
+- ``GET /alarm-profiles``            → ``protect_alarm_list_profiles``
+- ``GET /protect/health``            → ``protect_get_health`` (product-prefixed
+  to disambiguate from ``/network/health`` and ``/access/health``)
+- ``GET /protect/system-info``       → ``protect_get_system_info`` (likewise)
+- ``GET /viewers``                   → ``protect_list_viewers``
+
+The ``/protect/...`` prefix is in the URL path — not a router prefix.
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+
+from unifi_core.exceptions import UniFiNotFoundError
+
+from unifi_api.auth.middleware import require_scope
+from unifi_api.auth.scopes import Scope
+from unifi_api.routes.resources._common import (
+    require_capability,
+    resolve_controller,
+)
+from unifi_api.routes.resources.protect.cameras import _maybe_set_site
+from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
+
+
+router = APIRouter()
+
+
+def _id_key(obj) -> tuple:
+    raw = obj if isinstance(obj, dict) else getattr(obj, "raw", {}) or {}
+    return (0, raw.get("id") or "")
+
+
+def _decode_cursor(cursor: str | None) -> Cursor | None:
+    if not cursor:
+        return None
+    try:
+        return Cursor.decode(cursor)
+    except InvalidCursor:
+        raise HTTPException(status_code=400, detail="invalid cursor")
+
+
+# ---------------------------------------------------------------------------
+# Firmware status
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/sites/{site_id}/firmware-status",
+    dependencies=[Depends(require_scope(Scope.READ))],
+)
+async def get_firmware_status(
+    request: Request,
+    site_id: str,
+    controller=Depends(resolve_controller),
+) -> dict:
+    require_capability(controller, "protect")
+    factory = request.app.state.manager_factory
+    sm = request.app.state.sessionmaker
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "protect", "system_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "protect")
+            await _maybe_set_site(cm, site_id)
+            payload = await mgr.get_firmware_status()
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    registry = request.app.state.serializer_registry
+    serializer = registry.serializer_for_tool("protect_get_firmware_status")
+    return {
+        "data": serializer.serialize(payload),
+        "render_hint": registry.render_hint_for_tool("protect_get_firmware_status"),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Alarm status + profiles (alarm_manager)
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/sites/{site_id}/alarm-status",
+    dependencies=[Depends(require_scope(Scope.READ))],
+)
+async def alarm_get_status(
+    request: Request,
+    site_id: str,
+    controller=Depends(resolve_controller),
+) -> dict:
+    require_capability(controller, "protect")
+    factory = request.app.state.manager_factory
+    sm = request.app.state.sessionmaker
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "protect", "alarm_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "protect")
+            await _maybe_set_site(cm, site_id)
+            payload = await mgr.get_arm_state()
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    registry = request.app.state.serializer_registry
+    serializer = registry.serializer_for_tool("protect_alarm_get_status")
+    return {
+        "data": serializer.serialize(payload),
+        "render_hint": registry.render_hint_for_tool("protect_alarm_get_status"),
+    }
+
+
+@router.get(
+    "/sites/{site_id}/alarm-profiles",
+    dependencies=[Depends(require_scope(Scope.READ))],
+)
+async def alarm_list_profiles(
+    request: Request,
+    site_id: str,
+    controller=Depends(resolve_controller),
+    limit: int = Query(50, ge=1, le=200),
+    cursor: str | None = Query(None),
+) -> dict:
+    require_capability(controller, "protect")
+    factory = request.app.state.manager_factory
+    sm = request.app.state.sessionmaker
+    async with sm() as session:
+        mgr = await factory.get_domain_manager(
+            session, controller.id, "protect", "alarm_manager",
+        )
+        cm = await factory.get_connection_manager(session, controller.id, "protect")
+        await _maybe_set_site(cm, site_id)
+        items = await mgr.list_arm_profiles()
+
+    cursor_obj = _decode_cursor(cursor)
+    page, next_cursor = paginate(
+        list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+    )
+
+    registry = request.app.state.serializer_registry
+    serializer = registry.serializer_for_tool("protect_alarm_list_profiles")
+    return {
+        "items": [serializer.serialize(p) for p in page],
+        "next_cursor": next_cursor.encode() if next_cursor else None,
+        "render_hint": registry.render_hint_for_tool("protect_alarm_list_profiles"),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Protect-prefixed health + system info (disambiguated paths)
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/sites/{site_id}/protect/health",
+    dependencies=[Depends(require_scope(Scope.READ))],
+)
+async def get_protect_health(
+    request: Request,
+    site_id: str,
+    controller=Depends(resolve_controller),
+) -> dict:
+    require_capability(controller, "protect")
+    factory = request.app.state.manager_factory
+    sm = request.app.state.sessionmaker
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "protect", "system_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "protect")
+            await _maybe_set_site(cm, site_id)
+            payload = await mgr.get_health()
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    registry = request.app.state.serializer_registry
+    serializer = registry.serializer_for_tool("protect_get_health")
+    return {
+        "data": serializer.serialize(payload),
+        "render_hint": registry.render_hint_for_tool("protect_get_health"),
+    }
+
+
+@router.get(
+    "/sites/{site_id}/protect/system-info",
+    dependencies=[Depends(require_scope(Scope.READ))],
+)
+async def get_protect_system_info(
+    request: Request,
+    site_id: str,
+    controller=Depends(resolve_controller),
+) -> dict:
+    require_capability(controller, "protect")
+    factory = request.app.state.manager_factory
+    sm = request.app.state.sessionmaker
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "protect", "system_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "protect")
+            await _maybe_set_site(cm, site_id)
+            payload = await mgr.get_system_info()
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    registry = request.app.state.serializer_registry
+    serializer = registry.serializer_for_tool("protect_get_system_info")
+    return {
+        "data": serializer.serialize(payload),
+        "render_hint": registry.render_hint_for_tool("protect_get_system_info"),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Viewers — LIST
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/sites/{site_id}/viewers",
+    dependencies=[Depends(require_scope(Scope.READ))],
+)
+async def list_viewers(
+    request: Request,
+    site_id: str,
+    controller=Depends(resolve_controller),
+    limit: int = Query(50, ge=1, le=200),
+    cursor: str | None = Query(None),
+) -> dict:
+    require_capability(controller, "protect")
+    factory = request.app.state.manager_factory
+    sm = request.app.state.sessionmaker
+    async with sm() as session:
+        mgr = await factory.get_domain_manager(
+            session, controller.id, "protect", "system_manager",
+        )
+        cm = await factory.get_connection_manager(session, controller.id, "protect")
+        await _maybe_set_site(cm, site_id)
+        items = await mgr.list_viewers()
+
+    cursor_obj = _decode_cursor(cursor)
+    page, next_cursor = paginate(
+        list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+    )
+
+    registry = request.app.state.serializer_registry
+    serializer = registry.serializer_for_tool("protect_list_viewers")
+    # ViewerSerializer hint kind is "detail" but the surface is a LIST —
+    # override to "list" so consumers render rows. Mirror the chimes
+    # approach if the registry exposes a list-render hint; here we just
+    # set kind explicitly.
+    list_hint = {**registry.render_hint_for_tool("protect_list_viewers"), "kind": "list"}
+    return {
+        "items": [serializer.serialize(v) for v in page],
+        "next_cursor": next_cursor.encode() if next_cursor else None,
+        "render_hint": list_hint,
+    }
