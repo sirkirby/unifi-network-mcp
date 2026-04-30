@@ -5,10 +5,13 @@ from __future__ import annotations
 import logging
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.cors import CORSMiddleware
 
+from unifi_api._version import __version__ as _api_version
 from unifi_api.auth.cache import ArgonVerifyCache
 from unifi_api.config import ApiConfig
 from unifi_api.db.crypto import ColumnCipher, derive_key
@@ -16,6 +19,7 @@ from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
 from unifi_api.logging import request_id_ctx
 from unifi_api.routes import actions as actions_routes
+from unifi_api.routes import admin_data as admin_data_routes
 from unifi_api.routes import audit as audit_routes
 from unifi_api.routes import catalog as catalog_routes
 from unifi_api.routes import controllers as controllers_routes
@@ -87,6 +91,7 @@ from unifi_api.services.capability_cache import CapabilityCache
 from unifi_api.services.controllers import list_controllers
 from unifi_api.services.managers import ManagerFactory
 from unifi_api.services.manifest import ManifestRegistry
+from unifi_api.services.log_reader import LogReader
 from unifi_api.services.settings import SettingsService
 from unifi_api.services.streams import SubscriberPool
 
@@ -185,6 +190,11 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.argon_cache = ArgonVerifyCache()
     app.state.capability_cache = CapabilityCache()
     app.state.settings_service = SettingsService(app.state.sessionmaker)
+    app.state.db_path = config.db.path
+    app.state.api_version = _api_version
+    app.state.started_at = datetime.now(timezone.utc)
+    app.state.log_file_path = None  # Task 11 may override this if log file is enabled
+    app.state.log_reader = LogReader(Path("/dev/null"))  # Task 11 may override
     app.state.manifest_registry = ManifestRegistry.load_from_apps()
     # Discover and register every serializer module, then validate against the
     # full manifest. Phase 4A landed coverage for all 235 manifest tools, so
@@ -200,6 +210,7 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.include_router(actions_routes.router, prefix="/v1")
     app.include_router(catalog_routes.router, prefix="/v1")
     app.include_router(audit_routes.router, prefix="/v1")
+    app.include_router(admin_data_routes.router, prefix="/v1")
     for r in (
         net_clients_routes,
         net_devices_routes,
