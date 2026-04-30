@@ -12,6 +12,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import preview_response
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_protect_mcp.runtime import alarm_manager, server
 
 logger = logging.getLogger(__name__)
@@ -117,7 +118,7 @@ async def protect_alarm_arm(
 
         result = await alarm_manager.arm(profile_id)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error arming alarm: %s", e, exc_info=True)
@@ -157,7 +158,7 @@ async def protect_alarm_disarm(
 
         result = await alarm_manager.disarm()
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error disarming alarm: %s", e, exc_info=True)

@@ -12,6 +12,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import preview_response
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_protect_mcp.runtime import event_manager, server
 
 logger = logging.getLogger(__name__)
@@ -118,7 +119,7 @@ async def protect_get_event(
     try:
         event = await event_manager.get_event(event_id)
         return {"success": True, "data": event}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting event %s: %s", event_id, e, exc_info=True)
@@ -154,7 +155,7 @@ async def protect_get_event_thumbnail(
     try:
         result = await event_manager.get_event_thumbnail(event_id, width=width, height=height)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting thumbnail for event %s: %s", event_id, e, exc_info=True)
@@ -367,7 +368,7 @@ async def protect_acknowledge_event(
 
         result = await event_manager.apply_acknowledge_event(event_id)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error acknowledging event %s: %s", event_id, e, exc_info=True)

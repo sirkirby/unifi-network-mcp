@@ -9,6 +9,7 @@ import logging
 from typing import Annotated, Any, Dict, List
 
 from mcp.types import ToolAnnotations
+from unifi_core.exceptions import UniFiNotFoundError
 from pydantic import Field
 
 from unifi_protect_mcp.runtime import liveview_manager, server
@@ -86,7 +87,7 @@ async def protect_create_liveview(
 
         # Since creation is not supported via uiprotect, return info regardless of confirm
         return {"success": False, "error": result["message"], "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error creating liveview: %s", e, exc_info=True)
@@ -118,7 +119,7 @@ async def protect_delete_liveview(
     try:
         result = await liveview_manager.delete_liveview(liveview_id)
         return {"success": False, "error": result["message"], "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error deleting liveview %s: %s", liveview_id, e, exc_info=True)

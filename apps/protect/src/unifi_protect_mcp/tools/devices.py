@@ -11,6 +11,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import preview_response
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_protect_mcp.runtime import chime_manager, light_manager, sensor_manager, server
 
 logger = logging.getLogger(__name__)
@@ -95,7 +96,7 @@ async def protect_update_light(
         # Apply the changes
         result = await light_manager.apply_light_settings(light_id, settings)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating light settings for %s: %s", light_id, e, exc_info=True)
@@ -203,7 +204,7 @@ async def protect_update_chime(
         # Apply the changes
         result = await chime_manager.apply_chime_settings(chime_id, settings)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating chime settings for %s: %s", chime_id, e, exc_info=True)
@@ -245,7 +246,7 @@ async def protect_trigger_chime(
             repeat_times=repeat_times,
         )
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error triggering chime %s: %s", chime_id, e, exc_info=True)

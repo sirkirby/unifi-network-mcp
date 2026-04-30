@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from unifi_core.exceptions import UniFiNotFoundError
 from pydantic import Field
 
 from unifi_protect_mcp.runtime import recording_manager, server
@@ -62,7 +63,7 @@ async def protect_get_recording_status(
     try:
         result = await recording_manager.get_recording_status(camera_id=camera_id)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting recording status: %s", e, exc_info=True)
@@ -102,7 +103,7 @@ async def protect_list_recordings(
             end=_parse_datetime(end),
         )
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error listing recordings for camera %s: %s", camera_id, e, exc_info=True)
@@ -161,7 +162,7 @@ async def protect_export_clip(
             fps=fps,
         )
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error exporting clip for camera %s: %s", camera_id, e, exc_info=True)
@@ -218,7 +219,7 @@ async def protect_delete_recording(
         )
         # Since deletion is not supported, always return the info response
         return {"success": False, "error": result["message"]}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error with delete recording for camera %s: %s", camera_id, e, exc_info=True)
