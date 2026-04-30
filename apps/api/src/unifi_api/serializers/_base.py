@@ -14,6 +14,7 @@ class RenderKind(str, Enum):
     TIMESERIES = "timeseries"
     EVENT_LOG = "event_log"
     EMPTY = "empty"
+    STREAM = "stream"
 
 
 class SerializerContractError(Exception):
@@ -69,6 +70,8 @@ class Serializer:
         if kind == RenderKind.EMPTY:
             return {"success": True, "render_hint": hint}
         if kind == RenderKind.DIFF:
+            return {"success": True, "data": self.serialize(result), "render_hint": hint}
+        if kind == RenderKind.STREAM:
             return {"success": True, "data": self.serialize(result), "render_hint": hint}
         if kind in (RenderKind.TIMESERIES, RenderKind.EVENT_LOG):
             if not isinstance(result, list):
