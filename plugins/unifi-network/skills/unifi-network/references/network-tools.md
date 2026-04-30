@@ -1,4 +1,4 @@
-# Network Server Tool Reference (167 tools)
+# Network Server Tool Reference (169 tools)
 
 Complete reference for `unifi_*` tools. All read tools are always available. Mutating tools require permissions (see main skill for details).
 
@@ -384,13 +384,15 @@ Always available, regardless of registration mode.
 ## Events & Alarms
 
 <!-- AUTO:tools:events -->
-5 tools.
+7 tools.
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `unifi_get_event_types` | Read | Get a list of known event type prefixes for filtering events. |
 | `unifi_list_alarms` | Read | Returns active alarms (security alerts, connectivity issues, firmware warnings). |
 | `unifi_list_events` | Read | Returns timestamped event log entries (client connects/disconnects, device state changes, firmware updates, config changes) sorted newest... |
+| `unifi_recent_events` | Read | Get recent events from the in-memory websocket buffer. |
+| `unifi_subscribe_events` | Read | Returns a handle describing how to subscribe to live network events. |
 | `unifi_archive_alarm` | Mutate | Archive (resolve/dismiss) a specific alarm by its ID |
 | `unifi_archive_all_alarms` | Mutate | Archive (resolve/dismiss) all active alarms |
 <!-- /AUTO:tools:events -->

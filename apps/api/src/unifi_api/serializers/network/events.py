@@ -60,3 +60,29 @@ class EventLogSerializer(Serializer):
         if sev is not None:
             out["severity"] = sev
         return out
+
+
+@register_serializer(tools={"unifi_recent_events": {"kind": RenderKind.EVENT_LOG}})
+class NetworkRecentEventsSerializer(EventLogSerializer):
+    """unifi_recent_events emits the same per-event shape as unifi_list_events."""
+
+    pass
+
+
+@register_serializer(tools={"unifi_subscribe_events": {"kind": RenderKind.STREAM}})
+class NetworkStreamSubscriptionSerializer(Serializer):
+    """Phase 4B precursor — returns the SSE URL + buffer metadata.
+
+    Replaces the Phase 4A handle pattern.
+    """
+
+    @staticmethod
+    def serialize(obj) -> dict:
+        if isinstance(obj, dict):
+            return {
+                "stream_url": "/v1/streams/network/events",
+                "transport": "sse",
+                "buffer_size": obj.get("buffer_size"),
+                "instructions": obj.get("instructions"),
+            }
+        return {"stream_url": "/v1/streams/network/events", "transport": "sse"}
