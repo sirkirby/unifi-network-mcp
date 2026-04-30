@@ -9,8 +9,10 @@ from __future__ import annotations
 import contextvars
 import json
 import logging
+import logging.handlers
 import sys
 import time
+from pathlib import Path
 
 request_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
 key_id_prefix_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("key_id_prefix", default=None)
@@ -24,6 +26,7 @@ class JsonFormatter(logging.Formatter):
             "level": record.levelname,
             "event": record.getMessage(),
         }
+        payload["logger"] = record.name
         rid = request_id_ctx.get()
         if rid is not None:
             payload["request_id"] = rid
@@ -58,3 +61,29 @@ def configure_logging(level: str = "INFO") -> None:
 
 def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
+
+
+def attach_rotating_file_handler(
+    *,
+    path: Path,
+    max_bytes: int,
+    backup_count: int,
+    level: str = "INFO",
+) -> logging.handlers.RotatingFileHandler:
+    """Attach a RotatingFileHandler to the root logger using JsonFormatter.
+
+    Creates the parent directory if it doesn't exist. Returns the handler so
+    callers can hold a reference for shutdown / testing.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handler = logging.handlers.RotatingFileHandler(
+        path,
+        maxBytes=max_bytes,
+        backupCount=backup_count,
+        encoding="utf-8",
+    )
+    handler.setLevel(level)
+    handler.setFormatter(JsonFormatter())
+    logging.getLogger().addHandler(handler)
+    return handler
