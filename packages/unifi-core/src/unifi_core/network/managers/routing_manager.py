@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequest
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -89,24 +90,17 @@ class RoutingManager:
                 logger.error("Error getting active routes: %s", e)
             raise
 
-    async def get_route_details(self, route_id: str) -> Optional[Dict[str, Any]]:
+    async def get_route_details(self, route_id: str) -> Dict[str, Any]:
         """Get details for a specific route by ID.
 
-        Args:
-            route_id: The _id of the route.
-
-        Returns:
-            Route object or None if not found.
+        Raises:
+            UniFiNotFoundError: If the route does not exist.
         """
-        try:
-            all_routes = await self.get_routes()
-            route = next((r for r in all_routes if r.get("_id") == route_id), None)
-            if not route:
-                logger.debug("Route %s not found.", route_id)
-            return route
-        except Exception as e:
-            logger.error("Error getting route details for %s: %s", route_id, e)
-            raise
+        all_routes = await self.get_routes()
+        route = next((r for r in all_routes if r.get("_id") == route_id), None)
+        if route is None:
+            raise UniFiNotFoundError("route", route_id)
+        return route
 
     async def create_route(
         self,
@@ -192,11 +186,8 @@ class RoutingManager:
             True if successful, False otherwise.
         """
         try:
-            # Get current route data first
+            # Existence check; raises UniFiNotFoundError on miss.
             current = await self.get_route_details(route_id)
-            if not current:
-                logger.error("Route %s not found for update.", route_id)
-                return False
 
             # Start with the full existing route and apply updates
             payload: Dict[str, Any] = current.copy()

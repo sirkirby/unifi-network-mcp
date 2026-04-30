@@ -11,23 +11,10 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import create_preview, preview_response
-from unifi_network_mcp.runtime import server
+from unifi_core.exceptions import UniFiNotFoundError
+from unifi_network_mcp.runtime import hotspot_manager, server
 
 logger = logging.getLogger(__name__)
-
-# Lazy import to avoid circular dependencies
-_hotspot_manager = None
-
-
-def _get_hotspot_manager():
-    """Lazy-load the hotspot manager to avoid circular imports."""
-    global _hotspot_manager
-    if _hotspot_manager is None:
-        from unifi_core.network.managers.hotspot_manager import HotspotManager
-        from unifi_network_mcp.runtime import get_connection_manager
-
-        _hotspot_manager = HotspotManager(get_connection_manager())
-    return _hotspot_manager
 
 
 @server.tool(
@@ -41,7 +28,7 @@ Vouchers are used for guest network access in captive portal setups.""",
 async def list_vouchers() -> Dict[str, Any]:
     """List all hotspot vouchers."""
     try:
-        hotspot_manager = _get_hotspot_manager()
+        
         vouchers = await hotspot_manager.get_vouchers()
 
         # Format vouchers for readability
@@ -86,19 +73,14 @@ async def get_voucher_details(
 ) -> Dict[str, Any]:
     """Get details for a specific voucher."""
     try:
-        hotspot_manager = _get_hotspot_manager()
         voucher = await hotspot_manager.get_voucher_details(voucher_id)
-
-        if voucher:
-            return {
-                "success": True,
-                "site": hotspot_manager._connection.site,
-                "voucher": voucher,
-            }
         return {
-            "success": False,
-            "error": f"Voucher not found with ID: {voucher_id}",
+            "success": True,
+            "site": hotspot_manager._connection.site,
+            "voucher": voucher,
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting voucher details for %s: %s", voucher_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get voucher details for {voucher_id}: {e}"}
@@ -174,7 +156,7 @@ async def create_voucher(
         )
 
     try:
-        hotspot_manager = _get_hotspot_manager()
+        
         vouchers = await hotspot_manager.create_voucher(
             expire_minutes=expire_minutes,
             count=count,
@@ -217,36 +199,18 @@ async def revoke_voucher(
     ] = False,
 ) -> Dict[str, Any]:
     """Revoke a hotspot voucher."""
+    if not confirm:
+        return preview_response(
+            action="revoke",
+            resource_type="voucher",
+            resource_id=voucher_id,
+            resource_name=voucher_id,
+            current_state={},
+            proposed_changes={"status": "revoked"},
+            warnings=["This voucher will no longer be usable"],
+        )
 
     try:
-        hotspot_manager = _get_hotspot_manager()
-
-        # Fetch voucher details first for preview
-        if not confirm:
-            voucher = await hotspot_manager.get_voucher_details(voucher_id)
-            if not voucher:
-                return {"success": False, "error": f"Voucher not found with ID: {voucher_id}"}
-
-            current_state = {}
-            if voucher.get("code"):
-                current_state["code"] = voucher.get("code")
-            if voucher.get("note"):
-                current_state["note"] = voucher.get("note")
-            if voucher.get("quota"):
-                current_state["quota"] = voucher.get("quota")
-            if voucher.get("used") is not None:
-                current_state["used"] = voucher.get("used")
-
-            return preview_response(
-                action="revoke",
-                resource_type="voucher",
-                resource_id=voucher_id,
-                resource_name=voucher.get("code"),
-                current_state=current_state,
-                proposed_changes={"status": "revoked"},
-                warnings=["This voucher will no longer be usable"],
-            )
-
         success = await hotspot_manager.revoke_voucher(voucher_id)
 
         if success:
@@ -255,6 +219,8 @@ async def revoke_voucher(
                 "message": f"Voucher {voucher_id} revoked successfully.",
             }
         return {"success": False, "error": f"Failed to revoke voucher {voucher_id}."}
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error revoking voucher %s: %s", voucher_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to revoke voucher {voucher_id}: {e}"}
