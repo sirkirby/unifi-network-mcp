@@ -36,12 +36,15 @@ from unifi_api.routes.resources.network import (
     lookup as net_lookup_routes,
     networks as net_networks_routes,
     oon as net_oon_routes,
+    port_forwards as net_port_forwards_routes,
     qos as net_qos_routes,
     rogue_aps as net_rogue_aps_routes,
     routes as net_routes_routes,
+    snmp as net_snmp_routes,
     speedtest as net_speedtest_routes,
     switch as net_switch_routes,
     user_groups as net_user_groups_routes,
+    vouchers as net_vouchers_routes,
     vpn as net_vpn_routes,
     wireless as net_wireless_routes,
     wlans as net_wlans_routes,
@@ -202,6 +205,9 @@ def create_app(config: ApiConfig) -> FastAPI:
         net_content_filters_routes,
         net_acl_routes,
         net_oon_routes,
+        net_port_forwards_routes,
+        net_vouchers_routes,
+        net_snmp_routes,
     ):
         app.include_router(r.router, prefix="/v1")
     for r in (
