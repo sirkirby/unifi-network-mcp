@@ -117,12 +117,13 @@ class TestAclManager:
 
     @pytest.mark.asyncio
     async def test_get_acl_rule_by_id_not_found(self, acl_manager, mock_connection):
-        """Test get_acl_rule_by_id returns None when ID not in list."""
+        """Test get_acl_rule_by_id raises UniFiNotFoundError when ID not in list."""
+        from unifi_core.exceptions import UniFiNotFoundError
+
         mock_connection.request.return_value = [{"_id": "r1", "name": "Test Rule"}]
 
-        rule = await acl_manager.get_acl_rule_by_id("nonexistent")
-
-        assert rule is None
+        with pytest.raises(UniFiNotFoundError):
+            await acl_manager.get_acl_rule_by_id("nonexistent")
 
     @pytest.mark.asyncio
     async def test_get_acl_rule_by_id_not_connected(self, acl_manager, mock_connection):
@@ -232,7 +233,7 @@ class TestAclManager:
 
         result = await acl_manager.update_acl_rule("r1", {"_id": "r1", "name": "Updated"})
 
-        assert result is True
+        assert result["name"] == "Updated"
         mock_connection._invalidate_cache.assert_called()
 
     @pytest.mark.asyncio
@@ -272,7 +273,8 @@ class TestAclManager:
 
         result = await acl_manager.update_acl_rule("r1", {"name": "Renamed", "enabled": False})
 
-        assert result is True
+        assert result["name"] == "Renamed"
+        assert result["enabled"] is False
         # Verify PUT was called with merged data
         put_call = mock_connection.request.call_args_list[1]
         put_request = put_call[0][0]
@@ -286,20 +288,25 @@ class TestAclManager:
 
     @pytest.mark.asyncio
     async def test_update_acl_rule_not_found(self, acl_manager, mock_connection):
-        """Test update_acl_rule returns False when rule not found."""
+        """Test update_acl_rule raises UniFiNotFoundError when rule missing."""
+        from unifi_core.exceptions import UniFiNotFoundError
+
         mock_connection.request.return_value = []
 
-        result = await acl_manager.update_acl_rule("nonexistent", {"name": "Test"})
-
-        assert result is False
+        with pytest.raises(UniFiNotFoundError):
+            await acl_manager.update_acl_rule("nonexistent", {"name": "Test"})
 
     @pytest.mark.asyncio
     async def test_update_acl_rule_empty_update(self, acl_manager, mock_connection):
-        """Test update_acl_rule with empty update data returns True (no-op)."""
+        """Test update_acl_rule with empty update data returns existing without PUT."""
+        existing = {"_id": "r1", "name": "Original"}
+        mock_connection.request.return_value = [existing]
+
         result = await acl_manager.update_acl_rule("r1", {})
 
-        assert result is True
-        mock_connection.request.assert_not_called()
+        assert result == existing
+        # Only the GET (existence check) ran; no PUT.
+        assert mock_connection.request.call_count == 1
 
     # ---- delete_acl_rule ----
 

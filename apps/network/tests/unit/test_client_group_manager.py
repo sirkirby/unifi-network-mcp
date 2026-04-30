@@ -195,7 +195,7 @@ class TestClientGroupManager:
 
         result = await client_group_manager.update_client_group("g1", {"name": "Updated"})
 
-        assert result is True
+        assert result["name"] == "Updated"
         mock_connection._invalidate_cache.assert_called()
 
     @pytest.mark.asyncio
@@ -230,7 +230,7 @@ class TestClientGroupManager:
 
         result = await client_group_manager.update_client_group("g1", {"name": "Smart Home Devices"})
 
-        assert result is True
+        assert result["name"] == "Smart Home Devices"
         put_call = mock_connection.request.call_args_list[1]
         put_request = put_call[0][0]
         assert put_request.method == "put"
@@ -240,20 +240,26 @@ class TestClientGroupManager:
 
     @pytest.mark.asyncio
     async def test_update_client_group_not_found(self, client_group_manager, mock_connection):
-        """Test update_client_group returns False when group not found."""
-        mock_connection.request.return_value = None
+        """Test update_client_group raises UniFiNotFoundError when group missing."""
+        from unifi_core.exceptions import UniFiNotFoundError
 
-        result = await client_group_manager.update_client_group("nonexistent", {"name": "Test"})
+        # First call: by-id GET → None; second call: list fallback also empty.
+        mock_connection.request.side_effect = [None, []]
 
-        assert result is False
+        with pytest.raises(UniFiNotFoundError):
+            await client_group_manager.update_client_group("nonexistent", {"name": "Test"})
 
     @pytest.mark.asyncio
     async def test_update_client_group_empty_update(self, client_group_manager, mock_connection):
-        """Test update_client_group with empty data is a no-op."""
+        """Test update_client_group with empty data returns existing without PUT."""
+        existing = {"id": "g1", "name": "Original"}
+        mock_connection.request.return_value = existing
+
         result = await client_group_manager.update_client_group("g1", {})
 
-        assert result is True
-        mock_connection.request.assert_not_called()
+        assert result == existing
+        # Only the GET (existence check) ran; no PUT.
+        assert mock_connection.request.call_count == 1
 
     # ---- delete_client_group ----
 

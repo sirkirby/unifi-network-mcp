@@ -239,7 +239,7 @@ class TestUpdateAclRule:
         """source_macs in rule_data is translated to controller shape."""
         with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
             mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
-            mock_mgr.update_acl_rule = AsyncMock(return_value=True)
+            mock_mgr.update_acl_rule = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
 
             from unifi_network_mcp.tools.acl import update_acl_rule
 
@@ -259,7 +259,7 @@ class TestUpdateAclRule:
         """source_macs=[] clears the MAC list (not a no-op)."""
         with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
             mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
-            mock_mgr.update_acl_rule = AsyncMock(return_value=True)
+            mock_mgr.update_acl_rule = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
 
             from unifi_network_mcp.tools.acl import update_acl_rule
 
@@ -278,7 +278,7 @@ class TestUpdateAclRule:
         """source_macs alongside name/action — siblings survive translation."""
         with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
             mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
-            mock_mgr.update_acl_rule = AsyncMock(return_value=True)
+            mock_mgr.update_acl_rule = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
 
             from unifi_network_mcp.tools.acl import update_acl_rule
 
@@ -333,7 +333,7 @@ class TestUpdateAclRule:
         """network_id (model name) is accepted and translated to mac_acl_network_id."""
         with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
             mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
-            mock_mgr.update_acl_rule = AsyncMock(return_value=True)
+            mock_mgr.update_acl_rule = AsyncMock(return_value=SAMPLE_CONTROLLER_RULE)
 
             from unifi_network_mcp.tools.acl import update_acl_rule
 
@@ -428,26 +428,14 @@ class TestGetAclRuleDetails:
         assert "rule_id" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_fallback_to_list_when_by_id_returns_none(self):
-        """If get_acl_rule_by_id returns None, fall back to searching list."""
-        with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
-            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=None)
-            mock_mgr.get_acl_rules = AsyncMock(return_value=[SAMPLE_CONTROLLER_RULE])
-
-            from unifi_network_mcp.tools.acl import get_acl_rule_details
-
-            result = await get_acl_rule_details(rule_id="rule001")
-
-        assert result["success"] is True
-        assert result["details"]["id"] == "rule001"
-        mock_mgr.get_acl_rules.assert_called_once()
-
-    @pytest.mark.asyncio
     async def test_not_found_returns_error(self):
-        """Rule missing from both by-id and list returns a not-found error."""
+        """Manager raises UniFiNotFoundError; tool surfaces the message."""
+        from unifi_core.exceptions import UniFiNotFoundError
+
         with patch("unifi_network_mcp.tools.acl.acl_manager") as mock_mgr:
-            mock_mgr.get_acl_rule_by_id = AsyncMock(return_value=None)
-            mock_mgr.get_acl_rules = AsyncMock(return_value=[])
+            mock_mgr.get_acl_rule_by_id = AsyncMock(
+                side_effect=UniFiNotFoundError("acl_rule", "missing")
+            )
 
             from unifi_network_mcp.tools.acl import get_acl_rule_details
 

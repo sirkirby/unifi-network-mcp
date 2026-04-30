@@ -18,6 +18,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import create_preview, update_preview
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_network_mcp.models.acl import (
     MUTABLE_FIELDS,
     AclRule,
@@ -87,24 +88,17 @@ async def get_acl_rule_details(
     Returns:
         A dictionary containing the rule in the canonical AclRule shape.
     """
+    if not rule_id:
+        return {"success": False, "error": "rule_id is required"}
     try:
-        if not rule_id:
-            return {"success": False, "error": "rule_id is required"}
-
         rule = await acl_manager.get_acl_rule_by_id(rule_id)
-        if not rule:
-            # Fallback: search in list
-            rules = await acl_manager.get_acl_rules()
-            rule = next((r for r in rules if r.get("_id") == rule_id), None)
-
-        if not rule:
-            return {"success": False, "error": f"ACL rule '{rule_id}' not found."}
-
         return {
             "success": True,
             "rule_id": rule_id,
             "details": from_controller(rule).model_dump(),
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting ACL rule %s: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get ACL rule {rule_id}: {e}"}
@@ -247,24 +241,23 @@ async def update_acl_rule(
     # Translate model field names to controller API shape
     controller_update = to_controller_update(rule_data)
 
-    current = await acl_manager.get_acl_rule_by_id(rule_id)
-    if not current:
-        return {"success": False, "error": f"ACL rule '{rule_id}' not found."}
-
     if not confirm:
         return update_preview(
             resource_type="acl_rule",
             resource_id=rule_id,
-            resource_name=current.get("name"),
-            current_state=from_controller(current).model_dump(),
+            resource_name=rule_id,
+            current_state={},
             updates=rule_data,
         )
 
     try:
-        success = await acl_manager.update_acl_rule(rule_id, controller_update)
-        if success:
-            return {"success": True, "message": f"ACL rule '{rule_id}' updated successfully."}
-        return {"success": False, "error": f"Failed to update ACL rule '{rule_id}'."}
+        merged = await acl_manager.update_acl_rule(rule_id, controller_update)
+        return {
+            "success": True,
+            "message": f"ACL rule '{merged.get('name', rule_id)}' updated successfully.",
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating ACL rule %s: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update ACL rule {rule_id}: {e}"}
@@ -303,23 +296,18 @@ async def delete_acl_rule(
     if not rule_id:
         return {"success": False, "error": "rule_id is required"}
 
+    if not confirm:
+        return {
+            "success": True,
+            "requires_confirmation": True,
+            "action": "delete",
+            "resource_type": "acl_rule",
+            "rule_id": rule_id,
+            "message": f"Will delete ACL rule '{rule_id}'. Set confirm=true to execute. "
+            "WARNING: Removing an ALLOW rule may block device communication.",
+        }
+
     try:
-        rule = await acl_manager.get_acl_rule_by_id(rule_id)
-        if not rule:
-            return {"success": False, "error": f"ACL rule '{rule_id}' not found."}
-
-        if not confirm:
-            return {
-                "success": True,
-                "requires_confirmation": True,
-                "action": "delete",
-                "resource_type": "acl_rule",
-                "rule_id": rule_id,
-                "rule_name": rule.get("name"),
-                "message": f"Will delete ACL rule '{rule.get('name')}'. Set confirm=true to execute. "
-                "WARNING: Removing an ALLOW rule may block device communication.",
-            }
-
         success = await acl_manager.delete_acl_rule(rule_id)
         if success:
             return {
@@ -327,6 +315,8 @@ async def delete_acl_rule(
                 "message": f"ACL rule '{rule_id}' deleted successfully.",
             }
         return {"success": False, "error": f"Failed to delete ACL rule '{rule_id}'."}
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error deleting ACL rule %s: %s", rule_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to delete ACL rule {rule_id}: {e}"}

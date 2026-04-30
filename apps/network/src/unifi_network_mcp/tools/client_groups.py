@@ -13,6 +13,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import create_preview, update_preview
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_network_mcp.runtime import client_group_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry
 
@@ -75,24 +76,17 @@ async def get_client_group_details(
     Returns:
         A dictionary containing the full group configuration.
     """
+    if not group_id:
+        return {"success": False, "error": "group_id is required"}
     try:
-        if not group_id:
-            return {"success": False, "error": "group_id is required"}
-
         group = await client_group_manager.get_client_group_by_id(group_id)
-        if not group:
-            # Fallback: search in list
-            groups = await client_group_manager.get_client_groups()
-            group = next((g for g in groups if g.get("id", g.get("_id")) == group_id), None)
-
-        if not group:
-            return {"success": False, "error": f"Client group '{group_id}' not found."}
-
         return {
             "success": True,
             "group_id": group_id,
             "details": json.loads(json.dumps(group, default=str)),
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting client group %s: %s", group_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get client group {group_id}: {e}"}
@@ -193,24 +187,23 @@ async def update_client_group(
     if not validated_data:
         return {"success": False, "error": "Update data is effectively empty or invalid."}
 
-    current = await client_group_manager.get_client_group_by_id(group_id)
-    if not current:
-        return {"success": False, "error": f"Client group '{group_id}' not found."}
-
     if not confirm:
         return update_preview(
             resource_type="client_group",
             resource_id=group_id,
-            resource_name=current.get("name"),
-            current_state=current,
+            resource_name=group_id,
+            current_state={},
             updates=validated_data,
         )
 
     try:
-        success = await client_group_manager.update_client_group(group_id, validated_data)
-        if success:
-            return {"success": True, "message": f"Client group '{group_id}' updated successfully."}
-        return {"success": False, "error": f"Failed to update client group '{group_id}'."}
+        merged = await client_group_manager.update_client_group(group_id, validated_data)
+        return {
+            "success": True,
+            "message": f"Client group '{merged.get('name', group_id)}' updated successfully.",
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating client group %s: %s", group_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update client group '{group_id}': {e}"}

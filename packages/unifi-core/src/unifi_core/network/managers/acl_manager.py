@@ -13,8 +13,8 @@ from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequestV2
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.merge import deep_merge
-
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -65,23 +65,19 @@ class AclManager:
             logger.error("Error getting ACL rules: %s", e)
             raise
 
-    async def get_acl_rule_by_id(self, rule_id: str) -> Optional[Dict[str, Any]]:
+    async def get_acl_rule_by_id(self, rule_id: str) -> Dict[str, Any]:
         """Get a specific ACL rule by ID.
 
         Uses list-then-filter because GET /acl-rules/{id} returns 405.
 
-        Args:
-            rule_id: The ID of the ACL rule.
-
-        Returns:
-            The ACL rule dictionary, or None if not found.
+        Raises:
+            UniFiNotFoundError: If the rule does not exist.
         """
-        try:
-            rules = await self.get_acl_rules()
-            return next((r for r in rules if r.get("_id") == rule_id), None)
-        except Exception as e:
-            logger.error("Error getting ACL rule %s: %s", rule_id, e)
-            raise
+        rules = await self.get_acl_rules()
+        match = next((r for r in rules if r.get("_id") == rule_id), None)
+        if match is None:
+            raise UniFiNotFoundError("acl_rule", rule_id)
+        return match
 
     async def create_acl_rule(self, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new MAC ACL rule.
@@ -137,40 +133,27 @@ class AclManager:
             logger.error("Error creating ACL rule: %s", e, exc_info=True)
             raise
 
-    async def update_acl_rule(self, rule_id: str, update_data: Dict[str, Any]) -> bool:
+    async def update_acl_rule(self, rule_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update an existing MAC ACL rule by merging updates with current state.
 
-        Fetches the current rule, merges the caller's partial updates on top,
-        and PUTs the full merged object back.
-
-        Args:
-            rule_id: The ID of the ACL rule to update.
-            update_data: Dictionary of fields to update (partial is fine).
-
         Returns:
-            True on success, False on failure.
+            The merged rule dict.
+
+        Raises:
+            UniFiNotFoundError: If the rule does not exist.
         """
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
+
+        existing = await self.get_acl_rule_by_id(rule_id)  # raises on miss
         if not update_data:
-            return True  # No action needed
+            return existing
 
-        try:
-            existing = await self.get_acl_rule_by_id(rule_id)
-            if not existing:
-                logger.error("ACL rule %s not found for update", rule_id)
-                return False
-
-            merged_data = deep_merge(existing, update_data)
-
-            api_request = ApiRequestV2(method="put", path=f"/acl-rules/{rule_id}", data=merged_data)
-            await self._connection.request(api_request)
-
-            self._invalidate_cache()
-            return True
-        except Exception as e:
-            logger.error("Error updating ACL rule %s: %s", rule_id, e, exc_info=True)
-            raise
+        merged_data = deep_merge(existing, update_data)
+        api_request = ApiRequestV2(method="put", path=f"/acl-rules/{rule_id}", data=merged_data)
+        await self._connection.request(api_request)
+        self._invalidate_cache()
+        return merged_data
 
     async def delete_acl_rule(self, rule_id: str) -> bool:
         """Delete a MAC ACL rule.
