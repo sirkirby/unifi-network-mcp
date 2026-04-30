@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from aiounifi.models.api import ApiRequest
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.network.managers.connection_manager import ConnectionManager
 
 logger = logging.getLogger("unifi-network-mcp")
@@ -57,24 +58,17 @@ class UsergroupManager:
             logger.error("Error getting user groups: %s", e)
             raise
 
-    async def get_usergroup_details(self, group_id: str) -> Optional[Dict[str, Any]]:
+    async def get_usergroup_details(self, group_id: str) -> Dict[str, Any]:
         """Get details for a specific user group by ID.
 
-        Args:
-            group_id: The _id of the user group.
-
-        Returns:
-            User group object or None if not found.
+        Raises:
+            UniFiNotFoundError: If the user group does not exist.
         """
-        try:
-            all_groups = await self.get_usergroups()
-            group = next((g for g in all_groups if g.get("_id") == group_id), None)
-            if not group:
-                logger.debug("User group %s not found.", group_id)
-            return group
-        except Exception as e:
-            logger.error("Error getting user group details for %s: %s", group_id, e)
-            raise
+        all_groups = await self.get_usergroups()
+        group = next((g for g in all_groups if g.get("_id") == group_id), None)
+        if group is None:
+            raise UniFiNotFoundError("usergroup", group_id)
+        return group
 
     async def create_usergroup(
         self,
@@ -148,11 +142,8 @@ class UsergroupManager:
             True if successful, False otherwise.
         """
         try:
-            # Get current group data first
-            current = await self.get_usergroup_details(group_id)
-            if not current:
-                logger.error("User group %s not found for update.", group_id)
-                return False
+            # Existence check; raises UniFiNotFoundError on miss.
+            await self.get_usergroup_details(group_id)
 
             # Build payload with updates
             payload: Dict[str, Any] = {}

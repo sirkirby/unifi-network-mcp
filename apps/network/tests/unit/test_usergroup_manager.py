@@ -91,12 +91,13 @@ class TestUsergroupManager:
 
     @pytest.mark.asyncio
     async def test_get_usergroup_details_not_found(self, usergroup_manager, mock_connection):
-        """Test get_usergroup_details returns None when not found."""
+        """Test get_usergroup_details raises UniFiNotFoundError when not found."""
+        from unifi_core.exceptions import UniFiNotFoundError
+
         mock_connection.request.return_value = [{"_id": "g1"}]
 
-        group = await usergroup_manager.get_usergroup_details("nonexistent")
-
-        assert group is None
+        with pytest.raises(UniFiNotFoundError):
+            await usergroup_manager.get_usergroup_details("nonexistent")
 
     @pytest.mark.asyncio
     async def test_create_usergroup_basic(self, usergroup_manager, mock_connection):
@@ -168,14 +169,16 @@ class TestUsergroupManager:
 
     @pytest.mark.asyncio
     async def test_update_usergroup_not_found(self, usergroup_manager, mock_connection):
-        """Test update_usergroup returns False when group not found."""
+        """Test update_usergroup raises UniFiNotFoundError when group missing."""
+        from unifi_core.exceptions import UniFiNotFoundError
+
         mock_connection.request.return_value = []  # No groups
 
-        result = await usergroup_manager.update_usergroup(
-            group_id="nonexistent",
-            name="Test",
-        )
-        assert result is False
+        with pytest.raises(UniFiNotFoundError):
+            await usergroup_manager.update_usergroup(
+                group_id="nonexistent",
+                name="Test",
+            )
 
     @pytest.mark.asyncio
     async def test_update_usergroup_no_updates(self, usergroup_manager, mock_connection):
