@@ -1,20 +1,17 @@
-"""Stats serializers (Phase 4A PR1 Cluster 6).
+"""Stats serializers (Phase 4A PR1 Cluster 6, amended PR4 of mgr-existence-refactor).
 
 TIMESERIES tools share a per-point shape — `{ts: <ms>, ...metrics}` — locked
 in spec §5 (amended April 29, 2026). Window/step metadata moves to
 `render_hint`, not `data`, to fit Phase 3's `serialize_action` contract
 (TIMESERIES iterates `serialize` per item, same as EVENT_LOG).
 
-A handful of nominally-stats tools are registered as DETAIL because the
-AST-captured manager method returns a single dict rather than a list:
-
-- ``unifi_get_device_stats`` → ``device_manager.get_device_details`` (dict)
-- ``unifi_get_client_stats`` → ``client_manager.get_client_details`` (dict)
-- ``unifi_get_dpi_stats`` → ``stats_manager.get_dpi_stats`` (Dict[str, List])
-
-For these, fields are passed through and curated to the keys most relevant
-for stats consumption. Phase 5 (which fixes the AST limitation) can revisit
-whether dedicated stats endpoints exist.
+After PR4 of the manager-owned-existence-checks refactor, the dispatch
+overrides for ``unifi_get_device_stats`` and ``unifi_get_client_stats`` now
+correctly point at ``stats_manager.get_device_stats`` and
+``stats_manager.get_client_stats`` (which return list[point] timeseries),
+so both re-register here as TIMESERIES. ``unifi_get_dpi_stats`` stays as a
+custom serializer because its shape is ``{applications: [], categories: []}``,
+not a per-point timeseries.
 """
 
 from unifi_api.serializers._base import RenderKind, Serializer, register_serializer
@@ -34,6 +31,11 @@ def _normalize_ts(point: dict) -> int:
         "unifi_get_gateway_stats": {"kind": RenderKind.TIMESERIES},
         "unifi_get_client_dpi_traffic": {"kind": RenderKind.TIMESERIES},
         "unifi_get_site_dpi_traffic": {"kind": RenderKind.TIMESERIES},
+        # Re-registered as TIMESERIES after PR4 dispatch override fixed the
+        # AST-captured method from ``get_X_details`` (single dict) to
+        # ``stats_manager.get_X_stats`` (list[point]).
+        "unifi_get_device_stats": {"kind": RenderKind.TIMESERIES},
+        "unifi_get_client_stats": {"kind": RenderKind.TIMESERIES},
     },
 )
 class TimeseriesSerializer(Serializer):
@@ -54,28 +56,6 @@ class TimeseriesSerializer(Serializer):
             "ts": ts,
             **{k: v for k, v in point.items() if k not in ("time", "timestamp", "ts")},
         }
-
-
-@register_serializer(
-    tools={
-        "unifi_get_device_stats": {"kind": RenderKind.DETAIL},
-        "unifi_get_client_stats": {"kind": RenderKind.DETAIL},
-    },
-)
-class StatsDetailSerializer(Serializer):
-    """Detail serializer for stats tools whose AST-captured manager method
-    returns a single dict (e.g. ``get_device_details``)."""
-
-    @staticmethod
-    def serialize(obj) -> dict:
-        if obj is None:
-            return {}
-        if isinstance(obj, dict):
-            return dict(obj)
-        raw = getattr(obj, "raw", None)
-        if isinstance(raw, dict):
-            return dict(raw)
-        return {"value": str(obj)}
 
 
 @register_serializer(

@@ -199,12 +199,12 @@ def test_build_dispatch_table_finds_real_tools() -> None:
     dispatch table to contain at least one well-known tool from each.
     """
     table = build_dispatch_table()
-    # unifi_list_clients -> client_manager.get_clients (matches tools/clients.py)
+    # unifi_list_clients -> client_manager.get_clients (PR4 override pins the
+    # default-path branch where include_offline=False).
     network_entry = table.get("unifi_list_clients") or table.get("list_clients")
     assert network_entry is not None
     assert network_entry.manager_attr == "client_manager"
-    # The first awaited call in list_clients is get_all_clients() OR get_clients()
-    assert network_entry.method in {"get_clients", "get_all_clients"}
+    assert network_entry.method == "get_clients"
 
     # protect_list_cameras -> camera_manager.list_cameras
     protect_entry = table.get("protect_list_cameras")
@@ -217,3 +217,53 @@ def test_build_dispatch_table_finds_real_tools() -> None:
     assert access_entry is not None
     assert access_entry.manager_attr == "door_manager"
     assert access_entry.method == "list_doors"
+
+
+def test_dispatch_overrides_redirect_compose_tools_to_mutation() -> None:
+    """PR4: tools whose body has 2+ awaits by design route to the mutation
+    method via the static DISPATCH_OVERRIDES table — not the AST-captured
+    first-await (typically a lookup or preview)."""
+    from unifi_api.services.dispatch_overrides import DISPATCH_OVERRIDES
+
+    table = build_dispatch_table()
+
+    # Every override must be present in the resolved table and match.
+    for tool_name, (manager_attr, method) in DISPATCH_OVERRIDES.items():
+        entry = table.get(tool_name)
+        assert entry is not None, f"override missing from dispatch table: {tool_name}"
+        assert entry.manager_attr == manager_attr, (
+            f"{tool_name} manager: got {entry.manager_attr!r}, want {manager_attr!r}"
+        )
+        assert entry.method == method, (
+            f"{tool_name} method: got {entry.method!r}, want {method!r}"
+        )
+
+
+def test_dispatch_overrides_specific_targets() -> None:
+    """Spot-check: previously-broken dispatch for a representative sample
+    of each override category now resolves to the mutation method."""
+    table = build_dispatch_table()
+
+    # Network lookup-then-act with state-dependent preview
+    assert table["unifi_block_client"].method == "block_client"
+    assert table["unifi_update_network"].method == "update_network"
+    assert table["unifi_toggle_wlan"].method == "toggle_wlan"
+    # Toggle that needs current state
+    assert table["unifi_toggle_firewall_policy"].method == "toggle_firewall_policy"
+    # Multi-manager compose
+    assert table["unifi_create_simple_firewall_policy"].manager_attr == "firewall_manager"
+    assert table["unifi_create_simple_firewall_policy"].method == "create_firewall_policy"
+    # Stats: list-returning method (was AST-captured as get_X_details, a dict)
+    assert table["unifi_get_device_stats"].manager_attr == "stats_manager"
+    assert table["unifi_get_device_stats"].method == "get_device_stats"
+    assert table["unifi_get_client_stats"].method == "get_client_stats"
+
+    # Protect preview/execute split
+    assert table["protect_reboot_camera"].method == "apply_reboot_camera"
+    assert table["protect_alarm_arm"].method == "arm"
+    assert table["protect_acknowledge_event"].method == "apply_acknowledge_event"
+
+    # Access preview/execute split
+    assert table["access_lock_door"].method == "apply_lock_door"
+    assert table["access_create_credential"].method == "apply_create_credential"
+    assert table["access_update_policy"].method == "apply_update_policy"

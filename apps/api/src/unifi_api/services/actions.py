@@ -43,6 +43,7 @@ from typing import Any, Iterable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from unifi_api.services.dispatch_overrides import DISPATCH_OVERRIDES
 from unifi_api.services.managers import ManagerFactory
 from unifi_api.services.manifest import ManifestRegistry, ToolEntry
 
@@ -203,6 +204,14 @@ def build_dispatch_table(
             if call is None:
                 continue
             table[tool_name] = DispatchEntry(manager_attr=call[0], method=call[1])
+
+    # Apply static overrides AFTER the AST walk. Tools whose body has 2+ awaits
+    # by design (preview/execute split, lookup-then-act with state-dependent
+    # preview, multi-manager compose) need explicit dispatch targets — see
+    # ``dispatch_overrides.DISPATCH_OVERRIDES`` for the list and rationale.
+    for tool_name, (manager_attr, method) in DISPATCH_OVERRIDES.items():
+        table[tool_name] = DispatchEntry(manager_attr=manager_attr, method=method)
+
     return table
 
 
