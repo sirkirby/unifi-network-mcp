@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from unifi_core.exceptions import UniFiNotFoundError
+
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
 from unifi_api.routes.resources._common import (
@@ -140,4 +142,44 @@ async def get_recording(
     return {
         "data": serializer.serialize(match),
         "render_hint": registry.render_hint_for_resource("protect", "recordings/{id}"),
+    }
+
+
+@router.get(
+    "/sites/{site_id}/recording-status",
+    dependencies=[Depends(require_scope(Scope.READ))],
+)
+async def get_recording_status(
+    request: Request,
+    site_id: str,
+    controller=Depends(resolve_controller),
+    camera_id: str | None = Query(
+        None, description="Optional — limit to a single camera",
+    ),
+) -> dict:
+    """Return current recording state for one or all cameras.
+
+    The ``camera_id`` query is optional: omitting it returns the
+    aggregate (all cameras), supplying it scopes to one camera and
+    raises 404 via UniFiNotFoundError if the camera is unknown.
+    """
+    require_capability(controller, "protect")
+    factory = request.app.state.manager_factory
+    sm = request.app.state.sessionmaker
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "protect", "recording_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "protect")
+            await _maybe_set_site(cm, site_id)
+            payload = await mgr.get_recording_status(camera_id=camera_id)
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    registry = request.app.state.serializer_registry
+    serializer = registry.serializer_for_tool("protect_get_recording_status")
+    return {
+        "data": serializer.serialize(payload),
+        "render_hint": registry.render_hint_for_tool("protect_get_recording_status"),
     }

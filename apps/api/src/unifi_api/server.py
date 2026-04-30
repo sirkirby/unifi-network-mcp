@@ -57,8 +57,10 @@ from unifi_api.routes.resources.protect import (
     chimes as protect_chimes_routes,
     events as protect_events_routes,
     lights as protect_lights_routes,
+    liveviews as protect_liveviews_routes,
     recordings as protect_recordings_routes,
     sensors as protect_sensors_routes,
+    system as protect_system_routes,
 )
 from unifi_api.routes.resources.access import (
     credentials as access_credentials_routes,
@@ -230,6 +232,8 @@ def create_app(config: ApiConfig) -> FastAPI:
         protect_lights_routes,
         protect_sensors_routes,
         protect_chimes_routes,
+        protect_liveviews_routes,
+        protect_system_routes,
     ):
         app.include_router(r.router, prefix="/v1")
     for r in (
