@@ -11,6 +11,7 @@ from pydantic import Field
 
 from unifi_access_mcp.runtime import server, visitor_manager
 from unifi_core.confirmation import create_preview, preview_response
+from unifi_core.exceptions import UniFiNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ async def access_get_visitor(
     try:
         detail = await visitor_manager.get_visitor(visitor_id)
         return {"success": True, "data": detail}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting visitor %s: %s", visitor_id, e, exc_info=True)
@@ -124,7 +125,7 @@ async def access_create_visitor(
             resource_data=preview_data["proposed_changes"],
             resource_name=name,
         )
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error creating visitor: %s", e, exc_info=True)
@@ -166,7 +167,7 @@ async def access_delete_visitor(
             resource_name=preview_data.get("visitor_name"),
             warnings=["This will permanently remove the visitor pass and revoke all associated access."],
         )
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error deleting visitor %s: %s", visitor_id, e, exc_info=True)

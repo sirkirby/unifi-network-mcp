@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_core.access.managers.connection_manager import AccessConnectionManager
 from unifi_core.access.managers.event_manager import EventBuffer, EventManager
@@ -232,7 +233,7 @@ class TestEventManagerREST:
         """get_event raises ValueError when event not found across all topics."""
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = {"data": {"events": []}}
-            with pytest.raises(ValueError, match="Event not found"):
+            with pytest.raises(UniFiNotFoundError):
                 await event_mgr_proxy.get_event("missing-evt")
 
     @pytest.mark.asyncio

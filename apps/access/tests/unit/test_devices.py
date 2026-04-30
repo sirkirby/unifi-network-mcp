@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_core.access.managers.connection_manager import AccessConnectionManager
 from unifi_core.access.managers.device_manager import DeviceManager
@@ -271,7 +272,7 @@ class TestGetDevice:
         topology = [{"name": "Site", "unique_id": "s", "floors": [{"name": "1F", "unique_id": "f", "doors": []}]}]
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = {"data": topology}
-            with pytest.raises(ValueError, match="Device not found"):
+            with pytest.raises(UniFiNotFoundError):
                 await device_mgr_proxy.get_device("missing-dev")
 
     @pytest.mark.asyncio

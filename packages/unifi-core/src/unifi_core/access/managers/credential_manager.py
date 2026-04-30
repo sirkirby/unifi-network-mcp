@@ -18,7 +18,7 @@ import logging
 from typing import Any, Dict, List
 
 from unifi_core.access.managers.connection_manager import AccessConnectionManager
-from unifi_core.exceptions import UniFiConnectionError
+from unifi_core.exceptions import UniFiConnectionError, UniFiNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +74,11 @@ class CredentialManager:
                     "[credentials] Credential endpoint returned 404 for %s — endpoint path may not be correct.",
                     credential_id,
                 )
-                raise ValueError(
+                raise UniFiNotFoundError(
+                    "credential",
+                    credential_id,
                     f"Credential not found or endpoint not available: {credential_id}. "
-                    "The credential API path has not been confirmed via browser inspection."
+                    "The credential API path has not been confirmed via browser inspection.",
                 ) from e
             raise
         except Exception as e:

@@ -18,7 +18,7 @@ import logging
 from typing import Any, Dict, List
 
 from unifi_core.access.managers.connection_manager import AccessConnectionManager
-from unifi_core.exceptions import UniFiConnectionError
+from unifi_core.exceptions import UniFiConnectionError, UniFiNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -129,10 +129,10 @@ class DoorManager:
                     for loc in locations:
                         if isinstance(loc, dict) and loc.get("id") == door_id:
                             return loc
-                raise ValueError(f"Door not found: {door_id}")
+                raise UniFiNotFoundError("door", door_id)
             else:
                 raise UniFiConnectionError("No auth path available for get_door")
-        except (UniFiConnectionError, ValueError):
+        except (UniFiConnectionError, UniFiNotFoundError, ValueError):
             raise
         except Exception as e:
             logger.error("Failed to get door %s: %s", door_id, e, exc_info=True)
@@ -168,10 +168,10 @@ class DoorManager:
                                 "door_position_status": loc.get("door_position_status"),
                                 "lock_relay_status": loc.get("lock_relay_status"),
                             }
-                raise ValueError(f"Door not found: {door_id}")
+                raise UniFiNotFoundError("door", door_id)
             else:
                 raise UniFiConnectionError("No auth path available for get_door_status")
-        except (UniFiConnectionError, ValueError):
+        except (UniFiConnectionError, UniFiNotFoundError, ValueError):
             raise
         except Exception as e:
             logger.error("Failed to get door status %s: %s", door_id, e, exc_info=True)

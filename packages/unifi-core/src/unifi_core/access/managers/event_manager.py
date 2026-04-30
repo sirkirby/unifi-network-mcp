@@ -21,7 +21,7 @@ from collections import deque
 from collections.abc import Callable
 from typing import Any
 
-from unifi_core.exceptions import UniFiConnectionError
+from unifi_core.exceptions import UniFiConnectionError, UniFiNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -300,12 +300,12 @@ class EventManager:
                 for ev in events:
                     if isinstance(ev, dict) and ev.get("id") == event_id:
                         return ev
-            raise ValueError(f"Event not found: {event_id}")
-        except (UniFiConnectionError, ValueError):
+            raise UniFiNotFoundError("event", event_id)
+        except (UniFiConnectionError, UniFiNotFoundError, ValueError):
             raise
         except Exception as e:
             logger.error("Failed to get event %s: %s", event_id, e, exc_info=True)
-            raise ValueError(f"Event not found: {event_id}") from e
+            raise UniFiNotFoundError("event", event_id) from e
 
     async def get_activity_summary(
         self,

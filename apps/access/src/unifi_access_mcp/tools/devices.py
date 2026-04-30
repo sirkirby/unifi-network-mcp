@@ -12,6 +12,7 @@ from pydantic import Field
 
 from unifi_access_mcp.runtime import device_manager, server
 from unifi_core.confirmation import preview_response
+from unifi_core.exceptions import UniFiNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ async def access_get_device(
     try:
         detail = await device_manager.get_device(device_id)
         return {"success": True, "data": detail}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting device %s: %s", device_id, e, exc_info=True)
@@ -110,7 +111,7 @@ async def access_reboot_device(
             resource_name=preview_data.get("device_name"),
             warnings=["The device will be temporarily offline during reboot."],
         )
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error rebooting device %s: %s", device_id, e, exc_info=True)

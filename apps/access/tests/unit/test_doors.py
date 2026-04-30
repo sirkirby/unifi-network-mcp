@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_core.access.managers.connection_manager import AccessConnectionManager
 from unifi_core.access.managers.door_manager import _LOCATIONS_EXPAND, DoorManager
@@ -249,7 +250,7 @@ class TestGetDoor:
         """get_door raises ValueError when door ID not found in locations."""
         with patch.object(cm_proxy, "proxy_request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = {"data": [{"id": "other-door"}]}
-            with pytest.raises(ValueError, match="Door not found"):
+            with pytest.raises(UniFiNotFoundError):
                 await door_mgr_proxy.get_door("missing-door")
 
     @pytest.mark.asyncio
