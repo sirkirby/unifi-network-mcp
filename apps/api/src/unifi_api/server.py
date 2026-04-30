@@ -29,6 +29,7 @@ from unifi_api.routes.resources.network import (
     devices as net_devices_routes,
     dns as net_dns_routes,
     dpi as net_dpi_routes,
+    events as net_events_routes,
     firewall_groups as net_firewall_groups_routes,
     firewall_rules as net_firewall_routes,
     firewall_zones as net_firewall_zones_routes,
@@ -42,7 +43,9 @@ from unifi_api.routes.resources.network import (
     routes as net_routes_routes,
     snmp as net_snmp_routes,
     speedtest as net_speedtest_routes,
+    stats as net_stats_routes,
     switch as net_switch_routes,
+    system as net_system_routes,
     user_groups as net_user_groups_routes,
     vouchers as net_vouchers_routes,
     vpn as net_vpn_routes,
@@ -208,6 +211,13 @@ def create_app(config: ApiConfig) -> FastAPI:
         net_port_forwards_routes,
         net_vouchers_routes,
         net_snmp_routes,
+        # Cluster 6: stats / events / system. The network events router owns
+        # the bare /events path for both products via a capability-aware
+        # dispatcher; it must be included before protect_events_routes so the
+        # network/protect-aware handler wins the path match.
+        net_stats_routes,
+        net_events_routes,
+        net_system_routes,
     ):
         app.include_router(r.router, prefix="/v1")
     for r in (
