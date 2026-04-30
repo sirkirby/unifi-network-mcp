@@ -12,10 +12,10 @@ Manager methods covered:
   - ``EventManager.get_activity_summary`` -> dict (histogram payload)
 
 The ``access_subscribe_events`` tool has no AST-discoverable manager call
-(it composes a dict from ``event_manager.buffer_size``); the serializer still
-needs to be registered for coverage. We mirror PR2's
-``SubscriptionHandleSerializer`` pattern: pass-through dict, or wrap a bare
-string as ``{"subscription_id": value}``.
+(it composes a dict from ``event_manager.buffer_size``); the serializer
+still needs to be registered for coverage. Phase 4B PR3 Task 14 migrates
+this to ``AccessStreamSubscriptionSerializer`` (STREAM kind) returning
+``{stream_url, transport: "sse", buffer_size, instructions}``.
 """
 
 from unifi_api.serializers._registry import (
@@ -232,18 +232,19 @@ def test_subscribe_events_shape() -> None:
     }
     out = s.serialize_action(sample, tool_name="access_subscribe_events")
     assert out["success"] is True
-    assert (
-        out["data"].get("subscription_id") == "access://events/stream"
-        or out["data"].get("resource_uri") == "access://events/stream"
-    )
-    assert out["render_hint"]["kind"] == "detail"
+    assert out["data"]["stream_url"] == "/v1/streams/access/events"
+    assert out["data"]["transport"] == "sse"
+    assert out["data"]["buffer_size"] == 100
+    assert out["data"]["instructions"] == "Read the resource at ..."
+    assert out["render_hint"]["kind"] == "stream"
 
 
-def test_subscribe_events_string_input() -> None:
-    """If the tool body or future revision returns a bare string, wrap as subscription_id."""
+def test_subscribe_events_non_dict_input() -> None:
+    """Non-dict inputs still surface the stream metadata."""
     reg = _registry()
     s = reg.serializer_for_tool("access_subscribe_events")
     out = s.serialize_action("sub-xyz-789", tool_name="access_subscribe_events")
     assert out["success"] is True
-    assert out["data"]["subscription_id"] == "sub-xyz-789"
-    assert out["render_hint"]["kind"] == "detail"
+    assert out["data"]["stream_url"] == "/v1/streams/access/events"
+    assert out["data"]["transport"] == "sse"
+    assert out["render_hint"]["kind"] == "stream"

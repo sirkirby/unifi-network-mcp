@@ -13,10 +13,10 @@
     we expose this as DETAIL pass-through (the wrapper *is* the payload).
   - ``SmartDetectionsSerializer`` (``protect_list_smart_detections``) — list
     of event dicts; EVENT_LOG kind, identical to the events serializer.
-  - ``SubscriptionHandleSerializer`` (``protect_subscribe_events``) — DETAIL
-    pass-through. Tool currently returns ``{resource_uri, summary_uri,
-    instructions, buffer_size}``. If a future revision returns a bare string
-    we wrap it as ``{"subscription_id": <value>}``. Phase 4B precursor.
+  - ``ProtectStreamSubscriptionSerializer`` (``protect_subscribe_events``) —
+    STREAM kind. Returns ``{stream_url, transport: "sse", buffer_size,
+    instructions}`` so MCP consumers can discover the rich-API stream
+    surface; rich-API clients connect to ``GET /v1/streams/protect/events``.
   - ``EventMutationAckSerializer`` (``protect_acknowledge_event``) — DETAIL
     pass-through (manager returns a preview dict).
 """
@@ -134,23 +134,25 @@ class RecentEventsSerializer(Serializer):
         return {"result": str(obj)}
 
 
-@register_serializer(tools={"protect_subscribe_events": {"kind": RenderKind.DETAIL}})
-class SubscriptionHandleSerializer(Serializer):
-    """Phase 4B precursor. Today the tool returns
-    ``{resource_uri, summary_uri, instructions, buffer_size}`` — pass that
-    through unchanged. If the underlying surface ever returns a bare string
-    or UUID we wrap it as ``{"subscription_id": <value>}``.
+@register_serializer(tools={"protect_subscribe_events": {"kind": RenderKind.STREAM}})
+class ProtectStreamSubscriptionSerializer(Serializer):
+    """Phase 4B: returns the SSE URL where live events are streamed.
+
+    The MCP tool call exposes this metadata so consumers can discover the
+    rich-API stream surface; rich-API clients connect to
+    ``GET /v1/streams/protect/events``.
     """
 
     @staticmethod
     def serialize(obj) -> dict:
         if isinstance(obj, dict):
-            return obj
-        if isinstance(obj, str):
-            return {"subscription_id": obj}
-        if hasattr(obj, "model_dump"):
-            return obj.model_dump()
-        return {"subscription_id": str(obj)}
+            return {
+                "stream_url": "/v1/streams/protect/events",
+                "transport": "sse",
+                "buffer_size": obj.get("buffer_size"),
+                "instructions": obj.get("instructions"),
+            }
+        return {"stream_url": "/v1/streams/protect/events", "transport": "sse"}
 
 
 @register_serializer(tools={"protect_acknowledge_event": {"kind": RenderKind.DETAIL}})

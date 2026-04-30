@@ -7,12 +7,11 @@
 ``activities/histogram`` (a dict) — DETAIL pass-through with normalised
 fields.
 
-The ``access_subscribe_events`` tool composes a guidance dict from
-``event_manager.buffer_size`` (no manager method call), so dispatch
-falls through to ``DispatchEntryMissing`` at runtime; the serializer is
-still registered for coverage. Mirrors PR2's Protect
-``SubscriptionHandleSerializer`` pattern: pass-through dict, or wrap a
-bare string as ``{"subscription_id": value}``.
+The ``access_subscribe_events`` tool now uses STREAM kind via
+``AccessStreamSubscriptionSerializer``: it returns
+``{stream_url, transport: "sse", buffer_size, instructions}`` so MCP
+consumers can discover the rich-API stream surface; rich-API clients
+connect to ``GET /v1/streams/access/events``.
 """
 
 from typing import Any
@@ -97,22 +96,22 @@ class ActivitySummarySerializer(Serializer):
         }
 
 
-@register_serializer(tools={"access_subscribe_events": {"kind": RenderKind.DETAIL}})
-class AccessSubscriptionHandleSerializer(Serializer):
-    """Phase 4B precursor. Today the tool returns
-    ``{resource_uri, summary_uri, instructions, buffer_size}`` — pass that
-    through unchanged. If the underlying surface ever returns a bare
-    string or UUID we wrap it as ``{"subscription_id": <value>}``.
-    """
+@register_serializer(tools={"access_subscribe_events": {"kind": RenderKind.STREAM}})
+class AccessStreamSubscriptionSerializer(Serializer):
+    """Phase 4B: returns the SSE URL where live events are streamed.
 
-    kind = RenderKind.DETAIL
+    The MCP tool call exposes this metadata so consumers can discover the
+    rich-API stream surface; rich-API clients connect to
+    ``GET /v1/streams/access/events``.
+    """
 
     @staticmethod
     def serialize(obj) -> dict:
         if isinstance(obj, dict):
-            return obj
-        if isinstance(obj, str):
-            return {"subscription_id": obj}
-        if hasattr(obj, "model_dump"):
-            return obj.model_dump()
-        return {"subscription_id": str(obj)}
+            return {
+                "stream_url": "/v1/streams/access/events",
+                "transport": "sse",
+                "buffer_size": obj.get("buffer_size"),
+                "instructions": obj.get("instructions"),
+            }
+        return {"stream_url": "/v1/streams/access/events", "transport": "sse"}

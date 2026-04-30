@@ -150,13 +150,13 @@ def parse_args() -> argparse.Namespace:
         "--server",
         choices=["network", "protect", "access", "all"],
         required=False,
-        help="Required for MCP-direct phases. Ignored for --phase api-actions / api-resources.",
+        help="Required for MCP-direct phases. Ignored for --phase api-actions / api-resources / api-streams.",
     )
     parser.add_argument(
         "--phase",
         choices=[
             "inventory", "readonly", "preview", "lifecycle", "approved", "safe",
-            "api-actions", "api-resources",
+            "api-actions", "api-resources", "api-streams",
         ],
         default="safe",
         help=(
@@ -168,7 +168,10 @@ def parse_args() -> argparse.Namespace:
             "baseline. "
             "'api-resources' is also manual-only: same bootstrap, but exercises "
             "GET /v1/sites/{site}/{resource} endpoints and (where the tool "
-            "equivalent exists) compares the data payload to the action endpoint."
+            "equivalent exists) compares the data payload to the action endpoint. "
+            "'api-streams' is also manual-only: same bootstrap, but opens an SSE "
+            "client to GET /v1/streams/{product}/events for each registered "
+            "controller and verifies frames flow within a 35s window."
         ),
     )
     parser.add_argument("--report-dir", default="live-smoke-results")
@@ -177,9 +180,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--include-heavy-reads", action="store_true")
     parser.add_argument("--interactive-risky", action="store_true")
     args = parser.parse_args()
-    if args.phase not in {"api-actions", "api-resources"} and not args.server:
+    if args.phase not in {"api-actions", "api-resources", "api-streams"} and not args.server:
         parser.error(
-            "--server is required unless --phase api-actions or --phase api-resources is used"
+            "--server is required unless --phase api-actions, --phase api-resources, "
+            "or --phase api-streams is used"
         )
     return args
 
@@ -2063,12 +2067,371 @@ def run_api_resources_phase(args: argparse.Namespace) -> int:
     return 0
 
 
+###############################################################################
+# Phase 4B: --phase api-streams
+# ---------------------------------------------------------------------------
+# Manual-only phase. Same bootstrap as api-actions / api-resources (spins up
+# unifi-api locally, registers the .env-configured controllers), then opens an
+# SSE client to ``GET /v1/streams/{product}/events?controller={cid}`` for each
+# (controller × product) pair and reads frames for ~35s. Pass criterion: ≥1
+# event OR ≥1 keepalive frame received within the window (the server emits a
+# ``: keepalive`` comment every 30s, so even an idle controller will pass on
+# the first keepalive boundary).
+#
+# Like api-actions / api-resources, this phase is intentionally NOT wired into
+# CI and serves as the Phase 4B release-readiness gate.
+###############################################################################
+
+
+# Products whose stream endpoint we exercise. One row per product; the harness
+# only opens the stream for products that have a registered controller from
+# .env.
+API_STREAMS_PRODUCTS: tuple[str, ...] = ("network", "protect", "access")
+
+
+def _read_sse_window(
+    base_url: str,
+    path: str,
+    headers: dict[str, str],
+    *,
+    duration_s: float,
+) -> dict[str, Any]:
+    """Open an SSE GET, read frames for ~duration_s, classify the result.
+
+    Uses stdlib urllib for a streaming read. Frames are SSE blocks separated
+    by a blank line (``\\n\\n``); ``: keepalive`` comments and ``event:`` /
+    ``data:`` event blocks are both counted. ``select`` is used to wait for
+    socket readability with a short timeout so we can re-check the wall-clock
+    deadline without poisoning the underlying HTTPResponse with a socket
+    timeout (which makes subsequent reads raise "cannot read from timed out
+    object").
+    """
+    import select
+    import urllib.error
+    import urllib.request
+
+    url = f"{base_url}{path}"
+    req = urllib.request.Request(url, method="GET")
+    req.add_header("Accept", "text/event-stream")
+    for k, v in headers.items():
+        req.add_header(k, v)
+
+    events = 0
+    keepalives = 0
+    first_frame_at: float | None = None
+    started = time.perf_counter()
+    deadline = started + duration_s
+
+    try:
+        resp = urllib.request.urlopen(req, timeout=10.0)
+    except urllib.error.HTTPError as exc:
+        body = b""
+        try:
+            if exc.fp:
+                body = exc.fp.read()
+        except Exception:
+            pass
+        return {
+            "endpoint": path,
+            "status": "controller_error",
+            "http": exc.code,
+            "body": body[:500].decode("utf-8", "replace"),
+            "events": 0, "keepalives": 0, "first_frame_ms": None,
+        }
+    except Exception as exc:
+        return {
+            "endpoint": path,
+            "status": "shape_failure",
+            "error": f"{type(exc).__name__}: {exc}"[:200],
+            "events": 0, "keepalives": 0, "first_frame_ms": None,
+        }
+
+    try:
+        if resp.status != 200:
+            try:
+                body = resp.read()
+            except Exception:
+                body = b""
+            return {
+                "endpoint": path,
+                "status": "controller_error",
+                "http": resp.status,
+                "body": body[:500].decode("utf-8", "replace"),
+                "events": 0, "keepalives": 0, "first_frame_ms": None,
+            }
+
+        # Reach down to the underlying file object so we can select() on its
+        # fileno. urllib's HTTPResponse exposes .fp (a socket file-like).
+        fp = getattr(resp, "fp", None)
+        try:
+            fileno = fp.fileno() if fp is not None else resp.fileno()
+        except Exception:
+            fileno = None
+
+        buf = b""
+        while time.perf_counter() < deadline:
+            remaining = deadline - time.perf_counter()
+            if fileno is not None:
+                try:
+                    rlist, _, _ = select.select([fileno], [], [], min(1.0, remaining))
+                except (ValueError, OSError):
+                    # File descriptor closed underneath us.
+                    break
+                if not rlist:
+                    continue
+            try:
+                # read1 returns whatever bytes are buffered without waiting
+                # for more — exactly what we want for SSE.
+                chunk = resp.read1(4096) if hasattr(resp, "read1") else resp.read(4096)
+            except Exception as exc:
+                if events + keepalives == 0:
+                    return {
+                        "endpoint": path,
+                        "status": "shape_failure",
+                        "error": f"{type(exc).__name__}: {exc}"[:200],
+                        "events": events, "keepalives": keepalives,
+                        "first_frame_ms": None,
+                    }
+                break
+            if not chunk:
+                # Server closed the connection.
+                break
+            if first_frame_at is None:
+                first_frame_at = time.perf_counter()
+            buf += chunk
+            while b"\n\n" in buf:
+                frame, _, buf = buf.partition(b"\n\n")
+                if not frame:
+                    continue
+                if frame.startswith(b": keepalive"):
+                    keepalives += 1
+                elif b"event:" in frame and b"data:" in frame:
+                    events += 1
+    finally:
+        try:
+            resp.close()
+        except Exception:
+            pass
+
+    passed = (events + keepalives) > 0
+    first_frame_ms = (
+        int((first_frame_at - started) * 1000) if first_frame_at is not None else None
+    )
+    return {
+        "endpoint": path,
+        "status": "pass" if passed else "shape_failure",
+        "events": events,
+        "keepalives": keepalives,
+        "first_frame_ms": first_frame_ms,
+        "duration_ms": int((time.perf_counter() - started) * 1000),
+    }
+
+
+def run_api_streams_phase(args: argparse.Namespace) -> int:
+    """Manual-only phase: exercise GET /v1/streams/{product}/events SSE.
+
+    Returns 0 when every reachable stream endpoint receives ≥1 event or
+    ≥1 keepalive within the read window. Non-zero on a shape failure (no
+    frames received; HTTP 5xx; transport error). Pre-existing controller-side
+    failures (HTTP 4xx that are not 401/403) are recorded as ``controller_error``
+    but do NOT fail the run.
+    """
+    print("\n=== api-streams: spinning up unifi-api locally ===", flush=True)
+    tmp_dir = Path(tempfile.mkdtemp(prefix="unifi-api-streams-smoke-"))
+    db_path = tmp_dir / "state.db"
+    db_key = "smoke-" + datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    port = _pick_free_port()
+    base_url = f"http://127.0.0.1:{port}"
+
+    # Per-stream read window. 35s ensures we cross the 30s server keepalive
+    # boundary at least once for an idle controller; busy controllers will
+    # almost always emit a real event well before that.
+    window_s = 35.0
+
+    env = dict(os.environ)
+    env["UNIFI_API_DB_KEY"] = db_key
+    env["UNIFI_API_DB_PATH"] = str(db_path)
+
+    started_at = datetime.now(UTC).isoformat()
+    server_proc: subprocess.Popen[bytes] | None = None
+    server_log = tmp_dir / "server.log"
+    artifact: dict[str, Any] = {
+        "phase": "api-streams",
+        "started_at": started_at,
+        "finished_at": None,
+        "base_url": base_url,
+        "db_path": str(db_path),
+        "window_s": window_s,
+        "controllers": [],
+        "results": [],
+        "summary": {
+            "endpoints_exercised": 0,
+            "passed": 0,
+            "shape_failures": 0,
+            "controller_errors": 0,
+            "skipped_no_controller": 0,
+        },
+    }
+
+    try:
+        print(f"  tmp db: {db_path}", flush=True)
+        print(f"  http port: {port}", flush=True)
+        admin_key = _bootstrap_unifi_api(env)
+        print("  unifi-api migrate ok (admin key captured)", flush=True)
+
+        with server_log.open("wb") as log_fh:
+            server_proc = subprocess.Popen(
+                [
+                    "uv", "run", "--package", "unifi-api",
+                    "unifi-api", "serve", "--port", str(port),
+                ],
+                cwd=REPO_ROOT,
+                env=env,
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+            )
+
+        if not _wait_for_health(base_url, deadline_s=30.0):
+            raise RuntimeError(
+                f"unifi-api did not become healthy within 30s; see {server_log}"
+            )
+        print("  unifi-api serve ok (/v1/health 200)", flush=True)
+
+        auth_headers = {"Authorization": f"Bearer {admin_key}"}
+
+        # Step 1: register controllers from .env (same as api-actions/resources).
+        controller_payloads = _api_actions_controllers_from_env()
+        if not controller_payloads:
+            raise RuntimeError(
+                "No controllers found in .env (expected UNIFI_{NETWORK,PROTECT,ACCESS}_HOST)."
+            )
+        product_to_controller_id: dict[str, str] = {}
+        for product, payload in controller_payloads.items():
+            status, body = _http_request(
+                "POST", f"{base_url}/v1/controllers",
+                headers=auth_headers, body=payload,
+            )
+            if status != 201 or not isinstance(body, dict) or not body.get("id"):
+                raise RuntimeError(
+                    f"failed to register {product} controller: {status} {body!r}"
+                )
+            product_to_controller_id[product] = body["id"]
+            artifact["controllers"].append({
+                "product": product,
+                "id": body["id"],
+                "name": body.get("name"),
+                "base_url": body.get("base_url"),
+            })
+            print(f"  registered controller: {product} -> {body['id']}", flush=True)
+
+        # Step 2: exercise each (registered controller × matching product) SSE.
+        for product in API_STREAMS_PRODUCTS:
+            if product not in product_to_controller_id:
+                artifact["summary"]["skipped_no_controller"] += 1
+                artifact["results"].append({
+                    "product": product,
+                    "endpoint": f"/v1/streams/{product}/events",
+                    "controller_id": None,
+                    "classification": "skipped_no_controller",
+                    "events": 0,
+                    "keepalives": 0,
+                    "first_frame_ms": None,
+                    "error": f"no {product} controller registered from .env",
+                })
+                print(f"  api-streams skip: /v1/streams/{product}/events "
+                      f"(no {product} controller)", flush=True)
+                continue
+
+            controller_id = product_to_controller_id[product]
+            path = f"/v1/streams/{product}/events?controller={controller_id}"
+
+            print(f"  api-streams open: {path} (window={window_s:.0f}s)...",
+                  flush=True)
+            outcome = _read_sse_window(
+                base_url, path, auth_headers, duration_s=window_s,
+            )
+            classification = outcome.get("status", "shape_failure")
+
+            artifact["results"].append({
+                "product": product,
+                "endpoint": outcome.get("endpoint", path),
+                "controller_id": controller_id,
+                "classification": classification,
+                "events": outcome.get("events", 0),
+                "keepalives": outcome.get("keepalives", 0),
+                "first_frame_ms": outcome.get("first_frame_ms"),
+                "duration_ms": outcome.get("duration_ms"),
+                "http": outcome.get("http"),
+                "body": outcome.get("body"),
+                "error": outcome.get("error"),
+            })
+
+            artifact["summary"]["endpoints_exercised"] += 1
+            if classification == "pass":
+                artifact["summary"]["passed"] += 1
+            elif classification == "controller_error":
+                artifact["summary"]["controller_errors"] += 1
+            else:
+                artifact["summary"]["shape_failures"] += 1
+
+            print(
+                f"  api-streams {classification}: /v1/streams/{product}/events "
+                f"events={outcome.get('events', 0)} "
+                f"keepalives={outcome.get('keepalives', 0)} "
+                f"first_frame_ms={outcome.get('first_frame_ms')}",
+                flush=True,
+            )
+            if args.delay:
+                time.sleep(args.delay)
+
+    finally:
+        artifact["finished_at"] = datetime.now(UTC).isoformat()
+        if server_proc is not None and server_proc.poll() is None:
+            server_proc.terminate()
+            try:
+                server_proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                server_proc.kill()
+                server_proc.wait(timeout=5)
+
+        report_dir = REPO_ROOT / args.report_dir / "phase4b-api-streams"
+        stamp = artifact["started_at"].replace(":", "").replace("+0000", "Z")
+        out_path = report_dir / f"api-streams-{stamp}.json"
+        write_json(out_path, artifact)
+        print(f"\nReport: {out_path}", flush=True)
+
+        # On failure preserve the server log; otherwise tear down the tmp dir.
+        failed = artifact["summary"]["shape_failures"] > 0
+        try:
+            if failed:
+                kept_log = (
+                    REPO_ROOT / args.report_dir / "phase4b-api-streams"
+                    / f"server-log-{stamp}.txt"
+                )
+                try:
+                    if server_log.exists():
+                        kept_log.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(server_log, kept_log)
+                        print(f"Server log preserved at: {kept_log}", flush=True)
+                except Exception:
+                    pass
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+        except Exception:
+            pass
+
+    if artifact["summary"]["shape_failures"] > 0:
+        return 1
+    return 0
+
+
 def main() -> int:
     args = parse_args()
     if args.phase == "api-actions":
         return run_api_actions_phase(args)
     if args.phase == "api-resources":
         return run_api_resources_phase(args)
+    if args.phase == "api-streams":
+        return run_api_streams_phase(args)
     if args.server == "all":
         return run_all_servers(args)
     return asyncio.run(run_one(args))
