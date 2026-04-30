@@ -10,6 +10,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import toggle_preview, update_preview
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_network_mcp.runtime import firewall_manager, server
 from unifi_network_mcp.validator_registry import UniFiValidatorRegistry  # Added for validation
 
@@ -123,25 +124,18 @@ async def get_port_forward(
         }
     }
     """
+    if not port_forward_id:
+        return {"success": False, "error": "port_forward_id is required"}
     try:
-        if not port_forward_id:
-            return {"success": False, "error": "port_forward_id is required"}
-
         rule_obj = await firewall_manager.get_port_forward_by_id(port_forward_id)
-        rule = rule_obj.raw if (rule_obj and hasattr(rule_obj, "raw")) else rule_obj
-
-        if not rule:
-            return {
-                "success": False,
-                "error": f"Port forwarding rule '{port_forward_id}' not found",
-            }
-
-        # Return full details, ensure serializable
+        rule = rule_obj.raw if hasattr(rule_obj, "raw") else rule_obj
         return {
             "success": True,
             "port_forward_id": port_forward_id,
             "details": json.loads(json.dumps(rule, default=str)),
         }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting port forward %s: %s", port_forward_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get port forward {port_forward_id}: {e}"}
@@ -479,88 +473,44 @@ async def update_port_forward(
             "error": "Update data is effectively empty or invalid.",
         }
 
-    try:
-        # Fetch the existing rule first to ensure it exists
-        existing_rule_obj = await firewall_manager.get_port_forward_by_id(port_forward_id)
-        existing_rule = existing_rule_obj.raw if (existing_rule_obj and hasattr(existing_rule_obj, "raw")) else None
-        if not existing_rule:
-            return {
-                "success": False,
-                "error": f"Port forwarding rule '{port_forward_id}' not found",
-            }
+    # Prepare the payload for the manager update function
+    update_payload = {}
+    updated_fields_list = []
+    for key, value in validated_data.items():
+        updated_fields_list.append(key)
+        if key == "protocol":
+            update_payload["proto"] = value.replace("_", "/")
+        elif key == "src_ip":
+            update_payload["src"] = value if value else None
+        elif key == "log":
+            update_payload["log"] = value
+        else:
+            update_payload[key] = value
 
-        rule_name = existing_rule.get("name", port_forward_id)
-
-        # Return preview when confirm=false
-        if not confirm:
-            return update_preview(
-                resource_type="port_forward",
-                resource_id=port_forward_id,
-                resource_name=rule_name,
-                current_state=existing_rule,
-                updates=validated_data,
-            )
-
-        # Prepare the payload for the manager update function
-        # Map schema fields to manager fields if necessary (like protocol)
-        update_payload = {}
-        updated_fields_list = []
-        for key, value in validated_data.items():
-            updated_fields_list.append(key)
-            if key == "protocol":
-                update_payload["proto"] = value.replace("_", "/")
-            elif key == "src_ip":
-                # Map src_ip to 'src', handle removal if empty string/null
-                update_payload["src"] = value if value else None
-            # Need to handle 'log' if it's part of the schema/manager
-            elif key == "log":
-                update_payload["log"] = value
-            else:
-                update_payload[key] = value
-
-        # Add potentially missing fields required by aiounifi update that aren't directly updatable via schema but needed for context?
-        # e.g. _id should be passed in the ID parameter, site_id might be handled by manager
-        # We only pass the fields being changed to the manager update function
-
-        logger.info(
-            "Attempting to update port forward '%s' (%s) with fields: %s",
-            rule_name,
-            port_forward_id,
-            ", ".join(updated_fields_list),
+    if not confirm:
+        return update_preview(
+            resource_type="port_forward",
+            resource_id=port_forward_id,
+            resource_name=port_forward_id,
+            current_state={},
+            updates=validated_data,
         )
 
-        # Assume firewall_manager.update_port_forward(id, data) exists
-        # It should handle merging the update_payload with the existing rule internally or send only the changed fields
+    try:
         success = await firewall_manager.update_port_forward(port_forward_id, update_payload)
-
         if success:
-            # Fetch the rule again to return the updated state
-            updated_rule_obj = await firewall_manager.get_port_forward_by_id(port_forward_id)
-            updated_rule = updated_rule_obj.raw if (updated_rule_obj and hasattr(updated_rule_obj, "raw")) else {}
-
-            logger.info("Successfully updated port forward '%s' (%s)", rule_name, port_forward_id)
             return {
                 "success": True,
                 "port_forward_id": port_forward_id,
                 "updated_fields": updated_fields_list,
-                "details": json.loads(json.dumps(updated_rule, default=str)),
             }
-        else:
-            logger.error("Failed to update port forward '%s' (%s). Manager returned false.", rule_name, port_forward_id)
-            # Attempt to fetch rule again to see if partial update occurred? Or just report failure.
-            rule_after_update_obj = await firewall_manager.get_port_forward_by_id(port_forward_id)
-            rule_after_update = (
-                rule_after_update_obj.raw if (rule_after_update_obj and hasattr(rule_after_update_obj, "raw")) else {}
-            )
-            return {
-                "success": False,
-                "port_forward_id": port_forward_id,
-                "error": f"Failed to update port forward '{rule_name}'. Check server logs.",
-                "details_after_attempt": json.loads(
-                    json.dumps(rule_after_update, default=str)
-                ),  # Provide state after failed attempt
-            }
-
+        return {
+            "success": False,
+            "port_forward_id": port_forward_id,
+            "error": f"Failed to update port forward '{port_forward_id}'. Check server logs.",
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating port forward %s: %s", port_forward_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update port forward {port_forward_id}: {e}"}

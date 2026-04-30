@@ -11,6 +11,7 @@ from typing import Annotated, Any, Dict
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_network_mcp.runtime import server, vpn_manager
 
 logger = logging.getLogger(__name__)
@@ -49,15 +50,14 @@ async def get_vpn_client_details(
     """Implementation for getting VPN client details."""
     try:
         client = await vpn_manager.get_vpn_client_details(client_id)
-        if client:
-            return {
-                "success": True,
-                "site": vpn_manager._connection.site,
-                "client_id": client_id,
-                "details": client,
-            }
-        else:
-            return {"success": False, "error": f"VPN client '{client_id}' not found."}
+        return {
+            "success": True,
+            "site": vpn_manager._connection.site,
+            "client_id": client_id,
+            "details": client,
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting VPN client details for %s: %s", client_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get VPN client details for {client_id}: {e}"}
@@ -79,21 +79,18 @@ async def update_vpn_client_state(
     """Implementation for updating VPN client state."""
     try:
         success = await vpn_manager.update_vpn_client_state(client_id, enabled)
+        state = "enabled" if enabled else "disabled"
         if success:
-            client_details = await vpn_manager.get_vpn_client_details(client_id)
-            name = client_details.get("name", client_id) if client_details else client_id
-            state = "enabled" if enabled else "disabled"
             return {
                 "success": True,
-                "message": f"VPN client '{name}' ({client_id}) {state}.",
+                "message": f"VPN client '{client_id}' {state}.",
             }
-        else:
-            client_details = await vpn_manager.get_vpn_client_details(client_id)
-            name = client_details.get("name", client_id) if client_details else client_id
-            return {
-                "success": False,
-                "error": f"Failed to update state for VPN client '{name}'.",
-            }
+        return {
+            "success": False,
+            "error": f"Failed to update state for VPN client '{client_id}'.",
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating state for VPN client %s: %s", client_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update state for VPN client {client_id}: {e}"}
@@ -132,15 +129,14 @@ async def get_vpn_server_details(
     """Implementation for getting VPN server details."""
     try:
         server = await vpn_manager.get_vpn_server_details(server_id)
-        if server:
-            return {
-                "success": True,
-                "site": vpn_manager._connection.site,
-                "server_id": server_id,
-                "details": server,
-            }
-        else:
-            return {"success": False, "error": f"VPN server '{server_id}' not found."}
+        return {
+            "success": True,
+            "site": vpn_manager._connection.site,
+            "server_id": server_id,
+            "details": server,
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting VPN server details for %s: %s", server_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to get VPN server details for {server_id}: {e}"}
@@ -162,21 +158,18 @@ async def update_vpn_server_state(
     """Implementation for updating VPN server state."""
     try:
         success = await vpn_manager.update_vpn_server_state(server_id, enabled)
+        state = "enabled" if enabled else "disabled"
         if success:
-            server_details = await vpn_manager.get_vpn_server_details(server_id)
-            name = server_details.get("name", server_id) if server_details else server_id
-            state = "enabled" if enabled else "disabled"
             return {
                 "success": True,
-                "message": f"VPN server '{name}' ({server_id}) {state}.",
+                "message": f"VPN server '{server_id}' {state}.",
             }
-        else:
-            server_details = await vpn_manager.get_vpn_server_details(server_id)
-            name = server_details.get("name", server_id) if server_details else server_id
-            return {
-                "success": False,
-                "error": f"Failed to update state for VPN server '{name}'.",
-            }
+        return {
+            "success": False,
+            "error": f"Failed to update state for VPN server '{server_id}'.",
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating state for VPN server %s: %s", server_id, e, exc_info=True)
         return {"success": False, "error": f"Failed to update state for VPN server {server_id}: {e}"}
