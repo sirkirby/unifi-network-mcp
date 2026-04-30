@@ -9,6 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from unifi_core.exceptions import UniFiNotFoundError
+
 os.environ.setdefault("UNIFI_HOST", "127.0.0.1")
 os.environ.setdefault("UNIFI_USERNAME", "test")
 os.environ.setdefault("UNIFI_PASSWORD", "test")
@@ -106,9 +108,11 @@ class TestGetDnsRecordDetails:
 
     @pytest.mark.asyncio
     async def test_get_not_found(self):
-        """Get returns error when record not found."""
+        """Get returns error when manager raises UniFiNotFoundError."""
         with patch("unifi_network_mcp.tools.dns.dns_manager") as mock_mgr:
-            mock_mgr.get_dns_record = AsyncMock(return_value=None)
+            mock_mgr.get_dns_record = AsyncMock(
+                side_effect=UniFiNotFoundError("dns_record", "nonexistent")
+            )
 
             from unifi_network_mcp.tools.dns import get_dns_record_details
 
@@ -242,17 +246,14 @@ class TestUpdateDnsRecord:
 
     @pytest.mark.asyncio
     async def test_update_preview(self):
-        """Preview mode returns current state and proposed changes."""
-        with patch("unifi_network_mcp.tools.dns.dns_manager") as mock_mgr:
-            mock_mgr.get_dns_record = AsyncMock(return_value=SAMPLE_RECORD)
+        """Preview mode returns proposed changes without fetching current state."""
+        from unifi_network_mcp.tools.dns import update_dns_record
 
-            from unifi_network_mcp.tools.dns import update_dns_record
-
-            result = await update_dns_record(
-                record_id="dns001",
-                update_data={"value": "10.0.0.2"},
-                confirm=False,
-            )
+        result = await update_dns_record(
+            record_id="dns001",
+            update_data={"value": "10.0.0.2"},
+            confirm=False,
+        )
 
         assert result["success"] is True
         assert result.get("requires_confirmation") is True
@@ -260,9 +261,9 @@ class TestUpdateDnsRecord:
     @pytest.mark.asyncio
     async def test_update_confirm_success(self):
         """Confirmed update calls manager and returns success."""
+        merged = {**SAMPLE_RECORD, "value": "10.0.0.2"}
         with patch("unifi_network_mcp.tools.dns.dns_manager") as mock_mgr:
-            mock_mgr.get_dns_record = AsyncMock(return_value=SAMPLE_RECORD)
-            mock_mgr.update_dns_record = AsyncMock(return_value=True)
+            mock_mgr.update_dns_record = AsyncMock(return_value=merged)
 
             from unifi_network_mcp.tools.dns import update_dns_record
 
@@ -277,9 +278,11 @@ class TestUpdateDnsRecord:
 
     @pytest.mark.asyncio
     async def test_update_not_found(self):
-        """Update returns error when record not found."""
+        """Update returns error when manager raises UniFiNotFoundError."""
         with patch("unifi_network_mcp.tools.dns.dns_manager") as mock_mgr:
-            mock_mgr.get_dns_record = AsyncMock(return_value=None)
+            mock_mgr.update_dns_record = AsyncMock(
+                side_effect=UniFiNotFoundError("dns_record", "nonexistent")
+            )
 
             from unifi_network_mcp.tools.dns import update_dns_record
 
@@ -321,11 +324,10 @@ class TestUpdateDnsRecord:
         assert "Validation error" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_update_manager_failure(self):
-        """Manager returning False results in error response."""
+    async def test_update_manager_exception(self):
+        """Generic manager exception bubbles up as a clean error response."""
         with patch("unifi_network_mcp.tools.dns.dns_manager") as mock_mgr:
-            mock_mgr.get_dns_record = AsyncMock(return_value=SAMPLE_RECORD)
-            mock_mgr.update_dns_record = AsyncMock(return_value=False)
+            mock_mgr.update_dns_record = AsyncMock(side_effect=Exception("Connection refused"))
 
             from unifi_network_mcp.tools.dns import update_dns_record
 
@@ -349,13 +351,10 @@ class TestDeleteDnsRecord:
 
     @pytest.mark.asyncio
     async def test_delete_preview(self):
-        """Preview mode returns confirmation prompt with warning."""
-        with patch("unifi_network_mcp.tools.dns.dns_manager") as mock_mgr:
-            mock_mgr.get_dns_record = AsyncMock(return_value=SAMPLE_RECORD)
+        """Preview mode returns confirmation prompt with warning, no manager call."""
+        from unifi_network_mcp.tools.dns import delete_dns_record
 
-            from unifi_network_mcp.tools.dns import delete_dns_record
-
-            result = await delete_dns_record(record_id="dns001", confirm=False)
+        result = await delete_dns_record(record_id="dns001", confirm=False)
 
         assert result["success"] is True
         assert result.get("requires_confirmation") is True

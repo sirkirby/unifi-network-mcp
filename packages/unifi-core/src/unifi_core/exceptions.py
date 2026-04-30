@@ -19,3 +19,25 @@ class UniFiRateLimitError(UniFiError):
 
 class UniFiPermissionError(UniFiError):
     """Insufficient permissions for operation."""
+
+
+class UniFiNotFoundError(UniFiError):
+    """Resource not found on the controller.
+
+    Raised by manager methods when an existence check (typically a fetch by id)
+    finds no matching resource. Tool functions catch this and surface a
+    standard ``{"success": False, "error": ...}`` MCP response.
+    """
+
+    def __init__(self, resource_type: str, identifier: str, message: str | None = None) -> None:
+        self.resource_type = resource_type
+        self.identifier = identifier
+        super().__init__(message or f"{resource_type} '{identifier}' not found")
+
+
+class UniFiValidationError(UniFiError):
+    """Resource exists but the requested mutation is invalid (e.g., conflicting fields)."""
+
+
+class UniFiOperationError(UniFiError):
+    """Manager method completed but the operation reported failure (e.g., controller rejected)."""

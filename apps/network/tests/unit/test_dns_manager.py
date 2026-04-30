@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from unifi_core.exceptions import UniFiNotFoundError
+
 
 class TestDnsManager:
     """Tests for DnsManager methods."""
@@ -83,12 +85,11 @@ class TestDnsManager:
 
     @pytest.mark.asyncio
     async def test_get_dns_record_not_found(self, dns_manager, mock_connection):
-        """Test get_dns_record returns None when not found."""
+        """Test get_dns_record raises UniFiNotFoundError when not found."""
         mock_connection.request.return_value = [{"_id": "r1"}]
 
-        result = await dns_manager.get_dns_record("nonexistent")
-
-        assert result is None
+        with pytest.raises(UniFiNotFoundError):
+            await dns_manager.get_dns_record("nonexistent")
 
     # ---- Create DNS Record ----
 
@@ -118,14 +119,16 @@ class TestDnsManager:
 
     @pytest.mark.asyncio
     async def test_update_dns_record_success(self, dns_manager, mock_connection):
-        """Test update_dns_record uses fetch-merge-put."""
+        """Test update_dns_record uses fetch-merge-put and returns merged record."""
         existing = [{"_id": "r1", "key": "host.example.com", "value": "10.0.0.1", "record_type": "A"}]
         # First call: list (for get_dns_record), second call: PUT
         mock_connection.request.side_effect = [existing, {}]
 
         result = await dns_manager.update_dns_record("r1", {"value": "10.0.0.2"})
 
-        assert result is True
+        assert result["_id"] == "r1"
+        assert result["value"] == "10.0.0.2"
+        assert result["key"] == "host.example.com"
         # Verify PUT was called with merged data
         put_call = mock_connection.request.call_args_list[1]
         put_req = put_call[0][0]
@@ -134,12 +137,11 @@ class TestDnsManager:
 
     @pytest.mark.asyncio
     async def test_update_dns_record_not_found(self, dns_manager, mock_connection):
-        """Test update_dns_record returns False when not found."""
+        """Test update_dns_record raises UniFiNotFoundError when record missing."""
         mock_connection.request.return_value = []
 
-        result = await dns_manager.update_dns_record("nonexistent", {"value": "10.0.0.2"})
-
-        assert result is False
+        with pytest.raises(UniFiNotFoundError):
+            await dns_manager.update_dns_record("nonexistent", {"value": "10.0.0.2"})
 
     @pytest.mark.asyncio
     async def test_update_dns_record_handles_error(self, dns_manager, mock_connection):
