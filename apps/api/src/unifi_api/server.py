@@ -20,14 +20,18 @@ from unifi_api.routes import catalog as catalog_routes
 from unifi_api.routes import controllers as controllers_routes
 from unifi_api.routes import health
 from unifi_api.routes.resources.network import (
+    blocked_clients as net_blocked_clients_routes,
+    client_groups as net_client_groups_routes,
     clients as net_clients_routes,
     devices as net_devices_routes,
     firewall_rules as net_firewall_routes,
     lldp as net_lldp_routes,
+    lookup as net_lookup_routes,
     networks as net_networks_routes,
     rogue_aps as net_rogue_aps_routes,
     speedtest as net_speedtest_routes,
     switch as net_switch_routes,
+    user_groups as net_user_groups_routes,
     wireless as net_wireless_routes,
     wlans as net_wlans_routes,
 )
@@ -172,6 +176,10 @@ def create_app(config: ApiConfig) -> FastAPI:
         net_rogue_aps_routes,
         net_wireless_routes,
         net_speedtest_routes,
+        net_blocked_clients_routes,
+        net_client_groups_routes,
+        net_user_groups_routes,
+        net_lookup_routes,
     ):
         app.include_router(r.router, prefix="/v1")
     for r in (
