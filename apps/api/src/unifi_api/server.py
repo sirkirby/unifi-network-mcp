@@ -23,7 +23,12 @@ from unifi_api.routes.resources.network import (
     clients as net_clients_routes,
     devices as net_devices_routes,
     firewall_rules as net_firewall_routes,
+    lldp as net_lldp_routes,
     networks as net_networks_routes,
+    rogue_aps as net_rogue_aps_routes,
+    speedtest as net_speedtest_routes,
+    switch as net_switch_routes,
+    wireless as net_wireless_routes,
     wlans as net_wlans_routes,
 )
 from unifi_api.routes.resources.protect import (
@@ -162,6 +167,11 @@ def create_app(config: ApiConfig) -> FastAPI:
         net_networks_routes,
         net_firewall_routes,
         net_wlans_routes,
+        net_switch_routes,
+        net_lldp_routes,
+        net_rogue_aps_routes,
+        net_wireless_routes,
+        net_speedtest_routes,
     ):
         app.include_router(r.router, prefix="/v1")
     for r in (
