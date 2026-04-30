@@ -66,8 +66,10 @@ from unifi_api.routes.resources.access import (
     credentials as access_credentials_routes,
     devices as access_devices_routes,
     doors as access_doors_routes,
+    events as access_events_routes,
     policies as access_policies_routes,
     schedules as access_schedules_routes,
+    system as access_system_routes,
     users as access_users_routes,
     visitors as access_visitors_routes,
 )
@@ -248,6 +250,8 @@ def create_app(config: ApiConfig) -> FastAPI:
         access_schedules_routes,
         access_devices_routes,
         access_visitors_routes,
+        access_events_routes,
+        access_system_routes,
     ):
         app.include_router(r.router, prefix="/v1")
     for r in (
