@@ -8,6 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from unifi_core.exceptions import UniFiNotFoundError
+
 
 class TestContentFilterManager:
     """Tests for the ContentFilterManager class."""
@@ -103,14 +105,13 @@ class TestContentFilterManager:
 
     @pytest.mark.asyncio
     async def test_get_content_filter_by_id_not_found(self, content_filter_manager, mock_connection):
-        """Test get_content_filter_by_id returns None when ID not in list."""
+        """Test get_content_filter_by_id raises UniFiNotFoundError when ID not in list."""
         mock_connection.request.return_value = [
             {"_id": "f1", "name": "Kids"},
         ]
 
-        profile = await content_filter_manager.get_content_filter_by_id("nonexistent")
-
-        assert profile is None
+        with pytest.raises(UniFiNotFoundError):
+            await content_filter_manager.get_content_filter_by_id("nonexistent")
 
     @pytest.mark.asyncio
     async def test_get_content_filter_by_id_handles_error(self, content_filter_manager, mock_connection):
@@ -133,7 +134,8 @@ class TestContentFilterManager:
 
         result = await content_filter_manager.update_content_filter("f1", {"name": "Updated"})
 
-        assert result is True
+        assert result["name"] == "Updated"
+        assert result["categories"] == ["FAMILY"]
         mock_connection._invalidate_cache.assert_called()
 
     @pytest.mark.asyncio
@@ -172,7 +174,7 @@ class TestContentFilterManager:
             "cf1", {"name": "Family Filter", "safe_search": ["GOOGLE", "YOUTUBE", "BING"]}
         )
 
-        assert result is True
+        assert result["name"] == "Family Filter"
         put_call = mock_connection.request.call_args_list[1]
         put_request = put_call[0][0]
         assert put_request.method == "put"
@@ -182,20 +184,23 @@ class TestContentFilterManager:
 
     @pytest.mark.asyncio
     async def test_update_content_filter_not_found(self, content_filter_manager, mock_connection):
-        """Test update_content_filter returns False when filter not found."""
+        """Test update_content_filter raises UniFiNotFoundError when filter not found."""
         mock_connection.request.return_value = []
 
-        result = await content_filter_manager.update_content_filter("nonexistent", {"name": "Test"})
-
-        assert result is False
+        with pytest.raises(UniFiNotFoundError):
+            await content_filter_manager.update_content_filter("nonexistent", {"name": "Test"})
 
     @pytest.mark.asyncio
     async def test_update_content_filter_empty_update(self, content_filter_manager, mock_connection):
-        """Test update_content_filter with empty data is a no-op."""
+        """Test update_content_filter with empty data returns existing without PUT."""
+        existing = {"_id": "cf1", "name": "Existing"}
+        mock_connection.request.return_value = [existing]
+
         result = await content_filter_manager.update_content_filter("cf1", {})
 
-        assert result is True
-        mock_connection.request.assert_not_called()
+        assert result == existing
+        # Only the GET (for get_content_filter_by_id) ran; no PUT.
+        assert mock_connection.request.call_count == 1
 
     # ---- delete_content_filter ----
 

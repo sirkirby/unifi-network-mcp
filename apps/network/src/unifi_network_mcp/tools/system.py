@@ -155,32 +155,24 @@ async def update_snmp_settings(
     if not validated_data:
         return {"success": False, "error": "No valid fields to update after validation."}
 
+    if not confirm:
+        return update_preview(
+            resource_type="snmp_settings",
+            resource_id="snmp",
+            resource_name="SNMP Settings",
+            current_state={},
+            updates=validated_data,
+        )
+
     try:
-        settings_list = await system_manager.get_settings("snmp")
-        current = settings_list[0] if settings_list else {}
-
-        if not confirm:
-            return update_preview(
-                resource_type="snmp_settings",
-                resource_id=current.get("_id", "snmp"),
-                resource_name="SNMP Settings",
-                current_state={
-                    "enabled": current.get("enabled", False),
-                    "community": current.get("community", ""),
-                },
-                updates=validated_data,
-            )
-
         success = await system_manager.update_settings("snmp", validated_data)
         if success:
-            refreshed = await system_manager.get_settings("snmp")
-            new_settings = refreshed[0] if refreshed else validated_data
             return {
                 "success": True,
                 "site": system_manager._connection.site,
                 "snmp_settings": {
-                    "enabled": new_settings.get("enabled", enabled),
-                    "community": new_settings.get("community", community or ""),
+                    "enabled": validated_data.get("enabled", enabled),
+                    "community": validated_data.get("community", community or ""),
                 },
             }
         return {"success": False, "error": "Failed to update SNMP settings."}
@@ -338,25 +330,22 @@ async def update_autobackup_settings(
     if not validated_data:
         return {"success": False, "error": "No valid fields to update after validation."}
 
+    if not confirm:
+        return update_preview(
+            resource_type="autobackup_settings",
+            resource_id="super_mgmt",
+            resource_name="Auto-Backup Settings",
+            current_state={},
+            updates=validated_data,
+        )
+
     try:
-        current = await system_manager.get_autobackup_settings()
-
-        if not confirm:
-            return update_preview(
-                resource_type="autobackup_settings",
-                resource_id="super_mgmt",
-                resource_name="Auto-Backup Settings",
-                current_state=current,
-                updates=validated_data,
-            )
-
         success = await system_manager.update_autobackup_settings(validated_data)
         if success:
-            updated = await system_manager.get_autobackup_settings()
             return {
                 "success": True,
                 "message": "Auto-backup settings updated successfully.",
-                "autobackup_settings": updated,
+                "autobackup_settings": validated_data,
             }
         return {"success": False, "error": "Failed to update auto-backup settings."}
     except Exception as e:
