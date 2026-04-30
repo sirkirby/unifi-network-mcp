@@ -17,7 +17,7 @@ import logging
 from typing import Any, Dict, List
 
 from unifi_core.access.managers.connection_manager import AccessConnectionManager
-from unifi_core.exceptions import UniFiConnectionError
+from unifi_core.exceptions import UniFiConnectionError, UniFiNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -168,10 +168,10 @@ class DeviceManager:
                 for dev in devices:
                     if dev.get("unique_id") == device_id or dev.get("mac") == device_id:
                         return dev
-                raise ValueError(f"Device not found: {device_id}")
+                raise UniFiNotFoundError("device", device_id)
             else:
                 raise UniFiConnectionError("No auth path available for get_device")
-        except (UniFiConnectionError, ValueError):
+        except (UniFiConnectionError, UniFiNotFoundError, ValueError):
             raise
         except Exception as e:
             logger.error("Failed to get device %s: %s", device_id, e, exc_info=True)

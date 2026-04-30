@@ -11,6 +11,7 @@ from pydantic import Field
 
 from unifi_access_mcp.runtime import policy_manager, server
 from unifi_core.confirmation import update_preview
+from unifi_core.exceptions import UniFiNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ async def access_get_policy(
     try:
         detail = await policy_manager.get_policy(policy_id)
         return {"success": True, "data": detail}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting policy %s: %s", policy_id, e, exc_info=True)
@@ -131,7 +132,7 @@ async def access_update_policy(
             current_state=preview_data["current_state"],
             updates=preview_data["proposed_changes"],
         )
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating policy %s: %s", policy_id, e, exc_info=True)

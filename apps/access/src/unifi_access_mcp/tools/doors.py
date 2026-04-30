@@ -11,6 +11,7 @@ from pydantic import Field
 
 from unifi_access_mcp.runtime import door_manager, server
 from unifi_core.confirmation import preview_response
+from unifi_core.exceptions import UniFiNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ async def access_get_door(
     try:
         detail = await door_manager.get_door(door_id)
         return {"success": True, "data": detail}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting door %s: %s", door_id, e, exc_info=True)
@@ -108,7 +109,7 @@ async def access_unlock_door(
             resource_name=preview_data.get("door_name"),
             warnings=["This will physically unlock a door. Ensure this is intentional."],
         )
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error unlocking door %s: %s", door_id, e, exc_info=True)
@@ -149,7 +150,7 @@ async def access_lock_door(
             proposed_changes=preview_data["proposed_changes"],
             resource_name=preview_data.get("door_name"),
         )
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error locking door %s: %s", door_id, e, exc_info=True)
@@ -175,7 +176,7 @@ async def access_get_door_status(
     try:
         status = await door_manager.get_door_status(door_id)
         return {"success": True, "data": status}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting door status %s: %s", door_id, e, exc_info=True)

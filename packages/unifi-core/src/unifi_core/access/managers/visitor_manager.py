@@ -19,7 +19,7 @@ import logging
 from typing import Any, Dict, List
 
 from unifi_core.access.managers.connection_manager import AccessConnectionManager
-from unifi_core.exceptions import UniFiConnectionError
+from unifi_core.exceptions import UniFiConnectionError, UniFiNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +74,11 @@ class VisitorManager:
                     "[visitors] Visitor endpoint returned 404 for %s — endpoint path may not be correct.",
                     visitor_id,
                 )
-                raise ValueError(
+                raise UniFiNotFoundError(
+                    "visitor",
+                    visitor_id,
                     f"Visitor not found or endpoint not available: {visitor_id}. "
-                    "The visitor API path has not been confirmed via browser inspection."
+                    "The visitor API path has not been confirmed via browser inspection.",
                 ) from e
             raise
         except Exception as e:

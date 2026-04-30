@@ -12,6 +12,7 @@ from pydantic import Field
 
 from unifi_access_mcp.runtime import credential_manager, server
 from unifi_core.confirmation import create_preview, preview_response
+from unifi_core.exceptions import UniFiNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ async def access_get_credential(
     try:
         detail = await credential_manager.get_credential(credential_id)
         return {"success": True, "data": detail}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting credential %s: %s", credential_id, e, exc_info=True)
@@ -112,7 +113,7 @@ async def access_create_credential(
             resource_data=preview_data["proposed_changes"],
             resource_name=f"{credential_type} credential",
         )
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error creating credential: %s", e, exc_info=True)
@@ -154,7 +155,7 @@ async def access_revoke_credential(
             proposed_changes=preview_data["proposed_changes"],
             warnings=["This will permanently remove the credential. The user will lose access via this credential."],
         )
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error revoking credential %s: %s", credential_id, e, exc_info=True)

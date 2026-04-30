@@ -9,6 +9,7 @@ import logging
 from typing import Annotated, Any, Dict, Optional
 
 from mcp.types import ToolAnnotations
+from unifi_core.exceptions import UniFiNotFoundError
 from pydantic import Field
 
 from unifi_access_mcp.runtime import event_manager, server
@@ -93,7 +94,7 @@ async def access_get_event(
     try:
         event = await event_manager.get_event(event_id)
         return {"success": True, "data": event}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting event %s: %s", event_id, e, exc_info=True)
