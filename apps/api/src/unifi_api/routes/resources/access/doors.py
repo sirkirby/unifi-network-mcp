@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from unifi_core.exceptions import UniFiNotFoundError
+
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
 from unifi_api.routes.resources._common import (
@@ -115,4 +117,85 @@ async def get_door(
     return {
         "data": serializer.serialize(door),
         "render_hint": registry.render_hint_for_resource("access", "doors/{id}"),
+    }
+
+
+@router.get(
+    "/sites/{site_id}/doors/{door_id}/status",
+    dependencies=[Depends(require_scope(Scope.READ))],
+)
+async def get_door_status(
+    request: Request,
+    site_id: str,
+    door_id: str,
+    controller=Depends(resolve_controller),
+) -> dict:
+    """Per-door status (nested under /doors/{door_id}/status).
+
+    Mirrors the protect /cameras/{id}/analytics nested-detail pattern.
+    DoorManager.get_door_status raises UniFiNotFoundError on miss → 404.
+    """
+    require_capability(controller, "access")
+    factory = request.app.state.manager_factory
+    sm = request.app.state.sessionmaker
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "access", "door_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "access")
+            await _maybe_set_site(cm, site_id)
+            status = await mgr.get_door_status(door_id)
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    if status is None:
+        raise HTTPException(status_code=404, detail=f"door {door_id} not found")
+
+    registry = request.app.state.serializer_registry
+    serializer = registry.serializer_for_tool("access_get_door_status")
+    return {
+        "data": serializer.serialize(status),
+        "render_hint": registry.render_hint_for_tool("access_get_door_status"),
+    }
+
+
+@router.get(
+    "/sites/{site_id}/door-groups",
+    dependencies=[Depends(require_scope(Scope.READ))],
+)
+async def list_door_groups(
+    request: Request,
+    site_id: str,
+    controller=Depends(resolve_controller),
+    limit: int = Query(50, ge=1, le=200),
+    cursor: str | None = Query(None),
+) -> dict:
+    require_capability(controller, "access")
+    factory = request.app.state.manager_factory
+    sm = request.app.state.sessionmaker
+    async with sm() as session:
+        mgr = await factory.get_domain_manager(
+            session, controller.id, "access", "door_manager",
+        )
+        cm = await factory.get_connection_manager(session, controller.id, "access")
+        await _maybe_set_site(cm, site_id)
+        all_groups = await mgr.list_door_groups()
+
+    cursor_obj = None
+    if cursor:
+        try:
+            cursor_obj = Cursor.decode(cursor)
+        except InvalidCursor:
+            raise HTTPException(status_code=400, detail="invalid cursor")
+
+    page, next_cursor = paginate(
+        list(all_groups), limit=limit, cursor=cursor_obj, key_fn=_door_key,
+    )
+
+    registry = request.app.state.serializer_registry
+    serializer = registry.serializer_for_tool("access_list_door_groups")
+    return {
+        "items": [serializer.serialize(g) for g in page],
+        "next_cursor": next_cursor.encode() if next_cursor else None,
+        "render_hint": registry.render_hint_for_tool("access_list_door_groups"),
     }
