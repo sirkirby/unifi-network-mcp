@@ -5,6 +5,7 @@ from enum import Enum
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from unifi_core.exceptions import UniFiNotFoundError
 
 # ---------------------------------------------------------------------------
 # Fake enum types
@@ -288,7 +289,7 @@ class TestLightManagerUpdateLight:
         from unifi_core.protect.managers.light_manager import LightManager
 
         mgr = LightManager(mock_cm_lights)
-        with pytest.raises(ValueError, match="Light not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.update_light("bad-id", {"light_on": True})
 
 
@@ -447,7 +448,7 @@ class TestChimeManagerUpdateChime:
         from unifi_core.protect.managers.chime_manager import ChimeManager
 
         mgr = ChimeManager(mock_cm_chimes)
-        with pytest.raises(ValueError, match="Chime not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.update_chime("bad-id", {"volume": 50})
 
 
@@ -512,7 +513,7 @@ class TestChimeManagerTrigger:
         from unifi_core.protect.managers.chime_manager import ChimeManager
 
         mgr = ChimeManager(mock_cm_chimes)
-        with pytest.raises(ValueError, match="Chime not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.trigger_chime("bad-id")
 
 

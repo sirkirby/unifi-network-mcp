@@ -5,6 +5,7 @@ from enum import Enum
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from unifi_core.exceptions import UniFiNotFoundError
 
 # ---------------------------------------------------------------------------
 # Fixtures: mock pyunifiprotect Camera model data
@@ -309,7 +310,7 @@ class TestCameraManagerGetCamera:
         from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
-        with pytest.raises(ValueError, match="Camera not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.get_camera("nonexistent")
 
 
@@ -347,7 +348,7 @@ class TestCameraManagerGetSnapshot:
         from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
-        with pytest.raises(ValueError, match="Camera not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.get_snapshot("nonexistent")
 
 
@@ -374,7 +375,7 @@ class TestCameraManagerGetCameraStreams:
         from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
-        with pytest.raises(ValueError, match="Camera not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.get_camera_streams("nonexistent")
 
 

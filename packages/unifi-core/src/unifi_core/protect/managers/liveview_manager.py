@@ -22,6 +22,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.protect.managers.connection_manager import ProtectConnectionManager
 
 logger = logging.getLogger(__name__)
@@ -38,11 +39,11 @@ class LiveviewManager:
     # ------------------------------------------------------------------
 
     def _get_liveview(self, liveview_id: str):
-        """Retrieve a Liveview object by ID, raising ValueError if not found."""
+        """Retrieve a Liveview object by ID, raising UniFiNotFoundError if not found."""
         liveviews = self._cm.client.bootstrap.liveviews
         liveview = liveviews.get(liveview_id)
         if liveview is None:
-            raise ValueError(f"Liveview not found: {liveview_id}")
+            raise UniFiNotFoundError("liveview", liveview_id)
         return liveview
 
     @staticmethod

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from unifi_core.exceptions import UniFiNotFoundError
 from uiprotect.data import EventType, ModelType, SmartDetectObjectType, WSAction
 
 from unifi_core.protect.managers.event_manager import EventManager
@@ -317,7 +318,7 @@ class TestEventManagerGetEvent:
         cm = _make_connection_manager()
         cm.client.get_event = AsyncMock(side_effect=Exception("404 Not Found"))
         mgr = EventManager(cm)
-        with pytest.raises(ValueError, match="Event not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.get_event("nonexistent")
 
 
@@ -363,7 +364,7 @@ class TestEventManagerGetEventThumbnail:
         cm = _make_connection_manager()
         cm.client.get_event = AsyncMock(side_effect=Exception("404"))
         mgr = EventManager(cm)
-        with pytest.raises(ValueError, match="Event not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.get_event_thumbnail("bad-id")
 
     @pytest.mark.asyncio
@@ -453,7 +454,7 @@ class TestEventManagerAcknowledgeEvent:
         cm = _make_connection_manager()
         cm.client.get_event = AsyncMock(side_effect=Exception("404"))
         mgr = EventManager(cm)
-        with pytest.raises(ValueError, match="Event not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.acknowledge_event("bad-id")
 
     @pytest.mark.asyncio
@@ -472,7 +473,7 @@ class TestEventManagerAcknowledgeEvent:
         cm = _make_connection_manager()
         cm.client.get_event = AsyncMock(side_effect=Exception("404"))
         mgr = EventManager(cm)
-        with pytest.raises(ValueError, match="Event not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.apply_acknowledge_event("bad-id")
 
 

@@ -12,6 +12,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from unifi_core.confirmation import preview_response
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_protect_mcp.runtime import camera_manager, server
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,7 @@ async def protect_get_camera(
     try:
         detail = await camera_manager.get_camera(camera_id)
         return {"success": True, "data": detail}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting camera %s: %s", camera_id, e, exc_info=True)
@@ -115,7 +116,7 @@ async def protect_get_snapshot(
                     "snapshot_url": f"protect://cameras/{camera_id}/snapshot",
                 },
             }
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting snapshot for camera %s: %s", camera_id, e, exc_info=True)
@@ -139,7 +140,7 @@ async def protect_get_camera_streams(
     try:
         streams = await camera_manager.get_camera_streams(camera_id)
         return {"success": True, "data": streams}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting streams for camera %s: %s", camera_id, e, exc_info=True)
@@ -164,7 +165,7 @@ async def protect_get_camera_analytics(
     try:
         analytics = await camera_manager.get_camera_analytics(camera_id)
         return {"success": True, "data": analytics}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error getting analytics for camera %s: %s", camera_id, e, exc_info=True)
@@ -228,7 +229,7 @@ async def protect_update_camera_settings(
         # Apply the changes
         result = await camera_manager.apply_camera_settings(camera_id, settings)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error updating camera settings for %s: %s", camera_id, e, exc_info=True)
@@ -281,7 +282,7 @@ async def protect_toggle_recording(
         # Apply the change
         result = await camera_manager.apply_toggle_recording(camera_id, enabled)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error toggling recording for camera %s: %s", camera_id, e, exc_info=True)
@@ -343,7 +344,7 @@ async def protect_ptz_move(
 
         result = await camera_manager.ptz_move(camera_id, pan=pan, tilt=tilt, duration_ms=duration_ms)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error with PTZ move for camera %s: %s", camera_id, e, exc_info=True)
@@ -399,7 +400,7 @@ async def protect_ptz_zoom(
 
         result = await camera_manager.ptz_zoom(camera_id, zoom_speed=zoom_speed, duration_ms=duration_ms)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error with PTZ zoom for camera %s: %s", camera_id, e, exc_info=True)
@@ -448,7 +449,7 @@ async def protect_ptz_preset(
 
         result = await camera_manager.ptz_goto_preset(camera_id, preset_slot)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error with PTZ preset for camera %s: %s", camera_id, e, exc_info=True)
@@ -501,7 +502,7 @@ async def protect_reboot_camera(
         # Execute reboot
         result = await camera_manager.apply_reboot_camera(camera_id)
         return {"success": True, "data": result}
-    except ValueError as e:
+    except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error("Error rebooting camera %s: %s", camera_id, e, exc_info=True)

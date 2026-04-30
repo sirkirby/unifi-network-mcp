@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from uiprotect.data.types import IRLEDMode, RecordingMode
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.protect.managers.connection_manager import ProtectConnectionManager
 
 logger = logging.getLogger(__name__)
@@ -32,11 +33,11 @@ class CameraManager:
     # ------------------------------------------------------------------
 
     def _get_camera(self, camera_id: str):
-        """Retrieve a Camera object by ID, raising ValueError if not found."""
+        """Retrieve a Camera object by ID, raising UniFiNotFoundError if not found."""
         cameras = self._cm.client.bootstrap.cameras
         camera = cameras.get(camera_id)
         if camera is None:
-            raise ValueError(f"Camera not found: {camera_id}")
+            raise UniFiNotFoundError("camera", camera_id)
         return camera
 
     @staticmethod

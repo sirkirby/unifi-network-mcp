@@ -5,6 +5,7 @@ from enum import Enum
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from unifi_core.exceptions import UniFiNotFoundError
 
 # ---------------------------------------------------------------------------
 # Fixtures: mock pyunifiprotect Camera model data for recordings
@@ -117,7 +118,7 @@ class TestRecordingManagerGetRecordingStatus:
         from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
-        with pytest.raises(ValueError, match="Camera not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.get_recording_status(camera_id="nonexistent")
 
     @pytest.mark.asyncio
@@ -160,7 +161,7 @@ class TestRecordingManagerListRecordings:
         from unifi_core.protect.managers.recording_manager import RecordingManager
 
         mgr = RecordingManager(mock_cm)
-        with pytest.raises(ValueError, match="Camera not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.list_recordings("nonexistent")
 
     @pytest.mark.asyncio
@@ -243,7 +244,7 @@ class TestRecordingManagerExportClip:
         mgr = RecordingManager(mock_cm)
         start = datetime(2026, 3, 16, 10, 0, tzinfo=timezone.utc)
         end = datetime(2026, 3, 16, 10, 30, tzinfo=timezone.utc)
-        with pytest.raises(ValueError, match="Camera not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.export_clip("nonexistent", start=start, end=end)
 
 
@@ -266,7 +267,7 @@ class TestRecordingManagerDeleteRecording:
         mgr = RecordingManager(mock_cm)
         start = datetime(2026, 3, 16, 10, 0, tzinfo=timezone.utc)
         end = datetime(2026, 3, 16, 10, 30, tzinfo=timezone.utc)
-        with pytest.raises(ValueError, match="Camera not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.delete_recording("nonexistent", start=start, end=end)
 
 

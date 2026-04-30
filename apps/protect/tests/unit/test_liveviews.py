@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from unifi_core.exceptions import UniFiNotFoundError
 
 # ---------------------------------------------------------------------------
 # Mock factories
@@ -183,7 +184,7 @@ class TestLiveviewManagerDeleteLiveview:
         from unifi_core.protect.managers.liveview_manager import LiveviewManager
 
         mgr = LiveviewManager(mock_cm)
-        with pytest.raises(ValueError, match="Liveview not found"):
+        with pytest.raises(UniFiNotFoundError):
             await mgr.delete_liveview("bad-id")
 
 

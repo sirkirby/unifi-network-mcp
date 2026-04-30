@@ -15,6 +15,8 @@ from typing import Any, Callable
 
 from uiprotect.data import Event, EventType, ModelType, SmartDetectObjectType, WSAction, WSSubscriptionMessage
 
+from unifi_core.exceptions import UniFiNotFoundError
+
 logger = logging.getLogger(__name__)
 
 
@@ -326,7 +328,7 @@ class EventManager:
         try:
             event: Event = await self._cm.client.get_event(event_id)
         except Exception as exc:
-            raise ValueError(f"Event not found: {event_id}") from exc
+            raise UniFiNotFoundError("event", event_id) from exc
         return self._event_to_dict(event)
 
     async def get_event_thumbnail(
@@ -344,7 +346,7 @@ class EventManager:
         try:
             event: Event = await self._cm.client.get_event(event_id)
         except Exception as exc:
-            raise ValueError(f"Event not found: {event_id}") from exc
+            raise UniFiNotFoundError("event", event_id) from exc
 
         if not event.thumbnail_id:
             return {
@@ -449,7 +451,7 @@ class EventManager:
         try:
             event: Event = await self._cm.client.get_event(event_id)
         except Exception as exc:
-            raise ValueError(f"Event not found: {event_id}") from exc
+            raise UniFiNotFoundError("event", event_id) from exc
 
         return {
             "event_id": event_id,
@@ -465,7 +467,7 @@ class EventManager:
         try:
             event: Event = await self._cm.client.get_event(event_id)
         except Exception as exc:
-            raise ValueError(f"Event not found: {event_id}") from exc
+            raise UniFiNotFoundError("event", event_id) from exc
 
         # The Protect API uses is_favorite as the closest analog to
         # "acknowledged".  We set it to True.

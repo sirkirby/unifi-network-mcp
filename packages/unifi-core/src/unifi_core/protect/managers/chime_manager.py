@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.protect.managers.connection_manager import ProtectConnectionManager
 
 logger = logging.getLogger(__name__)
@@ -33,11 +34,11 @@ class ChimeManager:
     # ------------------------------------------------------------------
 
     def _get_chime(self, chime_id: str):
-        """Retrieve a Chime object by ID, raising ValueError if not found."""
+        """Retrieve a Chime object by ID, raising UniFiNotFoundError if not found."""
         chimes = self._cm.client.bootstrap.chimes
         chime = chimes.get(chime_id)
         if chime is None:
-            raise ValueError(f"Chime not found: {chime_id}")
+            raise UniFiNotFoundError("chime", chime_id)
         return chime
 
     @staticmethod

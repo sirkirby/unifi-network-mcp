@@ -19,6 +19,7 @@ import logging
 from datetime import timedelta
 from typing import Any, Dict, List
 
+from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.protect.managers.connection_manager import ProtectConnectionManager
 
 logger = logging.getLogger(__name__)
@@ -35,11 +36,11 @@ class LightManager:
     # ------------------------------------------------------------------
 
     def _get_light(self, light_id: str):
-        """Retrieve a Light object by ID, raising ValueError if not found."""
+        """Retrieve a Light object by ID, raising UniFiNotFoundError if not found."""
         lights = self._cm.client.bootstrap.lights
         light = lights.get(light_id)
         if light is None:
-            raise ValueError(f"Light not found: {light_id}")
+            raise UniFiNotFoundError("light", light_id)
         return light
 
     @staticmethod
