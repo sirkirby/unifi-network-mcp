@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
 from unifi_api.db.models import AuditLog
+from unifi_api.services.audit import add_audit_subscriber
+from unifi_api.services.audit_pruner import prune_audit
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
 
 
@@ -86,3 +91,62 @@ async def list_audit(
         "items": [_row_to_dict(r) for r in page],
         "next_cursor": next_cursor.encode() if next_cursor else None,
     }
+
+
+@router.post(
+    "/audit/prune",
+    dependencies=[Depends(require_scope(Scope.ADMIN))],
+)
+async def prune_endpoint(request: Request) -> dict:
+    sm = request.app.state.sessionmaker
+    svc = request.app.state.settings_service
+    max_age = await svc.get_int("audit.retention.max_age_days", default=90)
+    max_rows = await svc.get_int("audit.retention.max_rows", default=1_000_000)
+    return await prune_audit(sm, max_age_days=max_age, max_rows=max_rows)
+
+
+async def _audit_event_stream():
+    """Async generator that yields SSE frames for audit rows.
+
+    Module-level (not nested inside the route) so tests can monkeypatch it
+    with a finite version that doesn't loop forever.
+    """
+    queue: asyncio.Queue[dict] = asyncio.Queue(maxsize=256)
+
+    def _on_row(row: dict) -> None:
+        try:
+            queue.put_nowait(row)
+        except asyncio.QueueFull:
+            pass  # drop newest if backpressured
+
+    unsub = add_audit_subscriber(_on_row)
+    try:
+        while True:
+            try:
+                row = await asyncio.wait_for(queue.get(), timeout=30.0)
+                yield (
+                    f"event: audit.row\n"
+                    f"id: {row['id']}\n"
+                    f"data: {json.dumps(row, default=str)}\n\n"
+                ).encode()
+            except asyncio.TimeoutError:
+                yield b": keepalive\n\n"
+    finally:
+        unsub()
+
+
+@router.get(
+    "/streams/audit",
+    dependencies=[Depends(require_scope(Scope.ADMIN))],
+)
+async def stream_audit(request: Request) -> StreamingResponse:
+    """SSE stream of audit rows. One frame per row inserted via write_audit."""
+    return StreamingResponse(
+        _audit_event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )

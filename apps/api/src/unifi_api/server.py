@@ -87,6 +87,7 @@ from unifi_api.services.capability_cache import CapabilityCache
 from unifi_api.services.controllers import list_controllers
 from unifi_api.services.managers import ManagerFactory
 from unifi_api.services.manifest import ManifestRegistry
+from unifi_api.services.settings import SettingsService
 from unifi_api.services.streams import SubscriberPool
 
 
@@ -183,6 +184,7 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.subscriber_pool = SubscriberPool()
     app.state.argon_cache = ArgonVerifyCache()
     app.state.capability_cache = CapabilityCache()
+    app.state.settings_service = SettingsService(app.state.sessionmaker)
     app.state.manifest_registry = ManifestRegistry.load_from_apps()
     # Discover and register every serializer module, then validate against the
     # full manifest. Phase 4A landed coverage for all 235 manifest tools, so
