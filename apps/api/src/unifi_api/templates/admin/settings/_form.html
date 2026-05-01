@@ -1,0 +1,56 @@
+<form
+  hx-post="/admin/settings/save"
+  hx-target="#settings-form-slot"
+  hx-swap="innerHTML">
+
+  {% if saved %}
+  <p class="status-ok">● Saved.</p>
+  {% endif %}
+
+  <article>
+    <header><strong>Audit log retention</strong></header>
+    <div class="grid">
+      <label>Max age (days)
+        <input type="number" name="audit_max_age_days" value="{{ s.audit.max_age_days }}" min="0" required />
+      </label>
+      <label>Max rows
+        <input type="number" name="audit_max_rows" value="{{ s.audit.max_rows }}" min="0" required />
+      </label>
+    </div>
+    <div class="grid">
+      <label>Prune interval (hours)
+        <input type="number" name="audit_prune_interval_hours" value="{{ s.audit.prune_interval_hours }}" min="1" required />
+      </label>
+      <label><input type="checkbox" name="audit_enabled"
+        {% if s.audit.enabled %}checked{% endif %} /> Background pruner enabled</label>
+    </div>
+  </article>
+
+  <article>
+    <header><strong>Log file</strong></header>
+    <label><input type="checkbox" name="logs_enabled"
+      {% if s.logs.enabled %}checked{% endif %} /> File logging enabled</label>
+    <label>Path <small>(restart required to change)</small>
+      <input type="text" name="logs_path" value="{{ s.logs.path }}" readonly />
+    </label>
+    <div class="grid">
+      <label>Max bytes per file
+        <input type="number" name="logs_max_bytes" value="{{ s.logs.max_bytes }}" min="1024" required />
+      </label>
+      <label>Backup count
+        <input type="number" name="logs_backup_count" value="{{ s.logs.backup_count }}" min="0" required />
+      </label>
+    </div>
+    <label>Level
+      <select name="logs_level">
+        <option value="DEBUG" {% if s.logs.level == "DEBUG" %}selected{% endif %}>DEBUG</option>
+        <option value="INFO" {% if s.logs.level == "INFO" %}selected{% endif %}>INFO</option>
+        <option value="WARNING" {% if s.logs.level == "WARNING" %}selected{% endif %}>WARNING</option>
+        <option value="ERROR" {% if s.logs.level == "ERROR" %}selected{% endif %}>ERROR</option>
+        <option value="CRITICAL" {% if s.logs.level == "CRITICAL" %}selected{% endif %}>CRITICAL</option>
+      </select>
+    </label>
+  </article>
+
+  <button type="submit">Save</button>
+</form>

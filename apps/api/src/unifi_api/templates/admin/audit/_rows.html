@@ -1,0 +1,14 @@
+{% for r in rows %}
+  {% include "audit/_row.html" %}
+{% endfor %}
+{% if next_cursor %}
+<tr id="audit-load-more-row">
+  <td colspan="6" style="text-align: center;">
+    <button class="secondary outline"
+      hx-get="/admin/audit/_rows?{{ filter_qs }}{% if filter_qs %}&{% endif %}cursor={{ next_cursor }}&limit={{ limit }}"
+      hx-target="#audit-load-more-row"
+      hx-swap="outerHTML"
+      hx-include="#audit-filters">Load more</button>
+  </td>
+</tr>
+{% endif %}

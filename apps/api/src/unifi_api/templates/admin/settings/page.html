@@ -1,0 +1,22 @@
+{% extends "_layout.html" %}
+{% block title %}Settings — unifi-api admin{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+
+<div id="settings-form-slot"
+     hx-get="/admin/settings/_form"
+     hx-trigger="load"
+     hx-swap="innerHTML">
+  <p><em>Loading…</em></p>
+</div>
+
+<article>
+  <header><strong>Audit log retention</strong></header>
+  <p>Manually prune now using the current retention thresholds.</p>
+  <button class="secondary"
+    hx-post="/admin/settings/_prune"
+    hx-target="#prune-result"
+    hx-swap="innerHTML">Prune now</button>
+  <div id="prune-result"></div>
+</article>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% for r in rows %}
+  {% include "logs/_row.html" %}
+{% endfor %}
+{% if next_offset %}
+<tr id="logs-load-more-row">
+  <td colspan="4" style="text-align: center;">
+    <button class="secondary outline"
+      hx-get="/admin/logs/_rows?{{ filter_qs }}{% if filter_qs %}&{% endif %}offset={{ next_offset }}&limit={{ limit }}"
+      hx-target="#logs-load-more-row"
+      hx-swap="outerHTML"
+      hx-include="#logs-filters">Load more</button>
+  </td>
+</tr>
+{% endif %}

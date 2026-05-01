@@ -1,0 +1,51 @@
+<form id="logs-filters"
+      hx-on::change="htmx.trigger('body', 'logs-filter-changed');"
+      style="margin-bottom: 1rem;">
+  <div class="grid">
+    <label>Level
+      <select name="level">
+        <option value="">(any)</option>
+        <option value="DEBUG">DEBUG</option>
+        <option value="INFO">INFO</option>
+        <option value="WARNING">WARNING</option>
+        <option value="ERROR">ERROR</option>
+        <option value="CRITICAL">CRITICAL</option>
+      </select>
+    </label>
+    <label>Logger <input type="text" name="logger" placeholder="(any)" /></label>
+    <label>Substring (q) <input type="text" name="q" placeholder="(any)" /></label>
+    <label>Limit
+      <select name="limit">
+        <option value="50" selected>50</option>
+        <option value="200">200</option>
+        <option value="500">500</option>
+      </select>
+    </label>
+  </div>
+  <fieldset>
+    <label><input type="checkbox" id="logs-live-toggle"
+      hx-on::click="toggleLogsLive(this);" /> Live-tail</label>
+  </fieldset>
+</form>
+
+<script>
+  function toggleLogsLive(cb) {
+    const slot = document.getElementById('logs-live');
+    while (slot.firstChild) slot.removeChild(slot.firstChild);
+    if (!cb.checked) return;
+    const params = new URLSearchParams();
+    const form = document.getElementById('logs-filters');
+    const level = form.querySelector('[name=level]').value;
+    const logger = form.querySelector('[name=logger]').value;
+    const q = form.querySelector('[name=q]').value;
+    if (level) params.set('level', level);
+    if (logger) params.set('logger', logger);
+    if (q) params.set('q', q);
+    const url = '/admin/logs/_stream' + (params.toString() ? '?' + params.toString() : '');
+    slot.setAttribute('sse-connect', url);
+    slot.setAttribute('sse-swap', 'log.row');
+    slot.setAttribute('hx-target', '#logs-tbody');
+    slot.setAttribute('hx-swap', 'afterbegin');
+    htmx.process(slot);
+  }
+</script>

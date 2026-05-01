@@ -40,6 +40,7 @@ ENV/
 # Logs
 *.log
 logs/
+!apps/api/src/unifi_api/templates/admin/logs/
 
 # Docker
 .dockerignore
