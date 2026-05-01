@@ -1,9 +1,14 @@
-"""SNMP settings serializer (Phase 4A PR1 Cluster 5).
+"""SNMP settings mutation ack serializer.
 
 The SNMP tool exposes only a single mutation
-(``unifi_update_snmp_settings``); reads are not currently surfaced as
-tools. This serializer provides a passthrough DETAIL ack with bool
-coercion to match the established mutation-ack pattern.
+(``unifi_update_snmp_settings``); read paths for SNMP settings flow
+through ``unifi_get_snmp_settings`` whose projection lives at
+``unifi_api.graphql.types.network.system.SnmpSettings`` (migrated in
+Phase 6 PR2 Task 23 alongside the rest of the system cluster).
+
+This module retains only the mutation ack — a passthrough DETAIL
+serializer with bool coercion to match the established mutation-ack
+pattern.
 """
 
 from unifi_api.serializers._base import RenderKind, Serializer, register_serializer
