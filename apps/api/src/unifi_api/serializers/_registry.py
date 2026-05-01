@@ -67,6 +67,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "unifi_list_firewall_groups",
     "unifi_get_firewall_group_details",
     "unifi_list_firewall_zones",
+    # Task 22 — network/qos
+    "unifi_list_qos_rules",
+    "unifi_get_qos_rule_details",
 })
 
 

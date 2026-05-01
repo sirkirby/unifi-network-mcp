@@ -97,32 +97,30 @@ def test_firewall_mutation_ack_dispatches_for_all_mutations() -> None:
 
 
 def test_qos_rule_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_qos_rules")
-    sample = [
-        {
-            "_id": "qos1",
-            "name": "VoIP",
-            "enabled": True,
-            "rate_max_down": 50000,
-            "rate_max_up": 25000,
-            "priority": 7,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_qos_rules")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "qos1"
-    assert out["data"][0]["name"] == "VoIP"
-    assert out["data"][0]["enabled"] is True
-    assert out["data"][0]["rate_max_down"] == 50000
-    assert out["data"][0]["rate_max_up"] == 25000
-    assert out["data"][0]["priority"] == 7
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.qos import QosRule
+
+    sample = {
+        "_id": "qos1",
+        "name": "VoIP",
+        "enabled": True,
+        "rate_max_down": 50000,
+        "rate_max_up": 25000,
+        "priority": 7,
+    }
+    out = QosRule.from_manager_output(sample).to_dict()
+    assert out["id"] == "qos1"
+    assert out["name"] == "VoIP"
+    assert out["enabled"] is True
+    assert out["rate_max_down"] == 50000
+    assert out["rate_max_up"] == 25000
+    assert out["priority"] == 7
+    assert QosRule.render_hint("list")["kind"] == "list"
 
 
 def test_qos_rule_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_qos_rule_details")
+    from unifi_api.graphql.types.network.qos import QosRule
+
     sample = {
         "_id": "qos2",
         "name": "Backup limiter",
@@ -131,12 +129,11 @@ def test_qos_rule_detail_serializer_shape() -> None:
         "rate_max_up": 5000,
         "priority": 1,
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_qos_rule_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "qos2"
-    assert out["data"]["enabled"] is False
-    assert out["data"]["priority"] == 1
-    assert out["render_hint"]["kind"] == "detail"
+    out = QosRule.from_manager_output(sample).to_dict()
+    assert out["id"] == "qos2"
+    assert out["enabled"] is False
+    assert out["priority"] == 1
+    assert QosRule.render_hint("detail")["kind"] == "detail"
 
 
 def test_qos_mutation_ack_dispatches_for_all_mutations() -> None:

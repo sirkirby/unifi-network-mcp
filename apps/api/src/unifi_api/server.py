@@ -41,6 +41,9 @@ from unifi_api.graphql.types.network.device import (
 from unifi_api.graphql.types.network.network import (
     Network as NetworkNetworkType,
 )
+from unifi_api.graphql.types.network.qos import (
+    QosRule as NetworkQosRuleType,
+)
 from unifi_api.graphql.types.network.dns import (
     DnsRecord as NetworkDnsRecordType,
 )
@@ -510,6 +513,17 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_list_firewall_zones", NetworkFirewallZoneType, "list",
+    )
+
+    # Phase 6 PR2 Task 22 — network/qos migrated to Strawberry types.
+    # QoS tools are tool-keyed only (no resource registration in the original
+    # serializer); register via register_tool_type to avoid surfacing a bogus
+    # path in /v1/catalog/resources.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_qos_rules", NetworkQosRuleType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_qos_rule_details", NetworkQosRuleType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")
