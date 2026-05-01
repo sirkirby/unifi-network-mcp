@@ -78,10 +78,17 @@ async def list_port_profiles(
         list(all_profiles), limit=limit, cursor=cursor_obj, key_fn=_profile_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_list_port_profiles")
-    items = [serializer.serialize(p) for p in page]
-    hint = registry.render_hint_for_tool("unifi_list_port_profiles")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_list_port_profiles")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        items = [type_class.from_manager_output(p).to_dict() for p in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_list_port_profiles")
+        items = [serializer.serialize(p) for p in page]
+        hint = registry.render_hint_for_tool("unifi_list_port_profiles")
     return {
         "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
@@ -116,12 +123,18 @@ async def get_port_profile_details(
     if profile is None:
         raise HTTPException(status_code=404, detail="port profile not found")
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_get_port_profile_details")
-    return {
-        "data": serializer.serialize(profile),
-        "render_hint": registry.render_hint_for_tool("unifi_get_port_profile_details"),
-    }
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_port_profile_details")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(profile).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_get_port_profile_details")
+        data = serializer.serialize(profile)
+        hint = registry.render_hint_for_tool("unifi_get_port_profile_details")
+    return {"data": data, "render_hint": hint}
 
 
 # ---------------- switch ports (wrapper-dict → LIST) ----------------
@@ -169,11 +182,19 @@ async def list_switch_ports(
         list(items_raw), limit=limit, cursor=cursor_obj, key_fn=_port_idx_key,
     )
 
-    items = [_normalize_port_override(p) for p in page]
-    registry = request.app.state.serializer_registry
-    hint = registry.render_hint_for_tool("unifi_get_switch_ports")
-    # Override kind to list since the route exposes the unwrapped rows.
-    hint = {**hint, "kind": "list"}
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_switch_ports")
+    if tool_type is not None:
+        from unifi_api.graphql.types.network.switch import PortOverrideRow
+        type_class, _kind = tool_type
+        items = [PortOverrideRow.from_manager_output(p).to_dict() for p in page]
+        hint = {**type_class.render_hint("list"), "kind": "list"}
+    else:
+        items = [_normalize_port_override(p) for p in page]
+        registry = request.app.state.serializer_registry
+        hint = registry.render_hint_for_tool("unifi_get_switch_ports")
+        # Override kind to list since the route exposes the unwrapped rows.
+        hint = {**hint, "kind": "list"}
     return {
         "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
@@ -235,10 +256,18 @@ async def list_port_stats(
         list(items_raw), limit=limit, cursor=cursor_obj, key_fn=_port_idx_key,
     )
 
-    items = [_normalize_port_stat(p) for p in page]
-    registry = request.app.state.serializer_registry
-    hint = registry.render_hint_for_tool("unifi_get_port_stats")
-    hint = {**hint, "kind": "list"}
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_port_stats")
+    if tool_type is not None:
+        from unifi_api.graphql.types.network.switch import PortStatRow
+        type_class, _kind = tool_type
+        items = [PortStatRow.from_manager_output(p).to_dict() for p in page]
+        hint = {**type_class.render_hint("list"), "kind": "list"}
+    else:
+        items = [_normalize_port_stat(p) for p in page]
+        registry = request.app.state.serializer_registry
+        hint = registry.render_hint_for_tool("unifi_get_port_stats")
+        hint = {**hint, "kind": "list"}
     return {
         "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
@@ -273,9 +302,15 @@ async def get_switch_capabilities(
     if caps is None:
         raise HTTPException(status_code=404, detail=f"switch '{device_mac}' not found")
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_get_switch_capabilities")
-    return {
-        "data": serializer.serialize(caps),
-        "render_hint": registry.render_hint_for_tool("unifi_get_switch_capabilities"),
-    }
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_switch_capabilities")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(caps).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_get_switch_capabilities")
+        data = serializer.serialize(caps)
+        hint = registry.render_hint_for_tool("unifi_get_switch_capabilities")
+    return {"data": data, "render_hint": hint}

@@ -15,8 +15,9 @@ def _registry():
 
 
 def test_port_profile_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_port_profiles")
+    """Phase 6 PR2 Task 24 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.switch import PortProfile
+
     sample = {
         "_id": "pp1",
         "name": "All-Tagged",
@@ -25,27 +26,29 @@ def test_port_profile_list_serializer_shape() -> None:
         "poe_mode": "auto",
         "isolation": False,
     }
-    out = s.serialize(sample)
+    out = PortProfile.from_manager_output(sample).to_dict()
     assert out["id"] == "pp1"
     assert out["name"] == "All-Tagged"
     assert out["poe_mode"] == "auto"
     assert out["tagged_networkconf_ids"] == ["net2"]
+    assert PortProfile.render_hint("list")["kind"] == "list"
 
 
 def test_port_profile_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_port_profile_details")
+    """Phase 6 PR2 Task 24 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.switch import PortProfile
+
     sample = {"_id": "pp2", "name": "Voice", "poe_mode": "passive"}
-    out = s.serialize_action(sample, tool_name="unifi_get_port_profile_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "pp2"
-    assert out["data"]["name"] == "Voice"
-    assert out["render_hint"]["kind"] == "detail"
+    out = PortProfile.from_manager_output(sample).to_dict()
+    assert out["id"] == "pp2"
+    assert out["name"] == "Voice"
+    assert PortProfile.render_hint("detail")["kind"] == "detail"
 
 
 def test_switch_ports_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_switch_ports")
+    """Phase 6 PR2 Task 24 — projection moved to a Strawberry wrapper-dict type."""
+    from unifi_api.graphql.types.network.switch import SwitchPorts
+
     sample = {
         "name": "USW-24",
         "model": "US24P250",
@@ -54,17 +57,17 @@ def test_switch_ports_serializer_shape() -> None:
             {"port_idx": 2, "name": "Voice", "portconf_id": "pp2"},
         ],
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_switch_ports")
-    assert out["success"] is True
-    assert out["data"]["name"] == "USW-24"
-    assert len(out["data"]["port_overrides"]) == 2
-    assert out["data"]["port_overrides"][0]["port_idx"] == 1
-    assert out["render_hint"]["kind"] == "detail"
+    data = SwitchPorts.from_manager_output(sample).to_dict()
+    assert data["name"] == "USW-24"
+    assert len(data["port_overrides"]) == 2
+    assert data["port_overrides"][0]["port_idx"] == 1
+    assert SwitchPorts.render_hint("detail")["kind"] == "detail"
 
 
 def test_port_stats_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_port_stats")
+    """Phase 6 PR2 Task 24 — projection moved to a Strawberry wrapper-dict type."""
+    from unifi_api.graphql.types.network.switch import PortStats
+
     sample = {
         "name": "USW-24",
         "model": "US24P250",
@@ -80,16 +83,16 @@ def test_port_stats_serializer_shape() -> None:
             }
         ],
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_port_stats")
-    assert out["success"] is True
-    assert out["data"]["name"] == "USW-24"
-    assert out["data"]["port_table"][0]["tx_bytes"] == 1000
-    assert out["render_hint"]["kind"] == "detail"
+    data = PortStats.from_manager_output(sample).to_dict()
+    assert data["name"] == "USW-24"
+    assert data["port_table"][0]["tx_bytes"] == 1000
+    assert PortStats.render_hint("detail")["kind"] == "detail"
 
 
 def test_switch_capabilities_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_switch_capabilities")
+    """Phase 6 PR2 Task 24 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.switch import SwitchCapabilities
+
     sample = {
         "name": "USW-24",
         "model": "US24P250",
@@ -98,12 +101,11 @@ def test_switch_capabilities_serializer_shape() -> None:
         "stp_priority": "32768",
         "jumboframe_enabled": False,
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_switch_capabilities")
-    assert out["success"] is True
-    assert out["data"]["name"] == "USW-24"
-    assert out["data"]["stp_version"] == "rstp"
-    assert out["data"]["jumboframe_enabled"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    data = SwitchCapabilities.from_manager_output(sample).to_dict()
+    assert data["name"] == "USW-24"
+    assert data["stp_version"] == "rstp"
+    assert data["jumboframe_enabled"] is False
+    assert SwitchCapabilities.render_hint("detail")["kind"] == "detail"
 
 
 def test_switch_mutation_ack_bool() -> None:

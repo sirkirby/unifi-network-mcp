@@ -118,6 +118,13 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "unifi_get_autobackup_settings",
     "unifi_get_top_clients",
     "unifi_get_speedtest_results",
+    # Task 24 — network/switch (4 read shapes; mutation acks stay as
+    # serializers)
+    "unifi_list_port_profiles",
+    "unifi_get_port_profile_details",
+    "unifi_get_switch_ports",
+    "unifi_get_port_stats",
+    "unifi_get_switch_capabilities",
 })
 
 

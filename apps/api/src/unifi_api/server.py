@@ -58,6 +58,12 @@ from unifi_api.graphql.types.network.stat import (
     DpiStats as NetworkDpiStatsType,
     StatPoint as NetworkStatPointType,
 )
+from unifi_api.graphql.types.network.switch import (
+    PortProfile as NetworkPortProfileType,
+    PortStats as NetworkPortStatsType,
+    SwitchCapabilities as NetworkSwitchCapabilitiesType,
+    SwitchPorts as NetworkSwitchPortsType,
+)
 from unifi_api.graphql.types.network.system import (
     Alarm as NetworkAlarmType,
     AutoBackupSettings as NetworkAutoBackupSettingsType,
@@ -702,6 +708,27 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_speedtest_results", NetworkSpeedtestResultType, "list",
+    )
+
+    # Phase 6 PR2 Task 24 — network/switch (4 read shapes) migrated to
+    # Strawberry types. Tool-keyed only (no resource registration in the
+    # original serializer). Mutation acks (create/update/delete_port_profile,
+    # set_*, configure_*, power_cycle_*, set_jumbo_frames, update_switch_stp)
+    # stay as serializers in serializers/network/switch.py.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_port_profiles", NetworkPortProfileType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_port_profile_details", NetworkPortProfileType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_switch_ports", NetworkSwitchPortsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_port_stats", NetworkPortStatsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_switch_capabilities", NetworkSwitchCapabilitiesType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")
