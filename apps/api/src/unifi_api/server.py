@@ -41,6 +41,10 @@ from unifi_api.graphql.types.network.device import (
 from unifi_api.graphql.types.network.network import (
     Network as NetworkNetworkType,
 )
+from unifi_api.graphql.types.network.vpn import (
+    VpnClient as NetworkVpnClientType,
+    VpnServer as NetworkVpnServerType,
+)
 from unifi_api.graphql.types.network.wlan import (
     Wlan as NetworkWlanType,
 )
@@ -419,6 +423,23 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_wlan_details", NetworkWlanType, "detail",
+    )
+
+    # Phase 6 PR2 Task 21 — network/vpn migrated to Strawberry types.
+    # VPN tools are tool-keyed only (no resource registration in the original
+    # serializer); register via register_tool_type to avoid surfacing a bogus
+    # path in /v1/catalog/resources.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_vpn_clients", NetworkVpnClientType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_vpn_client_details", NetworkVpnClientType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_vpn_servers", NetworkVpnServerType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_vpn_server_details", NetworkVpnServerType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

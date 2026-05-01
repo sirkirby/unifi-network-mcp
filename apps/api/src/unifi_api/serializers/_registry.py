@@ -47,6 +47,11 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # Task 21 — network/wlans
     "unifi_list_wlans",
     "unifi_get_wlan_details",
+    # Task 21 — network/vpn
+    "unifi_list_vpn_clients",
+    "unifi_get_vpn_client_details",
+    "unifi_list_vpn_servers",
+    "unifi_get_vpn_server_details",
 })
 
 

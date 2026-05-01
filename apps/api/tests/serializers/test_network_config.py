@@ -20,31 +20,30 @@ def _registry():
 
 
 def test_vpn_client_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_vpn_clients")
-    sample = [
-        {
-            "_id": "vc1",
-            "name": "Wireguard-Home",
-            "purpose": "vpn-client",
-            "vpn_type": "wireguard-client",
-            "enabled": True,
-            "wireguard_client_peer_endpoint": "vpn.example.com:51820",
-            "wireguard_client_last_handshake": 1700000000,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_vpn_clients")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "vc1"
-    assert out["data"][0]["name"] == "Wireguard-Home"
-    assert out["data"][0]["type"] == "wireguard-client"
-    assert out["data"][0]["enabled"] is True
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 21 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.vpn import VpnClient
+
+    sample = {
+        "_id": "vc1",
+        "name": "Wireguard-Home",
+        "purpose": "vpn-client",
+        "vpn_type": "wireguard-client",
+        "enabled": True,
+        "wireguard_client_peer_endpoint": "vpn.example.com:51820",
+        "wireguard_client_last_handshake": 1700000000,
+    }
+    out = VpnClient.from_manager_output(sample).to_dict()
+    assert out["id"] == "vc1"
+    assert out["name"] == "Wireguard-Home"
+    assert out["type"] == "wireguard-client"
+    assert out["enabled"] is True
+    assert out["server_address"] == "vpn.example.com:51820"
+    assert VpnClient.render_hint("list")["kind"] == "list"
 
 
 def test_vpn_client_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_vpn_client_details")
+    from unifi_api.graphql.types.network.vpn import VpnClient
+
     sample = {
         "_id": "vc2",
         "name": "OpenVPN-Site",
@@ -52,43 +51,40 @@ def test_vpn_client_detail_serializer_shape() -> None:
         "vpn_type": "openvpn-client",
         "enabled": False,
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_vpn_client_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "vc2"
-    assert out["data"]["type"] == "openvpn-client"
-    assert out["data"]["enabled"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = VpnClient.from_manager_output(sample).to_dict()
+    assert out["id"] == "vc2"
+    assert out["type"] == "openvpn-client"
+    assert out["enabled"] is False
+    assert VpnClient.render_hint("detail")["kind"] == "detail"
 
 
 # ---- VPN servers ----
 
 
 def test_vpn_server_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_vpn_servers")
-    sample = [
-        {
-            "_id": "vs1",
-            "name": "Remote Access",
-            "purpose": "remote-user-vpn",
-            "vpn_type": "wireguard-server",
-            "enabled": True,
-            "wireguard_server_listen_port": 51820,
-            "wireguard_server_subnet": "10.10.0.0/24",
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_vpn_servers")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "vs1"
-    assert out["data"][0]["name"] == "Remote Access"
-    assert out["data"][0]["type"] == "wireguard-server"
-    assert out["data"][0]["listen_port"] == 51820
-    assert out["render_hint"]["kind"] == "list"
+    from unifi_api.graphql.types.network.vpn import VpnServer
+
+    sample = {
+        "_id": "vs1",
+        "name": "Remote Access",
+        "purpose": "remote-user-vpn",
+        "vpn_type": "wireguard-server",
+        "enabled": True,
+        "wireguard_server_listen_port": 51820,
+        "wireguard_server_subnet": "10.10.0.0/24",
+    }
+    out = VpnServer.from_manager_output(sample).to_dict()
+    assert out["id"] == "vs1"
+    assert out["name"] == "Remote Access"
+    assert out["type"] == "wireguard-server"
+    assert out["listen_port"] == 51820
+    assert out["allowed_subnets"] == ["10.10.0.0/24"]
+    assert VpnServer.render_hint("list")["kind"] == "list"
 
 
 def test_vpn_server_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_vpn_server_details")
+    from unifi_api.graphql.types.network.vpn import VpnServer
+
     sample = {
         "_id": "vs2",
         "name": "L2TP",
@@ -96,11 +92,10 @@ def test_vpn_server_detail_serializer_shape() -> None:
         "vpn_type": "l2tp-server",
         "enabled": True,
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_vpn_server_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "vs2"
-    assert out["data"]["type"] == "l2tp-server"
-    assert out["render_hint"]["kind"] == "detail"
+    out = VpnServer.from_manager_output(sample).to_dict()
+    assert out["id"] == "vs2"
+    assert out["type"] == "l2tp-server"
+    assert VpnServer.render_hint("detail")["kind"] == "detail"
 
 
 # ---- DNS records ----
