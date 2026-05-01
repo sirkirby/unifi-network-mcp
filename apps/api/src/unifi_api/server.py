@@ -2,20 +2,26 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.cors import CORSMiddleware
 
+from unifi_api._version import __version__ as _api_version
 from unifi_api.auth.cache import ArgonVerifyCache
 from unifi_api.config import ApiConfig
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
-from unifi_api.logging import request_id_ctx
+from unifi_api.logging import attach_rotating_file_handler, request_id_ctx
 from unifi_api.routes import actions as actions_routes
+from unifi_api.routes import admin_data as admin_data_routes
+from unifi_api.routes import audit as audit_routes
 from unifi_api.routes import catalog as catalog_routes
 from unifi_api.routes import controllers as controllers_routes
 from unifi_api.routes import health
@@ -82,10 +88,13 @@ from unifi_api.routes.streams import (
     protect_per_camera as protect_per_camera_routes,
 )
 from unifi_api.serializers._registry import discover_serializers
+from unifi_api.services.audit_pruner import prune_audit
 from unifi_api.services.capability_cache import CapabilityCache
 from unifi_api.services.controllers import list_controllers
 from unifi_api.services.managers import ManagerFactory
 from unifi_api.services.manifest import ManifestRegistry
+from unifi_api.services.log_reader import LogReader
+from unifi_api.services.settings import SettingsService
 from unifi_api.services.streams import SubscriberPool
 
 
@@ -133,7 +142,69 @@ def create_app(config: ApiConfig) -> FastAPI:
                         controller.id, product, exc_info=True,
                     )
 
+        # Phase 5B: file logging (optional) + background audit pruner
+        settings_svc = app.state.settings_service
+        log_enabled = await settings_svc.get_bool("logs.file.enabled", default=True)
+        log_path = None
+        if log_enabled:
+            log_path_str = await settings_svc.get_str("logs.file.path", default="state/api.log")
+            db_dir = Path(config.db.path).parent
+            log_path = (
+                Path(log_path_str)
+                if Path(log_path_str).is_absolute()
+                else (db_dir / log_path_str).resolve()
+            )
+            max_bytes = await settings_svc.get_int("logs.file.max_bytes", default=10 * 1024 * 1024)
+            backup_count = await settings_svc.get_int("logs.file.backup_count", default=5)
+            level = await settings_svc.get_str("logs.file.level", default="INFO")
+            attach_rotating_file_handler(
+                path=log_path, max_bytes=max_bytes, backup_count=backup_count, level=level,
+            )
+            app.state.log_file_path = log_path
+            app.state.log_reader = LogReader(log_path)
+
+        # Background audit pruner — periodic prune based on settings
+        async def _prune_loop():
+            while True:
+                try:
+                    interval_h = await settings_svc.get_int(
+                        "audit.retention.prune_interval_hours", default=6,
+                    )
+                    enabled = await settings_svc.get_bool(
+                        "audit.retention.enabled", default=True,
+                    )
+                    if enabled:
+                        max_age = await settings_svc.get_int(
+                            "audit.retention.max_age_days", default=90,
+                        )
+                        max_rows = await settings_svc.get_int(
+                            "audit.retention.max_rows", default=1_000_000,
+                        )
+                        result = await prune_audit(
+                            app.state.sessionmaker,
+                            max_age_days=max_age,
+                            max_rows=max_rows,
+                        )
+                        _streams_log.info(
+                            "[audit-pruner] pruned %s rows; current count %s",
+                            result["pruned"], result["current_count"],
+                        )
+                except Exception:
+                    _streams_log.warning("[audit-pruner] error", exc_info=True)
+                await asyncio.sleep(interval_h * 3600)
+
+        app.state._audit_pruner_task = asyncio.create_task(_prune_loop())
+
         yield
+        # Cancel background pruner task
+        task = getattr(app.state, "_audit_pruner_task", None)
+        if task is not None:
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+
         # Shutdown — drop manager caches first, then engine
         factory = app.state.manager_factory
         cached_ids = list({k[0] for k in factory._connection_cache.keys()})
@@ -182,6 +253,12 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.subscriber_pool = SubscriberPool()
     app.state.argon_cache = ArgonVerifyCache()
     app.state.capability_cache = CapabilityCache()
+    app.state.settings_service = SettingsService(app.state.sessionmaker)
+    app.state.db_path = config.db.path
+    app.state.api_version = _api_version
+    app.state.started_at = datetime.now(timezone.utc)
+    app.state.log_file_path = None  # Task 11 may override this if log file is enabled
+    app.state.log_reader = LogReader(Path("/dev/null"))  # Task 11 may override
     app.state.manifest_registry = ManifestRegistry.load_from_apps()
     # Discover and register every serializer module, then validate against the
     # full manifest. Phase 4A landed coverage for all 235 manifest tools, so
@@ -196,6 +273,8 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.include_router(controllers_routes.router, prefix="/v1")
     app.include_router(actions_routes.router, prefix="/v1")
     app.include_router(catalog_routes.router, prefix="/v1")
+    app.include_router(audit_routes.router, prefix="/v1")
+    app.include_router(admin_data_routes.router, prefix="/v1")
     for r in (
         net_clients_routes,
         net_devices_routes,
