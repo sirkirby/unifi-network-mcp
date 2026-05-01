@@ -88,6 +88,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # Task 23 — network/vouchers
     "unifi_list_vouchers",
     "unifi_get_voucher_details",
+    # Task 23 — network/sessions
+    "unifi_get_client_sessions",
+    "unifi_get_client_wifi_details",
 })
 
 

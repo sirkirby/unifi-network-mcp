@@ -47,6 +47,10 @@ from unifi_api.graphql.types.network.oon import (
 from unifi_api.graphql.types.network.port_forward import (
     PortForward as NetworkPortForwardType,
 )
+from unifi_api.graphql.types.network.session import (
+    ClientSession as NetworkClientSessionType,
+    ClientWifiDetails as NetworkClientWifiDetailsType,
+)
 from unifi_api.graphql.types.network.voucher import (
     Voucher as NetworkVoucherType,
 )
@@ -598,6 +602,15 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_voucher_details", NetworkVoucherType, "detail",
+    )
+
+    # Phase 6 PR2 Task 23 — network/sessions migrated to Strawberry types.
+    # Tool-keyed only (no resource registration in the original serializer).
+    app.state.type_registry.register_tool_type(
+        "unifi_get_client_sessions", NetworkClientSessionType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_client_wifi_details", NetworkClientWifiDetailsType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

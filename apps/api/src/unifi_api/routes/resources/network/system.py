@@ -52,22 +52,37 @@ def _list_response(request, items, tool_name, *, limit, cursor):
     page, next_cursor = paginate(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool(tool_name)
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool(tool_name)
+    if tool_type is not None:
+        type_class, kind = tool_type
+        rows = [type_class.from_manager_output(i).to_dict() for i in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool(tool_name)
+        rows = [serializer.serialize(i) for i in page]
+        hint = registry.render_hint_for_tool(tool_name)
     return {
-        "items": [serializer.serialize(i) for i in page],
+        "items": rows,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool(tool_name),
+        "render_hint": hint,
     }
 
 
 def _detail_response(request, payload, tool_name):
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool(tool_name)
-    return {
-        "data": serializer.serialize(payload),
-        "render_hint": registry.render_hint_for_tool(tool_name),
-    }
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool(tool_name)
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(payload).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool(tool_name)
+        data = serializer.serialize(payload)
+        hint = registry.render_hint_for_tool(tool_name)
+    return {"data": data, "render_hint": hint}
 
 
 # ---------- LIST ----------
