@@ -1,0 +1,8 @@
+{% extends "_layout.html" %}
+{% block title %}Dashboard — unifi-api admin{% endblock %}
+{% block content %}
+<h1>Service health</h1>
+<div hx-get="/admin/_diagnostics_html" hx-trigger="load, every 30s" hx-swap="outerHTML">
+  <p><em>Loading…</em></p>
+</div>
+{% endblock %}
