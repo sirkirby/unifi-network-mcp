@@ -56,6 +56,28 @@ def _stats_response(
     cursor: str | None,
 ) -> dict:
     """Dual-kind handler: TIMESERIES paginates per-point; DETAIL passes through."""
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool(tool_name)
+    if tool_type is not None:
+        type_class, kind_str = tool_type
+        hint = type_class.render_hint(kind_str)
+        if kind_str == "timeseries":
+            items_raw = list(payload) if isinstance(payload, list) else []
+            cursor_obj = _decode_cursor(cursor)
+            page, next_cursor = paginate(
+                items_raw, limit=limit, cursor=cursor_obj, key_fn=_ts_key,
+            )
+            return {
+                "items": [type_class.from_manager_output(p).to_dict() for p in page],
+                "next_cursor": next_cursor.encode() if next_cursor else None,
+                "render_hint": hint,
+            }
+        # DETAIL kind for the typed projection.
+        return {
+            "data": type_class.from_manager_output(payload).to_dict(),
+            "render_hint": hint,
+        }
+
     registry = request.app.state.serializer_registry
     serializer = registry.serializer_for_tool(tool_name)
     kind = registry.kind_for_tool(tool_name)

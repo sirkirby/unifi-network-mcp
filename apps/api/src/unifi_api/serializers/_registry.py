@@ -97,6 +97,15 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "unifi_get_alerts",
     "unifi_get_anomalies",
     "unifi_get_ips_events",
+    # Task 23 — network/stats (TIMESERIES + DETAIL multi-kind)
+    "unifi_get_dashboard",
+    "unifi_get_network_stats",
+    "unifi_get_gateway_stats",
+    "unifi_get_client_dpi_traffic",
+    "unifi_get_site_dpi_traffic",
+    "unifi_get_device_stats",
+    "unifi_get_client_stats",
+    "unifi_get_dpi_stats",
 })
 
 

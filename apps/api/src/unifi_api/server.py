@@ -54,6 +54,10 @@ from unifi_api.graphql.types.network.session import (
     ClientSession as NetworkClientSessionType,
     ClientWifiDetails as NetworkClientWifiDetailsType,
 )
+from unifi_api.graphql.types.network.stat import (
+    DpiStats as NetworkDpiStatsType,
+    StatPoint as NetworkStatPointType,
+)
 from unifi_api.graphql.types.network.voucher import (
     Voucher as NetworkVoucherType,
 )
@@ -614,6 +618,26 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_client_wifi_details", NetworkClientWifiDetailsType, "detail",
+    )
+
+    # Phase 6 PR2 Task 23 — network/stats migrated to Strawberry types.
+    # Multi-kind: TIMESERIES (StatPoint) + DETAIL (DpiStats). The kind is
+    # recorded per-tool so the dual-kind dispatcher in
+    # routes/resources/network/stats.py picks the right shaping path.
+    for _stats_tool in (
+        "unifi_get_dashboard",
+        "unifi_get_network_stats",
+        "unifi_get_gateway_stats",
+        "unifi_get_client_dpi_traffic",
+        "unifi_get_site_dpi_traffic",
+        "unifi_get_device_stats",
+        "unifi_get_client_stats",
+    ):
+        app.state.type_registry.register_tool_type(
+            _stats_tool, NetworkStatPointType, "timeseries",
+        )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_dpi_stats", NetworkDpiStatsType, "detail",
     )
 
     # Phase 6 PR2 Task 23 — network/events migrated to Strawberry types.
