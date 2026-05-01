@@ -40,8 +40,19 @@ from unifi_api.graphql.types.network.device import (
     RogueAp,
     SpeedtestStatus,
 )
+from unifi_api.graphql.types.network.acl import AclRule
+from unifi_api.graphql.types.network.content_filter import ContentFilter
 from unifi_api.graphql.types.network.dns import DnsRecord
+from unifi_api.graphql.types.network.dpi import DpiApplication, DpiCategory
+from unifi_api.graphql.types.network.firewall import (
+    FirewallGroup,
+    FirewallRule,
+    FirewallZone,
+)
 from unifi_api.graphql.types.network.network import Network
+from unifi_api.graphql.types.network.oon import OonPolicy
+from unifi_api.graphql.types.network.port_forward import PortForward
+from unifi_api.graphql.types.network.qos import QosRule
 from unifi_api.graphql.types.network.route import (
     ActiveRoute,
     Route,
@@ -451,6 +462,221 @@ async def _fetch_traffic_routes(
     return await ctx.cache.get_or_fetch(key, _do)
 
 
+# ---- Cluster C fetch helpers (firewall / qos / dpi / cf / acl / oon / pf) -
+
+
+async def _fetch_firewall_policies(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/firewall-policies/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "firewall_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_firewall_policies(include_predefined=True))
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_firewall_groups(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/firewall-groups/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "firewall_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_firewall_groups())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_firewall_zones(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/firewall-zones/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "firewall_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_firewall_zones())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_qos_rules(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/qos-rules/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "qos_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_qos_rules())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+def _unwrap_dpi(result: Any) -> list:
+    """Extract bare list from a paginated DPI wrapper or pass through."""
+    if isinstance(result, dict) and "data" in result:
+        data = result.get("data") or []
+        return list(data) if isinstance(data, list) else []
+    if isinstance(result, list):
+        return result
+    return []
+
+
+async def _fetch_dpi_applications(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/dpi-applications/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "dpi_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            result = await mgr.get_dpi_applications(limit=2500, offset=0)
+            return _unwrap_dpi(result)
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_dpi_categories(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/dpi-categories/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "dpi_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            result = await mgr.get_dpi_categories(limit=500, offset=0)
+            return _unwrap_dpi(result)
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_content_filters(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/content-filters/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "content_filter_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_content_filters())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_acl_rules(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/acl-rules/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "acl_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_acl_rules())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_oon_policies(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/oon-policies/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "oon_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_oon_policies())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_port_forwards(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/port-forwards/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "firewall_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_port_forwards())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
 # ---------------------------------------------------------------------------
 # Page wrappers
 # ---------------------------------------------------------------------------
@@ -531,6 +757,60 @@ class ActiveRoutePage:
 @strawberry.type(description="Paginated page of traffic-route policies.")
 class TrafficRoutePage:
     items: list[TrafficRoute]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of firewall policies/rules.")
+class FirewallRulePage:
+    items: list[FirewallRule]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of firewall groups.")
+class FirewallGroupPage:
+    items: list[FirewallGroup]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of QoS rules.")
+class QosRulePage:
+    items: list[QosRule]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of DPI applications.")
+class DpiApplicationPage:
+    items: list[DpiApplication]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of DPI categories.")
+class DpiCategoryPage:
+    items: list[DpiCategory]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of content filters.")
+class ContentFilterPage:
+    items: list[ContentFilter]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of ACL rules.")
+class AclRulePage:
+    items: list[AclRule]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of OON (out-of-network) policies.")
+class OonPolicyPage:
+    items: list[OonPolicy]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of port forwards.")
+class PortForwardPage:
+    items: list[PortForward]
     next_cursor: str | None
 
 
@@ -1311,4 +1591,427 @@ class NetworkQuery:
                 tid = getattr(rr, "_id", None) or getattr(rr, "id", None)
             if tid == id:
                 return TrafficRoute.from_manager_output(t)
+        return None
+
+    # ---- Firewall domain -------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List firewall policies/rules on the given controller/site (paginated).",
+    )
+    async def firewall_policies(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> FirewallRulePage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_firewall_policies(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return FirewallRulePage(
+            items=[FirewallRule.from_manager_output(r) for r in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single firewall policy/rule by id.",
+    )
+    async def firewall_policy(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> FirewallRule | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_firewall_policies(ctx, controller, site)
+        for r in raw:
+            rr = _raw(r)
+            if isinstance(rr, dict):
+                rid = rr.get("_id") or rr.get("id")
+            else:
+                rid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if rid == id:
+                return FirewallRule.from_manager_output(r)
+        return None
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List firewall address/port groups (paginated).",
+    )
+    async def firewall_groups(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> FirewallGroupPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_firewall_groups(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return FirewallGroupPage(
+            items=[FirewallGroup.from_manager_output(g) for g in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single firewall group by id.",
+    )
+    async def firewall_group(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> FirewallGroup | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_firewall_groups(ctx, controller, site)
+        for g in raw:
+            rr = _raw(g)
+            if isinstance(rr, dict):
+                gid = rr.get("_id") or rr.get("id")
+            else:
+                gid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if gid == id:
+                return FirewallGroup.from_manager_output(g)
+        return None
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List firewall zones (typically a small flat list — no pagination).",
+    )
+    async def firewall_zones(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+    ) -> list[FirewallZone]:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_firewall_zones(ctx, controller, site)
+        return [FirewallZone.from_manager_output(z) for z in raw]
+
+    # ---- QoS domain ------------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List QoS rules on the given controller/site (paginated).",
+    )
+    async def qos_rules(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> QosRulePage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_qos_rules(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return QosRulePage(
+            items=[QosRule.from_manager_output(q) for q in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single QoS rule by id.",
+    )
+    async def qos_rule(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> QosRule | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_qos_rules(ctx, controller, site)
+        for q in raw:
+            rr = _raw(q)
+            if isinstance(rr, dict):
+                qid = rr.get("_id") or rr.get("id")
+            else:
+                qid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if qid == id:
+                return QosRule.from_manager_output(q)
+        return None
+
+    # ---- DPI domain ------------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List DPI applications (paginated).",
+    )
+    async def dpi_applications(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> DpiApplicationPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_dpi_applications(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return DpiApplicationPage(
+            items=[DpiApplication.from_manager_output(a) for a in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List DPI categories (paginated).",
+    )
+    async def dpi_categories(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> DpiCategoryPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_dpi_categories(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return DpiCategoryPage(
+            items=[DpiCategory.from_manager_output(c) for c in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    # ---- Content filter domain ------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List content filters on the given controller/site (paginated).",
+    )
+    async def content_filters(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> ContentFilterPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_content_filters(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return ContentFilterPage(
+            items=[ContentFilter.from_manager_output(f) for f in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single content filter by id.",
+    )
+    async def content_filter(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> ContentFilter | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_content_filters(ctx, controller, site)
+        for f in raw:
+            rr = _raw(f)
+            if isinstance(rr, dict):
+                fid = rr.get("_id") or rr.get("id")
+            else:
+                fid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if fid == id:
+                return ContentFilter.from_manager_output(f)
+        return None
+
+    # ---- ACL domain ------------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List ACL rules on the given controller/site (paginated).",
+    )
+    async def acl_rules(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> AclRulePage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_acl_rules(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return AclRulePage(
+            items=[AclRule.from_manager_output(a) for a in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single ACL rule by id.",
+    )
+    async def acl_rule(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> AclRule | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_acl_rules(ctx, controller, site)
+        for a in raw:
+            rr = _raw(a)
+            if isinstance(rr, dict):
+                aid = rr.get("_id") or rr.get("id")
+            else:
+                aid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if aid == id:
+                return AclRule.from_manager_output(a)
+        return None
+
+    # ---- OON domain ------------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List OON (out-of-network) policies (paginated).",
+    )
+    async def oon_policies(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> OonPolicyPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_oon_policies(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return OonPolicyPage(
+            items=[OonPolicy.from_manager_output(p) for p in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single OON policy by id.",
+    )
+    async def oon_policy(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> OonPolicy | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_oon_policies(ctx, controller, site)
+        for p in raw:
+            rr = _raw(p)
+            if isinstance(rr, dict):
+                pid = rr.get("_id") or rr.get("id")
+            else:
+                pid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if pid == id:
+                return OonPolicy.from_manager_output(p)
+        return None
+
+    # ---- Port forward domain --------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List port forwards on the given controller/site (paginated).",
+    )
+    async def port_forwards(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> PortForwardPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_port_forwards(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return PortForwardPage(
+            items=[PortForward.from_manager_output(p) for p in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single port forward by id.",
+    )
+    async def port_forward(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> PortForward | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_port_forwards(ctx, controller, site)
+        for p in raw:
+            rr = _raw(p)
+            if isinstance(rr, dict):
+                pid = rr.get("_id") or rr.get("id")
+            else:
+                pid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if pid == id:
+                return PortForward.from_manager_output(p)
         return None

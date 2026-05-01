@@ -6,6 +6,22 @@
 ## Schema (SDL)
 
 ```graphql
+"""A MAC ACL rule (V2 /acl-rules entry)."""
+type AclRule {
+  id: ID
+  name: String
+  enabled: Boolean!
+  action: String
+  source: JSON
+  destination: JSON
+}
+
+"""Paginated page of ACL rules."""
+type AclRulePage {
+  items: [AclRule!]!
+  nextCursor: String
+}
+
 """An active kernel routing-table entry on a gateway."""
 type ActiveRoute {
   targetSubnet: String
@@ -71,6 +87,21 @@ type ClientPage {
   nextCursor: String
 }
 
+"""A content-filtering profile (V2 /content-filtering entry)."""
+type ContentFilter {
+  id: ID
+  name: String
+  enabled: Boolean!
+  profile: String
+  appliesTo: JSON!
+}
+
+"""Paginated page of content filters."""
+type ContentFilterPage {
+  items: [ContentFilter!]!
+  nextCursor: String
+}
+
 """A UniFi network device (AP, switch, gateway)."""
 type Device {
   mac: ID
@@ -112,6 +143,70 @@ type DnsRecord {
 type DnsRecordPage {
   items: [DnsRecord!]!
   nextCursor: String
+}
+
+"""A DPI application classification entry."""
+type DpiApplication {
+  id: Int
+  name: String
+  categoryId: Int
+}
+
+"""Paginated page of DPI applications."""
+type DpiApplicationPage {
+  items: [DpiApplication!]!
+  nextCursor: String
+}
+
+"""A DPI application category."""
+type DpiCategory {
+  id: Int
+  name: String
+}
+
+"""Paginated page of DPI categories."""
+type DpiCategoryPage {
+  items: [DpiCategory!]!
+  nextCursor: String
+}
+
+"""A firewall address/port group (V1 /rest/firewallgroup)."""
+type FirewallGroup {
+  id: ID
+  name: String
+  groupType: String
+  members: JSON!
+}
+
+"""Paginated page of firewall groups."""
+type FirewallGroupPage {
+  items: [FirewallGroup!]!
+  nextCursor: String
+}
+
+"""A firewall policy rule."""
+type FirewallRule {
+  id: ID
+  name: String
+  action: String
+  enabled: Boolean!
+  predefined: Boolean!
+  source: JSON
+  destination: JSON
+}
+
+"""Paginated page of firewall policies/rules."""
+type FirewallRulePage {
+  items: [FirewallRule!]!
+  nextCursor: String
+}
+
+"""A firewall zone (V2 /firewall/zone-matrix entry)."""
+type FirewallZone {
+  id: ID
+  name: String
+  networks: JSON!
+  defaultPolicy: String
 }
 
 """Service health snapshot — smoke field for the GraphQL endpoint."""
@@ -279,6 +374,106 @@ type NetworkQuery {
 
   """Look up a single traffic-route policy by id."""
   trafficRoute(controller: ID!, id: ID!, site: String! = "default"): TrafficRoute
+
+  """List firewall policies/rules on the given controller/site (paginated)."""
+  firewallPolicies(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): FirewallRulePage!
+
+  """Look up a single firewall policy/rule by id."""
+  firewallPolicy(controller: ID!, id: ID!, site: String! = "default"): FirewallRule
+
+  """List firewall address/port groups (paginated)."""
+  firewallGroups(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): FirewallGroupPage!
+
+  """Look up a single firewall group by id."""
+  firewallGroup(controller: ID!, id: ID!, site: String! = "default"): FirewallGroup
+
+  """List firewall zones (typically a small flat list — no pagination)."""
+  firewallZones(controller: ID!, site: String! = "default"): [FirewallZone!]!
+
+  """List QoS rules on the given controller/site (paginated)."""
+  qosRules(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): QosRulePage!
+
+  """Look up a single QoS rule by id."""
+  qosRule(controller: ID!, id: ID!, site: String! = "default"): QosRule
+
+  """List DPI applications (paginated)."""
+  dpiApplications(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): DpiApplicationPage!
+
+  """List DPI categories (paginated)."""
+  dpiCategories(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): DpiCategoryPage!
+
+  """List content filters on the given controller/site (paginated)."""
+  contentFilters(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): ContentFilterPage!
+
+  """Look up a single content filter by id."""
+  contentFilter(controller: ID!, id: ID!, site: String! = "default"): ContentFilter
+
+  """List ACL rules on the given controller/site (paginated)."""
+  aclRules(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): AclRulePage!
+
+  """Look up a single ACL rule by id."""
+  aclRule(controller: ID!, id: ID!, site: String! = "default"): AclRule
+
+  """List OON (out-of-network) policies (paginated)."""
+  oonPolicies(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): OonPolicyPage!
+
+  """Look up a single OON policy by id."""
+  oonPolicy(controller: ID!, id: ID!, site: String! = "default"): OonPolicy
+
+  """List port forwards on the given controller/site (paginated)."""
+  portForwards(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): PortForwardPage!
+
+  """Look up a single port forward by id."""
+  portForward(controller: ID!, id: ID!, site: String! = "default"): PortForward
+}
+
+"""An out-of-network (OON) policy entry."""
+type OonPolicy {
+  id: ID
+  name: String
+  enabled: Boolean!
+  appliesTo: JSON!
+  restrictionLevel: String
+}
+
+"""Paginated page of OON (out-of-network) policies."""
+type OonPolicyPage {
+  items: [OonPolicy!]!
+  nextCursor: String
+}
+
+"""A port-forward rule (V1 /rest/portforward entry)."""
+type PortForward {
+  id: ID
+  name: String
+  enabled: Boolean!
+  fwdProtocol: String
+  dstPort: String
+  fwdPort: String
+  src: String
+  log: Boolean!
+}
+
+"""Paginated page of port forwards."""
+type PortForwardPage {
+  items: [PortForward!]!
+  nextCursor: String
+}
+
+"""A QoS rate-limit rule (V2 /qos-rules entry)."""
+type QosRule {
+  id: ID
+  name: String
+  enabled: Boolean!
+  rateMaxDown: Int
+  rateMaxUp: Int
+  priority: Int
+}
+
+"""Paginated page of QoS rules."""
+type QosRulePage {
+  items: [QosRule!]!
+  nextCursor: String
 }
 
 type Query {
