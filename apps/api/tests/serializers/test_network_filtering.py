@@ -181,41 +181,38 @@ def test_dpi_category_list_serializer_shape() -> None:
 
 
 def test_content_filter_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_content_filters")
-    sample = [
-        {
-            "_id": "cf1",
-            "name": "Family-safe",
-            "enabled": True,
-            "profile": "FAMILY",
-            "applies_to": ["net1", "net2"],
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_content_filters")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "cf1"
-    assert out["data"][0]["name"] == "Family-safe"
-    assert out["data"][0]["enabled"] is True
-    assert out["data"][0]["profile"] == "FAMILY"
-    assert out["data"][0]["applies_to"] == ["net1", "net2"]
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.content_filter import ContentFilter
+
+    sample = {
+        "_id": "cf1",
+        "name": "Family-safe",
+        "enabled": True,
+        "profile": "FAMILY",
+        "applies_to": ["net1", "net2"],
+    }
+    out = ContentFilter.from_manager_output(sample).to_dict()
+    assert out["id"] == "cf1"
+    assert out["name"] == "Family-safe"
+    assert out["enabled"] is True
+    assert out["profile"] == "FAMILY"
+    assert out["applies_to"] == ["net1", "net2"]
+    assert ContentFilter.render_hint("list")["kind"] == "list"
 
 
 def test_content_filter_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_content_filter_details")
+    from unifi_api.graphql.types.network.content_filter import ContentFilter
+
     sample = {
         "_id": "cf2",
         "name": "Workplace",
         "enabled": False,
         "profile": "WORK",
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_content_filter_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "cf2"
-    assert out["data"]["enabled"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = ContentFilter.from_manager_output(sample).to_dict()
+    assert out["id"] == "cf2"
+    assert out["enabled"] is False
+    assert ContentFilter.render_hint("detail")["kind"] == "detail"
 
 
 def test_content_filter_mutation_ack_dispatches_for_all_mutations() -> None:

@@ -44,6 +44,9 @@ from unifi_api.graphql.types.network.network import (
 from unifi_api.graphql.types.network.qos import (
     QosRule as NetworkQosRuleType,
 )
+from unifi_api.graphql.types.network.content_filter import (
+    ContentFilter as NetworkContentFilterType,
+)
 from unifi_api.graphql.types.network.dns import (
     DnsRecord as NetworkDnsRecordType,
 )
@@ -538,6 +541,15 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_list_dpi_categories", NetworkDpiCategoryType, "list",
+    )
+
+    # Phase 6 PR2 Task 22 — network/content_filter migrated to Strawberry types.
+    # Tool-keyed only (no resource registration in the original serializer).
+    app.state.type_registry.register_tool_type(
+        "unifi_list_content_filters", NetworkContentFilterType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_content_filter_details", NetworkContentFilterType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

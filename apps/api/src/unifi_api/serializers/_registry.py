@@ -73,6 +73,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # Task 22 — network/dpi
     "unifi_list_dpi_applications",
     "unifi_list_dpi_categories",
+    # Task 22 — network/content_filter
+    "unifi_list_content_filters",
+    "unifi_get_content_filter_details",
 })
 
 

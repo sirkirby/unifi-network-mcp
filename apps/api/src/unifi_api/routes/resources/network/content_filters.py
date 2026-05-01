@@ -62,12 +62,21 @@ async def list_content_filters(
     page, next_cursor = paginate(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_list_content_filters")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_list_content_filters")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        rows = [type_class.from_manager_output(i).to_dict() for i in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_list_content_filters")
+        rows = [serializer.serialize(i) for i in page]
+        hint = registry.render_hint_for_tool("unifi_list_content_filters")
     return {
-        "items": [serializer.serialize(i) for i in page],
+        "items": rows,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("unifi_list_content_filters"),
+        "render_hint": hint,
     }
 
 
@@ -99,9 +108,15 @@ async def get_content_filter_details(
         raise HTTPException(
             status_code=404, detail=f"content filter {filter_id} not found",
         )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_get_content_filter_details")
-    return {
-        "data": serializer.serialize(item),
-        "render_hint": registry.render_hint_for_tool("unifi_get_content_filter_details"),
-    }
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_content_filter_details")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(item).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_get_content_filter_details")
+        data = serializer.serialize(item)
+        hint = registry.render_hint_for_tool("unifi_get_content_filter_details")
+    return {"data": data, "render_hint": hint}
