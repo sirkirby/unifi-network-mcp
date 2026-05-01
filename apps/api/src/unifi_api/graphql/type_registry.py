@@ -35,9 +35,24 @@ class TypeRegistry:
     def __init__(self) -> None:
         self._types: dict[tuple[str, str], Any] = {}
         self._serializers: dict[tuple[str, str], Any] = {}
+        # Phase 6 PR2 — read MCP tools whose serializer was migrated to a type
+        # need a tool-keyed lookup for the /v1/actions/{tool_name} endpoint.
+        # Stores (type_class, kind) where kind is "list" or "detail".
+        self._tool_types: dict[str, tuple[Any, str]] = {}
 
     def register_type(self, product: str, resource: str, type_class: Any) -> None:
         self._types[(product, resource)] = type_class
+
+    def register_tool_type(self, tool_name: str, type_class: Any, kind: str) -> None:
+        """Register a Strawberry type as the projection for an MCP tool.
+
+        ``kind`` is the RenderKind value ("list" or "detail") — drives how the
+        action endpoint shapes the manager output (list vs single dict).
+        """
+        self._tool_types[tool_name] = (type_class, kind)
+
+    def lookup_tool(self, tool_name: str) -> tuple[Any, str] | None:
+        return self._tool_types.get(tool_name)
 
     def register_serializer(self, product: str, resource: str, serializer: Any) -> None:
         self._serializers[(product, resource)] = serializer

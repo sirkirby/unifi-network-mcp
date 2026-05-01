@@ -65,9 +65,13 @@ async def list_clients(
     )
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("network", "clients")
-    items = [serializer.serialize(c) for c in page]
-    hint = registry.render_hint_for_resource("network", "clients")
+    entry = request.app.state.type_registry.lookup("network", "clients")
+    if entry.kind == "type":
+        items = [entry.payload.from_manager_output(c).to_dict() for c in page]
+        hint = entry.payload.render_hint("list")
+    else:
+        items = [entry.payload.serialize(c) for c in page]
+        hint = registry.render_hint_for_resource("network", "clients")
 
     return {
         "items": items,
@@ -104,8 +108,14 @@ async def get_client(
         raise HTTPException(status_code=404, detail="client not found")
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("network", "clients/{mac}")
+    entry = request.app.state.type_registry.lookup("network", "clients/{mac}")
+    if entry.kind == "type":
+        data = entry.payload.from_manager_output(client).to_dict()
+        hint = entry.payload.render_hint("detail")
+    else:
+        data = entry.payload.serialize(client)
+        hint = registry.render_hint_for_resource("network", "clients/{mac}")
     return {
-        "data": serializer.serialize(client),
-        "render_hint": registry.render_hint_for_resource("network", "clients/{mac}"),
+        "data": data,
+        "render_hint": hint,
     }

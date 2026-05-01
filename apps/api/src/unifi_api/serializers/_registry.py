@@ -20,6 +20,20 @@ class SerializerRegistryError(Exception):
     """Raised when the registry is in an invalid state (e.g., missing serializer)."""
 
 
+# Phase 6 PR2 migration: read tools whose dict-shaping logic moved from
+# serializers to Strawberry types in unifi_api.graphql.types.<product>.<resource>.
+# These tools are covered by the type_registry instead of the serializer
+# registry. Task 27 will repoint the coverage gate to type_registry directly
+# and this constant will be removed.
+PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
+    # Task 19 — network/clients
+    "unifi_list_clients",
+    "unifi_get_client_details",
+    "unifi_list_blocked_clients",
+    "unifi_lookup_by_ip",
+})
+
+
 class SerializerRegistry:
     def serializer_for_tool(self, tool_name: str) -> Serializer:
         s = _TOOL_REGISTRY.get(tool_name)
@@ -63,8 +77,13 @@ class SerializerRegistry:
         return s._render_hint(kind)
 
     def validate_manifest(self, manifest_tool_names: set[str]) -> None:
-        """Every tool in the manifest must have a serializer registered."""
-        missing = manifest_tool_names - set(_TOOL_REGISTRY.keys())
+        """Every tool in the manifest must have a serializer registered, except
+        Phase 6-migrated read tools whose projections live in the type_registry."""
+        missing = (
+            manifest_tool_names
+            - set(_TOOL_REGISTRY.keys())
+            - PHASE6_TYPE_MIGRATED_TOOLS
+        )
         if missing:
             raise SerializerRegistryError(
                 f"missing serializer for {len(missing)} tools: {sorted(missing)[:5]}..."

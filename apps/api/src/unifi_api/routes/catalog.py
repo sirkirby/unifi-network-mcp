@@ -80,20 +80,72 @@ async def get_resources(request: Request) -> dict:
     template under /v1/sites/{site_id}/.
     """
     serializer_registry = request.app.state.serializer_registry
+    type_registry = request.app.state.type_registry
     items = []
-    for product, resource in serializer_registry.all_resources():
+    seen: set[tuple[str, str]] = set()
+
+    def _render_hint(product: str, resource: str) -> dict:
         try:
-            hint = serializer_registry.render_hint_for_resource(product, resource)
+            entry = type_registry.lookup(product, resource)
         except Exception:
-            hint = {"kind": "empty"}
+            entry = None
+        if entry is not None and entry.kind == "type":
+            # Phase 6 PR2 — typed projections expose render_hint(kind).
+            # The kind matches the original serializer's kind; use the
+            # serializer registry as the kind oracle when available, falling
+            # back to a heuristic on the resource shape.
+            try:
+                kind = serializer_registry.kind_for_resource(product, resource).value
+            except Exception:
+                kind = "detail" if "{" in resource else "list"
+            try:
+                return entry.payload.render_hint(kind)
+            except Exception:
+                return {"kind": kind}
+        try:
+            return serializer_registry.render_hint_for_resource(product, resource)
+        except Exception:
+            return {"kind": "empty"}
+
+    def _path_for(resource: str) -> str:
         if "{" in resource:
             base, tmpl = resource.split("/", 1)
-            path = f"/v1/sites/{{site_id}}/{base}/{tmpl}"
-        else:
-            path = f"/v1/sites/{{site_id}}/{resource}"
+            return f"/v1/sites/{{site_id}}/{base}/{tmpl}"
+        return f"/v1/sites/{{site_id}}/{resource}"
+
+    for product, resource in serializer_registry.all_resources():
+        seen.add((product, resource))
         items.append({
             "product": product,
-            "resource_path": path,
-            "render_hint": hint,
+            "resource_path": _path_for(resource),
+            "render_hint": _render_hint(product, resource),
+        })
+    # Phase 6 PR2 — include type-only resources (read serializer classes have
+    # been deleted for migrated products; their projection lives in type_registry).
+    for product, resource in type_registry.all_resources():
+        if (product, resource) in seen:
+            continue
+        # Skip synthetic resource keys that don't map to a REST path
+        # (e.g., ("network", "client_lookup") which is exposed at /lookup-by-ip).
+        if resource.endswith("_lookup") or resource == "blocked_clients":
+            # blocked_clients/lookup are already exposed at REST under
+            # /blocked-clients and /lookup-by-ip, but their type_registry key
+            # is the logical resource id. Surface them with the actual REST path.
+            if resource == "blocked_clients":
+                rest_path = "/v1/sites/{site_id}/blocked-clients"
+            elif resource == "client_lookup":
+                rest_path = "/v1/sites/{site_id}/lookup-by-ip"
+            else:
+                rest_path = _path_for(resource)
+            items.append({
+                "product": product,
+                "resource_path": rest_path,
+                "render_hint": _render_hint(product, resource),
+            })
+            continue
+        items.append({
+            "product": product,
+            "resource_path": _path_for(resource),
+            "render_hint": _render_hint(product, resource),
         })
     return {"items": items}

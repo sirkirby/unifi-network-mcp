@@ -23,6 +23,11 @@ from unifi_api.graphql.context import GraphQLContext, RequestCache
 from unifi_api.graphql.errors import format_graphql_error
 from unifi_api.graphql.schema import schema as graphql_schema
 from unifi_api.graphql.type_registry import TypeRegistry
+from unifi_api.graphql.types.network.client import (
+    BlockedClient as NetworkBlockedClientType,
+    Client as NetworkClientType,
+    ClientLookup as NetworkClientLookupType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -312,6 +317,33 @@ def create_app(config: ApiConfig) -> FastAPI:
     for (product, resource) in app.state.serializer_registry.all_resources():
         serializer = app.state.serializer_registry.serializer_for_resource(product, resource)
         app.state.type_registry.register_serializer(product, resource, serializer)
+
+    # Phase 6 PR2 Task 19 — network/clients migrated to Strawberry types.
+    # Types take precedence over serializers in TypeRegistry.lookup(), so the
+    # REST routes for these resources will pick up the typed projection.
+    app.state.type_registry.register_type("network", "clients", NetworkClientType)
+    app.state.type_registry.register_type("network", "clients/{mac}", NetworkClientType)
+    app.state.type_registry.register_type(
+        "network", "blocked_clients", NetworkBlockedClientType,
+    )
+    app.state.type_registry.register_type(
+        "network", "client_lookup", NetworkClientLookupType,
+    )
+    # Tool-keyed mappings for the /v1/actions/{tool_name} endpoint — lets the
+    # action endpoint project read-tool output through the migrated type
+    # without going through the (now removed) tool-keyed serializer.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_clients", NetworkClientType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_client_details", NetworkClientType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_blocked_clients", NetworkBlockedClientType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_lookup_by_ip", NetworkClientLookupType, "detail",
+    )
 
     app.include_router(health.router, prefix="/v1")
     app.include_router(controllers_routes.router, prefix="/v1")

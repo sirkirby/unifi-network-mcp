@@ -12,8 +12,10 @@ def _registry():
 
 
 def test_client_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("network", "clients")
+    """Phase 6 PR2 Task 19 — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.network.client import Client
+
     sample_raw = {
         "mac": "aa:bb:cc:dd:ee:ff",
         "last_ip": "10.0.0.5",
@@ -26,7 +28,7 @@ def test_client_serializer_shape() -> None:
     }
     class FakeClient:
         raw = sample_raw
-    out = s.serialize(FakeClient())
+    out = Client.from_manager_output(FakeClient()).to_dict()
     assert out["mac"] == "aa:bb:cc:dd:ee:ff"
     assert out["ip"] == "10.0.0.5"
     assert out["hostname"] == "laptop"

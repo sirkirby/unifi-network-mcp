@@ -108,29 +108,30 @@ def test_client_group_mutation_ack_dispatches_for_all_mutations() -> None:
 
 
 def test_blocked_client_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_blocked_clients")
-    sample = [
-        {
-            "mac": "aa:bb:cc:dd:ee:ff",
-            "hostname": "BadGuy",
-            "name": None,
-            "last_seen": 1700000000,
-            "blocked": True,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_blocked_clients")
-    assert out["success"] is True
-    assert out["data"][0]["mac"] == "aa:bb:cc:dd:ee:ff"
-    assert out["data"][0]["hostname"] == "BadGuy"
-    assert out["data"][0]["blocked"] is True
-    assert out["data"][0]["last_seen"] is not None
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 19 — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.network.client import BlockedClient
+
+    sample = {
+        "mac": "aa:bb:cc:dd:ee:ff",
+        "hostname": "BadGuy",
+        "name": None,
+        "last_seen": 1700000000,
+        "blocked": True,
+    }
+    item = BlockedClient.from_manager_output(sample).to_dict()
+    assert item["mac"] == "aa:bb:cc:dd:ee:ff"
+    assert item["hostname"] == "BadGuy"
+    assert item["blocked"] is True
+    assert item["last_seen"] is not None
+    assert BlockedClient.render_hint("list")["kind"] == "list"
 
 
 def test_client_lookup_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_lookup_by_ip")
+    """Phase 6 PR2 Task 19 — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.network.client import ClientLookup
+
     sample = {
         "mac": "11:22:33:44:55:66",
         "last_ip": "192.168.1.50",
@@ -138,13 +139,12 @@ def test_client_lookup_serializer_shape() -> None:
         "is_online": True,
         "last_seen": 1700000000,
     }
-    out = s.serialize_action(sample, tool_name="unifi_lookup_by_ip")
-    assert out["success"] is True
-    assert out["data"]["mac"] == "11:22:33:44:55:66"
-    assert out["data"]["ip"] == "192.168.1.50"
-    assert out["data"]["hostname"] == "laptop"
-    assert out["data"]["is_online"] is True
-    assert out["render_hint"]["kind"] == "detail"
+    out = ClientLookup.from_manager_output(sample).to_dict()
+    assert out["mac"] == "11:22:33:44:55:66"
+    assert out["ip"] == "192.168.1.50"
+    assert out["hostname"] == "laptop"
+    assert out["is_online"] is True
+    assert ClientLookup.render_hint("detail")["kind"] == "detail"
 
 
 def test_client_mutation_ack_bool() -> None:
