@@ -1,0 +1,47 @@
+{% extends "_layout.html" %}
+{% block title %}API keys — unifi-api admin{% endblock %}
+{% block content %}
+<h1>API keys</h1>
+
+<article>
+  <header><strong>Create a new key</strong></header>
+  <form
+    hx-post="/admin/keys/create"
+    hx-target="#created-key-slot"
+    hx-swap="innerHTML"
+    hx-on::after-request="this.reset()"
+  >
+    <div class="grid">
+      <label>Name <input type="text" name="name" required /></label>
+      <label>Scopes
+        <select name="scopes">
+          <option value="read">read</option>
+          <option value="write">write</option>
+          <option value="admin">admin</option>
+        </select>
+      </label>
+    </div>
+    <button type="submit">Create key</button>
+  </form>
+</article>
+
+<div id="created-key-slot"></div>
+
+<table id="keys-table">
+  <thead>
+    <tr>
+      <th>Prefix</th>
+      <th>Name</th>
+      <th>Scopes</th>
+      <th>Created</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="keys-tbody">
+    {% for k in keys %}
+      {% include "keys/_row.html" %}
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

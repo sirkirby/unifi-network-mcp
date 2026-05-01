@@ -24,6 +24,7 @@ from unifi_api.routes import actions as actions_routes
 from unifi_api.routes import admin_data as admin_data_routes
 from unifi_api.routes.admin import auth as admin_auth_routes
 from unifi_api.routes.admin import dashboard as admin_dashboard_routes
+from unifi_api.routes.admin import keys as admin_keys_routes
 from unifi_api.routes import audit as audit_routes
 from unifi_api.routes import catalog as catalog_routes
 from unifi_api.routes import controllers as controllers_routes
@@ -358,5 +359,6 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.include_router(admin_auth_routes.router)
     app.include_router(admin_dashboard_routes.router)
+    app.include_router(admin_keys_routes.router)
 
     return app

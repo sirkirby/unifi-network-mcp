@@ -1,0 +1,24 @@
+<tr id="key-row-{{ k.id }}">
+  <td><code class="compact">{{ k.prefix }}</code></td>
+  <td>{{ k.name }}</td>
+  <td>{{ k.scopes }}</td>
+  <td>{{ k.created_at.isoformat()[:19] }}</td>
+  <td>
+    {% if k.revoked_at %}
+      <span class="status-error">revoked</span>
+    {% else %}
+      <span class="status-ok">active</span>
+    {% endif %}
+  </td>
+  <td>
+    {% if not k.revoked_at %}
+    <button
+      class="secondary outline"
+      hx-post="/admin/keys/{{ k.id }}/revoke"
+      hx-confirm="Revoke key '{{ k.name }}'? This is irreversible."
+      hx-target="#key-row-{{ k.id }}"
+      hx-swap="outerHTML"
+    >Revoke</button>
+    {% endif %}
+  </td>
+</tr>
