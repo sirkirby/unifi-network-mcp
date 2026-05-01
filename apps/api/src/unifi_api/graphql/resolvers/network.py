@@ -41,6 +41,8 @@ from unifi_api.graphql.types.network.device import (
     SpeedtestStatus,
 )
 from unifi_api.graphql.types.network.acl import AclRule
+from unifi_api.graphql.types.network.ap_group import ApGroup
+from unifi_api.graphql.types.network.client_group import ClientGroup, UserGroup
 from unifi_api.graphql.types.network.content_filter import ContentFilter
 from unifi_api.graphql.types.network.dns import DnsRecord
 from unifi_api.graphql.types.network.dpi import DpiApplication, DpiCategory
@@ -64,6 +66,12 @@ from unifi_api.graphql.types.network.session import (
     ClientWifiDetails,
 )
 from unifi_api.graphql.types.network.stat import DpiStats, StatPoint
+from unifi_api.graphql.types.network.switch import (
+    PortProfile,
+    PortStats,
+    SwitchCapabilities,
+    SwitchPorts,
+)
 from unifi_api.graphql.types.network.system import (
     Alarm,
     AutoBackupSettings,
@@ -1040,6 +1048,149 @@ async def _fetch_voucher_details(
     )
 
 
+# ---- Switch / AP groups / Client groups domain (Cluster E) -----------------
+
+
+async def _fetch_port_profiles(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/port-profiles/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "switch_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_port_profiles())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_switch_ports(
+    ctx: GraphQLContext, controller: str, site: str, device_mac: str,
+) -> Any:
+    key = f"network/switch-ports/{controller}/{site}/{device_mac}"
+
+    async def _do() -> Any:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "switch_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return await mgr.get_switch_ports(device_mac)
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_port_stats(
+    ctx: GraphQLContext, controller: str, site: str, device_mac: str,
+) -> Any:
+    key = f"network/port-stats/{controller}/{site}/{device_mac}"
+
+    async def _do() -> Any:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "switch_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return await mgr.get_port_stats(device_mac)
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_switch_capabilities(
+    ctx: GraphQLContext, controller: str, site: str, device_mac: str,
+) -> Any:
+    key = f"network/switch-capabilities/{controller}/{site}/{device_mac}"
+
+    async def _do() -> Any:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "switch_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return await mgr.get_switch_capabilities(device_mac)
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_ap_groups(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/ap-groups/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "network_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.list_ap_groups())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_client_groups(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/client-groups/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "client_group_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_client_groups())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_user_groups(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/user-groups/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "usergroup_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_usergroups())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
 # ---------------------------------------------------------------------------
 # Page wrappers
 # ---------------------------------------------------------------------------
@@ -1210,6 +1361,30 @@ class VoucherPage:
 @strawberry.type(description="Paginated page of client association sessions.")
 class ClientSessionPage:
     items: list[ClientSession]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of switch port profiles.")
+class PortProfilePage:
+    items: list[PortProfile]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of AP groups.")
+class ApGroupPage:
+    items: list[ApGroup]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of network member client groups.")
+class ClientGroupPage:
+    items: list[ClientGroup]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of QoS user groups.")
+class UserGroupPage:
+    items: list[UserGroup]
     next_cursor: str | None
 
 
@@ -2997,3 +3172,268 @@ class NetworkQuery:
         if raw is None:
             return None
         return ClientWifiDetails.from_manager_output(raw)
+
+    # ---- Switch domain ---------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List switch port profiles on the given controller/site (paginated).",
+    )
+    async def port_profiles(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> PortProfilePage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_port_profiles(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return PortProfilePage(
+            items=[PortProfile.from_manager_output(p) for p in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single switch port profile by id.",
+    )
+    async def port_profile(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> PortProfile | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_port_profiles(ctx, controller, site)
+        for p in raw:
+            rr = _raw(p)
+            if isinstance(rr, dict):
+                pid = rr.get("_id") or rr.get("id")
+            else:
+                pid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if pid == id:
+                return PortProfile.from_manager_output(p)
+        return None
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description=(
+            "Get the port-override wrapper for a switch "
+            "(name/model + per-port overrides)."
+        ),
+    )
+    async def switch_ports(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        device_mac: strawberry.ID,
+        site: str = "default",
+    ) -> SwitchPorts | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_switch_ports(ctx, controller, site, device_mac)
+        if raw is None:
+            return None
+        return SwitchPorts.from_manager_output(raw)
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description=(
+            "Get the per-port stats wrapper for a switch "
+            "(name/model + port_table)."
+        ),
+    )
+    async def port_stats(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        device_mac: strawberry.ID,
+        site: str = "default",
+    ) -> PortStats | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_port_stats(ctx, controller, site, device_mac)
+        if raw is None:
+            return None
+        return PortStats.from_manager_output(raw)
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Get switch capabilities (caps dict + STP / dot1x flags).",
+    )
+    async def switch_capabilities(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        device_mac: strawberry.ID,
+        site: str = "default",
+    ) -> SwitchCapabilities | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_switch_capabilities(ctx, controller, site, device_mac)
+        if raw is None:
+            return None
+        return SwitchCapabilities.from_manager_output(raw)
+
+    # ---- AP groups domain ------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List AP groups on the given controller/site (paginated).",
+    )
+    async def ap_groups(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> ApGroupPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_ap_groups(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return ApGroupPage(
+            items=[ApGroup.from_manager_output(g) for g in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single AP group by id.",
+    )
+    async def ap_group(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> ApGroup | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_ap_groups(ctx, controller, site)
+        for g in raw:
+            rr = _raw(g)
+            if isinstance(rr, dict):
+                gid = rr.get("_id") or rr.get("id")
+            else:
+                gid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if gid == id:
+                return ApGroup.from_manager_output(g)
+        return None
+
+    # ---- Client groups domain --------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description=(
+            "List network member client groups on the given controller/site "
+            "(paginated)."
+        ),
+    )
+    async def client_groups(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> ClientGroupPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_client_groups(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return ClientGroupPage(
+            items=[ClientGroup.from_manager_output(g) for g in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single network member client group by id.",
+    )
+    async def client_group(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> ClientGroup | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_client_groups(ctx, controller, site)
+        for g in raw:
+            rr = _raw(g)
+            if isinstance(rr, dict):
+                gid = rr.get("_id") or rr.get("id")
+            else:
+                gid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if gid == id:
+                return ClientGroup.from_manager_output(g)
+        return None
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description=(
+            "List QoS user groups (V1 /rest/usergroup) on the given "
+            "controller/site (paginated)."
+        ),
+    )
+    async def user_groups(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> UserGroupPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_user_groups(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return UserGroupPage(
+            items=[UserGroup.from_manager_output(g) for g in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single QoS user group by id.",
+    )
+    async def user_group(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> UserGroup | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_user_groups(ctx, controller, site)
+        for g in raw:
+            rr = _raw(g)
+            if isinstance(rr, dict):
+                gid = rr.get("_id") or rr.get("id")
+            else:
+                gid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if gid == id:
+                return UserGroup.from_manager_output(g)
+        return None

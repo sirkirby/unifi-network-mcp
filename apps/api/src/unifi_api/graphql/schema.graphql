@@ -43,6 +43,20 @@ type AlarmPage {
   nextCursor: String
 }
 
+"""A UniFi AP group (collection of AP MAC addresses)."""
+type ApGroup {
+  id: ID
+  name: String
+  apCount: Int!
+  deviceMacs: [String!]!
+}
+
+"""Paginated page of AP groups."""
+type ApGroupPage {
+  items: [ApGroup!]!
+  nextCursor: String
+}
+
 """Auto-backup schedule + retention settings."""
 type AutoBackupSettings {
   enabled: Boolean!
@@ -98,6 +112,20 @@ type Client {
   firstSeen: String
   note: String
   usergroupId: String
+}
+
+"""A network member client group (V2 /network-members-group entry)."""
+type ClientGroup {
+  id: ID
+  name: String
+  qosRateMaxDown: Int
+  qosRateMaxUp: Int
+}
+
+"""Paginated page of network member client groups."""
+type ClientGroupPage {
+  items: [ClientGroup!]!
+  nextCursor: String
 }
 
 """Result of a by-IP client lookup — online presence + last seen."""
@@ -584,6 +612,45 @@ type NetworkQuery {
 
   """Get a client's current WiFi parameters (signal, rates)."""
   clientWifiDetails(controller: ID!, mac: ID!, site: String! = "default"): ClientWifiDetails
+
+  """List switch port profiles on the given controller/site (paginated)."""
+  portProfiles(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): PortProfilePage!
+
+  """Look up a single switch port profile by id."""
+  portProfile(controller: ID!, id: ID!, site: String! = "default"): PortProfile
+
+  """
+  Get the port-override wrapper for a switch (name/model + per-port overrides).
+  """
+  switchPorts(controller: ID!, deviceMac: ID!, site: String! = "default"): SwitchPorts
+
+  """Get the per-port stats wrapper for a switch (name/model + port_table)."""
+  portStats(controller: ID!, deviceMac: ID!, site: String! = "default"): PortStats
+
+  """Get switch capabilities (caps dict + STP / dot1x flags)."""
+  switchCapabilities(controller: ID!, deviceMac: ID!, site: String! = "default"): SwitchCapabilities
+
+  """List AP groups on the given controller/site (paginated)."""
+  apGroups(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): ApGroupPage!
+
+  """Look up a single AP group by id."""
+  apGroup(controller: ID!, id: ID!, site: String! = "default"): ApGroup
+
+  """
+  List network member client groups on the given controller/site (paginated).
+  """
+  clientGroups(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): ClientGroupPage!
+
+  """Look up a single network member client group by id."""
+  clientGroup(controller: ID!, id: ID!, site: String! = "default"): ClientGroup
+
+  """
+  List QoS user groups (V1 /rest/usergroup) on the given controller/site (paginated).
+  """
+  userGroups(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): UserGroupPage!
+
+  """Look up a single QoS user group by id."""
+  userGroup(controller: ID!, id: ID!, site: String! = "default"): UserGroup
 }
 
 """An out-of-network (OON) policy entry."""
@@ -617,6 +684,56 @@ type PortForward {
 type PortForwardPage {
   items: [PortForward!]!
   nextCursor: String
+}
+
+"""A single port-override row on a switch."""
+type PortOverrideRow {
+  portIdx: Int
+  name: String
+  portconfId: String
+  poeMode: String
+  opMode: String
+}
+
+"""A switch port profile (PoE / VLAN tagging template)."""
+type PortProfile {
+  id: ID
+  name: String
+  nativeNetworkconfId: String
+  taggedNetworkconfIds: [String!]!
+  poeMode: String
+  isolation: Boolean
+}
+
+"""Paginated page of switch port profiles."""
+type PortProfilePage {
+  items: [PortProfile!]!
+  nextCursor: String
+}
+
+"""A single port-table row reporting per-port stats."""
+type PortStatRow {
+  portIdx: Int
+  name: String
+  enable: Boolean!
+  speed: Int
+  duplex: Boolean
+  txBytes: Int!
+  rxBytes: Int!
+  txPackets: Int!
+  rxPackets: Int!
+  txDropped: Int!
+  rxDropped: Int!
+  poeEnable: Boolean!
+  poeMode: String
+  poePower: Float
+}
+
+"""Wrapper dict containing the per-port stats table for a switch."""
+type PortStats {
+  name: String
+  model: String
+  portTable: [PortStatRow!]!
 }
 
 """A QoS rate-limit rule (V2 /qos-rules entry)."""
@@ -741,6 +858,24 @@ type StatPoint {
   ts: Int!
 }
 
+"""Switch capabilities (caps dict + STP / dot1x flags)."""
+type SwitchCapabilities {
+  name: String
+  model: String
+  switchCaps: JSON
+  stpVersion: String
+  stpPriority: String
+  jumboframeEnabled: Boolean
+  dot1xPortctrlEnabled: Boolean
+}
+
+"""Wrapper dict containing port-override rows for a switch."""
+type SwitchPorts {
+  name: String
+  model: String
+  portOverrides: [PortOverrideRow!]!
+}
+
 """Controller system information."""
 type SystemInfo {
   name: String
@@ -774,6 +909,20 @@ type TrafficRoute {
 """Paginated page of traffic-route policies."""
 type TrafficRoutePage {
   items: [TrafficRoute!]!
+  nextCursor: String
+}
+
+"""A QoS user group (V1 /rest/usergroup entry)."""
+type UserGroup {
+  id: ID
+  name: String
+  qosRateMaxDown: Int
+  qosRateMaxUp: Int
+}
+
+"""Paginated page of QoS user groups."""
+type UserGroupPage {
+  items: [UserGroup!]!
   nextCursor: String
 }
 
