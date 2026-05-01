@@ -249,34 +249,32 @@ def test_traffic_route_detail_serializer_shape() -> None:
 
 
 def test_ap_group_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_ap_groups")
-    sample = [
-        {
-            "_id": "apg1",
-            "name": "Office APs",
-            "device_macs": ["aa:bb:cc:00:11:22", "aa:bb:cc:00:11:33"],
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_ap_groups")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "apg1"
-    assert out["data"][0]["name"] == "Office APs"
-    assert out["data"][0]["ap_count"] == 2
-    assert out["data"][0]["device_macs"] == ["aa:bb:cc:00:11:22", "aa:bb:cc:00:11:33"]
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 24 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.ap_group import ApGroup
+
+    sample = {
+        "_id": "apg1",
+        "name": "Office APs",
+        "device_macs": ["aa:bb:cc:00:11:22", "aa:bb:cc:00:11:33"],
+    }
+    out = ApGroup.from_manager_output(sample).to_dict()
+    assert out["id"] == "apg1"
+    assert out["name"] == "Office APs"
+    assert out["ap_count"] == 2
+    assert out["device_macs"] == ["aa:bb:cc:00:11:22", "aa:bb:cc:00:11:33"]
+    assert ApGroup.render_hint("list")["kind"] == "list"
 
 
 def test_ap_group_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_ap_group_details")
+    """Phase 6 PR2 Task 24 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.ap_group import ApGroup
+
     sample = {"_id": "apg2", "name": "Guest APs", "device_macs": []}
-    out = s.serialize_action(sample, tool_name="unifi_get_ap_group_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "apg2"
-    assert out["data"]["name"] == "Guest APs"
-    assert out["data"]["ap_count"] == 0
-    assert out["render_hint"]["kind"] == "detail"
+    out = ApGroup.from_manager_output(sample).to_dict()
+    assert out["id"] == "apg2"
+    assert out["name"] == "Guest APs"
+    assert out["ap_count"] == 0
+    assert ApGroup.render_hint("detail")["kind"] == "detail"
 
 
 # ---- Mutation acks ----

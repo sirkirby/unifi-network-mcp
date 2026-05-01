@@ -85,6 +85,9 @@ from unifi_api.graphql.types.network.qos import (
 from unifi_api.graphql.types.network.acl import (
     AclRule as NetworkAclRuleType,
 )
+from unifi_api.graphql.types.network.ap_group import (
+    ApGroup as NetworkApGroupType,
+)
 from unifi_api.graphql.types.network.content_filter import (
     ContentFilter as NetworkContentFilterType,
 )
@@ -729,6 +732,17 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_switch_capabilities", NetworkSwitchCapabilitiesType, "detail",
+    )
+
+    # Phase 6 PR2 Task 24 — network/ap_groups (1 read shape) migrated to a
+    # Strawberry type. Tool-keyed only (no resource registration in the
+    # original serializer). Mutation acks (create/update/delete) stay as a
+    # serializer in serializers/network/ap_groups.py.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_ap_groups", NetworkApGroupType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_ap_group_details", NetworkApGroupType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

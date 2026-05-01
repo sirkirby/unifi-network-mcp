@@ -125,6 +125,10 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "unifi_get_switch_ports",
     "unifi_get_port_stats",
     "unifi_get_switch_capabilities",
+    # Task 24 — network/ap_groups (1 read shape; mutation acks stay as a
+    # serializer)
+    "unifi_list_ap_groups",
+    "unifi_get_ap_group_details",
 })
 
 
