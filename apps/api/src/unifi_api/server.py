@@ -58,6 +58,18 @@ from unifi_api.graphql.types.network.stat import (
     DpiStats as NetworkDpiStatsType,
     StatPoint as NetworkStatPointType,
 )
+from unifi_api.graphql.types.network.system import (
+    Alarm as NetworkAlarmType,
+    AutoBackupSettings as NetworkAutoBackupSettingsType,
+    Backup as NetworkBackupType,
+    EventTypes as NetworkEventTypesType,
+    NetworkHealth as NetworkNetworkHealthType,
+    SiteSettings as NetworkSiteSettingsType,
+    SnmpSettings as NetworkSnmpSettingsType,
+    SpeedtestResult as NetworkSpeedtestResultType,
+    SystemInfo as NetworkSystemInfoType,
+    TopClient as NetworkTopClientType,
+)
 from unifi_api.graphql.types.network.voucher import (
     Voucher as NetworkVoucherType,
 )
@@ -655,6 +667,41 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_ips_events", NetworkEventLogType, "event_log",
+    )
+
+    # Phase 6 PR2 Task 23 — network/system (9 read shapes) migrated to
+    # Strawberry types. Tool-keyed only (no resource registration in the
+    # original serializer). Mutation acks (archive/backup/autobackup) stay
+    # as serializers in serializers/network/system.py.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_alarms", NetworkAlarmType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_backups", NetworkBackupType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_system_info", NetworkSystemInfoType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_network_health", NetworkNetworkHealthType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_site_settings", NetworkSiteSettingsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_snmp_settings", NetworkSnmpSettingsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_event_types", NetworkEventTypesType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_autobackup_settings", NetworkAutoBackupSettingsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_top_clients", NetworkTopClientType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_speedtest_results", NetworkSpeedtestResultType, "list",
     )
 
     app.include_router(health.router, prefix="/v1")

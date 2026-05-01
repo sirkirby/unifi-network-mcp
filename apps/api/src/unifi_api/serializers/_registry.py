@@ -106,6 +106,18 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "unifi_get_device_stats",
     "unifi_get_client_stats",
     "unifi_get_dpi_stats",
+    # Task 23 — network/system (9 read shapes; mutation acks stay as
+    # serializers)
+    "unifi_list_alarms",
+    "unifi_list_backups",
+    "unifi_get_system_info",
+    "unifi_get_network_health",
+    "unifi_get_site_settings",
+    "unifi_get_snmp_settings",
+    "unifi_get_event_types",
+    "unifi_get_autobackup_settings",
+    "unifi_get_top_clients",
+    "unifi_get_speedtest_results",
 })
 
 

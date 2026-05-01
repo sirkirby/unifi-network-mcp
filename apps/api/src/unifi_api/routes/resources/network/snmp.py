@@ -40,9 +40,15 @@ async def get_snmp_settings(
         if cm.site != site_id:
             await cm.set_site(site_id)
         settings = await mgr.get_settings("snmp")
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_get_snmp_settings")
-    return {
-        "data": serializer.serialize(settings),
-        "render_hint": registry.render_hint_for_tool("unifi_get_snmp_settings"),
-    }
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_snmp_settings")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(settings).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_get_snmp_settings")
+        data = serializer.serialize(settings)
+        hint = registry.render_hint_for_tool("unifi_get_snmp_settings")
+    return {"data": data, "render_hint": hint}
