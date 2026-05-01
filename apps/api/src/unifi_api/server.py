@@ -41,6 +41,9 @@ from unifi_api.graphql.types.network.device import (
 from unifi_api.graphql.types.network.network import (
     Network as NetworkNetworkType,
 )
+from unifi_api.graphql.types.network.dns import (
+    DnsRecord as NetworkDnsRecordType,
+)
 from unifi_api.graphql.types.network.vpn import (
     VpnClient as NetworkVpnClientType,
     VpnServer as NetworkVpnServerType,
@@ -440,6 +443,17 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_vpn_server_details", NetworkVpnServerType, "detail",
+    )
+
+    # Phase 6 PR2 Task 21 — network/dns migrated to Strawberry types.
+    # DNS tools are tool-keyed only (no resource registration in the original
+    # serializer); register via register_tool_type to avoid surfacing a bogus
+    # path in /v1/catalog/resources.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_dns_records", NetworkDnsRecordType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_dns_record_details", NetworkDnsRecordType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

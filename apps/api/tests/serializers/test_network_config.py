@@ -102,32 +102,30 @@ def test_vpn_server_detail_serializer_shape() -> None:
 
 
 def test_dns_record_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_dns_records")
-    sample = [
-        {
-            "_id": "dns1",
-            "key": "router.local",
-            "value": "192.168.1.1",
-            "record_type": "A",
-            "ttl": 300,
-            "enabled": True,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_dns_records")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "dns1"
-    assert out["data"][0]["hostname"] == "router.local"
-    assert out["data"][0]["ip"] == "192.168.1.1"
-    assert out["data"][0]["type"] == "A"
-    assert out["data"][0]["ttl"] == 300
-    assert out["data"][0]["enabled"] is True
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 21 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.dns import DnsRecord
+
+    sample = {
+        "_id": "dns1",
+        "key": "router.local",
+        "value": "192.168.1.1",
+        "record_type": "A",
+        "ttl": 300,
+        "enabled": True,
+    }
+    out = DnsRecord.from_manager_output(sample).to_dict()
+    assert out["id"] == "dns1"
+    assert out["hostname"] == "router.local"
+    assert out["ip"] == "192.168.1.1"
+    assert out["type"] == "A"
+    assert out["ttl"] == 300
+    assert out["enabled"] is True
+    assert DnsRecord.render_hint("list")["kind"] == "list"
 
 
 def test_dns_record_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_dns_record_details")
+    from unifi_api.graphql.types.network.dns import DnsRecord
+
     sample = {
         "_id": "dns2",
         "key": "alias.local",
@@ -136,13 +134,12 @@ def test_dns_record_detail_serializer_shape() -> None:
         "ttl": 0,
         "enabled": False,
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_dns_record_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "dns2"
-    assert out["data"]["hostname"] == "alias.local"
-    assert out["data"]["type"] == "CNAME"
-    assert out["data"]["enabled"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = DnsRecord.from_manager_output(sample).to_dict()
+    assert out["id"] == "dns2"
+    assert out["hostname"] == "alias.local"
+    assert out["type"] == "CNAME"
+    assert out["enabled"] is False
+    assert DnsRecord.render_hint("detail")["kind"] == "detail"
 
 
 # ---- Static routes ----
