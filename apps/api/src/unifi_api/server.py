@@ -28,6 +28,7 @@ from unifi_api.routes.admin import controllers as admin_controllers_routes
 from unifi_api.routes.admin import dashboard as admin_dashboard_routes
 from unifi_api.routes.admin import keys as admin_keys_routes
 from unifi_api.routes.admin import logs as admin_logs_routes
+from unifi_api.routes.admin import settings as admin_settings_routes
 from unifi_api.routes import audit as audit_routes
 from unifi_api.routes import catalog as catalog_routes
 from unifi_api.routes import controllers as controllers_routes
@@ -366,5 +367,6 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.include_router(admin_controllers_routes.router)
     app.include_router(admin_audit_routes.router)
     app.include_router(admin_logs_routes.router)
+    app.include_router(admin_settings_routes.router)
 
     return app
