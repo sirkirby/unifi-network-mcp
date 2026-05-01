@@ -47,6 +47,10 @@ from unifi_api.graphql.types.network.qos import (
 from unifi_api.graphql.types.network.dns import (
     DnsRecord as NetworkDnsRecordType,
 )
+from unifi_api.graphql.types.network.dpi import (
+    DpiApplication as NetworkDpiApplicationType,
+    DpiCategory as NetworkDpiCategoryType,
+)
 from unifi_api.graphql.types.network.firewall import (
     FirewallGroup as NetworkFirewallGroupType,
     FirewallRule as NetworkFirewallRuleType,
@@ -524,6 +528,16 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_qos_rule_details", NetworkQosRuleType, "detail",
+    )
+
+    # Phase 6 PR2 Task 22 — network/dpi migrated to Strawberry types.
+    # DPI is read-only (no create/update/delete tools); both lookups are
+    # tool-keyed only.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_dpi_applications", NetworkDpiApplicationType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_dpi_categories", NetworkDpiCategoryType, "list",
     )
 
     app.include_router(health.router, prefix="/v1")

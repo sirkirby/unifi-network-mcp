@@ -70,6 +70,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # Task 22 — network/qos
     "unifi_list_qos_rules",
     "unifi_get_qos_rule_details",
+    # Task 22 — network/dpi
+    "unifi_list_dpi_applications",
+    "unifi_list_dpi_categories",
 })
 
 

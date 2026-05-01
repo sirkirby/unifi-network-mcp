@@ -153,32 +153,28 @@ def test_qos_mutation_ack_dispatches_for_all_mutations() -> None:
 
 
 def test_dpi_application_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_dpi_applications")
-    # The DPI manager returns a wrapper dict; the action layer surfaces
-    # the bare list (or wrapper) — the serializer accepts either via the
-    # registry's normal LIST flow.
-    sample = [
-        {"id": 65537, "name": "Skype", "categoryId": 1},
-        {"id": 65538, "name": "Telegram"},
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_dpi_applications")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == 65537
-    assert out["data"][0]["name"] == "Skype"
-    assert out["data"][0]["category_id"] == 1
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.dpi import DpiApplication
+
+    sample = {"id": 65537, "name": "Skype", "categoryId": 1}
+    out = DpiApplication.from_manager_output(sample).to_dict()
+    assert out["id"] == 65537
+    assert out["name"] == "Skype"
+    assert out["category_id"] == 1
+    assert DpiApplication.render_hint("list")["kind"] == "list"
 
 
 def test_dpi_category_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_dpi_categories")
-    sample = [{"id": 0, "name": "Instant messengers"}, {"id": 1, "name": "Peer-to-peer"}]
-    out = s.serialize_action(sample, tool_name="unifi_list_dpi_categories")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == 0
-    assert out["data"][0]["name"] == "Instant messengers"
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type. Verifies
+    the id=0 case (category 0 = Instant messengers) is preserved through
+    the new type's explicit ``is None`` check."""
+    from unifi_api.graphql.types.network.dpi import DpiCategory
+
+    sample = {"id": 0, "name": "Instant messengers"}
+    out = DpiCategory.from_manager_output(sample).to_dict()
+    assert out["id"] == 0
+    assert out["name"] == "Instant messengers"
+    assert DpiCategory.render_hint("list")["kind"] == "list"
 
 
 # ---- Content filters ----
