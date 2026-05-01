@@ -22,6 +22,7 @@ from unifi_api.config import ApiConfig
 from unifi_api.graphql.context import GraphQLContext, RequestCache
 from unifi_api.graphql.errors import format_graphql_error
 from unifi_api.graphql.schema import schema as graphql_schema
+from unifi_api.graphql.type_registry import TypeRegistry
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -302,6 +303,15 @@ def create_app(config: ApiConfig) -> FastAPI:
     # invariant in apps/api/tests/.
     manifest_tool_names = set(app.state.manifest_registry.all_tools())
     app.state.serializer_registry = discover_serializers(manifest_tool_names)
+
+    app.state.type_registry = TypeRegistry()
+    # Mid-migration: replicate every existing serializer registration into the type_registry
+    # so the new lookup() API works alongside the old serializer_registry. PR2/3/4 will
+    # replace serializer entries with type entries product-by-product. At PR4 close, the
+    # old serializer_registry is removed and only type_registry remains.
+    for (product, resource) in app.state.serializer_registry.all_resources():
+        serializer = app.state.serializer_registry.serializer_for_resource(product, resource)
+        app.state.type_registry.register_serializer(product, resource, serializer)
 
     app.include_router(health.router, prefix="/v1")
     app.include_router(controllers_routes.router, prefix="/v1")
