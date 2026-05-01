@@ -3,7 +3,8 @@
     "myco": {
       "type": "local",
       "command": [
-        "myco-run",
+        "node",
+        ".agents/myco-cli.cjs",
         "mcp"
       ]
     }

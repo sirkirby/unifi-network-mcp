@@ -1,7 +1,5 @@
 [mcp_servers.myco]
-command = "myco-run"
-args = ["mcp"]
-cwd = "."
+url = "http://127.0.0.1:28221/mcp"
 
 [features]
 codex_hooks = true
