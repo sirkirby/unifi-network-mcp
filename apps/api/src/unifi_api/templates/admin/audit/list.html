@@ -1,0 +1,29 @@
+{% extends "_layout.html" %}
+{% block title %}Audit log — unifi-api admin{% endblock %}
+{% block content %}
+<h1>Audit log</h1>
+
+{% include "audit/_filters.html" %}
+
+<div hx-ext="sse" id="audit-live"></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Key</th>
+      <th>Controller</th>
+      <th>Target</th>
+      <th>Outcome</th>
+      <th>Error</th>
+    </tr>
+  </thead>
+  <tbody id="audit-tbody"
+         hx-get="/admin/audit/_rows"
+         hx-trigger="load, audit-filter-changed from:body"
+         hx-swap="innerHTML"
+         hx-include="#audit-filters">
+    <tr><td colspan="6"><em>Loading…</em></td></tr>
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,48 @@
+<form id="audit-filters"
+      hx-on::change="htmx.trigger('body', 'audit-filter-changed');"
+      style="margin-bottom: 1rem;">
+  <div class="grid">
+    <label>Controller <input type="text" name="controller" placeholder="(any)" /></label>
+    <label>Outcome
+      <select name="outcome">
+        <option value="">(any)</option>
+        <option value="success">success</option>
+        <option value="error">error</option>
+        <option value="denied">denied</option>
+      </select>
+    </label>
+    <label>Target contains <input type="text" name="q" placeholder="(any)" /></label>
+    <label>Limit
+      <select name="limit">
+        <option value="50" selected>50</option>
+        <option value="200">200</option>
+        <option value="500">500</option>
+      </select>
+    </label>
+  </div>
+  <fieldset>
+    <label><input type="checkbox" id="live-tail-toggle"
+      hx-on::click="toggleAuditLive(this);" /> Live-tail</label>
+    <a href="/admin/audit/export.csv" class="secondary outline" role="button">Export CSV</a>
+  </fieldset>
+</form>
+
+<script>
+  function toggleAuditLive(cb) {
+    const slot = document.getElementById('audit-live');
+    while (slot.firstChild) slot.removeChild(slot.firstChild);
+    if (!cb.checked) return;
+    const params = new URLSearchParams();
+    const form = document.getElementById('audit-filters');
+    const outcome = form.querySelector('[name=outcome]').value;
+    const q = form.querySelector('[name=q]').value;
+    if (outcome) params.set('outcome', outcome);
+    if (q) params.set('q', q);
+    const url = '/admin/audit/_stream' + (params.toString() ? '?' + params.toString() : '');
+    slot.setAttribute('sse-connect', url);
+    slot.setAttribute('sse-swap', 'audit.row');
+    slot.setAttribute('hx-target', '#audit-tbody');
+    slot.setAttribute('hx-swap', 'afterbegin');
+    htmx.process(slot);
+  }
+</script>

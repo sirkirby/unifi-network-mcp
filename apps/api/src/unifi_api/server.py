@@ -22,6 +22,7 @@ from unifi_api.db.session import get_sessionmaker
 from unifi_api.logging import attach_rotating_file_handler, request_id_ctx
 from unifi_api.routes import actions as actions_routes
 from unifi_api.routes import admin_data as admin_data_routes
+from unifi_api.routes.admin import audit as admin_audit_routes
 from unifi_api.routes.admin import auth as admin_auth_routes
 from unifi_api.routes.admin import controllers as admin_controllers_routes
 from unifi_api.routes.admin import dashboard as admin_dashboard_routes
@@ -362,5 +363,6 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.include_router(admin_dashboard_routes.router)
     app.include_router(admin_keys_routes.router)
     app.include_router(admin_controllers_routes.router)
+    app.include_router(admin_audit_routes.router)
 
     return app
