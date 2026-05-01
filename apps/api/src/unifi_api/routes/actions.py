@@ -73,10 +73,10 @@ async def post_action(request: Request, tool_name: str, body: ActionIn) -> dict:
                 # envelope the dict-serializer used to produce.
                 type_class, kind = tool_type
                 hint = type_class.render_hint(kind)
-                if kind == "list":
+                if kind in ("list", "timeseries", "event_log"):
                     if not isinstance(result, list):
                         raise SerializerContractError(
-                            f"tool '{tool_name}' declared kind=list but manager "
+                            f"tool '{tool_name}' declared kind={kind} but manager "
                             f"returned {type(result).__name__}"
                         )
                     data = [type_class.from_manager_output(x).to_dict() for x in result]

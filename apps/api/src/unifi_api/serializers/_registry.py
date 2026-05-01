@@ -91,6 +91,12 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # Task 23 — network/sessions
     "unifi_get_client_sessions",
     "unifi_get_client_wifi_details",
+    # Task 23 — network/events (EVENT_LOG kind; recent_events stays as a
+    # serializer because the SSE stream generator calls .serialize() directly)
+    "unifi_list_events",
+    "unifi_get_alerts",
+    "unifi_get_anomalies",
+    "unifi_get_ips_events",
 })
 
 

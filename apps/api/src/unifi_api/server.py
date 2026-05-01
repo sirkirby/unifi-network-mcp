@@ -47,6 +47,9 @@ from unifi_api.graphql.types.network.oon import (
 from unifi_api.graphql.types.network.port_forward import (
     PortForward as NetworkPortForwardType,
 )
+from unifi_api.graphql.types.network.event import (
+    EventLog as NetworkEventLogType,
+)
 from unifi_api.graphql.types.network.session import (
     ClientSession as NetworkClientSessionType,
     ClientWifiDetails as NetworkClientWifiDetailsType,
@@ -611,6 +614,23 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_client_wifi_details", NetworkClientWifiDetailsType, "detail",
+    )
+
+    # Phase 6 PR2 Task 23 — network/events migrated to Strawberry types.
+    # Tool-keyed only (EVENT_LOG kind). ``unifi_recent_events`` and
+    # ``unifi_subscribe_events`` stay as serializers because the SSE stream
+    # generator calls ``serializer.serialize`` directly per broadcast event.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_events", NetworkEventLogType, "event_log",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_alerts", NetworkEventLogType, "event_log",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_anomalies", NetworkEventLogType, "event_log",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_ips_events", NetworkEventLogType, "event_log",
     )
 
     app.include_router(health.router, prefix="/v1")
