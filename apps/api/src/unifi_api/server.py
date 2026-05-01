@@ -38,6 +38,9 @@ from unifi_api.graphql.types.network.device import (
     RogueAp as NetworkRogueApType,
     SpeedtestStatus as NetworkSpeedtestStatusType,
 )
+from unifi_api.graphql.types.network.network import (
+    Network as NetworkNetworkType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -389,6 +392,18 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_speedtest_status", NetworkSpeedtestStatusType, "detail",
+    )
+
+    # Phase 6 PR2 Task 21 — network/networks migrated to Strawberry types.
+    app.state.type_registry.register_type("network", "networks", NetworkNetworkType)
+    app.state.type_registry.register_type(
+        "network", "networks/{id}", NetworkNetworkType,
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_networks", NetworkNetworkType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_network_details", NetworkNetworkType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

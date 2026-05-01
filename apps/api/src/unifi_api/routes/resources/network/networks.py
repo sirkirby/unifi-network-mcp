@@ -59,9 +59,13 @@ async def list_networks(
     )
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("network", "networks")
-    items = [serializer.serialize(n) for n in page]
-    hint = registry.render_hint_for_resource("network", "networks")
+    entry = request.app.state.type_registry.lookup("network", "networks")
+    if entry.kind == "type":
+        items = [entry.payload.from_manager_output(n).to_dict() for n in page]
+        hint = entry.payload.render_hint("list")
+    else:
+        items = [entry.payload.serialize(n) for n in page]
+        hint = registry.render_hint_for_resource("network", "networks")
 
     return {
         "items": items,
@@ -98,8 +102,14 @@ async def get_network(
         raise HTTPException(status_code=404, detail="network not found")
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("network", "networks/{id}")
+    entry = request.app.state.type_registry.lookup("network", "networks/{id}")
+    if entry.kind == "type":
+        data = entry.payload.from_manager_output(network).to_dict()
+        hint = entry.payload.render_hint("detail")
+    else:
+        data = entry.payload.serialize(network)
+        hint = registry.render_hint_for_resource("network", "networks/{id}")
     return {
-        "data": serializer.serialize(network),
-        "render_hint": registry.render_hint_for_resource("network", "networks/{id}"),
+        "data": data,
+        "render_hint": hint,
     }

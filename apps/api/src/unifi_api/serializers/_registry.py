@@ -41,6 +41,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "unifi_get_rf_scan_results",
     "unifi_list_available_channels",
     "unifi_get_speedtest_status",
+    # Task 21 — network/networks
+    "unifi_list_networks",
+    "unifi_get_network_details",
 })
 
 

@@ -60,8 +60,10 @@ def test_device_serializer_shape() -> None:
 
 
 def test_network_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("network", "networks")
+    """Phase 6 PR2 Task 21 — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.network.network import Network
+
     class FakeNetwork:
         raw = {
             "_id": "net1",
@@ -69,9 +71,11 @@ def test_network_serializer_shape() -> None:
             "purpose": "corporate",
             "enabled": True,
         }
-    out = s.serialize(FakeNetwork())
+    out = Network.from_manager_output(FakeNetwork()).to_dict()
     assert out["id"] == "net1"
     assert out["name"] == "Default"
+    assert out["purpose"] == "corporate"
+    assert out["enabled"] is True
 
 
 def test_firewall_rule_serializer_shape() -> None:
