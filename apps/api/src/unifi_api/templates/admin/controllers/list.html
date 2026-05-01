@@ -1,0 +1,33 @@
+{% extends "_layout.html" %}
+{% block title %}Controllers — unifi-api admin{% endblock %}
+{% block content %}
+<h1>Controllers</h1>
+
+<button
+  class="secondary"
+  hx-get="/admin/controllers/_new_form"
+  hx-target="#form-slot"
+  hx-swap="innerHTML"
+>Add controller</button>
+
+<div id="form-slot"></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Base URL</th>
+      <th>Products</th>
+      <th>TLS</th>
+      <th>Default</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="controllers-tbody"
+         hx-get="/admin/controllers/_table"
+         hx-trigger="load, controllers-changed from:body"
+         hx-swap="innerHTML">
+    <tr><td colspan="6"><em>Loading…</em></td></tr>
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,20 @@
+<tr id="ctrl-row-{{ c.id }}">
+  <td>{{ c.name }}</td>
+  <td><code class="compact">{{ c.base_url }}</code></td>
+  <td>{{ c.product_kinds | join(", ") }}</td>
+  <td>{% if c.verify_tls %}verify{% else %}skip{% endif %}</td>
+  <td>{% if c.is_default %}<span class="status-ok">●</span>{% endif %}</td>
+  <td>
+    <button class="secondary outline"
+      hx-get="/admin/controllers/{{ c.id }}/_edit_form"
+      hx-target="#form-slot" hx-swap="innerHTML">Edit</button>
+    <button class="secondary"
+      hx-post="/admin/controllers/{{ c.id }}/probe"
+      hx-target="#probe-slot-{{ c.id }}" hx-swap="innerHTML">Probe</button>
+    <button class="contrast"
+      hx-post="/admin/controllers/{{ c.id }}/delete"
+      hx-confirm="Delete controller '{{ c.name }}'?"
+      hx-swap="none">Delete</button>
+    <div id="probe-slot-{{ c.id }}"></div>
+  </td>
+</tr>

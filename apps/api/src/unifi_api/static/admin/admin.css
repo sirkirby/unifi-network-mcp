@@ -1,0 +1,23 @@
+/* Status indicators used in dashboard + audit/log rows. */
+.status-ok { color: #2e8b57; }
+.status-error { color: #c0392b; }
+.status-warn { color: #d68910; }
+
+/* Audit/log row error highlight. */
+tr.row-error,
+tr.row-error td { background: rgba(192, 57, 43, 0.07); }
+
+/* Inline error message text. */
+p.error { color: #c0392b; }
+
+/* Compact code label inside tables. */
+code.compact { font-size: 0.85em; }
+
+/* Live-tail ON badge. */
+.live-on {
+  background: #2e8b57;
+  color: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}

@@ -1,0 +1,26 @@
+<div hx-get="/admin/_diagnostics_html" hx-trigger="load delay:30s" hx-swap="outerHTML">
+  <article>
+    <h3>Service</h3>
+    <p>v{{ d.service.version }} · uptime {{ (d.service.uptime_seconds // 60) }}m · python {{ d.service.python_version }}</p>
+  </article>
+  <article>
+    <h3>Database</h3>
+    <p>
+      {% if d.database.reachable %}<span class="status-ok">●</span>{% else %}<span class="status-error">●</span>{% endif %}
+      · {{ "%.1f"|format(d.database.size_bytes / 1024) }} KB
+      · <code class="compact">{{ d.database.path }}</code>
+    </p>
+  </article>
+  <article>
+    <h3>Logs</h3>
+    <p>{{ "%.1f"|format(d.logs.file_size_bytes / 1024) }} KB at <code class="compact">{{ d.logs.file_path or "(disabled)" }}</code></p>
+  </article>
+  <article>
+    <h3>Capability cache</h3>
+    <p>{{ d.capability_cache.size }} entries · {{ "%.0f"|format(d.capability_cache.hit_rate * 100) }}% hit rate · TTL {{ d.capability_cache.ttl_seconds }}s</p>
+  </article>
+  <article>
+    <h3>Counts</h3>
+    <p>{{ d.counts.api_keys }} keys · {{ d.counts.controllers }} controllers · {{ d.counts.audit_rows }} audit rows</p>
+  </article>
+</div>

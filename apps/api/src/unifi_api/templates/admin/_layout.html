@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}unifi-api admin{% endblock %}</title>
+  <link rel="stylesheet" href="/admin/static/pico.min.css" />
+  <link rel="stylesheet" href="/admin/static/admin.css" />
+  <script src="/admin/static/htmx.min.js" defer></script>
+  <script src="/admin/static/htmx-sse.min.js" defer></script>
+  <script src="/admin/static/admin.js" defer></script>
+</head>
+<body>
+  <nav class="container-fluid">
+    <ul>
+      <li><strong>unifi-api</strong></li>
+    </ul>
+    <ul>
+      <li><a href="/admin/">Dashboard</a></li>
+      <li><a href="/admin/keys">Keys</a></li>
+      <li><a href="/admin/controllers">Controllers</a></li>
+      <li><a href="/admin/audit">Audit</a></li>
+      <li><a href="/admin/logs">Logs</a></li>
+      <li><a href="/admin/settings">Settings</a></li>
+      <li><a href="/v1/docs" target="_blank">API docs</a></li>
+      <li><button id="theme-toggle" class="secondary outline" type="button">Theme</button></li>
+      <li><a href="/admin/logout">Sign out</a></li>
+    </ul>
+  </nav>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

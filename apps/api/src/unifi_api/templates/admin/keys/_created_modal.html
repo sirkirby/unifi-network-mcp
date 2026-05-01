@@ -1,0 +1,13 @@
+<article style="border-color: var(--pico-color-amber-450, #d68910);">
+  <header>
+    <strong>New key for "{{ name }}" — copy it now, it will not be shown again.</strong>
+  </header>
+  <pre><code>{{ plaintext }}</code></pre>
+  <p><small>Scopes: {{ scopes }}</small></p>
+  <button class="secondary" type="button"
+          onclick="navigator.clipboard.writeText({{ plaintext | tojson }}); this.textContent='Copied';">
+    Copy to clipboard
+  </button>
+</article>
+{# The HX-Trigger response header (set on this endpoint) fires `keys-changed`,
+   which the table-body listens for via hx-trigger="keys-changed from:body". #}
