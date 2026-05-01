@@ -1,0 +1,51 @@
+{% extends "_layout.html" %}
+{% block title %}Sign in — unifi-api admin{% endblock %}
+{% block content %}
+<article style="max-width: 28rem; margin: 4rem auto;">
+  <header>
+    <h2>Sign in</h2>
+    <p>Paste your admin-scoped Bearer key.</p>
+  </header>
+  <form id="login-form" method="post" action="/admin/login">
+    <label for="key">Admin API key</label>
+    <input type="password" id="key" name="key" autocomplete="off" required />
+    <p id="login-error" class="error" hidden></p>
+    <button type="submit">Sign in</button>
+  </form>
+</article>
+
+{% if bootstrap_key %}
+<script>
+  // Server-rendered bootstrap: persist the validated key and redirect.
+  localStorage.setItem('admin_bearer_key', {{ bootstrap_key | tojson }});
+  window.location.href = '/admin/';
+</script>
+{% endif %}
+
+{% if clear_storage %}
+<script>
+  localStorage.removeItem('admin_bearer_key');
+</script>
+{% endif %}
+
+<script>
+  // Validate the key against /v1/health/ready (admin-scoped) before letting the form submit.
+  document.getElementById('login-form').addEventListener('submit', async function (ev) {
+    if ({{ 'true' if bootstrap_key else 'false' }}) return;  // already-bootstrapped page
+    ev.preventDefault();
+    const key = document.getElementById('key').value;
+    const errEl = document.getElementById('login-error');
+    errEl.hidden = true;
+    try {
+      const resp = await fetch('/v1/health/ready', { headers: { 'Authorization': 'Bearer ' + key } });
+      if (!resp.ok) throw new Error('rejected');
+    } catch (_) {
+      errEl.textContent = 'Invalid key. Try again.';
+      errEl.hidden = false;
+      return;
+    }
+    // Key passed admin-scoped probe — submit so server can render the bootstrap script.
+    ev.target.submit();
+  });
+</script>
+{% endblock %}

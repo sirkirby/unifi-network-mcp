@@ -1,0 +1,31 @@
+{% macro text_field(name, label, value="", required=False, type="text", placeholder="") %}
+<label for="f_{{ name }}">
+  {{ label }}
+  <input
+    type="{{ type }}"
+    id="f_{{ name }}"
+    name="{{ name }}"
+    value="{{ value }}"
+    {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+    {% if required %}required{% endif %}
+  />
+</label>
+{% endmacro %}
+
+{% macro checkbox_field(name, label, checked=False) %}
+<label>
+  <input type="checkbox" name="{{ name }}" {% if checked %}checked{% endif %} />
+  {{ label }}
+</label>
+{% endmacro %}
+
+{% macro select_field(name, label, options, value="") %}
+<label for="f_{{ name }}">
+  {{ label }}
+  <select id="f_{{ name }}" name="{{ name }}">
+    {% for opt_value, opt_label in options %}
+    <option value="{{ opt_value }}" {% if opt_value == value %}selected{% endif %}>{{ opt_label }}</option>
+    {% endfor %}
+  </select>
+</label>
+{% endmacro %}
