@@ -37,22 +37,26 @@ def test_client_serializer_shape() -> None:
 
 
 def test_device_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("network", "devices")
+    """Phase 6 PR2 Task 20 — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.network.device import Device
+
+    sample_raw = {
+        "mac": "11:22:33:44:55:66",
+        "name": "AP1",
+        "model": "U6-Pro",
+        "type": "uap",
+        "version": "6.5.59",
+        "uptime": 3600,
+        "state": 1,
+    }
     class FakeDevice:
-        raw = {
-            "mac": "11:22:33:44:55:66",
-            "name": "AP1",
-            "model": "U6-Pro",
-            "type": "uap",
-            "version": "6.5.59",
-            "uptime": 3600,
-            "state": 1,
-        }
-    out = s.serialize(FakeDevice())
+        raw = sample_raw
+    out = Device.from_manager_output(FakeDevice()).to_dict()
     assert out["mac"] == "11:22:33:44:55:66"
     assert out["name"] == "AP1"
     assert out["model"] == "U6-Pro"
+    assert out["state"] == "connected"
 
 
 def test_network_serializer_shape() -> None:

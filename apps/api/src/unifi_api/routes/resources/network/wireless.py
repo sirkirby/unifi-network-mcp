@@ -56,10 +56,17 @@ async def list_available_channels(
         list(rows or []), limit=limit, cursor=cursor_obj, key_fn=_channel_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_list_available_channels")
-    items = [serializer.serialize(r) for r in page]
-    hint = registry.render_hint_for_tool("unifi_list_available_channels")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_list_available_channels")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        items = [type_class.from_manager_output(r).to_dict() for r in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_list_available_channels")
+        items = [serializer.serialize(r) for r in page]
+        hint = registry.render_hint_for_tool("unifi_list_available_channels")
     return {
         "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,

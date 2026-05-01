@@ -28,6 +28,16 @@ from unifi_api.graphql.types.network.client import (
     Client as NetworkClientType,
     ClientLookup as NetworkClientLookupType,
 )
+from unifi_api.graphql.types.network.device import (
+    AvailableChannel as NetworkAvailableChannelType,
+    Device as NetworkDeviceType,
+    DeviceRadio as NetworkDeviceRadioType,
+    KnownRogueAp as NetworkKnownRogueApType,
+    LldpNeighbors as NetworkLldpNeighborsType,
+    RfScanResult as NetworkRfScanResultType,
+    RogueAp as NetworkRogueApType,
+    SpeedtestStatus as NetworkSpeedtestStatusType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -343,6 +353,42 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_lookup_by_ip", NetworkClientLookupType, "detail",
+    )
+
+    # Phase 6 PR2 Task 20 — network/devices migrated to Strawberry types.
+    # Only the two device resources (LIST + DETAIL by mac) have REST resource
+    # paths; the remaining tools (radio, lldp, rogue_aps, rf_scan, channels,
+    # speedtest) are tool-keyed only and registered via register_tool_type.
+    app.state.type_registry.register_type("network", "devices", NetworkDeviceType)
+    app.state.type_registry.register_type(
+        "network", "devices/{mac}", NetworkDeviceType,
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_devices", NetworkDeviceType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_device_details", NetworkDeviceType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_device_radio", NetworkDeviceRadioType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_lldp_neighbors", NetworkLldpNeighborsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_rogue_aps", NetworkRogueApType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_known_rogue_aps", NetworkKnownRogueApType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_rf_scan_results", NetworkRfScanResultType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_available_channels", NetworkAvailableChannelType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_speedtest_status", NetworkSpeedtestStatusType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

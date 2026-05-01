@@ -128,8 +128,10 @@ def test_switch_mutation_ack_dict_passthrough() -> None:
 
 
 def test_device_radio_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_device_radio")
+    """Phase 6 PR2 Task 20 — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.network.device import DeviceRadio
+
     sample = {
         "mac": "11:22:33:44:55:66",
         "name": "AP1",
@@ -139,16 +141,16 @@ def test_device_radio_serializer_shape() -> None:
             {"name": "wifi1", "radio": "na", "channel": 36, "tx_power": 23, "ht": 80},
         ],
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_device_radio")
-    assert out["success"] is True
-    assert out["data"]["mac"] == "11:22:33:44:55:66"
-    assert len(out["data"]["radios"]) == 2
-    assert out["render_hint"]["kind"] == "detail"
+    data = DeviceRadio.from_manager_output(sample).to_dict()
+    assert data["mac"] == "11:22:33:44:55:66"
+    assert len(data["radios"]) == 2
+    assert DeviceRadio.render_hint("detail")["kind"] == "detail"
 
 
 def test_lldp_neighbors_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_lldp_neighbors")
+    """Phase 6 PR2 Task 20 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.device import LldpNeighbors
+
     sample = {
         "name": "USW-24",
         "model": "US24P250",
@@ -162,71 +164,67 @@ def test_lldp_neighbors_serializer_shape() -> None:
             }
         ],
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_lldp_neighbors")
-    assert out["success"] is True
-    assert out["data"]["lldp_table"][0]["chassis_id"] == "aa:bb:cc:dd:ee:ff"
-    assert out["render_hint"]["kind"] == "detail"
+    data = LldpNeighbors.from_manager_output(sample).to_dict()
+    assert data["lldp_table"][0]["chassis_id"] == "aa:bb:cc:dd:ee:ff"
+    assert LldpNeighbors.render_hint("detail")["kind"] == "detail"
 
 
 def test_rogue_ap_serializer_shape() -> None:
-    reg = _registry()
-    s_unknown = reg.serializer_for_tool("unifi_list_rogue_aps")
-    s_known = reg.serializer_for_tool("unifi_list_known_rogue_aps")
-    sample = [
-        {
-            "bssid": "aa:bb:cc:11:22:33",
-            "essid": "EvilTwin",
-            "channel": 11,
-            "rssi": -55,
-            "last_seen": 1700000000,
-            "is_rogue": True,
-        }
-    ]
-    out = s_unknown.serialize_action(sample, tool_name="unifi_list_rogue_aps")
-    assert out["success"] is True
-    assert out["data"][0]["bssid"] == "aa:bb:cc:11:22:33"
-    assert out["data"][0]["ssid"] == "EvilTwin"
-    assert out["data"][0]["is_known"] is False
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 20 — projection moved to a Strawberry type. ``is_known``
+    is hardcoded by the type variant — RogueAp=False, KnownRogueAp=True."""
+    from unifi_api.graphql.types.network.device import KnownRogueAp, RogueAp
 
-    out2 = s_known.serialize_action(sample, tool_name="unifi_list_known_rogue_aps")
-    assert out2["data"][0]["is_known"] is True
+    sample = {
+        "bssid": "aa:bb:cc:11:22:33",
+        "essid": "EvilTwin",
+        "channel": 11,
+        "rssi": -55,
+        "last_seen": 1700000000,
+        "is_rogue": True,
+    }
+    out_unknown = RogueAp.from_manager_output(sample).to_dict()
+    assert out_unknown["bssid"] == "aa:bb:cc:11:22:33"
+    assert out_unknown["ssid"] == "EvilTwin"
+    assert out_unknown["is_known"] is False
+    assert RogueAp.render_hint("list")["kind"] == "list"
+
+    out_known = KnownRogueAp.from_manager_output(sample).to_dict()
+    assert out_known["is_known"] is True
 
 
 def test_rf_scan_result_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_rf_scan_results")
-    sample = [
-        {
-            "bssid": "aa:bb:cc:11:22:33",
-            "essid": "Neighbor",
-            "channel": 6,
-            "rssi": -70,
-            "ts": 1700000000,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_get_rf_scan_results")
-    assert out["success"] is True
-    assert out["data"][0]["bssid"] == "aa:bb:cc:11:22:33"
-    assert out["data"][0]["channel"] == 6
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 20 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.device import RfScanResult
+
+    sample = {
+        "bssid": "aa:bb:cc:11:22:33",
+        "essid": "Neighbor",
+        "channel": 6,
+        "rssi": -70,
+        "ts": 1700000000,
+    }
+    data = RfScanResult.from_manager_output(sample).to_dict()
+    assert data["bssid"] == "aa:bb:cc:11:22:33"
+    assert data["channel"] == 6
+    assert RfScanResult.render_hint("list")["kind"] == "list"
 
 
 def test_available_channel_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_available_channels")
-    sample = [{"channel": 36, "freq": 5180, "ht": 80, "allowed": True}]
-    out = s.serialize_action(sample, tool_name="unifi_list_available_channels")
-    assert out["success"] is True
-    assert out["data"][0]["channel"] == 36
-    assert out["data"][0]["frequency_mhz"] == 5180
-    assert out["data"][0]["width_mhz"] == 80
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 20 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.device import AvailableChannel
+
+    sample = {"channel": 36, "freq": 5180, "ht": 80, "allowed": True}
+    data = AvailableChannel.from_manager_output(sample).to_dict()
+    assert data["channel"] == 36
+    assert data["frequency_mhz"] == 5180
+    assert data["width_mhz"] == 80
+    assert AvailableChannel.render_hint("list")["kind"] == "list"
 
 
 def test_speedtest_status_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_speedtest_status")
+    """Phase 6 PR2 Task 20 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.device import SpeedtestStatus
+
     sample = {
         "status_download": 500.5,
         "status_upload": 50.1,
@@ -234,12 +232,11 @@ def test_speedtest_status_serializer_shape() -> None:
         "rundate": 1700000000,
         "status": 0,
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_speedtest_status")
-    assert out["success"] is True
-    assert out["data"]["download_mbps"] == 500.5
-    assert out["data"]["upload_mbps"] == 50.1
-    assert out["data"]["latency_ms"] == 12
-    assert out["render_hint"]["kind"] == "detail"
+    data = SpeedtestStatus.from_manager_output(sample).to_dict()
+    assert data["download_mbps"] == 500.5
+    assert data["upload_mbps"] == 50.1
+    assert data["latency_ms"] == 12
+    assert SpeedtestStatus.render_hint("detail")["kind"] == "detail"
 
 
 def test_device_mutation_ack_bool() -> None:

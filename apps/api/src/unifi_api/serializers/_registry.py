@@ -31,6 +31,16 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "unifi_get_client_details",
     "unifi_list_blocked_clients",
     "unifi_lookup_by_ip",
+    # Task 20 — network/devices
+    "unifi_list_devices",
+    "unifi_get_device_details",
+    "unifi_get_device_radio",
+    "unifi_get_lldp_neighbors",
+    "unifi_list_rogue_aps",
+    "unifi_list_known_rogue_aps",
+    "unifi_get_rf_scan_results",
+    "unifi_list_available_channels",
+    "unifi_get_speedtest_status",
 })
 
 
