@@ -36,12 +36,48 @@ type ActiveRoutePage {
   nextCursor: String
 }
 
+"""A controller alarm (V1 /list/alarm entry)."""
+type Alarm {
+  id: ID
+  key: String
+  msg: String
+  archived: Boolean!
+  time: Int
+}
+
+"""Paginated page of controller alarms."""
+type AlarmPage {
+  items: [Alarm!]!
+  nextCursor: String
+}
+
+"""Auto-backup schedule + retention settings."""
+type AutoBackupSettings {
+  enabled: Boolean!
+  schedule: String
+  maxCount: Int
+}
+
 """A wireless channel allowed by the regulatory domain."""
 type AvailableChannel {
   channel: Int
   frequencyMhz: Int
   widthMhz: Int
   allowed: Boolean!
+}
+
+"""A controller backup file metadata record."""
+type Backup {
+  id: ID
+  filename: String
+  size: Int
+  createdAt: Int
+}
+
+"""Paginated page of controller backup descriptors."""
+type BackupPage {
+  items: [Backup!]!
+  nextCursor: String
 }
 
 """A client currently blocked on the UniFi Network controller."""
@@ -85,6 +121,34 @@ type ClientLookup {
 type ClientPage {
   items: [Client!]!
   nextCursor: String
+}
+
+"""A client association session entry."""
+type ClientSession {
+  mac: String
+  hostname: String
+  ap: String
+  ssid: String
+  connectedAt: Int
+  disconnectedAt: Int
+  duration: Int
+}
+
+"""Paginated page of client association sessions."""
+type ClientSessionPage {
+  items: [ClientSession!]!
+  nextCursor: String
+}
+
+"""Current WiFi parameters for a client."""
+type ClientWifiDetails {
+  mac: String
+  ssid: String
+  ap: String
+  signal: Int
+  txRate: Int
+  rxRate: Int
+  channel: Int
 }
 
 """A content-filtering profile (V2 /content-filtering entry)."""
@@ -168,6 +232,34 @@ type DpiCategory {
 type DpiCategoryPage {
   items: [DpiCategory!]!
   nextCursor: String
+}
+
+"""DPI stats wrapper: applications + categories arrays."""
+type DpiStats {
+  applications: JSON!
+  categories: JSON!
+}
+
+"""A curated event-log entry."""
+type EventLog {
+  id: ID
+  key: String
+  msg: String
+  time: Int
+  mac: String
+  ip: String
+  severity: String
+}
+
+"""Paginated page of event-log entries."""
+type EventLogPage {
+  items: [EventLog!]!
+  nextCursor: String
+}
+
+"""Wrapper for event-type prefix descriptors."""
+type EventTypes {
+  eventTypes: JSON!
 }
 
 """A firewall address/port group (V1 /rest/firewallgroup)."""
@@ -425,6 +517,81 @@ type NetworkQuery {
 
   """Look up a single port forward by id."""
   portForward(controller: ID!, id: ID!, site: String! = "default"): PortForward
+
+  """Site dashboard timeseries (all-points)."""
+  dashboardStats(controller: ID!, site: String! = "default", durationHours: Int! = 1): [StatPoint!]!
+
+  """Network-wide stats timeseries."""
+  networkStats(controller: ID!, site: String! = "default", durationHours: Int! = 1): [StatPoint!]!
+
+  """Gateway stats timeseries."""
+  gatewayStats(controller: ID!, site: String! = "default", durationHours: Int! = 24): [StatPoint!]!
+
+  """Per-client stats timeseries (by MAC)."""
+  clientStats(controller: ID!, mac: ID!, site: String! = "default", durationHours: Int! = 1): [StatPoint!]!
+
+  """Per-device stats timeseries (by MAC)."""
+  deviceStats(controller: ID!, mac: ID!, site: String! = "default", durationHours: Int! = 1): [StatPoint!]!
+
+  """Per-client DPI traffic breakdown."""
+  clientDpiTraffic(controller: ID!, mac: ID!, site: String! = "default"): [StatPoint!]!
+
+  """Site-wide DPI traffic breakdown."""
+  siteDpiTraffic(controller: ID!, site: String! = "default"): [StatPoint!]!
+
+  """DPI stats catalog (applications + categories)."""
+  dpiStats(controller: ID!, site: String! = "default"): DpiStats
+
+  """List recent controller events (paginated)."""
+  eventLog(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): EventLogPage!
+
+  """List active alerts (paginated)."""
+  alerts(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): EventLogPage!
+
+  """List recent anomalies (paginated)."""
+  anomalies(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): EventLogPage!
+
+  """List recent IPS/IDS events (paginated)."""
+  ipsEvents(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): EventLogPage!
+
+  """List controller alarms (paginated)."""
+  alarms(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): AlarmPage!
+
+  """Get controller system info (build, uptime, hardware)."""
+  systemInfo(controller: ID!, site: String! = "default"): SystemInfo
+
+  """Get site-level settings (locale, timezone, advanced)."""
+  siteSettings(controller: ID!, site: String! = "default"): SiteSettings
+
+  """Get SNMP settings."""
+  snmpSettings(controller: ID!, site: String! = "default"): SnmpSettings
+
+  """Get the controller's event-type prefix catalog."""
+  eventTypes(controller: ID!, site: String! = "default"): EventTypes
+
+  """Get auto-backup schedule + retention settings."""
+  autobackupSettings(controller: ID!, site: String! = "default"): AutoBackupSettings
+
+  """List controller backups (paginated)."""
+  backups(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): BackupPage!
+
+  """List recent speedtest results (paginated)."""
+  speedtestResults(controller: ID!, site: String! = "default", durationHours: Int! = 24, limit: Int! = 50, cursor: String = null): SpeedtestResultPage!
+
+  """List top-traffic clients within a window."""
+  topClients(controller: ID!, site: String! = "default", withinHours: Int! = 24): [TopClient!]!
+
+  """List hotspot vouchers on the given controller/site (paginated)."""
+  vouchers(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): VoucherPage!
+
+  """Look up a single hotspot voucher by id."""
+  voucher(controller: ID!, id: ID!, site: String! = "default"): Voucher
+
+  """List a client's association sessions (paginated)."""
+  clientSessions(controller: ID!, site: String! = "default", mac: String = null, durationHours: Int! = 24, limit: Int! = 50, cursor: String = null): ClientSessionPage!
+
+  """Get a client's current WiFi parameters (signal, rates)."""
+  clientWifiDetails(controller: ID!, mac: ID!, site: String! = "default"): ClientWifiDetails
 }
 
 """An out-of-network (OON) policy entry."""
@@ -538,6 +705,36 @@ type RoutePage {
   nextCursor: String
 }
 
+"""Controller site settings."""
+type SiteSettings {
+  siteId: String
+  name: String
+  role: String
+  country: Int
+}
+
+"""Controller SNMP settings."""
+type SnmpSettings {
+  enabled: Boolean!
+  community: String
+  port: Int
+  version: String
+}
+
+"""A speedtest result entry."""
+type SpeedtestResult {
+  timestamp: Int
+  downloadMbps: Float
+  uploadMbps: Float
+  latencyMs: Float
+}
+
+"""Paginated page of speedtest result entries."""
+type SpeedtestResultPage {
+  items: [SpeedtestResult!]!
+  nextCursor: String
+}
+
 """Speedtest status reported by a UniFi gateway."""
 type SpeedtestStatus {
   status: String
@@ -545,6 +742,30 @@ type SpeedtestStatus {
   uploadMbps: Float
   latencyMs: Int
   lastRun: Int
+}
+
+"""A single timeseries point: {ts: <ms>, ...metrics}."""
+type StatPoint {
+  ts: Int!
+}
+
+"""Controller system information."""
+type SystemInfo {
+  name: String
+  version: String
+  hostname: String
+  uptime: Int
+  numDevices: Int
+  numClients: Int
+}
+
+"""A top-traffic client entry."""
+type TopClient {
+  mac: String
+  hostname: String
+  txBytes: Int
+  rxBytes: Int
+  totalBytes: Int
 }
 
 """A traffic-route policy (V2 /trafficroutes entry)."""
@@ -561,6 +782,23 @@ type TrafficRoute {
 """Paginated page of traffic-route policies."""
 type TrafficRoutePage {
   items: [TrafficRoute!]!
+  nextCursor: String
+}
+
+"""A hotspot voucher (V1 /stat/voucher entry)."""
+type Voucher {
+  id: ID
+  code: String
+  status: String
+  duration: Int
+  qosOverwrite: Boolean!
+  createdAt: Int
+  usedAt: Int
+}
+
+"""Paginated page of hotspot vouchers."""
+type VoucherPage {
+  items: [Voucher!]!
   nextCursor: String
 }
 

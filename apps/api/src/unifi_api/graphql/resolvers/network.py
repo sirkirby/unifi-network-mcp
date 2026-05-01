@@ -58,7 +58,25 @@ from unifi_api.graphql.types.network.route import (
     Route,
     TrafficRoute,
 )
-from unifi_api.graphql.types.network.system import NetworkHealth
+from unifi_api.graphql.types.network.event import EventLog
+from unifi_api.graphql.types.network.session import (
+    ClientSession,
+    ClientWifiDetails,
+)
+from unifi_api.graphql.types.network.stat import DpiStats, StatPoint
+from unifi_api.graphql.types.network.system import (
+    Alarm,
+    AutoBackupSettings,
+    Backup,
+    EventTypes,
+    NetworkHealth,
+    SiteSettings,
+    SnmpSettings,
+    SpeedtestResult,
+    SystemInfo,
+    TopClient,
+)
+from unifi_api.graphql.types.network.voucher import Voucher
 from unifi_api.graphql.types.network.vpn import VpnClient, VpnServer
 from unifi_api.graphql.types.network.wlan import Wlan
 
@@ -677,6 +695,351 @@ async def _fetch_port_forwards(
     return await ctx.cache.get_or_fetch(key, _do)
 
 
+# ---- Cluster D fetch helpers (stats / events / system / vouchers / sessions) ---
+
+
+async def _stats_mgr_fetch(
+    ctx: GraphQLContext,
+    controller: str,
+    site: str,
+    cache_key: str,
+    method: str,
+    *args: Any,
+):
+    async def _do():
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "stats_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return await getattr(mgr, method)(*args)
+
+    return await ctx.cache.get_or_fetch(cache_key, _do)
+
+
+async def _fetch_dashboard_stats(
+    ctx: GraphQLContext, controller: str, site: str, duration_hours: int,
+) -> list:
+    key = f"network/dashboard-stats/{controller}/{site}/{duration_hours}"
+    return await _stats_mgr_fetch(ctx, controller, site, key, "get_dashboard")
+
+
+async def _fetch_network_stats(
+    ctx: GraphQLContext, controller: str, site: str, duration_hours: int,
+) -> list:
+    key = f"network/network-stats/{controller}/{site}/{duration_hours}"
+    return await _stats_mgr_fetch(
+        ctx, controller, site, key, "get_network_stats", duration_hours,
+    )
+
+
+async def _fetch_gateway_stats(
+    ctx: GraphQLContext, controller: str, site: str, duration_hours: int,
+) -> list:
+    key = f"network/gateway-stats/{controller}/{site}/{duration_hours}"
+    return await _stats_mgr_fetch(
+        ctx, controller, site, key, "get_gateway_stats", duration_hours,
+    )
+
+
+async def _fetch_client_stats(
+    ctx: GraphQLContext, controller: str, site: str, mac: str, duration_hours: int,
+) -> list:
+    key = f"network/client-stats/{controller}/{site}/{mac}/{duration_hours}"
+    return await _stats_mgr_fetch(
+        ctx, controller, site, key, "get_client_stats", mac, duration_hours,
+    )
+
+
+async def _fetch_device_stats(
+    ctx: GraphQLContext, controller: str, site: str, mac: str, duration_hours: int,
+) -> list:
+    key = f"network/device-stats/{controller}/{site}/{mac}/{duration_hours}"
+    return await _stats_mgr_fetch(
+        ctx, controller, site, key, "get_device_stats", mac, duration_hours,
+    )
+
+
+async def _fetch_client_dpi_traffic(
+    ctx: GraphQLContext, controller: str, site: str, mac: str,
+) -> list:
+    key = f"network/client-dpi-traffic/{controller}/{site}/{mac}"
+    return await _stats_mgr_fetch(
+        ctx, controller, site, key, "get_client_dpi_traffic", mac,
+    )
+
+
+async def _fetch_site_dpi_traffic(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/site-dpi-traffic/{controller}/{site}"
+    return await _stats_mgr_fetch(
+        ctx, controller, site, key, "get_site_dpi_traffic",
+    )
+
+
+async def _fetch_dpi_stats(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> Any:
+    key = f"network/dpi-stats/{controller}/{site}"
+    return await _stats_mgr_fetch(ctx, controller, site, key, "get_dpi_stats")
+
+
+async def _fetch_alerts(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/alerts/{controller}/{site}"
+    return await _stats_mgr_fetch(ctx, controller, site, key, "get_alerts")
+
+
+async def _fetch_anomalies(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/anomalies/{controller}/{site}"
+    return await _stats_mgr_fetch(ctx, controller, site, key, "get_anomalies")
+
+
+async def _fetch_ips_events(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/ips-events/{controller}/{site}"
+    return await _stats_mgr_fetch(ctx, controller, site, key, "get_ips_events")
+
+
+async def _fetch_top_clients(
+    ctx: GraphQLContext, controller: str, site: str, duration_hours: int,
+) -> list:
+    key = f"network/top-clients/{controller}/{site}/{duration_hours}"
+    return await _stats_mgr_fetch(
+        ctx, controller, site, key, "get_top_clients", duration_hours,
+    )
+
+
+async def _fetch_speedtest_results(
+    ctx: GraphQLContext, controller: str, site: str, duration_hours: int,
+) -> list:
+    key = f"network/speedtest-results/{controller}/{site}/{duration_hours}"
+    return await _stats_mgr_fetch(
+        ctx, controller, site, key, "get_speedtest_results", duration_hours,
+    )
+
+
+async def _fetch_client_sessions(
+    ctx: GraphQLContext,
+    controller: str,
+    site: str,
+    mac: str | None,
+    duration_hours: int,
+) -> list:
+    mac_part = mac or "all"
+    key = f"network/client-sessions/{controller}/{site}/{mac_part}/{duration_hours}"
+    return await _stats_mgr_fetch(
+        ctx, controller, site, key, "get_client_sessions", mac, duration_hours,
+    )
+
+
+async def _fetch_client_wifi_details(
+    ctx: GraphQLContext, controller: str, site: str, mac: str,
+) -> Any:
+    key = f"network/client-wifi-details/{controller}/{site}/{mac}"
+    return await _stats_mgr_fetch(
+        ctx, controller, site, key, "get_client_wifi_details", mac,
+    )
+
+
+async def _event_mgr_fetch(
+    ctx: GraphQLContext,
+    controller: str,
+    site: str,
+    cache_key: str,
+    method: str,
+    *args: Any,
+):
+    async def _do():
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "event_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return await getattr(mgr, method)(*args)
+
+    return await ctx.cache.get_or_fetch(cache_key, _do)
+
+
+async def _fetch_event_log(
+    ctx: GraphQLContext, controller: str, site: str, fetch_limit: int,
+) -> list:
+    key = f"network/event-log/{controller}/{site}/{fetch_limit}"
+
+    async def _do():
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "event_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_events(limit=fetch_limit))
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_alarms(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/alarms/{controller}/{site}"
+    return await _event_mgr_fetch(ctx, controller, site, key, "get_alarms")
+
+
+async def _fetch_event_types(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> Any:
+    key = f"network/event-types/{controller}/{site}"
+
+    async def _do():
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "event_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            import inspect as _inspect
+
+            result = mgr.get_event_type_prefixes()
+            if _inspect.isawaitable(result):
+                result = await result
+            return result
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _system_mgr_fetch(
+    ctx: GraphQLContext,
+    controller: str,
+    site: str,
+    cache_key: str,
+    method: str,
+    *args: Any,
+):
+    async def _do():
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "system_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return await getattr(mgr, method)(*args)
+
+    return await ctx.cache.get_or_fetch(cache_key, _do)
+
+
+async def _fetch_system_info(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> Any:
+    key = f"network/system-info/{controller}/{site}"
+    return await _system_mgr_fetch(ctx, controller, site, key, "get_system_info")
+
+
+async def _fetch_site_settings(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> Any:
+    key = f"network/site-settings/{controller}/{site}"
+    return await _system_mgr_fetch(ctx, controller, site, key, "get_site_settings")
+
+
+async def _fetch_snmp_settings(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> Any:
+    key = f"network/snmp-settings/{controller}/{site}"
+    return await _system_mgr_fetch(
+        ctx, controller, site, key, "get_settings", "snmp",
+    )
+
+
+async def _fetch_autobackup_settings(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> Any:
+    key = f"network/autobackup-settings/{controller}/{site}"
+    return await _system_mgr_fetch(
+        ctx, controller, site, key, "get_autobackup_settings",
+    )
+
+
+async def _fetch_backups(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/backups/{controller}/{site}"
+    return await _system_mgr_fetch(ctx, controller, site, key, "list_backups")
+
+
+async def _hotspot_mgr_fetch(
+    ctx: GraphQLContext,
+    controller: str,
+    site: str,
+    cache_key: str,
+    method: str,
+    *args: Any,
+):
+    async def _do():
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "hotspot_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return await getattr(mgr, method)(*args)
+
+    return await ctx.cache.get_or_fetch(cache_key, _do)
+
+
+async def _fetch_vouchers(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/vouchers/{controller}/{site}"
+
+    async def _do():
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "hotspot_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_vouchers())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_voucher_details(
+    ctx: GraphQLContext, controller: str, site: str, voucher_id: str,
+) -> Any:
+    key = f"network/voucher-details/{controller}/{site}/{voucher_id}"
+    return await _hotspot_mgr_fetch(
+        ctx, controller, site, key, "get_voucher_details", voucher_id,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Page wrappers
 # ---------------------------------------------------------------------------
@@ -814,6 +1177,42 @@ class PortForwardPage:
     next_cursor: str | None
 
 
+@strawberry.type(description="Paginated page of event-log entries.")
+class EventLogPage:
+    items: list[EventLog]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of controller alarms.")
+class AlarmPage:
+    items: list[Alarm]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of controller backup descriptors.")
+class BackupPage:
+    items: list[Backup]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of speedtest result entries.")
+class SpeedtestResultPage:
+    items: list[SpeedtestResult]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of hotspot vouchers.")
+class VoucherPage:
+    items: list[Voucher]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of client association sessions.")
+class ClientSessionPage:
+    items: list[ClientSession]
+    next_cursor: str | None
+
+
 # ---------------------------------------------------------------------------
 # Key extractors — operate on raw manager outputs (objects or dicts).
 # Each returns (timestamp_or_zero, secondary_id) for stable descending sort.
@@ -906,6 +1305,89 @@ def _bssid_key(row: Any) -> tuple:
         ts = getattr(raw, "last_seen", None)
         bssid = getattr(raw, "bssid", None)
     return (int(ts or 0), str(bssid or ""))
+
+
+def _event_key(row: Any) -> tuple:
+    """Sort key for event/alarm rows: time desc, id tiebreaker."""
+    raw = _raw(row)
+    if isinstance(raw, dict):
+        ts = raw.get("time") or raw.get("timestamp")
+        rid = raw.get("_id") or raw.get("id") or raw.get("key") or ""
+    else:
+        ts = getattr(raw, "time", None) or getattr(raw, "timestamp", None)
+        rid = (
+            getattr(raw, "_id", None)
+            or getattr(raw, "id", None)
+            or getattr(raw, "key", None)
+            or ""
+        )
+    return (int(ts or 0), str(rid))
+
+
+def _backup_key(row: Any) -> tuple:
+    raw = _raw(row)
+    if isinstance(raw, dict):
+        ts = raw.get("time") or raw.get("datetime") or raw.get("timestamp")
+        name = raw.get("filename") or raw.get("name") or raw.get("_id") or ""
+    else:
+        ts = (
+            getattr(raw, "time", None)
+            or getattr(raw, "datetime", None)
+            or getattr(raw, "timestamp", None)
+        )
+        name = (
+            getattr(raw, "filename", None)
+            or getattr(raw, "name", None)
+            or getattr(raw, "_id", None)
+            or ""
+        )
+    return (int(ts or 0), str(name))
+
+
+def _voucher_key(row: Any) -> tuple:
+    raw = _raw(row)
+    if isinstance(raw, dict):
+        ts = raw.get("create_time") or raw.get("created_at")
+        vid = raw.get("_id") or raw.get("id") or raw.get("code") or ""
+    else:
+        ts = getattr(raw, "create_time", None) or getattr(raw, "created_at", None)
+        vid = (
+            getattr(raw, "_id", None)
+            or getattr(raw, "id", None)
+            or getattr(raw, "code", None)
+            or ""
+        )
+    return (int(ts or 0), str(vid))
+
+
+def _session_key(row: Any) -> tuple:
+    raw = _raw(row)
+    if isinstance(raw, dict):
+        ts = raw.get("assoc_time") or raw.get("connected_at") or raw.get("first_seen")
+        mac = raw.get("mac") or ""
+    else:
+        ts = (
+            getattr(raw, "assoc_time", None)
+            or getattr(raw, "connected_at", None)
+            or getattr(raw, "first_seen", None)
+        )
+        mac = getattr(raw, "mac", None) or ""
+    return (int(ts or 0), str(mac))
+
+
+def _speedtest_key(row: Any) -> tuple:
+    raw = _raw(row)
+    if isinstance(raw, dict):
+        ts = raw.get("time") or raw.get("timestamp") or raw.get("ts")
+        rid = raw.get("_id") or raw.get("id") or ""
+    else:
+        ts = (
+            getattr(raw, "time", None)
+            or getattr(raw, "timestamp", None)
+            or getattr(raw, "ts", None)
+        )
+        rid = getattr(raw, "_id", None) or getattr(raw, "id", None) or ""
+    return (int(ts or 0), str(rid))
 
 
 # ---------------------------------------------------------------------------
@@ -2015,3 +2497,503 @@ class NetworkQuery:
             if pid == id:
                 return PortForward.from_manager_output(p)
         return None
+
+    # ---- Stats domain ---------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Site dashboard timeseries (all-points).",
+    )
+    async def dashboard_stats(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        duration_hours: int = 1,
+    ) -> list[StatPoint]:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_dashboard_stats(ctx, controller, site, duration_hours)
+        return [StatPoint.from_manager_output(p) for p in (raw or [])]
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Network-wide stats timeseries.",
+    )
+    async def network_stats(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        duration_hours: int = 1,
+    ) -> list[StatPoint]:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_network_stats(ctx, controller, site, duration_hours)
+        return [StatPoint.from_manager_output(p) for p in (raw or [])]
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Gateway stats timeseries.",
+    )
+    async def gateway_stats(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        duration_hours: int = 24,
+    ) -> list[StatPoint]:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_gateway_stats(ctx, controller, site, duration_hours)
+        return [StatPoint.from_manager_output(p) for p in (raw or [])]
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Per-client stats timeseries (by MAC).",
+    )
+    async def client_stats(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        mac: strawberry.ID,
+        site: str = "default",
+        duration_hours: int = 1,
+    ) -> list[StatPoint]:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_client_stats(ctx, controller, site, mac, duration_hours)
+        return [StatPoint.from_manager_output(p) for p in (raw or [])]
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Per-device stats timeseries (by MAC).",
+    )
+    async def device_stats(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        mac: strawberry.ID,
+        site: str = "default",
+        duration_hours: int = 1,
+    ) -> list[StatPoint]:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_device_stats(ctx, controller, site, mac, duration_hours)
+        return [StatPoint.from_manager_output(p) for p in (raw or [])]
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Per-client DPI traffic breakdown.",
+    )
+    async def client_dpi_traffic(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        mac: strawberry.ID,
+        site: str = "default",
+    ) -> list[StatPoint]:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_client_dpi_traffic(ctx, controller, site, mac)
+        return [StatPoint.from_manager_output(p) for p in (raw or [])]
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Site-wide DPI traffic breakdown.",
+    )
+    async def site_dpi_traffic(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+    ) -> list[StatPoint]:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_site_dpi_traffic(ctx, controller, site)
+        return [StatPoint.from_manager_output(p) for p in (raw or [])]
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="DPI stats catalog (applications + categories).",
+    )
+    async def dpi_stats(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+    ) -> DpiStats | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_dpi_stats(ctx, controller, site)
+        if raw is None:
+            return None
+        return DpiStats.from_manager_output(raw)
+
+    # ---- Events domain --------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List recent controller events (paginated).",
+    )
+    async def event_log(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> EventLogPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_event_log(ctx, controller, site, max(limit, 100))
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_event_key,
+        )
+        return EventLogPage(
+            items=[EventLog.from_manager_output(e) for e in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List active alerts (paginated).",
+    )
+    async def alerts(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> EventLogPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_alerts(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw or []), limit=limit, cursor=cursor_obj, key_fn=_event_key,
+        )
+        return EventLogPage(
+            items=[EventLog.from_manager_output(e) for e in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List recent anomalies (paginated).",
+    )
+    async def anomalies(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> EventLogPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_anomalies(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw or []), limit=limit, cursor=cursor_obj, key_fn=_event_key,
+        )
+        return EventLogPage(
+            items=[EventLog.from_manager_output(e) for e in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List recent IPS/IDS events (paginated).",
+    )
+    async def ips_events(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> EventLogPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_ips_events(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw or []), limit=limit, cursor=cursor_obj, key_fn=_event_key,
+        )
+        return EventLogPage(
+            items=[EventLog.from_manager_output(e) for e in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List controller alarms (paginated).",
+    )
+    async def alarms(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> AlarmPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_alarms(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw or []), limit=limit, cursor=cursor_obj, key_fn=_event_key,
+        )
+        return AlarmPage(
+            items=[Alarm.from_manager_output(a) for a in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    # ---- System domain --------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Get controller system info (build, uptime, hardware).",
+    )
+    async def system_info(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+    ) -> SystemInfo | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_system_info(ctx, controller, site)
+        if raw is None:
+            return None
+        return SystemInfo.from_manager_output(raw)
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Get site-level settings (locale, timezone, advanced).",
+    )
+    async def site_settings(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+    ) -> SiteSettings | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_site_settings(ctx, controller, site)
+        if raw is None:
+            return None
+        return SiteSettings.from_manager_output(raw)
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Get SNMP settings.",
+    )
+    async def snmp_settings(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+    ) -> SnmpSettings | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_snmp_settings(ctx, controller, site)
+        if raw is None:
+            return None
+        return SnmpSettings.from_manager_output(raw)
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Get the controller's event-type prefix catalog.",
+    )
+    async def event_types(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+    ) -> EventTypes | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_event_types(ctx, controller, site)
+        if raw is None:
+            return None
+        return EventTypes.from_manager_output(raw)
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Get auto-backup schedule + retention settings.",
+    )
+    async def autobackup_settings(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+    ) -> AutoBackupSettings | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_autobackup_settings(ctx, controller, site)
+        if raw is None:
+            return None
+        return AutoBackupSettings.from_manager_output(raw)
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List controller backups (paginated).",
+    )
+    async def backups(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> BackupPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_backups(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw or []), limit=limit, cursor=cursor_obj, key_fn=_backup_key,
+        )
+        return BackupPage(
+            items=[Backup.from_manager_output(b) for b in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List recent speedtest results (paginated).",
+    )
+    async def speedtest_results(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        duration_hours: int = 24,
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> SpeedtestResultPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_speedtest_results(ctx, controller, site, duration_hours)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw or []), limit=limit, cursor=cursor_obj, key_fn=_speedtest_key,
+        )
+        return SpeedtestResultPage(
+            items=[SpeedtestResult.from_manager_output(s) for s in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List top-traffic clients within a window.",
+    )
+    async def top_clients(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        within_hours: int = 24,
+    ) -> list[TopClient]:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_top_clients(ctx, controller, site, within_hours)
+        return [TopClient.from_manager_output(t) for t in (raw or [])]
+
+    # ---- Vouchers domain ------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List hotspot vouchers on the given controller/site (paginated).",
+    )
+    async def vouchers(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> VoucherPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_vouchers(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_voucher_key,
+        )
+        return VoucherPage(
+            items=[Voucher.from_manager_output(v) for v in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single hotspot voucher by id.",
+    )
+    async def voucher(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> Voucher | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_voucher_details(ctx, controller, site, id)
+        if raw is None:
+            return None
+        return Voucher.from_manager_output(raw)
+
+    # ---- Sessions domain ------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List a client's association sessions (paginated).",
+    )
+    async def client_sessions(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        mac: str | None = None,
+        duration_hours: int = 24,
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> ClientSessionPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_client_sessions(
+            ctx, controller, site, mac, duration_hours,
+        )
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw or []), limit=limit, cursor=cursor_obj, key_fn=_session_key,
+        )
+        return ClientSessionPage(
+            items=[ClientSession.from_manager_output(s) for s in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Get a client's current WiFi parameters (signal, rates).",
+    )
+    async def client_wifi_details(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        mac: strawberry.ID,
+        site: str = "default",
+    ) -> ClientWifiDetails | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_client_wifi_details(ctx, controller, site, mac)
+        if raw is None:
+            return None
+        return ClientWifiDetails.from_manager_output(raw)

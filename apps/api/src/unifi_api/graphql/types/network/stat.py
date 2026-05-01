@@ -70,9 +70,10 @@ class StatPoint:
 class DpiStats:
     # Wrapper-dict shape; each sub-row is a passthrough dict (unstructured —
     # the controller's DPI catalogs vary by firmware so we don't tighten the
-    # schema here).
-    _applications: strawberry.Private[list[dict]]
-    _categories: strawberry.Private[list[dict]]
+    # schema here). Exposed as ``JSON`` scalars on the GraphQL surface so the
+    # heterogeneous payload survives without an enumerated sub-type.
+    applications: strawberry.scalars.JSON  # type: ignore[name-defined]
+    categories: strawberry.scalars.JSON  # type: ignore[name-defined]
 
     @classmethod
     def render_hint(cls, kind: str) -> dict:
@@ -81,7 +82,7 @@ class DpiStats:
     @classmethod
     def from_manager_output(cls, obj: Any) -> "DpiStats":
         if not isinstance(obj, dict):
-            return cls(_applications=[], _categories=[])
+            return cls(applications=[], categories=[])
 
         def _itemize(items):
             out = []
@@ -95,12 +96,12 @@ class DpiStats:
             return out
 
         return cls(
-            _applications=_itemize(obj.get("applications")),
-            _categories=_itemize(obj.get("categories")),
+            applications=_itemize(obj.get("applications")),
+            categories=_itemize(obj.get("categories")),
         )
 
     def to_dict(self) -> dict:
         return {
-            "applications": list(self._applications),
-            "categories": list(self._categories),
+            "applications": list(self.applications),
+            "categories": list(self.categories),
         }
