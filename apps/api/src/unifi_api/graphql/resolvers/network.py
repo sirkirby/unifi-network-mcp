@@ -40,8 +40,16 @@ from unifi_api.graphql.types.network.device import (
     RogueAp,
     SpeedtestStatus,
 )
+from unifi_api.graphql.types.network.dns import DnsRecord
 from unifi_api.graphql.types.network.network import Network
+from unifi_api.graphql.types.network.route import (
+    ActiveRoute,
+    Route,
+    TrafficRoute,
+)
 from unifi_api.graphql.types.network.system import NetworkHealth
+from unifi_api.graphql.types.network.vpn import VpnClient, VpnServer
+from unifi_api.graphql.types.network.wlan import Wlan
 
 
 # ---------------------------------------------------------------------------
@@ -304,6 +312,145 @@ async def _fetch_network_health(
     return await ctx.cache.get_or_fetch(key, _do)
 
 
+# ---- Cluster B fetch helpers (wlan / vpn / dns / routes) -----------------
+
+
+async def _fetch_wlans(ctx: GraphQLContext, controller: str, site: str) -> list:
+    key = f"network/wlans/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "network_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_wlans())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_vpn_clients(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/vpn-clients/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "vpn_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_vpn_clients())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_vpn_servers(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/vpn-servers/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "vpn_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_vpn_servers())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_dns_records(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/dns-records/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "dns_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.list_dns_records())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_routes(ctx: GraphQLContext, controller: str, site: str) -> list:
+    key = f"network/routes/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "routing_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_routes())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_active_routes(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/active-routes/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "routing_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_active_routes())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_traffic_routes(
+    ctx: GraphQLContext, controller: str, site: str,
+) -> list:
+    key = f"network/traffic-routes/{controller}/{site}"
+
+    async def _do() -> list:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "traffic_route_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return list(await mgr.get_traffic_routes())
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
 # ---------------------------------------------------------------------------
 # Page wrappers
 # ---------------------------------------------------------------------------
@@ -342,6 +489,48 @@ class RogueApPage:
 @strawberry.type(description="Paginated page of known (allowlisted) rogue APs.")
 class KnownRogueApPage:
     items: list[KnownRogueAp]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of WLAN/SSID configurations.")
+class WlanPage:
+    items: list[Wlan]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of VPN clients.")
+class VpnClientPage:
+    items: list[VpnClient]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of VPN servers.")
+class VpnServerPage:
+    items: list[VpnServer]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of DNS records.")
+class DnsRecordPage:
+    items: list[DnsRecord]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of static routes.")
+class RoutePage:
+    items: list[Route]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of active kernel routes.")
+class ActiveRoutePage:
+    items: list[ActiveRoute]
+    next_cursor: str | None
+
+
+@strawberry.type(description="Paginated page of traffic-route policies.")
+class TrafficRoutePage:
+    items: list[TrafficRoute]
     next_cursor: str | None
 
 
@@ -404,6 +593,28 @@ def _blocked_key(c: Any) -> tuple:
         ts = getattr(raw, "last_seen", None)
         mac = getattr(raw, "mac", None)
     return (int(ts or 0), str(mac or ""))
+
+
+def _id_key(obj: Any) -> tuple:
+    raw = _raw(obj)
+    if isinstance(raw, dict):
+        oid = raw.get("_id") or raw.get("id")
+    else:
+        oid = getattr(raw, "_id", None) or getattr(raw, "id", None)
+    return (0, str(oid or ""))
+
+
+def _active_route_key(row: Any) -> tuple:
+    raw = _raw(row)
+    if isinstance(raw, dict):
+        pfx = raw.get("pfx") or raw.get("target_subnet") or raw.get("network")
+    else:
+        pfx = (
+            getattr(raw, "pfx", None)
+            or getattr(raw, "target_subnet", None)
+            or getattr(raw, "network", None)
+        )
+    return (0, str(pfx or ""))
 
 
 def _bssid_key(row: Any) -> tuple:
@@ -773,3 +984,331 @@ class NetworkQuery:
         ctx: GraphQLContext = info.context
         raw = await _fetch_network_health(ctx, controller, site)
         return [NetworkHealth.from_manager_output(r) for r in raw]
+
+    # ---- WLAN domain -----------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List WLAN/SSID configurations on the given controller/site (paginated).",
+    )
+    async def wlans(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> WlanPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_wlans(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return WlanPage(
+            items=[Wlan.from_manager_output(w) for w in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single WLAN/SSID by id.",
+    )
+    async def wlan(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> Wlan | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_wlans(ctx, controller, site)
+        for w in raw:
+            r = _raw(w)
+            if isinstance(r, dict):
+                wid = r.get("_id") or r.get("id")
+            else:
+                wid = getattr(r, "_id", None) or getattr(r, "id", None)
+            if wid == id:
+                return Wlan.from_manager_output(w)
+        return None
+
+    # ---- VPN domain ------------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List configured VPN clients (outbound tunnels) (paginated).",
+    )
+    async def vpn_clients(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> VpnClientPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_vpn_clients(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return VpnClientPage(
+            items=[VpnClient.from_manager_output(v) for v in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single VPN client by id.",
+    )
+    async def vpn_client(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> VpnClient | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_vpn_clients(ctx, controller, site)
+        for v in raw:
+            r = _raw(v)
+            if isinstance(r, dict):
+                vid = r.get("_id") or r.get("id")
+            else:
+                vid = getattr(r, "_id", None) or getattr(r, "id", None)
+            if vid == id:
+                return VpnClient.from_manager_output(v)
+        return None
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List configured VPN servers (inbound tunnels) (paginated).",
+    )
+    async def vpn_servers(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> VpnServerPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_vpn_servers(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return VpnServerPage(
+            items=[VpnServer.from_manager_output(v) for v in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single VPN server by id.",
+    )
+    async def vpn_server(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> VpnServer | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_vpn_servers(ctx, controller, site)
+        for v in raw:
+            r = _raw(v)
+            if isinstance(r, dict):
+                vid = r.get("_id") or r.get("id")
+            else:
+                vid = getattr(r, "_id", None) or getattr(r, "id", None)
+            if vid == id:
+                return VpnServer.from_manager_output(v)
+        return None
+
+    # ---- DNS domain ------------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List static DNS records on the given controller/site (paginated).",
+    )
+    async def dns_records(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> DnsRecordPage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_dns_records(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return DnsRecordPage(
+            items=[DnsRecord.from_manager_output(d) for d in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single DNS record by id.",
+    )
+    async def dns_record(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> DnsRecord | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_dns_records(ctx, controller, site)
+        for d in raw:
+            r = _raw(d)
+            if isinstance(r, dict):
+                did = r.get("_id") or r.get("id")
+            else:
+                did = getattr(r, "_id", None) or getattr(r, "id", None)
+            if did == id:
+                return DnsRecord.from_manager_output(d)
+        return None
+
+    # ---- Routes domain ---------------------------------------------------
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List configured static routes (paginated).",
+    )
+    async def routes(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> RoutePage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_routes(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return RoutePage(
+            items=[Route.from_manager_output(r) for r in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single static route by id.",
+    )
+    async def route(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> Route | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_routes(ctx, controller, site)
+        for r in raw:
+            rr = _raw(r)
+            if isinstance(rr, dict):
+                rid = rr.get("_id") or rr.get("id")
+            else:
+                rid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if rid == id:
+                return Route.from_manager_output(r)
+        return None
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List the gateway's active kernel routing-table entries (paginated).",
+    )
+    async def active_routes(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> ActiveRoutePage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_active_routes(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_active_route_key,
+        )
+        return ActiveRoutePage(
+            items=[ActiveRoute.from_manager_output(r) for r in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="List traffic-route policies (V2 /trafficroutes) (paginated).",
+    )
+    async def traffic_routes(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        site: str = "default",
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> TrafficRoutePage:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_traffic_routes(ctx, controller, site)
+
+        from unifi_api.services.pagination import paginate
+
+        cursor_obj = _decode_cursor(cursor)
+        page, next_cursor = paginate(
+            list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
+        )
+        return TrafficRoutePage(
+            items=[TrafficRoute.from_manager_output(t) for t in page],
+            next_cursor=next_cursor.encode() if next_cursor else None,
+        )
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Look up a single traffic-route policy by id.",
+    )
+    async def traffic_route(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        id: strawberry.ID,
+        site: str = "default",
+    ) -> TrafficRoute | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_traffic_routes(ctx, controller, site)
+        for t in raw:
+            rr = _raw(t)
+            if isinstance(rr, dict):
+                tid = rr.get("_id") or rr.get("id")
+            else:
+                tid = getattr(rr, "_id", None) or getattr(rr, "id", None)
+            if tid == id:
+                return TrafficRoute.from_manager_output(t)
+        return None

@@ -6,6 +6,20 @@
 ## Schema (SDL)
 
 ```graphql
+"""An active kernel routing-table entry on a gateway."""
+type ActiveRoute {
+  targetSubnet: String
+  gateway: String
+  interface: String
+  distance: Int
+}
+
+"""Paginated page of active kernel routes."""
+type ActiveRoutePage {
+  items: [ActiveRoute!]!
+  nextCursor: String
+}
+
 """A wireless channel allowed by the regulatory domain."""
 type AvailableChannel {
   channel: Int
@@ -82,6 +96,22 @@ type DeviceRadio {
   name: String
   model: String
   radios: [RadioEntry!]!
+}
+
+"""A static DNS record served by the controller."""
+type DnsRecord {
+  id: ID
+  hostname: String
+  ip: String
+  type: String
+  ttl: Int
+  enabled: Boolean!
+}
+
+"""Paginated page of DNS records."""
+type DnsRecordPage {
+  items: [DnsRecord!]!
+  nextCursor: String
 }
 
 """Service health snapshot — smoke field for the GraphQL endpoint."""
@@ -208,6 +238,47 @@ type NetworkQuery {
 
   """Get the controller's network-health subsystems list."""
   networkHealth(controller: ID!, site: String! = "default"): [NetworkHealth!]!
+
+  """
+  List WLAN/SSID configurations on the given controller/site (paginated).
+  """
+  wlans(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): WlanPage!
+
+  """Look up a single WLAN/SSID by id."""
+  wlan(controller: ID!, id: ID!, site: String! = "default"): Wlan
+
+  """List configured VPN clients (outbound tunnels) (paginated)."""
+  vpnClients(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): VpnClientPage!
+
+  """Look up a single VPN client by id."""
+  vpnClient(controller: ID!, id: ID!, site: String! = "default"): VpnClient
+
+  """List configured VPN servers (inbound tunnels) (paginated)."""
+  vpnServers(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): VpnServerPage!
+
+  """Look up a single VPN server by id."""
+  vpnServer(controller: ID!, id: ID!, site: String! = "default"): VpnServer
+
+  """List static DNS records on the given controller/site (paginated)."""
+  dnsRecords(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): DnsRecordPage!
+
+  """Look up a single DNS record by id."""
+  dnsRecord(controller: ID!, id: ID!, site: String! = "default"): DnsRecord
+
+  """List configured static routes (paginated)."""
+  routes(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): RoutePage!
+
+  """Look up a single static route by id."""
+  route(controller: ID!, id: ID!, site: String! = "default"): Route
+
+  """List the gateway's active kernel routing-table entries (paginated)."""
+  activeRoutes(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): ActiveRoutePage!
+
+  """List traffic-route policies (V2 /trafficroutes) (paginated)."""
+  trafficRoutes(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): TrafficRoutePage!
+
+  """Look up a single traffic-route policy by id."""
+  trafficRoute(controller: ID!, id: ID!, site: String! = "default"): TrafficRoute
 }
 
 type Query {
@@ -256,6 +327,22 @@ type RogueApPage {
   nextCursor: String
 }
 
+"""A static route configured on the gateway."""
+type Route {
+  id: ID
+  name: String
+  targetSubnet: String
+  gateway: String
+  distance: Int
+  enabled: Boolean!
+}
+
+"""Paginated page of static routes."""
+type RoutePage {
+  items: [Route!]!
+  nextCursor: String
+}
+
 """Speedtest status reported by a UniFi gateway."""
 type SpeedtestStatus {
   status: String
@@ -263,5 +350,71 @@ type SpeedtestStatus {
   uploadMbps: Float
   latencyMs: Int
   lastRun: Int
+}
+
+"""A traffic-route policy (V2 /trafficroutes entry)."""
+type TrafficRoute {
+  id: ID
+  name: String
+  matchingTarget: String
+  sourceTargets: JSON
+  destinationTargets: JSON
+  nextHop: String
+  enabled: Boolean!
+}
+
+"""Paginated page of traffic-route policies."""
+type TrafficRoutePage {
+  items: [TrafficRoute!]!
+  nextCursor: String
+}
+
+"""A configured VPN client (outbound tunnel)."""
+type VpnClient {
+  id: ID
+  name: String
+  type: String
+  enabled: Boolean!
+  serverAddress: String
+  lastHandshake: Int
+}
+
+"""Paginated page of VPN clients."""
+type VpnClientPage {
+  items: [VpnClient!]!
+  nextCursor: String
+}
+
+"""A configured VPN server (inbound tunnel)."""
+type VpnServer {
+  id: ID
+  name: String
+  type: String
+  enabled: Boolean!
+  listenPort: Int
+  allowedSubnets: [String!]
+}
+
+"""Paginated page of VPN servers."""
+type VpnServerPage {
+  items: [VpnServer!]!
+  nextCursor: String
+}
+
+"""A UniFi WLAN/SSID configuration."""
+type Wlan {
+  id: ID
+  name: String
+  enabled: Boolean!
+  security: String
+  networkId: String
+  hideSsid: Boolean!
+  vlanId: Int
+}
+
+"""Paginated page of WLAN/SSID configurations."""
+type WlanPage {
+  items: [Wlan!]!
+  nextCursor: String
 }
 ```
