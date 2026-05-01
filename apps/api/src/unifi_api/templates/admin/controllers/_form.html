@@ -1,0 +1,55 @@
+{% set is_edit = (mode == "edit") %}
+{% set c = controller if is_edit else None %}
+{% set isset = creds_is_set if is_edit else {"username": False, "password": False, "api_token": False} %}
+
+<article>
+  <header><strong>{% if is_edit %}Edit "{{ c.name }}"{% else %}Add controller{% endif %}</strong></header>
+  <form
+    {% if is_edit %}
+    hx-post="/admin/controllers/{{ c.id }}/update"
+    {% else %}
+    hx-post="/admin/controllers/create"
+    {% endif %}
+    hx-target="body" hx-swap="outerHTML"
+  >
+    <label>Name <input type="text" name="name" value="{{ c.name if is_edit else '' }}" required /></label>
+    <label>Base URL <input type="url" name="base_url" value="{{ c.base_url if is_edit else '' }}" placeholder="https://10.0.0.1:443" required /></label>
+
+    <fieldset>
+      <legend>Products</legend>
+      <label><input type="checkbox" name="product_kinds" value="network"
+        {% if is_edit and "network" in c.product_kinds %}checked{% endif %} /> Network</label>
+      <label><input type="checkbox" name="product_kinds" value="protect"
+        {% if is_edit and "protect" in c.product_kinds %}checked{% endif %} /> Protect</label>
+      <label><input type="checkbox" name="product_kinds" value="access"
+        {% if is_edit and "access" in c.product_kinds %}checked{% endif %} /> Access</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Credentials {% if is_edit %}<small>(leave blank to keep existing)</small>{% endif %}</legend>
+      <label>Username
+        <input type="text" name="username" value=""
+          placeholder="{% if is_edit and isset.username %}(set){% endif %}"
+          {% if not is_edit %}required{% endif %} />
+      </label>
+      <label>Password
+        <input type="password" name="password" value="" autocomplete="new-password"
+          placeholder="{% if is_edit and isset.password %}(set){% endif %}"
+          {% if not is_edit %}required{% endif %} />
+      </label>
+      <label>API token <small>(optional)</small>
+        <input type="password" name="api_token" value="" autocomplete="off"
+          placeholder="{% if is_edit and isset.api_token %}(set){% endif %}" />
+      </label>
+    </fieldset>
+
+    <label><input type="checkbox" name="verify_tls"
+      {% if is_edit and c.verify_tls %}checked{% endif %} /> Verify TLS</label>
+    <label><input type="checkbox" name="is_default"
+      {% if is_edit and c.is_default %}checked{% endif %} /> Default controller</label>
+
+    <button type="submit">{% if is_edit %}Save{% else %}Create{% endif %}</button>
+    <button type="button" class="secondary outline"
+      hx-get="/admin/controllers" hx-target="body" hx-swap="outerHTML">Cancel</button>
+  </form>
+</article>

@@ -1,0 +1,16 @@
+<small>
+  {% if result.error_kind == "not_found" %}
+    <span class="status-error">controller not found</span>
+  {% elif result.ok %}
+    <span class="status-ok">● ok</span> · {{ result.latency_ms }}ms total
+  {% else %}
+    <span class="status-error">● failed</span> · {{ result.latency_ms }}ms total
+  {% endif %}
+  {% if result.products %}
+  · per-product:
+  {% for p, info in result.products.items() %}
+    {{ p }}={% if info.ok %}ok{% else %}fail{% endif %}({{ info.latency_ms }}ms){% if not loop.last %},{% endif %}
+  {% endfor %}
+  {% endif %}
+  {% if result.last_probed_at %}<br/><em>{{ result.last_probed_at[:19] }}</em>{% endif %}
+</small>
