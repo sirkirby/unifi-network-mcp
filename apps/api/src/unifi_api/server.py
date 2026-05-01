@@ -88,6 +88,10 @@ from unifi_api.graphql.types.network.acl import (
 from unifi_api.graphql.types.network.ap_group import (
     ApGroup as NetworkApGroupType,
 )
+from unifi_api.graphql.types.network.client_group import (
+    ClientGroup as NetworkClientGroupType,
+    UserGroup as NetworkUserGroupType,
+)
 from unifi_api.graphql.types.network.content_filter import (
     ContentFilter as NetworkContentFilterType,
 )
@@ -743,6 +747,24 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_ap_group_details", NetworkApGroupType, "detail",
+    )
+
+    # Phase 6 PR2 Task 24 — network/client_groups + usergroups (2 read shapes)
+    # migrated to Strawberry types. Tool-keyed only (no resource registration
+    # in the original serializer). Mutation acks (create/update/delete across
+    # both manager kinds) stay as a serializer in
+    # serializers/network/client_groups.py.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_client_groups", NetworkClientGroupType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_client_group_details", NetworkClientGroupType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_usergroups", NetworkUserGroupType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_usergroup_details", NetworkUserGroupType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

@@ -1,73 +1,26 @@
-"""Client group + usergroup serializers (Phase 4A PR1 Cluster 2).
+"""Client group + usergroup mutation ack serializer (Phase 4A PR1 Cluster 2).
+
+Phase 6 PR2 Task 24 — read shapes (ClientGroupSerializer, UserGroupSerializer)
+migrated to Strawberry types in
+``unifi_api.graphql.types.network.client_group``. Only the mutation ack
+remains here so create/update/delete continue to dispatch through the
+serializer registry across both manager kinds.
 
 UniFi exposes two parallel "group" entities under different APIs:
 
 * ``ClientGroupManager`` — V2 ``/network-members-group`` endpoint, used for
-  OON/firewall membership grouping. Manager returns ``List[Dict]`` (list),
-  ``Optional[Dict]`` (create/get-by-id), and ``bool`` (update/delete).
+  OON/firewall membership grouping. Returns ``Optional[Dict]`` (create) or
+  ``bool`` (update/delete).
 * ``UsergroupManager`` — V1 ``/rest/usergroup`` endpoint, used for QoS
-  bandwidth limits. Manager returns ``List[Dict]`` (list / details), an
-  ``Optional[Dict]`` (create), and ``bool`` (update).
+  bandwidth limits. Returns ``Optional[Dict]`` (create) or ``bool``
+  (update).
 
-Both expose the same useful list/detail fields (``_id``, ``name``,
-``qos_rate_max_down``, ``qos_rate_max_up``) so we render them with the same
-shape. Mutations across both managers normalise to ``{"success": bool}``
-when the manager returns a bare ``bool`` to satisfy the DETAIL contract
-(spec section 5 EMPTY discipline).
+Mutations across both managers normalise to ``{"success": bool}`` when the
+manager returns a bare ``bool`` to satisfy the DETAIL contract (spec
+section 5 EMPTY discipline).
 """
 
-from typing import Any
-
 from unifi_api.serializers._base import RenderKind, Serializer, register_serializer
-
-
-def _get(obj: Any, key: str, default: Any = None) -> Any:
-    if isinstance(obj, dict):
-        return obj.get(key, default)
-    raw = getattr(obj, "raw", None)
-    if isinstance(raw, dict):
-        return raw.get(key, default)
-    return getattr(obj, key, default)
-
-
-@register_serializer(
-    tools={
-        "unifi_list_client_groups": {"kind": RenderKind.LIST},
-        "unifi_get_client_group_details": {"kind": RenderKind.DETAIL},
-    },
-)
-class ClientGroupSerializer(Serializer):
-    primary_key = "id"
-    display_columns = ["name", "qos_rate_max_down", "qos_rate_max_up"]
-
-    @staticmethod
-    def serialize(obj) -> dict:
-        return {
-            "id": _get(obj, "_id") or _get(obj, "id"),
-            "name": _get(obj, "name"),
-            "qos_rate_max_down": _get(obj, "qos_rate_max_down"),
-            "qos_rate_max_up": _get(obj, "qos_rate_max_up"),
-        }
-
-
-@register_serializer(
-    tools={
-        "unifi_list_usergroups": {"kind": RenderKind.LIST},
-        "unifi_get_usergroup_details": {"kind": RenderKind.DETAIL},
-    },
-)
-class UserGroupSerializer(Serializer):
-    primary_key = "id"
-    display_columns = ["name", "qos_rate_max_down", "qos_rate_max_up"]
-
-    @staticmethod
-    def serialize(obj) -> dict:
-        return {
-            "id": _get(obj, "_id") or _get(obj, "id"),
-            "name": _get(obj, "name"),
-            "qos_rate_max_down": _get(obj, "qos_rate_max_down"),
-            "qos_rate_max_up": _get(obj, "qos_rate_max_up"),
-        }
 
 
 @register_serializer(

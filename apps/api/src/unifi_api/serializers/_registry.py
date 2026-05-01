@@ -129,6 +129,12 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # serializer)
     "unifi_list_ap_groups",
     "unifi_get_ap_group_details",
+    # Task 24 — network/client_groups + usergroups (2 read shapes; mutation
+    # acks stay as a serializer covering both manager kinds)
+    "unifi_list_client_groups",
+    "unifi_get_client_group_details",
+    "unifi_list_usergroups",
+    "unifi_get_usergroup_details",
 })
 
 

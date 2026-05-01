@@ -15,59 +15,53 @@ def _registry():
 
 
 def test_client_group_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_client_groups")
-    sample = [
-        {
-            "_id": "cg1",
-            "name": "Engineering",
-            "qos_rate_max_down": 100000,
-            "qos_rate_max_up": 50000,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_client_groups")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "cg1"
-    assert out["data"][0]["name"] == "Engineering"
-    assert out["data"][0]["qos_rate_max_down"] == 100000
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 24 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.client_group import ClientGroup
+
+    sample = {
+        "_id": "cg1",
+        "name": "Engineering",
+        "qos_rate_max_down": 100000,
+        "qos_rate_max_up": 50000,
+    }
+    out = ClientGroup.from_manager_output(sample).to_dict()
+    assert out["id"] == "cg1"
+    assert out["name"] == "Engineering"
+    assert out["qos_rate_max_down"] == 100000
+    assert ClientGroup.render_hint("list")["kind"] == "list"
 
 
 def test_client_group_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_client_group_details")
+    """Phase 6 PR2 Task 24 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.client_group import ClientGroup
+
     sample = {"_id": "cg2", "name": "Guests", "qos_rate_max_down": -1, "qos_rate_max_up": -1}
-    out = s.serialize_action(sample, tool_name="unifi_get_client_group_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "cg2"
-    assert out["data"]["name"] == "Guests"
-    assert out["render_hint"]["kind"] == "detail"
+    out = ClientGroup.from_manager_output(sample).to_dict()
+    assert out["id"] == "cg2"
+    assert out["name"] == "Guests"
+    assert ClientGroup.render_hint("detail")["kind"] == "detail"
 
 
 def test_usergroup_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_usergroups")
-    sample = [
-        {"_id": "ug1", "name": "Default", "qos_rate_max_down": -1, "qos_rate_max_up": -1},
-        {"_id": "ug2", "name": "Limited", "qos_rate_max_down": 5000, "qos_rate_max_up": 1000},
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_usergroups")
-    assert out["success"] is True
-    assert len(out["data"]) == 2
-    assert out["data"][1]["id"] == "ug2"
-    assert out["data"][1]["qos_rate_max_down"] == 5000
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 24 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.client_group import UserGroup
+
+    sample = {"_id": "ug2", "name": "Limited", "qos_rate_max_down": 5000, "qos_rate_max_up": 1000}
+    out = UserGroup.from_manager_output(sample).to_dict()
+    assert out["id"] == "ug2"
+    assert out["qos_rate_max_down"] == 5000
+    assert UserGroup.render_hint("list")["kind"] == "list"
 
 
 def test_usergroup_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_usergroup_details")
+    """Phase 6 PR2 Task 24 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.client_group import UserGroup
+
     sample = {"_id": "ug3", "name": "VIP", "qos_rate_max_down": 1000000, "qos_rate_max_up": 500000}
-    out = s.serialize_action(sample, tool_name="unifi_get_usergroup_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "ug3"
-    assert out["data"]["name"] == "VIP"
-    assert out["render_hint"]["kind"] == "detail"
+    out = UserGroup.from_manager_output(sample).to_dict()
+    assert out["id"] == "ug3"
+    assert out["name"] == "VIP"
+    assert UserGroup.render_hint("detail")["kind"] == "detail"
 
 
 def test_client_group_mutation_ack_bool() -> None:
