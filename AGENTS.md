@@ -250,4 +250,5 @@ Before non-trivial changes, produce a short plan covering: approach, impacted fi
 
 - When `capture.ignore_plan_dirs_in_git` is enabled, custom directories in `capture.plan_dirs` may be intentionally gitignored after capture into Myco.
 - Do not force-add files from intentionally gitignored custom plan directories unless the user explicitly asks.
+- When orienting in this codebase — finding a feature, locating files relevant to a change, or understanding an unfamiliar subsystem — use Myco first: call `node .agents/myco-cli.cjs tool call myco_cortex --json --input '{"op":"canopy_map"}'` as the project-resolved CLI path, or `myco_cortex({"op":"canopy_map"})` via MCP when the host exposes Myco tools cleanly, before falling back to Glob/Grep.
 <!-- myco:managed:end -->

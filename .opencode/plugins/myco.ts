@@ -478,7 +478,7 @@ async function mycoPostStop(
 /**
  * Fetch the session-start context for a new opencode session. Hits the daemon's
  * config-aware `POST /context` endpoint, which selects the digest tier the user
- * has configured (`config.context.digest_tier`, default 5000) and returns the
+ * has configured (`config.cortex.digest.tier`, default 5000) and returns the
  * full session context (digest + branch + session ID lines).
  *
  * This is the same endpoint Claude Code's session-start hook uses, so opencode
@@ -741,7 +741,7 @@ export const MycoPlugin = async ({ client, directory, worktree }: { client: any;
      * injected spores via session.prompt({ noReply: true }) inside this handler, but
      * opencode re-fires chat.message for the synthetic turn and the first real user
      * message landed during the re-entrancy window. Agents can fetch context on
-     * demand via the myco_context and myco_search MCP tools.
+     * demand via the myco_cortex and myco_search MCP tools.
      *
      * Re-entrancy guard: we check for `metadata.myco === true` on any part to
      * detect our session-start digest injection coming back around. Opencode

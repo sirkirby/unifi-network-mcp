@@ -1,0 +1,11 @@
+"""Service health snapshot — smoke field for the GraphQL endpoint."""
+type HealthSnapshot {
+  ok: Boolean!
+  version: String!
+  pythonVersion: String!
+}
+
+type Query {
+  """Liveness probe; mirrors GET /v1/health/ready."""
+  health: HealthSnapshot!
+}

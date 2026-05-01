@@ -15,8 +15,10 @@ from unifi_api.server import create_app
 app = typer.Typer(no_args_is_help=True, help="UniFi rich HTTP API service.")
 keys_app = typer.Typer(no_args_is_help=True, help="Manage API keys.")
 db_app = typer.Typer(no_args_is_help=True, help="Database operations.")
+graphql_typer = typer.Typer(no_args_is_help=True, help="GraphQL schema utilities.")
 app.add_typer(keys_app, name="keys")
 app.add_typer(db_app, name="db")
+app.add_typer(graphql_typer, name="graphql")
 
 
 _DEFAULT_CONFIG_PATH = Path(__file__).parent / "config.yaml"
@@ -241,6 +243,74 @@ def db_rekey(new_key: str = typer.Argument(..., help="New passphrase")) -> None:
     """Rotate the column encryption key."""
     typer.echo("(implemented in a later phase)")
     raise typer.Exit(code=0)
+
+
+@graphql_typer.command("scaffold-resource")
+def graphql_scaffold_resource(
+    product: str = typer.Argument(..., help="Product: network/protect/access"),
+    resource: str = typer.Argument(..., help="Resource name (singular preferred): client, camera, door"),
+    out_root: Path = typer.Option(
+        Path("."),
+        help=(
+            "Repository root (defaults to cwd). Output goes under "
+            "apps/api/src/unifi_api/graphql/types/<product>/<resource>.py"
+        ),
+    ),
+) -> None:
+    """Scaffold a starter Strawberry type for a resource.
+
+    Generates a typed class with a from_manager_output(raw) classmethod and
+    a to_dict() method. The maintainer fills in the typed fields and the
+    coercion logic by inspecting the existing serializer at
+    apps/api/src/unifi_api/serializers/<product>/<resource>.py.
+    """
+    if product not in ("network", "protect", "access"):
+        typer.echo(f"unknown product: {product}", err=True)
+        raise typer.Exit(2)
+
+    pascal = "".join(p.capitalize() for p in resource.split("_"))
+    template = f'''\
+"""Strawberry type for {product}/{resource}.
+
+Migrated from the dict-based serializer at
+serializers/{product}/{resource}.py — the from_manager_output classmethod
+contains the coercion logic that used to live in the serializer's
+serialize() method.
+"""
+
+from __future__ import annotations
+
+from dataclasses import asdict
+from typing import Any
+
+import strawberry
+
+
+@strawberry.type(description="TODO: human-readable description for {pascal}.")
+class {pascal}:
+    # TODO: declare typed fields mirroring the serializer dict shape.
+    # Use strawberry.ID for primary identifiers (mac, id, controller).
+    pass
+
+    @classmethod
+    def from_manager_output(cls, raw: Any) -> "{pascal}":
+        """Coerce a raw manager response into a typed {pascal}.
+
+        Replaces the dict-shaping logic in serializers/{product}/{resource}.py.
+        """
+        # TODO: extract field values from `raw` and pass to cls(...).
+        return cls()
+
+    def to_dict(self) -> dict:
+        """Project to dict for REST routes consuming via type_registry."""
+        return asdict(self)
+'''
+
+    target_dir = out_root / "apps" / "api" / "src" / "unifi_api" / "graphql" / "types" / product
+    target_file = target_dir / f"{resource}.py"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_file.write_text(template, encoding="utf-8")
+    typer.echo(f"wrote {target_file}")
 
 
 if __name__ == "__main__":
