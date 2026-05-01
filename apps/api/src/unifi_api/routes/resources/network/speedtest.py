@@ -37,9 +37,15 @@ async def get_speedtest_status(
             await cm.set_site(site_id)
         status = await mgr.get_speedtest_status(gateway_mac)
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_get_speedtest_status")
-    return {
-        "data": serializer.serialize(status or {}),
-        "render_hint": registry.render_hint_for_tool("unifi_get_speedtest_status"),
-    }
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_speedtest_status")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(status or {}).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_get_speedtest_status")
+        data = serializer.serialize(status or {})
+        hint = registry.render_hint_for_tool("unifi_get_speedtest_status")
+    return {"data": data, "render_hint": hint}

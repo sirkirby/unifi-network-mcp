@@ -34,6 +34,7 @@ async def post_action(request: Request, tool_name: str, body: ActionIn) -> dict:
     factory = request.app.state.manager_factory
     registry = request.app.state.manifest_registry
     serializer_registry = request.app.state.serializer_registry
+    type_registry = request.app.state.type_registry
     key_prefix = getattr(request.state, "api_key_prefix", "(unknown)")
 
     async with sm() as session:
@@ -64,8 +65,27 @@ async def post_action(request: Request, tool_name: str, body: ActionIn) -> dict:
                 args=body.args,
                 confirm=body.confirm,
             )
-            serializer = serializer_registry.serializer_for_tool(tool_name)
-            shaped = serializer.serialize_action(result, tool_name=tool_name)
+            tool_type = type_registry.lookup_tool(tool_name)
+            if tool_type is not None:
+                # Phase 6 PR2 — read tool migrated to a Strawberry type. Shape
+                # the manager output through Type.from_manager_output().to_dict()
+                # and wrap with the same {"success", "data", "render_hint"}
+                # envelope the dict-serializer used to produce.
+                type_class, kind = tool_type
+                hint = type_class.render_hint(kind)
+                if kind in ("list", "timeseries", "event_log"):
+                    if not isinstance(result, list):
+                        raise SerializerContractError(
+                            f"tool '{tool_name}' declared kind={kind} but manager "
+                            f"returned {type(result).__name__}"
+                        )
+                    data = [type_class.from_manager_output(x).to_dict() for x in result]
+                else:
+                    data = type_class.from_manager_output(result).to_dict()
+                shaped = {"success": True, "data": data, "render_hint": hint}
+            else:
+                serializer = serializer_registry.serializer_for_tool(tool_name)
+                shaped = serializer.serialize_action(result, tool_name=tool_name)
             outcome = "success" if shaped.get("success", True) else "error"
             await write_audit(
                 session,

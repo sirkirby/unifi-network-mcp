@@ -65,10 +65,17 @@ async def list_user_groups(
         list(all_groups), limit=limit, cursor=cursor_obj, key_fn=_group_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_list_usergroups")
-    items = [serializer.serialize(g) for g in page]
-    hint = registry.render_hint_for_tool("unifi_list_usergroups")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_list_usergroups")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        items = [type_class.from_manager_output(g).to_dict() for g in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_list_usergroups")
+        items = [serializer.serialize(g) for g in page]
+        hint = registry.render_hint_for_tool("unifi_list_usergroups")
     return {
         "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
@@ -103,9 +110,15 @@ async def get_user_group_details(
     if group is None:
         raise HTTPException(status_code=404, detail="user group not found")
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_get_usergroup_details")
-    return {
-        "data": serializer.serialize(group),
-        "render_hint": registry.render_hint_for_tool("unifi_get_usergroup_details"),
-    }
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_usergroup_details")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(group).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_get_usergroup_details")
+        data = serializer.serialize(group)
+        hint = registry.render_hint_for_tool("unifi_get_usergroup_details")
+    return {"data": data, "render_hint": hint}

@@ -23,6 +23,102 @@ from unifi_api.graphql.context import GraphQLContext, RequestCache
 from unifi_api.graphql.errors import format_graphql_error
 from unifi_api.graphql.schema import schema as graphql_schema
 from unifi_api.graphql.type_registry import TypeRegistry
+from unifi_api.graphql.types.network.client import (
+    BlockedClient as NetworkBlockedClientType,
+    Client as NetworkClientType,
+    ClientLookup as NetworkClientLookupType,
+)
+from unifi_api.graphql.types.network.device import (
+    AvailableChannel as NetworkAvailableChannelType,
+    Device as NetworkDeviceType,
+    DeviceRadio as NetworkDeviceRadioType,
+    KnownRogueAp as NetworkKnownRogueApType,
+    LldpNeighbors as NetworkLldpNeighborsType,
+    RfScanResult as NetworkRfScanResultType,
+    RogueAp as NetworkRogueApType,
+    SpeedtestStatus as NetworkSpeedtestStatusType,
+)
+from unifi_api.graphql.types.network.network import (
+    Network as NetworkNetworkType,
+)
+from unifi_api.graphql.types.network.oon import (
+    OonPolicy as NetworkOonPolicyType,
+)
+from unifi_api.graphql.types.network.port_forward import (
+    PortForward as NetworkPortForwardType,
+)
+from unifi_api.graphql.types.network.event import (
+    EventLog as NetworkEventLogType,
+)
+from unifi_api.graphql.types.network.session import (
+    ClientSession as NetworkClientSessionType,
+    ClientWifiDetails as NetworkClientWifiDetailsType,
+)
+from unifi_api.graphql.types.network.stat import (
+    DpiStats as NetworkDpiStatsType,
+    StatPoint as NetworkStatPointType,
+)
+from unifi_api.graphql.types.network.switch import (
+    PortProfile as NetworkPortProfileType,
+    PortStats as NetworkPortStatsType,
+    SwitchCapabilities as NetworkSwitchCapabilitiesType,
+    SwitchPorts as NetworkSwitchPortsType,
+)
+from unifi_api.graphql.types.network.system import (
+    Alarm as NetworkAlarmType,
+    AutoBackupSettings as NetworkAutoBackupSettingsType,
+    Backup as NetworkBackupType,
+    EventTypes as NetworkEventTypesType,
+    NetworkHealth as NetworkNetworkHealthType,
+    SiteSettings as NetworkSiteSettingsType,
+    SnmpSettings as NetworkSnmpSettingsType,
+    SpeedtestResult as NetworkSpeedtestResultType,
+    SystemInfo as NetworkSystemInfoType,
+    TopClient as NetworkTopClientType,
+)
+from unifi_api.graphql.types.network.voucher import (
+    Voucher as NetworkVoucherType,
+)
+from unifi_api.graphql.types.network.qos import (
+    QosRule as NetworkQosRuleType,
+)
+from unifi_api.graphql.types.network.acl import (
+    AclRule as NetworkAclRuleType,
+)
+from unifi_api.graphql.types.network.ap_group import (
+    ApGroup as NetworkApGroupType,
+)
+from unifi_api.graphql.types.network.client_group import (
+    ClientGroup as NetworkClientGroupType,
+    UserGroup as NetworkUserGroupType,
+)
+from unifi_api.graphql.types.network.content_filter import (
+    ContentFilter as NetworkContentFilterType,
+)
+from unifi_api.graphql.types.network.dns import (
+    DnsRecord as NetworkDnsRecordType,
+)
+from unifi_api.graphql.types.network.dpi import (
+    DpiApplication as NetworkDpiApplicationType,
+    DpiCategory as NetworkDpiCategoryType,
+)
+from unifi_api.graphql.types.network.firewall import (
+    FirewallGroup as NetworkFirewallGroupType,
+    FirewallRule as NetworkFirewallRuleType,
+    FirewallZone as NetworkFirewallZoneType,
+)
+from unifi_api.graphql.types.network.route import (
+    ActiveRoute as NetworkActiveRouteType,
+    Route as NetworkRouteType,
+    TrafficRoute as NetworkTrafficRouteType,
+)
+from unifi_api.graphql.types.network.vpn import (
+    VpnClient as NetworkVpnClientType,
+    VpnServer as NetworkVpnServerType,
+)
+from unifi_api.graphql.types.network.wlan import (
+    Wlan as NetworkWlanType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -312,6 +408,364 @@ def create_app(config: ApiConfig) -> FastAPI:
     for (product, resource) in app.state.serializer_registry.all_resources():
         serializer = app.state.serializer_registry.serializer_for_resource(product, resource)
         app.state.type_registry.register_serializer(product, resource, serializer)
+
+    # Phase 6 PR2 Task 19 — network/clients migrated to Strawberry types.
+    # Types take precedence over serializers in TypeRegistry.lookup(), so the
+    # REST routes for these resources will pick up the typed projection.
+    app.state.type_registry.register_type("network", "clients", NetworkClientType)
+    app.state.type_registry.register_type("network", "clients/{mac}", NetworkClientType)
+    app.state.type_registry.register_type(
+        "network", "blocked_clients", NetworkBlockedClientType,
+    )
+    app.state.type_registry.register_type(
+        "network", "client_lookup", NetworkClientLookupType,
+    )
+    # Tool-keyed mappings for the /v1/actions/{tool_name} endpoint — lets the
+    # action endpoint project read-tool output through the migrated type
+    # without going through the (now removed) tool-keyed serializer.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_clients", NetworkClientType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_client_details", NetworkClientType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_blocked_clients", NetworkBlockedClientType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_lookup_by_ip", NetworkClientLookupType, "detail",
+    )
+
+    # Phase 6 PR2 Task 20 — network/devices migrated to Strawberry types.
+    # Only the two device resources (LIST + DETAIL by mac) have REST resource
+    # paths; the remaining tools (radio, lldp, rogue_aps, rf_scan, channels,
+    # speedtest) are tool-keyed only and registered via register_tool_type.
+    app.state.type_registry.register_type("network", "devices", NetworkDeviceType)
+    app.state.type_registry.register_type(
+        "network", "devices/{mac}", NetworkDeviceType,
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_devices", NetworkDeviceType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_device_details", NetworkDeviceType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_device_radio", NetworkDeviceRadioType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_lldp_neighbors", NetworkLldpNeighborsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_rogue_aps", NetworkRogueApType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_known_rogue_aps", NetworkKnownRogueApType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_rf_scan_results", NetworkRfScanResultType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_available_channels", NetworkAvailableChannelType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_speedtest_status", NetworkSpeedtestStatusType, "detail",
+    )
+
+    # Phase 6 PR2 Task 21 — network/networks migrated to Strawberry types.
+    app.state.type_registry.register_type("network", "networks", NetworkNetworkType)
+    app.state.type_registry.register_type(
+        "network", "networks/{id}", NetworkNetworkType,
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_networks", NetworkNetworkType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_network_details", NetworkNetworkType, "detail",
+    )
+
+    # Phase 6 PR2 Task 21 — network/wlans migrated to Strawberry types.
+    app.state.type_registry.register_type("network", "wlans", NetworkWlanType)
+    app.state.type_registry.register_type(
+        "network", "wlans/{id}", NetworkWlanType,
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_wlans", NetworkWlanType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_wlan_details", NetworkWlanType, "detail",
+    )
+
+    # Phase 6 PR2 Task 21 — network/vpn migrated to Strawberry types.
+    # VPN tools are tool-keyed only (no resource registration in the original
+    # serializer); register via register_tool_type to avoid surfacing a bogus
+    # path in /v1/catalog/resources.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_vpn_clients", NetworkVpnClientType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_vpn_client_details", NetworkVpnClientType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_vpn_servers", NetworkVpnServerType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_vpn_server_details", NetworkVpnServerType, "detail",
+    )
+
+    # Phase 6 PR2 Task 21 — network/dns migrated to Strawberry types.
+    # DNS tools are tool-keyed only (no resource registration in the original
+    # serializer); register via register_tool_type to avoid surfacing a bogus
+    # path in /v1/catalog/resources.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_dns_records", NetworkDnsRecordType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_dns_record_details", NetworkDnsRecordType, "detail",
+    )
+
+    # Phase 6 PR2 Task 21 — network/routes migrated to Strawberry types.
+    # Routing tools are tool-keyed only (no resource registration in the
+    # original serializer); register via register_tool_type to avoid surfacing
+    # bogus paths in /v1/catalog/resources.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_routes", NetworkRouteType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_route_details", NetworkRouteType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_active_routes", NetworkActiveRouteType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_traffic_routes", NetworkTrafficRouteType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_traffic_route_details", NetworkTrafficRouteType, "detail",
+    )
+
+    # Phase 6 PR2 Task 22 — network/firewall (rules + groups + zones) migrated
+    # to Strawberry types. ``firewall/rules`` carries resource registration;
+    # groups + zones are tool-keyed only (no resource registration in the
+    # original serializer).
+    app.state.type_registry.register_type(
+        "network", "firewall/rules", NetworkFirewallRuleType,
+    )
+    app.state.type_registry.register_type(
+        "network", "firewall/rules/{id}", NetworkFirewallRuleType,
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_firewall_policies", NetworkFirewallRuleType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_firewall_policy_details", NetworkFirewallRuleType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_firewall_groups", NetworkFirewallGroupType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_firewall_group_details", NetworkFirewallGroupType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_firewall_zones", NetworkFirewallZoneType, "list",
+    )
+
+    # Phase 6 PR2 Task 22 — network/qos migrated to Strawberry types.
+    # QoS tools are tool-keyed only (no resource registration in the original
+    # serializer); register via register_tool_type to avoid surfacing a bogus
+    # path in /v1/catalog/resources.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_qos_rules", NetworkQosRuleType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_qos_rule_details", NetworkQosRuleType, "detail",
+    )
+
+    # Phase 6 PR2 Task 22 — network/dpi migrated to Strawberry types.
+    # DPI is read-only (no create/update/delete tools); both lookups are
+    # tool-keyed only.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_dpi_applications", NetworkDpiApplicationType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_dpi_categories", NetworkDpiCategoryType, "list",
+    )
+
+    # Phase 6 PR2 Task 22 — network/content_filter migrated to Strawberry types.
+    # Tool-keyed only (no resource registration in the original serializer).
+    app.state.type_registry.register_tool_type(
+        "unifi_list_content_filters", NetworkContentFilterType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_content_filter_details", NetworkContentFilterType, "detail",
+    )
+
+    # Phase 6 PR2 Task 22 — network/acl migrated to Strawberry types.
+    # Tool-keyed only (no resource registration in the original serializer).
+    app.state.type_registry.register_tool_type(
+        "unifi_list_acl_rules", NetworkAclRuleType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_acl_rule_details", NetworkAclRuleType, "detail",
+    )
+
+    # Phase 6 PR2 Task 22 — network/oon migrated to Strawberry types.
+    # Tool-keyed only (no resource registration in the original serializer).
+    app.state.type_registry.register_tool_type(
+        "unifi_list_oon_policies", NetworkOonPolicyType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_oon_policy_details", NetworkOonPolicyType, "detail",
+    )
+
+    # Phase 6 PR2 Task 22 — network/port_forwards migrated to Strawberry types.
+    # Tool-keyed only (no resource registration in the original serializer).
+    app.state.type_registry.register_tool_type(
+        "unifi_list_port_forwards", NetworkPortForwardType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_port_forward", NetworkPortForwardType, "detail",
+    )
+
+    # Phase 6 PR2 Task 23 — network/vouchers migrated to Strawberry types.
+    # Tool-keyed only (no resource registration in the original serializer).
+    app.state.type_registry.register_tool_type(
+        "unifi_list_vouchers", NetworkVoucherType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_voucher_details", NetworkVoucherType, "detail",
+    )
+
+    # Phase 6 PR2 Task 23 — network/sessions migrated to Strawberry types.
+    # Tool-keyed only (no resource registration in the original serializer).
+    app.state.type_registry.register_tool_type(
+        "unifi_get_client_sessions", NetworkClientSessionType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_client_wifi_details", NetworkClientWifiDetailsType, "detail",
+    )
+
+    # Phase 6 PR2 Task 23 — network/stats migrated to Strawberry types.
+    # Multi-kind: TIMESERIES (StatPoint) + DETAIL (DpiStats). The kind is
+    # recorded per-tool so the dual-kind dispatcher in
+    # routes/resources/network/stats.py picks the right shaping path.
+    for _stats_tool in (
+        "unifi_get_dashboard",
+        "unifi_get_network_stats",
+        "unifi_get_gateway_stats",
+        "unifi_get_client_dpi_traffic",
+        "unifi_get_site_dpi_traffic",
+        "unifi_get_device_stats",
+        "unifi_get_client_stats",
+    ):
+        app.state.type_registry.register_tool_type(
+            _stats_tool, NetworkStatPointType, "timeseries",
+        )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_dpi_stats", NetworkDpiStatsType, "detail",
+    )
+
+    # Phase 6 PR2 Task 23 — network/events migrated to Strawberry types.
+    # Tool-keyed only (EVENT_LOG kind). ``unifi_recent_events`` and
+    # ``unifi_subscribe_events`` stay as serializers because the SSE stream
+    # generator calls ``serializer.serialize`` directly per broadcast event.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_events", NetworkEventLogType, "event_log",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_alerts", NetworkEventLogType, "event_log",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_anomalies", NetworkEventLogType, "event_log",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_ips_events", NetworkEventLogType, "event_log",
+    )
+
+    # Phase 6 PR2 Task 23 — network/system (9 read shapes) migrated to
+    # Strawberry types. Tool-keyed only (no resource registration in the
+    # original serializer). Mutation acks (archive/backup/autobackup) stay
+    # as serializers in serializers/network/system.py.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_alarms", NetworkAlarmType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_backups", NetworkBackupType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_system_info", NetworkSystemInfoType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_network_health", NetworkNetworkHealthType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_site_settings", NetworkSiteSettingsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_snmp_settings", NetworkSnmpSettingsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_event_types", NetworkEventTypesType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_autobackup_settings", NetworkAutoBackupSettingsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_top_clients", NetworkTopClientType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_speedtest_results", NetworkSpeedtestResultType, "list",
+    )
+
+    # Phase 6 PR2 Task 24 — network/switch (4 read shapes) migrated to
+    # Strawberry types. Tool-keyed only (no resource registration in the
+    # original serializer). Mutation acks (create/update/delete_port_profile,
+    # set_*, configure_*, power_cycle_*, set_jumbo_frames, update_switch_stp)
+    # stay as serializers in serializers/network/switch.py.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_port_profiles", NetworkPortProfileType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_port_profile_details", NetworkPortProfileType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_switch_ports", NetworkSwitchPortsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_port_stats", NetworkPortStatsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_switch_capabilities", NetworkSwitchCapabilitiesType, "detail",
+    )
+
+    # Phase 6 PR2 Task 24 — network/ap_groups (1 read shape) migrated to a
+    # Strawberry type. Tool-keyed only (no resource registration in the
+    # original serializer). Mutation acks (create/update/delete) stay as a
+    # serializer in serializers/network/ap_groups.py.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_ap_groups", NetworkApGroupType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_ap_group_details", NetworkApGroupType, "detail",
+    )
+
+    # Phase 6 PR2 Task 24 — network/client_groups + usergroups (2 read shapes)
+    # migrated to Strawberry types. Tool-keyed only (no resource registration
+    # in the original serializer). Mutation acks (create/update/delete across
+    # both manager kinds) stay as a serializer in
+    # serializers/network/client_groups.py.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_client_groups", NetworkClientGroupType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_client_group_details", NetworkClientGroupType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_usergroups", NetworkUserGroupType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_usergroup_details", NetworkUserGroupType, "detail",
+    )
 
     app.include_router(health.router, prefix="/v1")
     app.include_router(controllers_routes.router, prefix="/v1")

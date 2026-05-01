@@ -1,52 +1,17 @@
-"""AP group serializers (Phase 4A PR1 Cluster 3).
+"""AP group mutation ack serializer (Phase 4A PR1 Cluster 3).
+
+Phase 6 PR2 Task 24 — read shape (ApGroupSerializer) migrated to a Strawberry
+type in ``unifi_api.graphql.types.network.ap_group``. Only the mutation ack
+remains here so create/update/delete continue to dispatch through the
+serializer registry.
 
 AP groups live on V2 ``/apgroups`` and ride on ``NetworkManager`` (not a
-dedicated manager). Methods:
-
-* ``list_ap_groups()`` → ``List[Dict]``
-* ``get_ap_group_details(group_id)`` → ``Optional[Dict]`` (V2 ``GET /{id}``
-  returns 405; manager fetches all and filters)
-* ``create_ap_group(group_data)`` → ``Optional[Dict]``
-* ``update_ap_group(group_id, data)`` → ``bool``
-* ``delete_ap_group(group_id)`` → ``bool``
+dedicated manager). The mutation ack normalises the manager's mixed return
+shapes (``Optional[Dict]`` for create, ``bool`` for update/delete) to a
+DETAIL-shaped payload per spec section 5 (EMPTY discipline).
 """
 
-from typing import Any
-
 from unifi_api.serializers._base import RenderKind, Serializer, register_serializer
-
-
-def _get(obj: Any, key: str, default: Any = None) -> Any:
-    if isinstance(obj, dict):
-        return obj.get(key, default)
-    raw = getattr(obj, "raw", None)
-    if isinstance(raw, dict):
-        return raw.get(key, default)
-    return getattr(obj, key, default)
-
-
-@register_serializer(
-    tools={
-        "unifi_list_ap_groups": {"kind": RenderKind.LIST},
-        "unifi_get_ap_group_details": {"kind": RenderKind.DETAIL},
-    },
-)
-class ApGroupSerializer(Serializer):
-    primary_key = "id"
-    display_columns = ["name", "ap_count"]
-    sort_default = "name:asc"
-
-    @staticmethod
-    def serialize(obj) -> dict:
-        device_macs = _get(obj, "device_macs") or []
-        if not isinstance(device_macs, list):
-            device_macs = []
-        return {
-            "id": _get(obj, "_id") or _get(obj, "id"),
-            "name": _get(obj, "name"),
-            "ap_count": len(device_macs),
-            "device_macs": list(device_macs),
-        }
 
 
 @register_serializer(

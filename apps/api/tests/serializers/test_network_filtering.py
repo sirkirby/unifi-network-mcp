@@ -19,63 +19,58 @@ def _registry():
 
 
 def test_firewall_group_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_firewall_groups")
-    sample = [
-        {
-            "_id": "fg1",
-            "name": "Trusted IPs",
-            "group_type": "address-group",
-            "group_members": ["10.0.0.1", "10.0.0.2"],
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_firewall_groups")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "fg1"
-    assert out["data"][0]["name"] == "Trusted IPs"
-    assert out["data"][0]["group_type"] == "address-group"
-    assert out["data"][0]["members"] == ["10.0.0.1", "10.0.0.2"]
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.firewall import FirewallGroup
+
+    sample = {
+        "_id": "fg1",
+        "name": "Trusted IPs",
+        "group_type": "address-group",
+        "group_members": ["10.0.0.1", "10.0.0.2"],
+    }
+    out = FirewallGroup.from_manager_output(sample).to_dict()
+    assert out["id"] == "fg1"
+    assert out["name"] == "Trusted IPs"
+    assert out["group_type"] == "address-group"
+    assert out["members"] == ["10.0.0.1", "10.0.0.2"]
+    assert FirewallGroup.render_hint("list")["kind"] == "list"
 
 
 def test_firewall_group_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_firewall_group_details")
+    from unifi_api.graphql.types.network.firewall import FirewallGroup
+
     sample = {
         "_id": "fg2",
         "name": "Web ports",
         "group_type": "port-group",
         "group_members": ["80", "443"],
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_firewall_group_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "fg2"
-    assert out["data"]["group_type"] == "port-group"
-    assert out["data"]["members"] == ["80", "443"]
-    assert out["render_hint"]["kind"] == "detail"
+    out = FirewallGroup.from_manager_output(sample).to_dict()
+    assert out["id"] == "fg2"
+    assert out["group_type"] == "port-group"
+    assert out["members"] == ["80", "443"]
+    assert FirewallGroup.render_hint("detail")["kind"] == "detail"
 
 
 # ---- Firewall zones ----
 
 
 def test_firewall_zone_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_firewall_zones")
-    sample = [
-        {
-            "_id": "z1",
-            "name": "Internal",
-            "networks": ["net1", "net2"],
-            "default_policy": "ALLOW",
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_firewall_zones")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "z1"
-    assert out["data"][0]["name"] == "Internal"
-    assert out["data"][0]["networks"] == ["net1", "net2"]
-    assert out["data"][0]["default_policy"] == "ALLOW"
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.firewall import FirewallZone
+
+    sample = {
+        "_id": "z1",
+        "name": "Internal",
+        "networks": ["net1", "net2"],
+        "default_policy": "ALLOW",
+    }
+    out = FirewallZone.from_manager_output(sample).to_dict()
+    assert out["id"] == "z1"
+    assert out["name"] == "Internal"
+    assert out["networks"] == ["net1", "net2"]
+    assert out["default_policy"] == "ALLOW"
+    assert FirewallZone.render_hint("list")["kind"] == "list"
 
 
 # ---- Firewall mutation acks ----
@@ -102,32 +97,30 @@ def test_firewall_mutation_ack_dispatches_for_all_mutations() -> None:
 
 
 def test_qos_rule_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_qos_rules")
-    sample = [
-        {
-            "_id": "qos1",
-            "name": "VoIP",
-            "enabled": True,
-            "rate_max_down": 50000,
-            "rate_max_up": 25000,
-            "priority": 7,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_qos_rules")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "qos1"
-    assert out["data"][0]["name"] == "VoIP"
-    assert out["data"][0]["enabled"] is True
-    assert out["data"][0]["rate_max_down"] == 50000
-    assert out["data"][0]["rate_max_up"] == 25000
-    assert out["data"][0]["priority"] == 7
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.qos import QosRule
+
+    sample = {
+        "_id": "qos1",
+        "name": "VoIP",
+        "enabled": True,
+        "rate_max_down": 50000,
+        "rate_max_up": 25000,
+        "priority": 7,
+    }
+    out = QosRule.from_manager_output(sample).to_dict()
+    assert out["id"] == "qos1"
+    assert out["name"] == "VoIP"
+    assert out["enabled"] is True
+    assert out["rate_max_down"] == 50000
+    assert out["rate_max_up"] == 25000
+    assert out["priority"] == 7
+    assert QosRule.render_hint("list")["kind"] == "list"
 
 
 def test_qos_rule_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_qos_rule_details")
+    from unifi_api.graphql.types.network.qos import QosRule
+
     sample = {
         "_id": "qos2",
         "name": "Backup limiter",
@@ -136,12 +129,11 @@ def test_qos_rule_detail_serializer_shape() -> None:
         "rate_max_up": 5000,
         "priority": 1,
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_qos_rule_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "qos2"
-    assert out["data"]["enabled"] is False
-    assert out["data"]["priority"] == 1
-    assert out["render_hint"]["kind"] == "detail"
+    out = QosRule.from_manager_output(sample).to_dict()
+    assert out["id"] == "qos2"
+    assert out["enabled"] is False
+    assert out["priority"] == 1
+    assert QosRule.render_hint("detail")["kind"] == "detail"
 
 
 def test_qos_mutation_ack_dispatches_for_all_mutations() -> None:
@@ -161,73 +153,66 @@ def test_qos_mutation_ack_dispatches_for_all_mutations() -> None:
 
 
 def test_dpi_application_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_dpi_applications")
-    # The DPI manager returns a wrapper dict; the action layer surfaces
-    # the bare list (or wrapper) — the serializer accepts either via the
-    # registry's normal LIST flow.
-    sample = [
-        {"id": 65537, "name": "Skype", "categoryId": 1},
-        {"id": 65538, "name": "Telegram"},
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_dpi_applications")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == 65537
-    assert out["data"][0]["name"] == "Skype"
-    assert out["data"][0]["category_id"] == 1
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.dpi import DpiApplication
+
+    sample = {"id": 65537, "name": "Skype", "categoryId": 1}
+    out = DpiApplication.from_manager_output(sample).to_dict()
+    assert out["id"] == 65537
+    assert out["name"] == "Skype"
+    assert out["category_id"] == 1
+    assert DpiApplication.render_hint("list")["kind"] == "list"
 
 
 def test_dpi_category_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_dpi_categories")
-    sample = [{"id": 0, "name": "Instant messengers"}, {"id": 1, "name": "Peer-to-peer"}]
-    out = s.serialize_action(sample, tool_name="unifi_list_dpi_categories")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == 0
-    assert out["data"][0]["name"] == "Instant messengers"
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type. Verifies
+    the id=0 case (category 0 = Instant messengers) is preserved through
+    the new type's explicit ``is None`` check."""
+    from unifi_api.graphql.types.network.dpi import DpiCategory
+
+    sample = {"id": 0, "name": "Instant messengers"}
+    out = DpiCategory.from_manager_output(sample).to_dict()
+    assert out["id"] == 0
+    assert out["name"] == "Instant messengers"
+    assert DpiCategory.render_hint("list")["kind"] == "list"
 
 
 # ---- Content filters ----
 
 
 def test_content_filter_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_content_filters")
-    sample = [
-        {
-            "_id": "cf1",
-            "name": "Family-safe",
-            "enabled": True,
-            "profile": "FAMILY",
-            "applies_to": ["net1", "net2"],
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_content_filters")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "cf1"
-    assert out["data"][0]["name"] == "Family-safe"
-    assert out["data"][0]["enabled"] is True
-    assert out["data"][0]["profile"] == "FAMILY"
-    assert out["data"][0]["applies_to"] == ["net1", "net2"]
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.content_filter import ContentFilter
+
+    sample = {
+        "_id": "cf1",
+        "name": "Family-safe",
+        "enabled": True,
+        "profile": "FAMILY",
+        "applies_to": ["net1", "net2"],
+    }
+    out = ContentFilter.from_manager_output(sample).to_dict()
+    assert out["id"] == "cf1"
+    assert out["name"] == "Family-safe"
+    assert out["enabled"] is True
+    assert out["profile"] == "FAMILY"
+    assert out["applies_to"] == ["net1", "net2"]
+    assert ContentFilter.render_hint("list")["kind"] == "list"
 
 
 def test_content_filter_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_content_filter_details")
+    from unifi_api.graphql.types.network.content_filter import ContentFilter
+
     sample = {
         "_id": "cf2",
         "name": "Workplace",
         "enabled": False,
         "profile": "WORK",
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_content_filter_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "cf2"
-    assert out["data"]["enabled"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = ContentFilter.from_manager_output(sample).to_dict()
+    assert out["id"] == "cf2"
+    assert out["enabled"] is False
+    assert ContentFilter.render_hint("detail")["kind"] == "detail"
 
 
 def test_content_filter_mutation_ack_dispatches_for_all_mutations() -> None:
@@ -242,44 +227,41 @@ def test_content_filter_mutation_ack_dispatches_for_all_mutations() -> None:
 
 
 def test_acl_rule_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_acl_rules")
-    sample = [
-        {
-            "_id": "acl1",
-            "name": "Block guest IoT",
-            "enabled": True,
-            "action": "BLOCK",
-            "traffic_source": {"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"},
-            "traffic_destination": {"type": "ANY"},
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_acl_rules")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "acl1"
-    assert out["data"][0]["name"] == "Block guest IoT"
-    assert out["data"][0]["enabled"] is True
-    assert out["data"][0]["action"] == "BLOCK"
-    assert out["data"][0]["source"] == {"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}
-    assert out["data"][0]["destination"] == {"type": "ANY"}
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.acl import AclRule
+
+    sample = {
+        "_id": "acl1",
+        "name": "Block guest IoT",
+        "enabled": True,
+        "action": "BLOCK",
+        "traffic_source": {"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"},
+        "traffic_destination": {"type": "ANY"},
+    }
+    out = AclRule.from_manager_output(sample).to_dict()
+    assert out["id"] == "acl1"
+    assert out["name"] == "Block guest IoT"
+    assert out["enabled"] is True
+    assert out["action"] == "BLOCK"
+    assert out["source"] == {"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}
+    assert out["destination"] == {"type": "ANY"}
+    assert AclRule.render_hint("list")["kind"] == "list"
 
 
 def test_acl_rule_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_acl_rule_details")
+    from unifi_api.graphql.types.network.acl import AclRule
+
     sample = {
         "_id": "acl2",
         "name": "Allow staff",
         "enabled": False,
         "action": "ALLOW",
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_acl_rule_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "acl2"
-    assert out["data"]["action"] == "ALLOW"
-    assert out["data"]["enabled"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = AclRule.from_manager_output(sample).to_dict()
+    assert out["id"] == "acl2"
+    assert out["action"] == "ALLOW"
+    assert out["enabled"] is False
+    assert AclRule.render_hint("detail")["kind"] == "detail"
 
 
 def test_acl_mutation_ack_dispatches_for_all_mutations() -> None:
@@ -298,40 +280,37 @@ def test_acl_mutation_ack_dispatches_for_all_mutations() -> None:
 
 
 def test_oon_policy_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_oon_policies")
-    sample = [
-        {
-            "_id": "oon1",
-            "name": "Kids weekday curfew",
-            "enabled": True,
-            "targets": [{"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}],
-            "restriction_level": "STRICT",
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_oon_policies")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "oon1"
-    assert out["data"][0]["name"] == "Kids weekday curfew"
-    assert out["data"][0]["enabled"] is True
-    assert out["data"][0]["applies_to"] == [{"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}]
-    assert out["data"][0]["restriction_level"] == "STRICT"
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.oon import OonPolicy
+
+    sample = {
+        "_id": "oon1",
+        "name": "Kids weekday curfew",
+        "enabled": True,
+        "targets": [{"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}],
+        "restriction_level": "STRICT",
+    }
+    out = OonPolicy.from_manager_output(sample).to_dict()
+    assert out["id"] == "oon1"
+    assert out["name"] == "Kids weekday curfew"
+    assert out["enabled"] is True
+    assert out["applies_to"] == [{"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}]
+    assert out["restriction_level"] == "STRICT"
+    assert OonPolicy.render_hint("list")["kind"] == "list"
 
 
 def test_oon_policy_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_oon_policy_details")
+    from unifi_api.graphql.types.network.oon import OonPolicy
+
     sample = {
         "_id": "oon2",
         "name": "Guest cap",
         "enabled": False,
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_oon_policy_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "oon2"
-    assert out["data"]["enabled"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = OonPolicy.from_manager_output(sample).to_dict()
+    assert out["id"] == "oon2"
+    assert out["enabled"] is False
+    assert OonPolicy.render_hint("detail")["kind"] == "detail"
 
 
 def test_oon_mutation_ack_dispatches_for_all_mutations() -> None:

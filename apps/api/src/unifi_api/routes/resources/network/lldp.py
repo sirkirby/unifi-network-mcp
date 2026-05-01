@@ -76,9 +76,17 @@ async def list_lldp_neighbors(
     )
 
     items = [_normalize_lldp_row(r) for r in page]
-    registry = request.app.state.serializer_registry
-    hint = registry.render_hint_for_tool("unifi_get_lldp_neighbors")
-    hint = {**hint, "kind": "list"}
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_lldp_neighbors")
+    if tool_type is not None:
+        type_class, _kind = tool_type
+        # The route exposes lldp_table rows as a paginated LIST regardless of
+        # the upstream tool's DETAIL kind on the wrapper-dict.
+        hint = {**type_class.render_hint("list"), "kind": "list"}
+    else:
+        registry = request.app.state.serializer_registry
+        hint = registry.render_hint_for_tool("unifi_get_lldp_neighbors")
+        hint = {**hint, "kind": "list"}
     return {
         "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,

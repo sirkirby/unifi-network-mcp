@@ -60,9 +60,13 @@ async def list_wlans(
     )
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("network", "wlans")
-    items = [serializer.serialize(w) for w in page]
-    hint = registry.render_hint_for_resource("network", "wlans")
+    entry = request.app.state.type_registry.lookup("network", "wlans")
+    if entry.kind == "type":
+        items = [entry.payload.from_manager_output(w).to_dict() for w in page]
+        hint = entry.payload.render_hint("list")
+    else:
+        items = [entry.payload.serialize(w) for w in page]
+        hint = registry.render_hint_for_resource("network", "wlans")
 
     return {
         "items": items,
@@ -99,8 +103,14 @@ async def get_wlan(
         raise HTTPException(status_code=404, detail="wlan not found")
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("network", "wlans/{id}")
+    entry = request.app.state.type_registry.lookup("network", "wlans/{id}")
+    if entry.kind == "type":
+        data = entry.payload.from_manager_output(wlan).to_dict()
+        hint = entry.payload.render_hint("detail")
+    else:
+        data = entry.payload.serialize(wlan)
+        hint = registry.render_hint_for_resource("network", "wlans/{id}")
     return {
-        "data": serializer.serialize(wlan),
-        "render_hint": registry.render_hint_for_resource("network", "wlans/{id}"),
+        "data": data,
+        "render_hint": hint,
     }

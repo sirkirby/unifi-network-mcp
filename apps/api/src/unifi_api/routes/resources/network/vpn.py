@@ -65,12 +65,21 @@ async def list_vpn_clients(
     page, next_cursor = paginate(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_list_vpn_clients")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_list_vpn_clients")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        rows = [type_class.from_manager_output(i).to_dict() for i in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_list_vpn_clients")
+        rows = [serializer.serialize(i) for i in page]
+        hint = registry.render_hint_for_tool("unifi_list_vpn_clients")
     return {
-        "items": [serializer.serialize(i) for i in page],
+        "items": rows,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("unifi_list_vpn_clients"),
+        "render_hint": hint,
     }
 
 
@@ -102,12 +111,18 @@ async def get_vpn_client_details(
         raise HTTPException(
             status_code=404, detail=f"vpn client {client_id} not found",
         )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_get_vpn_client_details")
-    return {
-        "data": serializer.serialize(item),
-        "render_hint": registry.render_hint_for_tool("unifi_get_vpn_client_details"),
-    }
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_vpn_client_details")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(item).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_get_vpn_client_details")
+        data = serializer.serialize(item)
+        hint = registry.render_hint_for_tool("unifi_get_vpn_client_details")
+    return {"data": data, "render_hint": hint}
 
 
 # ---------- VPN servers ----------
@@ -140,12 +155,21 @@ async def list_vpn_servers(
     page, next_cursor = paginate(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_list_vpn_servers")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_list_vpn_servers")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        rows = [type_class.from_manager_output(i).to_dict() for i in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_list_vpn_servers")
+        rows = [serializer.serialize(i) for i in page]
+        hint = registry.render_hint_for_tool("unifi_list_vpn_servers")
     return {
-        "items": [serializer.serialize(i) for i in page],
+        "items": rows,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("unifi_list_vpn_servers"),
+        "render_hint": hint,
     }
 
 
@@ -177,9 +201,15 @@ async def get_vpn_server_details(
         raise HTTPException(
             status_code=404, detail=f"vpn server {server_id} not found",
         )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_get_vpn_server_details")
-    return {
-        "data": serializer.serialize(item),
-        "render_hint": registry.render_hint_for_tool("unifi_get_vpn_server_details"),
-    }
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_vpn_server_details")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(item).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_get_vpn_server_details")
+        data = serializer.serialize(item)
+        hint = registry.render_hint_for_tool("unifi_get_vpn_server_details")
+    return {"data": data, "render_hint": hint}

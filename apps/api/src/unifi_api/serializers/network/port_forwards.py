@@ -1,13 +1,9 @@
-"""Port forward serializers (Phase 4A PR1 Cluster 5).
+"""Port forward mutation ack serializer.
 
-* ``PortForwardSerializer`` — V1 ``/rest/portforward``. The manager
-  returns ``PortForward`` aiounifi models on read paths; the underlying
-  payload is exposed via ``raw``. ``fwd_protocol`` may also surface as
-  ``protocol`` on certain firmware versions, but the manager normalizes
-  to ``fwd_protocol``.
-* ``PortForwardMutationAckSerializer`` — DETAIL ack for create/update/
-  toggle. ``create_*`` returns a dict; ``update_*`` / ``toggle_*`` return
-  ``bool``.
+Phase 6 PR2 Task 22 migrated the read shape (PortForward LIST + DETAIL) to
+a Strawberry type at ``unifi_api.graphql.types.network.port_forward``. Only
+the mutation ack remains here — it covers create/update/toggle for port
+forward rules.
 """
 
 from typing import Any
@@ -22,31 +18,6 @@ def _get(obj: Any, key: str, default: Any = None) -> Any:
     if isinstance(raw, dict):
         return raw.get(key, default)
     return getattr(obj, key, default)
-
-
-@register_serializer(
-    tools={
-        "unifi_list_port_forwards": {"kind": RenderKind.LIST},
-        "unifi_get_port_forward": {"kind": RenderKind.DETAIL},
-    },
-)
-class PortForwardSerializer(Serializer):
-    primary_key = "id"
-    display_columns = ["name", "enabled", "fwd_protocol", "dst_port", "fwd_port"]
-    sort_default = "name:asc"
-
-    @staticmethod
-    def serialize(obj) -> dict:
-        return {
-            "id": _get(obj, "_id") or _get(obj, "id"),
-            "name": _get(obj, "name"),
-            "enabled": bool(_get(obj, "enabled", False)),
-            "fwd_protocol": _get(obj, "fwd_protocol") or _get(obj, "protocol"),
-            "dst_port": _get(obj, "dst_port"),
-            "fwd_port": _get(obj, "fwd_port"),
-            "src": _get(obj, "src"),
-            "log": bool(_get(obj, "log", False)),
-        }
 
 
 @register_serializer(

@@ -81,8 +81,14 @@ async def list_rogue_aps(
     )
 
     items = [_serialize_rogue(r, is_known=False) for r in page]
-    registry = request.app.state.serializer_registry
-    hint = registry.render_hint_for_tool("unifi_list_rogue_aps")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_list_rogue_aps")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        hint = registry.render_hint_for_tool("unifi_list_rogue_aps")
     return {
         "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
@@ -119,8 +125,14 @@ async def list_known_rogue_aps(
     )
 
     items = [_serialize_rogue(r, is_known=True) for r in page]
-    registry = request.app.state.serializer_registry
-    hint = registry.render_hint_for_tool("unifi_list_known_rogue_aps")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_list_known_rogue_aps")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        hint = registry.render_hint_for_tool("unifi_list_known_rogue_aps")
     return {
         "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
@@ -157,10 +169,17 @@ async def list_rf_scan_results(
         list(rows or []), limit=limit, cursor=cursor_obj, key_fn=_bssid_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_get_rf_scan_results")
-    items = [serializer.serialize(r) for r in page]
-    hint = registry.render_hint_for_tool("unifi_get_rf_scan_results")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_rf_scan_results")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        items = [type_class.from_manager_output(r).to_dict() for r in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_get_rf_scan_results")
+        items = [serializer.serialize(r) for r in page]
+        hint = registry.render_hint_for_tool("unifi_get_rf_scan_results")
     return {
         "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,

@@ -58,10 +58,16 @@ async def list_devices(
         list(all_devices), limit=limit, cursor=cursor_obj, key_fn=_device_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("network", "devices")
-    items = [serializer.serialize(d) for d in page]
-    hint = registry.render_hint_for_resource("network", "devices")
+    type_registry = request.app.state.type_registry
+    entry = type_registry.lookup("network", "devices")
+    if entry.kind == "type":
+        items = [entry.payload.from_manager_output(d).to_dict() for d in page]
+        hint = entry.payload.render_hint("list")
+    else:
+        items = [entry.payload.serialize(d) for d in page]
+        hint = request.app.state.serializer_registry.render_hint_for_resource(
+            "network", "devices",
+        )
 
     return {
         "items": items,
@@ -97,12 +103,17 @@ async def get_device(
     if device is None:
         raise HTTPException(status_code=404, detail="device not found")
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("network", "devices/{mac}")
-    return {
-        "data": serializer.serialize(device),
-        "render_hint": registry.render_hint_for_resource("network", "devices/{mac}"),
-    }
+    type_registry = request.app.state.type_registry
+    entry = type_registry.lookup("network", "devices/{mac}")
+    if entry.kind == "type":
+        data = entry.payload.from_manager_output(device).to_dict()
+        hint = entry.payload.render_hint("detail")
+    else:
+        data = entry.payload.serialize(device)
+        hint = request.app.state.serializer_registry.render_hint_for_resource(
+            "network", "devices/{mac}",
+        )
+    return {"data": data, "render_hint": hint}
 
 
 @router.get(
@@ -135,9 +146,15 @@ async def get_device_radio(
             detail=f"device radio config for {mac} not found",
         )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_get_device_radio")
-    return {
-        "data": serializer.serialize(radio),
-        "render_hint": registry.render_hint_for_tool("unifi_get_device_radio"),
-    }
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_device_radio")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(radio).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_get_device_radio")
+        data = serializer.serialize(radio)
+        hint = registry.render_hint_for_tool("unifi_get_device_radio")
+    return {"data": data, "render_hint": hint}

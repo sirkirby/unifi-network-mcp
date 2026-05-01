@@ -1,18 +1,15 @@
-"""Event log serializers (Phase 4A PR1 Cluster 6).
+"""Network event-stream serializers (post-Phase-6-Task-23).
 
-Covers the EVENT_LOG kind for ``unifi_list_events``, ``unifi_get_alerts``,
-``unifi_get_anomalies``, ``unifi_get_ips_events``. Each event entry is
-serialized to a curated subset of fields:
+Phase 6 PR2 Task 23 migrated the EVENT_LOG read shape (covering
+``unifi_list_events``, ``unifi_get_alerts``, ``unifi_get_anomalies``,
+``unifi_get_ips_events``) to a Strawberry ``EventLog`` type at
+``unifi_api.graphql.types.network.event``.
 
-- ``id`` (from ``_id``)
-- ``key`` (event type, e.g. ``EVT_WU_Connected``)
-- ``msg`` (human-readable description)
-- ``severity`` (when present — alerts/IPS)
-- ``time`` (epoch milliseconds)
-- ``mac`` (associated client/device MAC)
-- ``ip`` (associated IP, when present)
-
-``sort_default = "time:desc"`` matches Phase 3's EVENT_LOG convention.
+``unifi_recent_events`` keeps a serializer here because the SSE stream
+generator (``unifi_api.services.stream_generator.sse_event_stream``) calls
+``serializer.serialize(event)`` on each broadcast event — a per-event dict
+shaping path that the typed projection layer doesn't yet replace.
+``unifi_subscribe_events`` keeps its STREAM-kind subscription serializer.
 """
 
 from unifi_api.serializers._base import RenderKind, Serializer, register_serializer
@@ -29,16 +26,9 @@ def _get(obj, *keys):
     return None
 
 
-@register_serializer(
-    tools={
-        "unifi_list_events": {"kind": RenderKind.EVENT_LOG},
-        "unifi_get_alerts": {"kind": RenderKind.EVENT_LOG},
-        "unifi_get_anomalies": {"kind": RenderKind.EVENT_LOG},
-        "unifi_get_ips_events": {"kind": RenderKind.EVENT_LOG},
-    },
-)
-class EventLogSerializer(Serializer):
-    """Curated event-log shape across UniFi event-style endpoints."""
+@register_serializer(tools={"unifi_recent_events": {"kind": RenderKind.EVENT_LOG}})
+class NetworkRecentEventsSerializer(Serializer):
+    """Per-event EVENT_LOG shape consumed by the SSE stream generator."""
 
     primary_key = "id"
     sort_default = "time:desc"
@@ -60,13 +50,6 @@ class EventLogSerializer(Serializer):
         if sev is not None:
             out["severity"] = sev
         return out
-
-
-@register_serializer(tools={"unifi_recent_events": {"kind": RenderKind.EVENT_LOG}})
-class NetworkRecentEventsSerializer(EventLogSerializer):
-    """unifi_recent_events emits the same per-event shape as unifi_list_events."""
-
-    pass
 
 
 @register_serializer(tools={"unifi_subscribe_events": {"kind": RenderKind.STREAM}})
