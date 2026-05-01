@@ -227,44 +227,41 @@ def test_content_filter_mutation_ack_dispatches_for_all_mutations() -> None:
 
 
 def test_acl_rule_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_acl_rules")
-    sample = [
-        {
-            "_id": "acl1",
-            "name": "Block guest IoT",
-            "enabled": True,
-            "action": "BLOCK",
-            "traffic_source": {"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"},
-            "traffic_destination": {"type": "ANY"},
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_acl_rules")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "acl1"
-    assert out["data"][0]["name"] == "Block guest IoT"
-    assert out["data"][0]["enabled"] is True
-    assert out["data"][0]["action"] == "BLOCK"
-    assert out["data"][0]["source"] == {"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}
-    assert out["data"][0]["destination"] == {"type": "ANY"}
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.acl import AclRule
+
+    sample = {
+        "_id": "acl1",
+        "name": "Block guest IoT",
+        "enabled": True,
+        "action": "BLOCK",
+        "traffic_source": {"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"},
+        "traffic_destination": {"type": "ANY"},
+    }
+    out = AclRule.from_manager_output(sample).to_dict()
+    assert out["id"] == "acl1"
+    assert out["name"] == "Block guest IoT"
+    assert out["enabled"] is True
+    assert out["action"] == "BLOCK"
+    assert out["source"] == {"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}
+    assert out["destination"] == {"type": "ANY"}
+    assert AclRule.render_hint("list")["kind"] == "list"
 
 
 def test_acl_rule_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_acl_rule_details")
+    from unifi_api.graphql.types.network.acl import AclRule
+
     sample = {
         "_id": "acl2",
         "name": "Allow staff",
         "enabled": False,
         "action": "ALLOW",
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_acl_rule_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "acl2"
-    assert out["data"]["action"] == "ALLOW"
-    assert out["data"]["enabled"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = AclRule.from_manager_output(sample).to_dict()
+    assert out["id"] == "acl2"
+    assert out["action"] == "ALLOW"
+    assert out["enabled"] is False
+    assert AclRule.render_hint("detail")["kind"] == "detail"
 
 
 def test_acl_mutation_ack_dispatches_for_all_mutations() -> None:

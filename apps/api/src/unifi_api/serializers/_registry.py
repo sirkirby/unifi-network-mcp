@@ -76,6 +76,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # Task 22 — network/content_filter
     "unifi_list_content_filters",
     "unifi_get_content_filter_details",
+    # Task 22 — network/acl
+    "unifi_list_acl_rules",
+    "unifi_get_acl_rule_details",
 })
 
 
