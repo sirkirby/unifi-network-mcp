@@ -63,10 +63,19 @@ async def list_firewall_zones(
     page, next_cursor = paginate(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("unifi_list_firewall_zones")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_list_firewall_zones")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        rows = [type_class.from_manager_output(i).to_dict() for i in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_list_firewall_zones")
+        rows = [serializer.serialize(i) for i in page]
+        hint = registry.render_hint_for_tool("unifi_list_firewall_zones")
     return {
-        "items": [serializer.serialize(i) for i in page],
+        "items": rows,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("unifi_list_firewall_zones"),
+        "render_hint": hint,
     }

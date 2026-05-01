@@ -61,6 +61,12 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "unifi_list_active_routes",
     "unifi_list_traffic_routes",
     "unifi_get_traffic_route_details",
+    # Task 22 — network/firewall (rules + groups + zones)
+    "unifi_list_firewall_policies",
+    "unifi_get_firewall_policy_details",
+    "unifi_list_firewall_groups",
+    "unifi_get_firewall_group_details",
+    "unifi_list_firewall_zones",
 })
 
 

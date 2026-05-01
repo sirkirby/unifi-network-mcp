@@ -44,6 +44,11 @@ from unifi_api.graphql.types.network.network import (
 from unifi_api.graphql.types.network.dns import (
     DnsRecord as NetworkDnsRecordType,
 )
+from unifi_api.graphql.types.network.firewall import (
+    FirewallGroup as NetworkFirewallGroupType,
+    FirewallRule as NetworkFirewallRuleType,
+    FirewallZone as NetworkFirewallZoneType,
+)
 from unifi_api.graphql.types.network.route import (
     ActiveRoute as NetworkActiveRouteType,
     Route as NetworkRouteType,
@@ -479,6 +484,32 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_traffic_route_details", NetworkTrafficRouteType, "detail",
+    )
+
+    # Phase 6 PR2 Task 22 — network/firewall (rules + groups + zones) migrated
+    # to Strawberry types. ``firewall/rules`` carries resource registration;
+    # groups + zones are tool-keyed only (no resource registration in the
+    # original serializer).
+    app.state.type_registry.register_type(
+        "network", "firewall/rules", NetworkFirewallRuleType,
+    )
+    app.state.type_registry.register_type(
+        "network", "firewall/rules/{id}", NetworkFirewallRuleType,
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_firewall_policies", NetworkFirewallRuleType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_firewall_policy_details", NetworkFirewallRuleType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_firewall_groups", NetworkFirewallGroupType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_firewall_group_details", NetworkFirewallGroupType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_firewall_zones", NetworkFirewallZoneType, "list",
     )
 
     app.include_router(health.router, prefix="/v1")

@@ -79,8 +79,10 @@ def test_network_serializer_shape() -> None:
 
 
 def test_firewall_rule_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("network", "firewall/rules")
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.network.firewall import FirewallRule
+
     class FakeRule:
         raw = {
             "_id": "rule1",
@@ -89,7 +91,7 @@ def test_firewall_rule_serializer_shape() -> None:
             "enabled": True,
             "predefined": False,
         }
-    out = s.serialize(FakeRule())
+    out = FirewallRule.from_manager_output(FakeRule()).to_dict()
     assert out["id"] == "rule1"
     assert out["name"] == "Block IoT"
     assert out["action"] == "BLOCK"

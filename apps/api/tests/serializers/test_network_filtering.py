@@ -19,63 +19,58 @@ def _registry():
 
 
 def test_firewall_group_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_firewall_groups")
-    sample = [
-        {
-            "_id": "fg1",
-            "name": "Trusted IPs",
-            "group_type": "address-group",
-            "group_members": ["10.0.0.1", "10.0.0.2"],
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_firewall_groups")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "fg1"
-    assert out["data"][0]["name"] == "Trusted IPs"
-    assert out["data"][0]["group_type"] == "address-group"
-    assert out["data"][0]["members"] == ["10.0.0.1", "10.0.0.2"]
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.firewall import FirewallGroup
+
+    sample = {
+        "_id": "fg1",
+        "name": "Trusted IPs",
+        "group_type": "address-group",
+        "group_members": ["10.0.0.1", "10.0.0.2"],
+    }
+    out = FirewallGroup.from_manager_output(sample).to_dict()
+    assert out["id"] == "fg1"
+    assert out["name"] == "Trusted IPs"
+    assert out["group_type"] == "address-group"
+    assert out["members"] == ["10.0.0.1", "10.0.0.2"]
+    assert FirewallGroup.render_hint("list")["kind"] == "list"
 
 
 def test_firewall_group_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_firewall_group_details")
+    from unifi_api.graphql.types.network.firewall import FirewallGroup
+
     sample = {
         "_id": "fg2",
         "name": "Web ports",
         "group_type": "port-group",
         "group_members": ["80", "443"],
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_firewall_group_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "fg2"
-    assert out["data"]["group_type"] == "port-group"
-    assert out["data"]["members"] == ["80", "443"]
-    assert out["render_hint"]["kind"] == "detail"
+    out = FirewallGroup.from_manager_output(sample).to_dict()
+    assert out["id"] == "fg2"
+    assert out["group_type"] == "port-group"
+    assert out["members"] == ["80", "443"]
+    assert FirewallGroup.render_hint("detail")["kind"] == "detail"
 
 
 # ---- Firewall zones ----
 
 
 def test_firewall_zone_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_firewall_zones")
-    sample = [
-        {
-            "_id": "z1",
-            "name": "Internal",
-            "networks": ["net1", "net2"],
-            "default_policy": "ALLOW",
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_firewall_zones")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "z1"
-    assert out["data"][0]["name"] == "Internal"
-    assert out["data"][0]["networks"] == ["net1", "net2"]
-    assert out["data"][0]["default_policy"] == "ALLOW"
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.firewall import FirewallZone
+
+    sample = {
+        "_id": "z1",
+        "name": "Internal",
+        "networks": ["net1", "net2"],
+        "default_policy": "ALLOW",
+    }
+    out = FirewallZone.from_manager_output(sample).to_dict()
+    assert out["id"] == "z1"
+    assert out["name"] == "Internal"
+    assert out["networks"] == ["net1", "net2"]
+    assert out["default_policy"] == "ALLOW"
+    assert FirewallZone.render_hint("list")["kind"] == "list"
 
 
 # ---- Firewall mutation acks ----
