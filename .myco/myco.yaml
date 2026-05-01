@@ -27,6 +27,29 @@ agent:
   provider:
     type: anthropic
   harness: claude-sdk
+  tasks:
+    skill-generate:
+      provider:
+        type: anthropic
+        model: claude-sonnet-4-6
+        reasoning_map:
+          low: claude-haiku-4-5-20251001
+          default: claude-sonnet-4-6
+          high: claude-opus-4-6
+      harness: claude-sdk
+      schedule:
+        enabled: true
+    skill-evolve:
+      provider:
+        type: anthropic
+        model: claude-sonnet-4-6
+        reasoning_map:
+          low: claude-haiku-4-5-20251001
+          default: claude-sonnet-4-6
+          high: claude-opus-4-6
+      harness: claude-sdk
+      schedule:
+        enabled: true
 backup:
   dir: ~/myco_backups/unifi-mcp
 maintenance:
