@@ -1,0 +1,11 @@
+<tr {% if r.get("level") in ("ERROR", "CRITICAL") %}class="row-error"{% elif r.get("level") == "WARNING" %}{% endif %}>
+  <td><small>{{ r.get("ts", "")[:23] }}</small></td>
+  <td>
+    {% set lvl = r.get("level", "") %}
+    {% if lvl in ("ERROR", "CRITICAL") %}<span class="status-error">{{ lvl }}</span>
+    {% elif lvl == "WARNING" %}<span class="status-warn">{{ lvl }}</span>
+    {% else %}{{ lvl }}{% endif %}
+  </td>
+  <td><code class="compact">{{ r.get("logger", "") }}</code></td>
+  <td>{{ r.get("event", "") }}</td>
+</tr>

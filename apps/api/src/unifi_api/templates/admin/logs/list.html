@@ -1,0 +1,27 @@
+{% extends "_layout.html" %}
+{% block title %}Logs — unifi-api admin{% endblock %}
+{% block content %}
+<h1>Application logs</h1>
+
+{% include "logs/_filters.html" %}
+
+<div hx-ext="sse" id="logs-live"></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Level</th>
+      <th>Logger</th>
+      <th>Event</th>
+    </tr>
+  </thead>
+  <tbody id="logs-tbody"
+         hx-get="/admin/logs/_rows"
+         hx-trigger="load, logs-filter-changed from:body"
+         hx-swap="innerHTML"
+         hx-include="#logs-filters">
+    <tr><td colspan="4"><em>Loading…</em></td></tr>
+  </tbody>
+</table>
+{% endblock %}
