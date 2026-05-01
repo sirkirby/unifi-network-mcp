@@ -96,8 +96,10 @@ def test_firewall_rule_serializer_shape() -> None:
 
 
 def test_wlan_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("network", "wlans")
+    """Phase 6 PR2 Task 21 — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.network.wlan import Wlan
+
     class FakeWlan:
         raw = {
             "_id": "wlan1",
@@ -105,7 +107,8 @@ def test_wlan_serializer_shape() -> None:
             "enabled": True,
             "security": "wpapsk",
         }
-    out = s.serialize(FakeWlan())
+    out = Wlan.from_manager_output(FakeWlan()).to_dict()
     assert out["id"] == "wlan1"
     assert out["name"] == "MyWiFi"
     assert out["security"] == "wpapsk"
+    assert out["enabled"] is True
