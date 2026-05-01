@@ -280,40 +280,37 @@ def test_acl_mutation_ack_dispatches_for_all_mutations() -> None:
 
 
 def test_oon_policy_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_oon_policies")
-    sample = [
-        {
-            "_id": "oon1",
-            "name": "Kids weekday curfew",
-            "enabled": True,
-            "targets": [{"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}],
-            "restriction_level": "STRICT",
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_oon_policies")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "oon1"
-    assert out["data"][0]["name"] == "Kids weekday curfew"
-    assert out["data"][0]["enabled"] is True
-    assert out["data"][0]["applies_to"] == [{"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}]
-    assert out["data"][0]["restriction_level"] == "STRICT"
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.oon import OonPolicy
+
+    sample = {
+        "_id": "oon1",
+        "name": "Kids weekday curfew",
+        "enabled": True,
+        "targets": [{"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}],
+        "restriction_level": "STRICT",
+    }
+    out = OonPolicy.from_manager_output(sample).to_dict()
+    assert out["id"] == "oon1"
+    assert out["name"] == "Kids weekday curfew"
+    assert out["enabled"] is True
+    assert out["applies_to"] == [{"type": "MAC", "value": "aa:bb:cc:dd:ee:ff"}]
+    assert out["restriction_level"] == "STRICT"
+    assert OonPolicy.render_hint("list")["kind"] == "list"
 
 
 def test_oon_policy_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_oon_policy_details")
+    from unifi_api.graphql.types.network.oon import OonPolicy
+
     sample = {
         "_id": "oon2",
         "name": "Guest cap",
         "enabled": False,
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_oon_policy_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "oon2"
-    assert out["data"]["enabled"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = OonPolicy.from_manager_output(sample).to_dict()
+    assert out["id"] == "oon2"
+    assert out["enabled"] is False
+    assert OonPolicy.render_hint("detail")["kind"] == "detail"
 
 
 def test_oon_mutation_ack_dispatches_for_all_mutations() -> None:

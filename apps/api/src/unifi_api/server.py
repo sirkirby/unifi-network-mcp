@@ -41,6 +41,9 @@ from unifi_api.graphql.types.network.device import (
 from unifi_api.graphql.types.network.network import (
     Network as NetworkNetworkType,
 )
+from unifi_api.graphql.types.network.oon import (
+    OonPolicy as NetworkOonPolicyType,
+)
 from unifi_api.graphql.types.network.qos import (
     QosRule as NetworkQosRuleType,
 )
@@ -562,6 +565,15 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_acl_rule_details", NetworkAclRuleType, "detail",
+    )
+
+    # Phase 6 PR2 Task 22 — network/oon migrated to Strawberry types.
+    # Tool-keyed only (no resource registration in the original serializer).
+    app.state.type_registry.register_tool_type(
+        "unifi_list_oon_policies", NetworkOonPolicyType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_oon_policy_details", NetworkOonPolicyType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")
