@@ -82,6 +82,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # Task 22 — network/oon
     "unifi_list_oon_policies",
     "unifi_get_oon_policy_details",
+    # Task 22 — network/port_forwards
+    "unifi_list_port_forwards",
+    "unifi_get_port_forward",
 })
 
 

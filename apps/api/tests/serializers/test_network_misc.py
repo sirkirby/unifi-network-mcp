@@ -21,36 +21,34 @@ def _registry():
 
 
 def test_port_forward_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_port_forwards")
-    sample = [
-        {
-            "_id": "pf1",
-            "name": "Web",
-            "enabled": True,
-            "fwd_protocol": "tcp",
-            "dst_port": "443",
-            "fwd_port": "443",
-            "src": "any",
-            "log": False,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_port_forwards")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "pf1"
-    assert out["data"][0]["name"] == "Web"
-    assert out["data"][0]["enabled"] is True
-    assert out["data"][0]["fwd_protocol"] == "tcp"
-    assert out["data"][0]["dst_port"] == "443"
-    assert out["data"][0]["fwd_port"] == "443"
-    assert out["data"][0]["src"] == "any"
-    assert out["data"][0]["log"] is False
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 22 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.port_forward import PortForward
+
+    sample = {
+        "_id": "pf1",
+        "name": "Web",
+        "enabled": True,
+        "fwd_protocol": "tcp",
+        "dst_port": "443",
+        "fwd_port": "443",
+        "src": "any",
+        "log": False,
+    }
+    out = PortForward.from_manager_output(sample).to_dict()
+    assert out["id"] == "pf1"
+    assert out["name"] == "Web"
+    assert out["enabled"] is True
+    assert out["fwd_protocol"] == "tcp"
+    assert out["dst_port"] == "443"
+    assert out["fwd_port"] == "443"
+    assert out["src"] == "any"
+    assert out["log"] is False
+    assert PortForward.render_hint("list")["kind"] == "list"
 
 
 def test_port_forward_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_port_forward")
+    from unifi_api.graphql.types.network.port_forward import PortForward
+
     sample = {
         "_id": "pf2",
         "name": "SSH",
@@ -59,12 +57,11 @@ def test_port_forward_detail_serializer_shape() -> None:
         "dst_port": "22",
         "fwd_port": "22",
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_port_forward")
-    assert out["success"] is True
-    assert out["data"]["id"] == "pf2"
-    assert out["data"]["name"] == "SSH"
-    assert out["data"]["enabled"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = PortForward.from_manager_output(sample).to_dict()
+    assert out["id"] == "pf2"
+    assert out["name"] == "SSH"
+    assert out["enabled"] is False
+    assert PortForward.render_hint("detail")["kind"] == "detail"
 
 
 def test_port_forward_mutation_ack_dispatches_for_all_mutations() -> None:
