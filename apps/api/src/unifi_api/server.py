@@ -44,6 +44,11 @@ from unifi_api.graphql.types.network.network import (
 from unifi_api.graphql.types.network.dns import (
     DnsRecord as NetworkDnsRecordType,
 )
+from unifi_api.graphql.types.network.route import (
+    ActiveRoute as NetworkActiveRouteType,
+    Route as NetworkRouteType,
+    TrafficRoute as NetworkTrafficRouteType,
+)
 from unifi_api.graphql.types.network.vpn import (
     VpnClient as NetworkVpnClientType,
     VpnServer as NetworkVpnServerType,
@@ -454,6 +459,26 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_dns_record_details", NetworkDnsRecordType, "detail",
+    )
+
+    # Phase 6 PR2 Task 21 — network/routes migrated to Strawberry types.
+    # Routing tools are tool-keyed only (no resource registration in the
+    # original serializer); register via register_tool_type to avoid surfacing
+    # bogus paths in /v1/catalog/resources.
+    app.state.type_registry.register_tool_type(
+        "unifi_list_routes", NetworkRouteType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_route_details", NetworkRouteType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_active_routes", NetworkActiveRouteType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_list_traffic_routes", NetworkTrafficRouteType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_traffic_route_details", NetworkTrafficRouteType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

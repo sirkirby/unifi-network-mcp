@@ -55,6 +55,12 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # Task 21 — network/dns
     "unifi_list_dns_records",
     "unifi_get_dns_record_details",
+    # Task 21 — network/routes
+    "unifi_list_routes",
+    "unifi_get_route_details",
+    "unifi_list_active_routes",
+    "unifi_list_traffic_routes",
+    "unifi_get_traffic_route_details",
 })
 
 

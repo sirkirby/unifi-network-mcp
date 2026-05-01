@@ -146,32 +146,30 @@ def test_dns_record_detail_serializer_shape() -> None:
 
 
 def test_route_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_routes")
-    sample = [
-        {
-            "_id": "r1",
-            "name": "Office subnet",
-            "static-route_network": "10.0.0.0/24",
-            "static-route_nexthop": "192.168.1.1",
-            "static-route_distance": 1,
-            "enabled": True,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_routes")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "r1"
-    assert out["data"][0]["name"] == "Office subnet"
-    assert out["data"][0]["target_subnet"] == "10.0.0.0/24"
-    assert out["data"][0]["gateway"] == "192.168.1.1"
-    assert out["data"][0]["distance"] == 1
-    assert out["data"][0]["enabled"] is True
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 21 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.route import Route
+
+    sample = {
+        "_id": "r1",
+        "name": "Office subnet",
+        "static-route_network": "10.0.0.0/24",
+        "static-route_nexthop": "192.168.1.1",
+        "static-route_distance": 1,
+        "enabled": True,
+    }
+    out = Route.from_manager_output(sample).to_dict()
+    assert out["id"] == "r1"
+    assert out["name"] == "Office subnet"
+    assert out["target_subnet"] == "10.0.0.0/24"
+    assert out["gateway"] == "192.168.1.1"
+    assert out["distance"] == 1
+    assert out["enabled"] is True
+    assert Route.render_hint("list")["kind"] == "list"
 
 
 def test_route_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_route_details")
+    from unifi_api.graphql.types.network.route import Route
+
     sample = {
         "_id": "r2",
         "name": "Lab",
@@ -180,79 +178,71 @@ def test_route_detail_serializer_shape() -> None:
         "static-route_distance": 5,
         "enabled": False,
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_route_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "r2"
-    assert out["data"]["target_subnet"] == "172.16.0.0/16"
-    assert out["data"]["gateway"] == "192.168.99.1"
-    assert out["data"]["distance"] == 5
-    assert out["render_hint"]["kind"] == "detail"
+    out = Route.from_manager_output(sample).to_dict()
+    assert out["id"] == "r2"
+    assert out["target_subnet"] == "172.16.0.0/16"
+    assert out["gateway"] == "192.168.99.1"
+    assert out["distance"] == 5
+    assert Route.render_hint("detail")["kind"] == "detail"
 
 
 # ---- Active routes ----
 
 
 def test_active_route_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_active_routes")
-    sample = [
-        {
-            "nh": [{"intf": "eth0", "via": "192.168.1.1"}],
-            "pfx": "0.0.0.0/0",
-            "metric": 0,
-            "t": "S",
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_active_routes")
-    assert out["success"] is True
-    assert out["data"][0]["target_subnet"] == "0.0.0.0/0"
+    from unifi_api.graphql.types.network.route import ActiveRoute
+
+    sample = {
+        "nh": [{"intf": "eth0", "via": "192.168.1.1"}],
+        "pfx": "0.0.0.0/0",
+        "metric": 0,
+        "t": "S",
+    }
+    out = ActiveRoute.from_manager_output(sample).to_dict()
+    assert out["target_subnet"] == "0.0.0.0/0"
     # Either gateway or interface should be derivable from nh; both fields exist
-    assert "gateway" in out["data"][0]
-    assert "interface" in out["data"][0]
-    assert out["render_hint"]["kind"] == "list"
+    assert "gateway" in out
+    assert "interface" in out
+    assert ActiveRoute.render_hint("list")["kind"] == "list"
 
 
 # ---- Traffic routes ----
 
 
 def test_traffic_route_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_traffic_routes")
-    sample = [
-        {
-            "_id": "tr1",
-            "description": "VPN-routed traffic",
-            "enabled": True,
-            "matching_target": "DOMAIN",
-            "domains": [{"domain": "example.com"}],
-            "target_devices": [{"client_mac": "aa:bb:cc:dd:ee:ff"}],
-            "next_hop": "vpn-iface",
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_traffic_routes")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "tr1"
-    assert out["data"][0]["name"] == "VPN-routed traffic"
-    assert out["data"][0]["enabled"] is True
-    assert out["data"][0]["next_hop"] == "vpn-iface"
-    assert out["render_hint"]["kind"] == "list"
+    from unifi_api.graphql.types.network.route import TrafficRoute
+
+    sample = {
+        "_id": "tr1",
+        "description": "VPN-routed traffic",
+        "enabled": True,
+        "matching_target": "DOMAIN",
+        "domains": [{"domain": "example.com"}],
+        "target_devices": [{"client_mac": "aa:bb:cc:dd:ee:ff"}],
+        "next_hop": "vpn-iface",
+    }
+    out = TrafficRoute.from_manager_output(sample).to_dict()
+    assert out["id"] == "tr1"
+    assert out["name"] == "VPN-routed traffic"
+    assert out["enabled"] is True
+    assert out["next_hop"] == "vpn-iface"
+    assert TrafficRoute.render_hint("list")["kind"] == "list"
 
 
 def test_traffic_route_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_traffic_route_details")
+    from unifi_api.graphql.types.network.route import TrafficRoute
+
     sample = {
         "_id": "tr2",
         "description": "Block region",
         "enabled": False,
         "matching_target": "REGION",
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_traffic_route_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "tr2"
-    assert out["data"]["name"] == "Block region"
-    assert out["data"]["enabled"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = TrafficRoute.from_manager_output(sample).to_dict()
+    assert out["id"] == "tr2"
+    assert out["name"] == "Block region"
+    assert out["enabled"] is False
+    assert TrafficRoute.render_hint("detail")["kind"] == "detail"
 
 
 # ---- AP groups ----
