@@ -6,6 +6,28 @@
 ## Schema (SDL)
 
 ```graphql
+"""A wireless channel allowed by the regulatory domain."""
+type AvailableChannel {
+  channel: Int
+  frequencyMhz: Int
+  widthMhz: Int
+  allowed: Boolean!
+}
+
+"""A client currently blocked on the UniFi Network controller."""
+type BlockedClient {
+  mac: ID
+  hostname: String
+  lastSeen: String
+  blocked: Boolean!
+}
+
+"""Paginated page of blocked clients."""
+type BlockedClientPage {
+  items: [BlockedClient!]!
+  nextCursor: String
+}
+
 """A client device on the UniFi Network controller."""
 type Client {
   mac: ID
@@ -18,6 +40,15 @@ type Client {
   firstSeen: String
   note: String
   usergroupId: String
+}
+
+"""Result of a by-IP client lookup — online presence + last seen."""
+type ClientLookup {
+  mac: ID
+  ip: String
+  hostname: String
+  isOnline: Boolean!
+  lastSeen: String
 }
 
 """Paginated page of clients."""
@@ -45,6 +76,14 @@ type DevicePage {
   nextCursor: String
 }
 
+"""Wrapper dict containing the radio table for a device."""
+type DeviceRadio {
+  mac: ID
+  name: String
+  model: String
+  radios: [RadioEntry!]!
+}
+
 """Service health snapshot — smoke field for the GraphQL endpoint."""
 type HealthSnapshot {
   ok: Boolean!
@@ -57,6 +96,38 @@ The `JSON` scalar type represents JSON values as specified by [ECMA-404](https:/
 """
 scalar JSON @specifiedBy(url: "https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf")
 
+"""A known rogue AP (allowlisted by the operator)."""
+type KnownRogueAp {
+  bssid: ID
+  ssid: String
+  channel: Int
+  signalDbm: Int
+  lastSeen: Int
+  isKnown: Boolean!
+}
+
+"""Paginated page of known (allowlisted) rogue APs."""
+type KnownRogueApPage {
+  items: [KnownRogueAp!]!
+  nextCursor: String
+}
+
+"""Wrapper dict containing LLDP neighbors for a switch."""
+type LldpNeighbors {
+  name: String
+  model: String
+  lldpTable: [LldpRow!]!
+}
+
+"""A single LLDP neighbor row reported by a switch."""
+type LldpRow {
+  localPortIdx: Int
+  chassisId: String
+  portId: String
+  systemName: String
+  capabilities: [String!]!
+}
+
 """A UniFi LAN/VLAN network configuration."""
 type Network {
   id: ID
@@ -65,6 +136,17 @@ type Network {
   enabled: Boolean!
   vlan: Int
   subnet: String
+}
+
+"""A network-health subsystem entry."""
+type NetworkHealth {
+  subsystem: String
+  status: String
+  numUser: Int
+  numGuest: Int
+  numIot: Int
+  rxBytes: Int
+  txBytes: Int
 }
 
 """Paginated page of network configurations."""
@@ -78,13 +160,54 @@ type NetworkQuery {
   """List clients on the given controller/site (paginated)."""
   clients(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): ClientPage!
 
+  """Look up a single client by MAC address."""
+  client(controller: ID!, mac: ID!, site: String! = "default"): Client
+
+  """List clients currently blocked from the network (paginated)."""
+  blockedClients(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): BlockedClientPage!
+
+  """Look up a client by IP address (online-presence check)."""
+  clientByIp(controller: ID!, ip: String!, site: String! = "default"): ClientLookup
+
   """List devices on the given controller/site (paginated)."""
   devices(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): DevicePage!
+
+  """Look up a single device by MAC address."""
+  device(controller: ID!, mac: ID!, site: String! = "default"): Device
+
+  """Get the radio configuration for a UniFi access point."""
+  deviceRadio(controller: ID!, mac: ID!, site: String! = "default"): DeviceRadio
+
+  """Get LLDP neighbors reported by a switch."""
+  lldpNeighbors(controller: ID!, deviceMac: ID!, site: String! = "default"): LldpNeighbors
+
+  """List rogue (unknown) APs detected within a window (paginated)."""
+  rogueAps(controller: ID!, site: String! = "default", withinHours: Int! = 24, limit: Int! = 50, cursor: String = null): RogueApPage!
+
+  """List known (allowlisted) rogue APs (paginated)."""
+  knownRogueAps(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): KnownRogueApPage!
+
+  """List RF-scan results for a specific access point."""
+  rfScanResults(controller: ID!, apMac: ID!, site: String! = "default"): [RfScanResult!]!
+
+  """List wireless channels allowed by the regulatory domain."""
+  availableChannels(controller: ID!, site: String! = "default"): [AvailableChannel!]!
+
+  """Get the gateway speedtest status (idle/running + last results)."""
+  speedtestStatus(controller: ID!, gatewayMac: ID!, site: String! = "default"): SpeedtestStatus
 
   """
   List configured LAN/VLAN networks on the given controller/site (paginated).
   """
   networks(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): NetworkPage!
+
+  """
+  Look up a single LAN/VLAN network by id. (Named ``networkDetail`` because ``network`` is reserved for the namespace.)
+  """
+  networkDetail(controller: ID!, id: ID!, site: String! = "default"): Network
+
+  """Get the controller's network-health subsystems list."""
+  networkHealth(controller: ID!, site: String! = "default"): [NetworkHealth!]!
 }
 
 type Query {
@@ -93,5 +216,52 @@ type Query {
 
   """Read-only access to UniFi Network resources."""
   network: NetworkQuery!
+}
+
+"""Radio configuration entry on a UniFi access point."""
+type RadioEntry {
+  name: String
+  radio: String
+  channel: Int
+  ht: Int
+  txPower: Int
+  txPowerMode: String
+  currentChannel: Int
+  currentTxPower: Int
+  numSta: Int
+}
+
+"""A single RF-scan result row reported by an AP."""
+type RfScanResult {
+  bssid: ID
+  ssid: String
+  channel: Int
+  signalDbm: Int
+  capturedAt: Int
+}
+
+"""A rogue (unknown) AP detected by the controller."""
+type RogueAp {
+  bssid: ID
+  ssid: String
+  channel: Int
+  signalDbm: Int
+  lastSeen: Int
+  isKnown: Boolean!
+}
+
+"""Paginated page of detected rogue APs."""
+type RogueApPage {
+  items: [RogueAp!]!
+  nextCursor: String
+}
+
+"""Speedtest status reported by a UniFi gateway."""
+type SpeedtestStatus {
+  status: String
+  downloadMbps: Float
+  uploadMbps: Float
+  latencyMs: Int
+  lastRun: Int
 }
 ```
