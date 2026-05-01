@@ -8,8 +8,9 @@ Resolvers reaching the same snapshot share one fetch.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, TYPE_CHECKING
+
+from strawberry.fastapi import BaseContext
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -50,13 +51,27 @@ class RequestCache:
             self._inflight.pop(key, None)
 
 
-@dataclass
-class GraphQLContext:
-    """Shape attached to Strawberry's Info.context for every resolver call."""
+class GraphQLContext(BaseContext):
+    """Shape attached to Strawberry's Info.context for every resolver call.
 
-    cache: RequestCache = field(default_factory=RequestCache)
-    sessionmaker: "async_sessionmaker[AsyncSession] | None" = None
-    manager_factory: "ManagerFactory | None" = None
-    api_key_id: str | None = None
-    api_key_scopes: str | None = None
-    api_key_prefix: str | None = None
+    Inherits Strawberry's `BaseContext` so the FastAPI router accepts this as
+    a non-dict custom context (Strawberry rejects arbitrary objects otherwise).
+    """
+
+    def __init__(
+        self,
+        *,
+        cache: RequestCache | None = None,
+        sessionmaker: "async_sessionmaker[AsyncSession] | None" = None,
+        manager_factory: "ManagerFactory | None" = None,
+        api_key_id: str | None = None,
+        api_key_scopes: str | None = None,
+        api_key_prefix: str | None = None,
+    ) -> None:
+        super().__init__()
+        self.cache = cache if cache is not None else RequestCache()
+        self.sessionmaker = sessionmaker
+        self.manager_factory = manager_factory
+        self.api_key_id = api_key_id
+        self.api_key_scopes = api_key_scopes
+        self.api_key_prefix = api_key_prefix

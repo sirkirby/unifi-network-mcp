@@ -25,9 +25,11 @@ def _classify(error: GraphQLError) -> str:
         if msg.startswith("FORBIDDEN:"):
             return "FORBIDDEN"
         return "FORBIDDEN"
-    # Strawberry permission denials raise a GraphQLError with no original_error
-    # but the message matches the permission class's `message` attribute.
-    if orig is None and "scope" in error.message.lower():
+    # Strawberry permission denials surface as either a bare GraphQLError with
+    # original_error=None, or a StrawberryGraphQLError wrapped as the original.
+    # In both cases the message mirrors the permission class's `message` attr,
+    # so we classify as FORBIDDEN whenever the message mentions "scope".
+    if "scope" in error.message.lower():
         return "FORBIDDEN"
     if orig is None:
         return "INTERNAL"

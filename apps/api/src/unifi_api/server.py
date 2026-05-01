@@ -12,10 +12,16 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
+from strawberry.fastapi import GraphQLRouter
+from strawberry.http import GraphQLHTTPResponse
+from strawberry.types import ExecutionResult
 
 from unifi_api._version import __version__ as _api_version
 from unifi_api.auth.cache import ArgonVerifyCache
 from unifi_api.config import ApiConfig
+from unifi_api.graphql.context import GraphQLContext, RequestCache
+from unifi_api.graphql.errors import format_graphql_error
+from unifi_api.graphql.schema import schema as graphql_schema
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -107,6 +113,26 @@ from unifi_api.services.streams import SubscriberPool
 
 
 _streams_log = logging.getLogger("unifi-api.streams")
+
+
+class _UnifiGraphQLRouter(GraphQLRouter):
+    """GraphQLRouter that formats every error through `format_graphql_error`.
+
+    Strawberry 0.315.3's `GraphQLRouter.__init__` does not accept an
+    `error_formatter` kwarg, so we override `process_result` instead. The
+    schema's own `process_errors` still runs (logging the full GraphQLError);
+    we just rewrite the wire-level shape here.
+    """
+
+    async def process_result(
+        self, request: Request, result: ExecutionResult
+    ) -> GraphQLHTTPResponse:
+        data: GraphQLHTTPResponse = {"data": result.data}
+        if result.errors:
+            data["errors"] = [format_graphql_error(err) for err in result.errors]
+        if result.extensions:
+            data["extensions"] = result.extensions
+        return data
 
 
 def create_app(config: ApiConfig) -> FastAPI:
@@ -368,5 +394,45 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.include_router(admin_audit_routes.router)
     app.include_router(admin_logs_routes.router)
     app.include_router(admin_settings_routes.router)
+
+    async def _graphql_context(request: Request) -> GraphQLContext:
+        """Build per-request GraphQLContext.
+
+        Auth is enforced by Strawberry permission classes (IsRead/IsAdmin) on
+        each field. The context here just exposes the api_key info if a valid
+        Bearer was supplied; permission classes deny when scopes are empty.
+
+        The REST auth path raises HTTPException(401) on failure — we catch
+        that here so GraphQL stays HTTP 200 (with errors[] populated by the
+        permission denial path), matching GraphQL conventions.
+        """
+        api_key_scopes = ""
+        api_key_id: str | None = None
+        api_key_prefix: str | None = None
+        if request.headers.get("authorization", "").lower().startswith("bearer "):
+            from unifi_api.auth.middleware import _authenticate
+            try:
+                row = await _authenticate(request)
+                api_key_id = row.id
+                api_key_scopes = row.scopes
+                api_key_prefix = row.prefix
+            except Exception:
+                # Auth failed — leave scopes empty so permission classes deny.
+                pass
+        return GraphQLContext(
+            cache=RequestCache(),
+            sessionmaker=app.state.sessionmaker,
+            manager_factory=app.state.manager_factory,
+            api_key_id=api_key_id,
+            api_key_scopes=api_key_scopes,
+            api_key_prefix=api_key_prefix,
+        )
+
+    graphql_app = _UnifiGraphQLRouter(
+        graphql_schema,
+        context_getter=_graphql_context,
+        graphql_ide="graphiql",
+    )
+    app.include_router(graphql_app, prefix="/v1/graphql")
 
     return app
