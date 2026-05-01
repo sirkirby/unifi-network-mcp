@@ -1,8 +1,11 @@
 """Admin UI routes for managing API keys (list / create / revoke).
 
-The page itself, the create form, and the revoke action are admin-scoped.
-Plaintext keys are emitted exactly once (in the create response) and never
-re-shown; the listing returns prefixes only.
+The page route is unauthenticated and returns the HTMX shell; the row
+listing fragment, create form, and revoke action are admin-scoped. This
+mirrors the dashboard pattern — vanilla browser navigation never carries
+the localStorage Bearer, so the shell loads first and HTMX fetches data
+with the Bearer attached by admin.js. Plaintext keys are emitted exactly
+once (in the create response) and never re-shown; listings show prefixes.
 """
 
 from __future__ import annotations
@@ -30,14 +33,20 @@ async def _list_keys(sm) -> list[ApiKey]:
         )
 
 
+@router.get("/admin/keys", include_in_schema=False)
+async def keys_page(request: Request):
+    """Unauthenticated HTMX shell — the table body fetches its rows separately."""
+    return render(request, "keys/list.html")
+
+
 @router.get(
-    "/admin/keys",
+    "/admin/keys/_table",
     include_in_schema=False,
     dependencies=[Depends(require_scope(Scope.ADMIN))],
 )
-async def keys_page(request: Request):
+async def keys_table(request: Request):
     rows = await _list_keys(request.app.state.sessionmaker)
-    return render(request, "keys/list.html", {"keys": rows})
+    return render(request, "keys/_table.html", {"keys": rows})
 
 
 @router.post(
@@ -50,7 +59,12 @@ async def keys_create(
     name: str = Form(...),
     scopes: str = Form("read"),
 ):
-    """Generate a new API key and return the modal fragment containing the plaintext."""
+    """Generate a new API key and return the modal fragment containing the plaintext.
+
+    The HX-Trigger header fires `keys-changed` on the body, which the table-body
+    listens for to refetch its rows. This avoids the bare-tbody OOB swap parser
+    quirk where browsers strip <tr> elements outside a <table>.
+    """
     sm = request.app.state.sessionmaker
     material = generate_key(env=ApiKeyEnv.LIVE)
     async with sm() as session:
@@ -65,17 +79,13 @@ async def keys_create(
             )
         )
         await session.commit()
-    rows = await _list_keys(sm)
-    return render(
+    response = render(
         request,
         "keys/_created_modal.html",
-        {
-            "plaintext": material.plaintext,
-            "name": name,
-            "scopes": scopes,
-            "keys": rows,  # for an updated table to refresh-swap into via hx-swap-oob
-        },
+        {"plaintext": material.plaintext, "name": name, "scopes": scopes},
     )
+    response.headers["HX-Trigger"] = "keys-changed"
+    return response
 
 
 @router.post(
@@ -89,10 +99,12 @@ async def keys_revoke(request: Request, key_id: str):
         row = await session.get(ApiKey, key_id)
         if row is None:
             raise HTTPException(status_code=404, detail="key not found")
-        if row.revoked_at is not None:
-            # idempotent: already revoked, return empty so HTMX still removes the row
-            return Response(status_code=200, content="", headers={"Cache-Control": "no-store"})
-        row.revoked_at = datetime.now(timezone.utc)
-        await session.commit()
-    # Empty body — HTMX hx-swap="outerHTML" replaces the row with nothing.
-    return Response(status_code=200, content="", headers={"Cache-Control": "no-store"})
+        if row.revoked_at is None:
+            row.revoked_at = datetime.now(timezone.utc)
+            await session.commit()
+    # Empty body + HX-Trigger fires the table-body refetch (revoked rows show "revoked" status).
+    return Response(
+        status_code=200,
+        content="",
+        headers={"Cache-Control": "no-store", "HX-Trigger": "keys-changed"},
+    )

@@ -38,10 +38,11 @@
       <th></th>
     </tr>
   </thead>
-  <tbody id="keys-tbody">
-    {% for k in keys %}
-      {% include "keys/_row.html" %}
-    {% endfor %}
+  <tbody id="keys-tbody"
+         hx-get="/admin/keys/_table"
+         hx-trigger="load, keys-changed from:body"
+         hx-swap="innerHTML">
+    <tr><td colspan="6"><em>Loading…</em></td></tr>
   </tbody>
 </table>
 {% endblock %}

@@ -10,7 +10,7 @@
     {% else %}
     hx-post="/admin/controllers/create"
     {% endif %}
-    hx-target="body" hx-swap="outerHTML"
+    hx-target="#form-slot" hx-swap="innerHTML"
   >
     <label>Name <input type="text" name="name" value="{{ c.name if is_edit else '' }}" required /></label>
     <label>Base URL <input type="url" name="base_url" value="{{ c.base_url if is_edit else '' }}" placeholder="https://10.0.0.1:443" required /></label>
@@ -50,6 +50,6 @@
 
     <button type="submit">{% if is_edit %}Save{% else %}Create{% endif %}</button>
     <button type="button" class="secondary outline"
-      hx-get="/admin/controllers" hx-target="body" hx-swap="outerHTML">Cancel</button>
+      onclick="this.closest('article').remove();">Cancel</button>
   </form>
 </article>

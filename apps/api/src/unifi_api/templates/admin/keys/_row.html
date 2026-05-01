@@ -16,8 +16,7 @@
       class="secondary outline"
       hx-post="/admin/keys/{{ k.id }}/revoke"
       hx-confirm="Revoke key '{{ k.name }}'? This is irreversible."
-      hx-target="#key-row-{{ k.id }}"
-      hx-swap="outerHTML"
+      hx-swap="none"
     >Revoke</button>
     {% endif %}
   </td>

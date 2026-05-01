@@ -1,8 +1,12 @@
 """Admin UI routes for managing controllers (list / add / edit / delete + probe).
 
-All routes are admin-scoped. The credentials_blob column is NEVER rendered;
-edit forms expose only is_set booleans per credential field. Empty form
-fields on edit translate to None on the underlying update_controller call,
+The page route is unauthenticated and returns the HTMX shell; all data
+fragments and write actions are admin-scoped. This mirrors the dashboard
+pattern — vanilla browser navigation never carries the localStorage Bearer,
+so the shell loads first and HTMX fetches data with the Bearer attached
+by admin.js. The credentials_blob column is NEVER rendered; edit forms
+expose only is_set booleans per credential field. Empty form fields on
+edit translate to None on the underlying update_controller call,
 preserving existing credentials.
 """
 
@@ -80,18 +84,24 @@ def _coerce_checkbox(value: str) -> bool:
     return (value or "").strip().lower() in ("on", "true", "1", "yes")
 
 
+@router.get("/admin/controllers", include_in_schema=False)
+async def controllers_page(request: Request):
+    """Unauthenticated HTMX shell — the table body fetches its rows separately."""
+    return render(request, "controllers/list.html")
+
+
 @router.get(
-    "/admin/controllers",
+    "/admin/controllers/_table",
     include_in_schema=False,
     dependencies=[Depends(require_scope(Scope.ADMIN))],
 )
-async def controllers_page(request: Request):
+async def controllers_table(request: Request):
     sm = request.app.state.sessionmaker
     async with sm() as session:
         rows = await list_controllers(session)
     return render(
         request,
-        "controllers/list.html",
+        "controllers/_table.html",
         {"controllers": [_row_view(r) for r in rows]},
     )
 
@@ -136,11 +146,10 @@ async def controllers_create(
     async with sm() as session:
         await create_controller(session, cipher, payload)
         await session.commit()
-        rows = await list_controllers(session)
-    return render(
-        request,
-        "controllers/list.html",
-        {"controllers": [_row_view(r) for r in rows]},
+    # Empty body — the form-slot is cleared; HX-Trigger refetches the table-body.
+    return Response(
+        status_code=200, content="",
+        headers={"Cache-Control": "no-store", "HX-Trigger": "controllers-changed"},
     )
 
 
@@ -207,11 +216,9 @@ async def controllers_update(
             raise HTTPException(status_code=404, detail="controller not found")
         await request.app.state.manager_factory.invalidate_controller(cid)
         request.app.state.capability_cache.invalidate(cid)
-        rows = await list_controllers(session)
-    return render(
-        request,
-        "controllers/list.html",
-        {"controllers": [_row_view(r) for r in rows]},
+    return Response(
+        status_code=200, content="",
+        headers={"Cache-Control": "no-store", "HX-Trigger": "controllers-changed"},
     )
 
 
@@ -230,7 +237,10 @@ async def controllers_delete(request: Request, cid: str):
             raise HTTPException(status_code=404, detail="controller not found")
     await request.app.state.manager_factory.invalidate_controller(cid)
     request.app.state.capability_cache.invalidate(cid)
-    return Response(status_code=200, content="", headers={"Cache-Control": "no-store"})
+    return Response(
+        status_code=200, content="",
+        headers={"Cache-Control": "no-store", "HX-Trigger": "controllers-changed"},
+    )
 
 
 @router.post(

@@ -67,19 +67,32 @@ async def _seed_controller(
 
 
 @pytest.mark.asyncio
-async def test_controllers_page_lists_rows(tmp_path: Path, monkeypatch) -> None:
+async def test_controllers_page_shell_renders_unauth_and_table_fragment_lists_rows(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """Page route is unauth (vanilla nav can't carry the localStorage Bearer);
+    the table-body fragment is admin-scoped and contains the actual rows.
+    Decrypted credentials must never appear anywhere in the rendered HTML."""
     monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
     app, key = await _bootstrap_app_with_admin_key(tmp_path)
-    headers = {"Authorization": f"Bearer {key}"}
-    await _seed_controller(app, name="home-net", products="network,protect")
+    await _seed_controller(app, name="home-net", products="network,protect", password="hunter2")
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        r = await c.get("/admin/controllers", headers=headers)
+        # 1. Page shell: anonymous, returns 200 + the HTMX-driven shell
+        r = await c.get("/admin/controllers")
+        assert r.status_code == 200
+        assert "Controllers" in r.text
+        assert 'hx-get="/admin/controllers/_table"' in r.text
+        assert "home-net" not in r.text  # rows aren't inlined — they come from the fragment
+        assert r.headers.get("cache-control") == "no-store"
+        # 2. Unauth fragment fetch: 401
+        r = await c.get("/admin/controllers/_table")
+        assert r.status_code == 401
+        # 3. Admin-Bearer fragment fetch: rows present, no plaintext creds
+        r = await c.get("/admin/controllers/_table", headers={"Authorization": f"Bearer {key}"})
         assert r.status_code == 200
         assert "home-net" in r.text
         assert "https://10.0.0.1:443" in r.text
-        # Render should NEVER expose decrypted credentials.
         assert "hunter2" not in r.text
-        assert r.headers.get("cache-control") == "no-store"
 
 
 @pytest.mark.asyncio
@@ -95,7 +108,9 @@ async def test_controllers_create_round_trips(tmp_path: Path, monkeypatch) -> No
             "verify_tls": "on", "is_default": "on",
         })
         assert r.status_code == 200
-        assert "added-via-ui" in r.text
+        # Empty body + HX-Trigger fires the table-body refetch on the client.
+        assert r.text == ""
+        assert r.headers.get("hx-trigger") == "controllers-changed"
     async with app.state.sessionmaker() as session:
         rows = (await session.execute(select(Controller))).scalars().all()
         match = [rr for rr in rows if rr.name == "added-via-ui"]

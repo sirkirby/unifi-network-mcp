@@ -9,10 +9,5 @@
     Copy to clipboard
   </button>
 </article>
-
-{# Out-of-band swap: refresh the table body so the new key appears immediately. #}
-<tbody id="keys-tbody" hx-swap-oob="innerHTML">
-  {% for k in keys %}
-    {% include "keys/_row.html" %}
-  {% endfor %}
-</tbody>
+{# The HX-Trigger response header (set on this endpoint) fires `keys-changed`,
+   which the table-body listens for via hx-trigger="keys-changed from:body". #}

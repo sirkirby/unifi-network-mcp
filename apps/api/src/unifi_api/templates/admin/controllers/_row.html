@@ -14,7 +14,7 @@
     <button class="contrast"
       hx-post="/admin/controllers/{{ c.id }}/delete"
       hx-confirm="Delete controller '{{ c.name }}'?"
-      hx-target="#ctrl-row-{{ c.id }}" hx-swap="outerHTML">Delete</button>
+      hx-swap="none">Delete</button>
     <div id="probe-slot-{{ c.id }}"></div>
   </td>
 </tr>

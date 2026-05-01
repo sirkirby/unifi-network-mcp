@@ -41,16 +41,28 @@ async def _bootstrap_app_with_admin_key(tmp_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_keys_page_lists_existing_rows(tmp_path: Path, monkeypatch) -> None:
+async def test_keys_page_shell_renders_unauth_and_table_fragment_lists_rows(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """Page route is unauth (vanilla nav can't carry the localStorage Bearer);
+    the table-body fragment is admin-scoped and contains the actual rows."""
     monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
     app, key, prefix, _ = await _bootstrap_app_with_admin_key(tmp_path)
-    headers = {"Authorization": f"Bearer {key}"}
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        r = await c.get("/admin/keys", headers=headers)
+        # 1. Page shell: anonymous, returns 200 + the HTMX-driven shell
+        r = await c.get("/admin/keys")
         assert r.status_code == 200
         assert "API keys" in r.text
-        assert prefix in r.text
+        assert 'hx-get="/admin/keys/_table"' in r.text
+        assert prefix not in r.text  # rows aren't inlined — they come from the fragment
         assert r.headers.get("cache-control") == "no-store"
+        # 2. Unauth fragment fetch: 401
+        r = await c.get("/admin/keys/_table")
+        assert r.status_code == 401
+        # 3. Admin-Bearer fragment fetch: rows present
+        r = await c.get("/admin/keys/_table", headers={"Authorization": f"Bearer {key}"})
+        assert r.status_code == 200
+        assert prefix in r.text
 
 
 @pytest.mark.asyncio

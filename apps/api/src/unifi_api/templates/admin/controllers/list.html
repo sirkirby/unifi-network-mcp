@@ -23,10 +23,11 @@
       <th></th>
     </tr>
   </thead>
-  <tbody>
-    {% for c in controllers %}
-      {% include "controllers/_row.html" %}
-    {% endfor %}
+  <tbody id="controllers-tbody"
+         hx-get="/admin/controllers/_table"
+         hx-trigger="load, controllers-changed from:body"
+         hx-swap="innerHTML">
+    <tr><td colspan="6"><em>Loading…</em></td></tr>
   </tbody>
 </table>
 {% endblock %}
