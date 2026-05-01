@@ -81,33 +81,31 @@ def test_port_forward_mutation_ack_dispatches_for_all_mutations() -> None:
 
 
 def test_voucher_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_list_vouchers")
-    sample = [
-        {
-            "_id": "v1",
-            "code": "12345-67890",
-            "status": "VALID_MULTI",
-            "duration": 1440,
-            "qos_overwrite": False,
-            "create_time": 1714000000,
-            "used_at": None,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="unifi_list_vouchers")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "v1"
-    assert out["data"][0]["code"] == "12345-67890"
-    assert out["data"][0]["status"] == "VALID_MULTI"
-    assert out["data"][0]["duration"] == 1440
-    assert out["data"][0]["qos_overwrite"] is False
-    assert out["data"][0]["created_at"] == 1714000000
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR2 Task 23 — projection moved to a Strawberry type."""
+    from unifi_api.graphql.types.network.voucher import Voucher
+
+    sample = {
+        "_id": "v1",
+        "code": "12345-67890",
+        "status": "VALID_MULTI",
+        "duration": 1440,
+        "qos_overwrite": False,
+        "create_time": 1714000000,
+        "used_at": None,
+    }
+    out = Voucher.from_manager_output(sample).to_dict()
+    assert out["id"] == "v1"
+    assert out["code"] == "12345-67890"
+    assert out["status"] == "VALID_MULTI"
+    assert out["duration"] == 1440
+    assert out["qos_overwrite"] is False
+    assert out["created_at"] == 1714000000
+    assert Voucher.render_hint("list")["kind"] == "list"
 
 
 def test_voucher_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("unifi_get_voucher_details")
+    from unifi_api.graphql.types.network.voucher import Voucher
+
     sample = {
         "_id": "v2",
         "code": "abcde-fghij",
@@ -117,13 +115,13 @@ def test_voucher_detail_serializer_shape() -> None:
         "create_time": 1714111111,
         "end_time": 1714222222,
     }
-    out = s.serialize_action(sample, tool_name="unifi_get_voucher_details")
-    assert out["success"] is True
-    assert out["data"]["id"] == "v2"
-    assert out["data"]["code"] == "abcde-fghij"
-    assert out["data"]["status"] == "USED_MULTIPLE"
-    assert out["data"]["qos_overwrite"] is True
-    assert out["render_hint"]["kind"] == "detail"
+    out = Voucher.from_manager_output(sample).to_dict()
+    assert out["id"] == "v2"
+    assert out["code"] == "abcde-fghij"
+    assert out["status"] == "USED_MULTIPLE"
+    assert out["qos_overwrite"] is True
+    assert out["used_at"] == 1714222222
+    assert Voucher.render_hint("detail")["kind"] == "detail"
 
 
 def test_voucher_mutation_ack_dispatches_for_all_mutations() -> None:

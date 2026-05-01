@@ -47,6 +47,9 @@ from unifi_api.graphql.types.network.oon import (
 from unifi_api.graphql.types.network.port_forward import (
     PortForward as NetworkPortForwardType,
 )
+from unifi_api.graphql.types.network.voucher import (
+    Voucher as NetworkVoucherType,
+)
 from unifi_api.graphql.types.network.qos import (
     QosRule as NetworkQosRuleType,
 )
@@ -586,6 +589,15 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_port_forward", NetworkPortForwardType, "detail",
+    )
+
+    # Phase 6 PR2 Task 23 — network/vouchers migrated to Strawberry types.
+    # Tool-keyed only (no resource registration in the original serializer).
+    app.state.type_registry.register_tool_type(
+        "unifi_list_vouchers", NetworkVoucherType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "unifi_get_voucher_details", NetworkVoucherType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

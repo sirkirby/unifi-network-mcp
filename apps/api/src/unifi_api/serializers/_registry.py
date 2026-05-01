@@ -85,6 +85,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # Task 22 — network/port_forwards
     "unifi_list_port_forwards",
     "unifi_get_port_forward",
+    # Task 23 — network/vouchers
+    "unifi_list_vouchers",
+    "unifi_get_voucher_details",
 })
 
 
