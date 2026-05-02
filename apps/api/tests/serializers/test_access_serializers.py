@@ -19,8 +19,10 @@ def _registry():
 
 
 def test_door_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("access", "doors")
+    """Phase 6 PR4 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.doors import Door
+
     sample = {
         "id": "door1",
         "name": "Front Door",
@@ -34,7 +36,7 @@ def test_door_serializer_shape() -> None:
             "timestamp": "2026-04-29T10:00:00+00:00",
         },
     }
-    out = s.serialize(sample)
+    out = Door.from_manager_output(sample).to_dict()
     assert out["id"] == "door1"
     assert out["name"] == "Front Door"
     assert "location" in out

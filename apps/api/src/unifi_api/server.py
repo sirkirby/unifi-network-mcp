@@ -157,6 +157,11 @@ from unifi_api.graphql.types.protect.recordings import (
     Recording as ProtectRecordingType,
     RecordingStatusList as ProtectRecordingStatusListType,
 )
+from unifi_api.graphql.types.access.doors import (
+    Door as AccessDoorType,
+    DoorGroup as AccessDoorGroupType,
+    DoorStatus as AccessDoorStatusType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -972,6 +977,30 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "protect_list_viewers", ProtectViewerListType, "detail",
+    )
+
+    # Phase 6 PR4 Task A — access/doors migrated to Strawberry types.
+    # Three read serializers (Door, DoorGroup, DoorStatus) moved to
+    # graphql/types/access/doors.py. ``access_list_doors`` /
+    # ``access_get_door`` are resource-keyed (LIST + DETAIL); door-groups
+    # and door-status are tool-keyed only. Mutation acks
+    # (``access_lock_door`` / ``access_unlock_door``) stay as a serializer
+    # in serializers/access/doors.py.
+    app.state.type_registry.register_type("access", "doors", AccessDoorType)
+    app.state.type_registry.register_type(
+        "access", "doors/{id}", AccessDoorType,
+    )
+    app.state.type_registry.register_tool_type(
+        "access_list_doors", AccessDoorType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "access_get_door", AccessDoorType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "access_list_door_groups", AccessDoorGroupType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "access_get_door_status", AccessDoorStatusType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

@@ -173,6 +173,12 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "protect_get_health",
     "protect_get_firmware_status",
     "protect_list_viewers",
+    # PR4 Task A — access/doors (3 read shapes; lock/unlock acks stay as a
+    # serializer covering preview/apply mutation paths)
+    "access_list_doors",
+    "access_get_door",
+    "access_list_door_groups",
+    "access_get_door_status",
 })
 
 

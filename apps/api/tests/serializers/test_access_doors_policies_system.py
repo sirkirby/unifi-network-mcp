@@ -17,15 +17,17 @@ def _registry():
 
 
 def test_door_group_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_list_door_groups")
+    """Phase 6 PR4 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.doors import DoorGroup
+
     sample = {
         "id": "grp1",
         "name": "Lobby Group",
         "door_ids": ["door1", "door2"],
         "location": "HQ Floor 1",
     }
-    out = s.serialize(sample)
+    out = DoorGroup.from_manager_output(sample).to_dict()
     assert out["id"] == "grp1"
     assert out["name"] == "Lobby Group"
     assert out["door_ids"] == ["door1", "door2"]
@@ -33,15 +35,17 @@ def test_door_group_serializer_shape() -> None:
 
 
 def test_door_status_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_get_door_status")
+    """Phase 6 PR4 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.doors import DoorStatus
+
     sample = {
         "id": "door1",
         "name": "Front Door",
         "door_position_status": "close",
         "lock_relay_status": "lock",
     }
-    out = s.serialize(sample)
+    out = DoorStatus.from_manager_output(sample).to_dict()
     assert out["door_id"] == "door1"
     assert out["is_locked"] is True
     assert out["lock_state"] == "lock"

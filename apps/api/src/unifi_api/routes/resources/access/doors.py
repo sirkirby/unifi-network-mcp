@@ -77,9 +77,13 @@ async def list_doors(
     )
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("access", "doors")
-    items = [serializer.serialize(d) for d in page]
-    hint = registry.render_hint_for_resource("access", "doors")
+    entry = request.app.state.type_registry.lookup("access", "doors")
+    if entry.kind == "type":
+        items = [entry.payload.from_manager_output(d).to_dict() for d in page]
+        hint = entry.payload.render_hint("list")
+    else:
+        items = [entry.payload.serialize(d) for d in page]
+        hint = registry.render_hint_for_resource("access", "doors")
 
     return {
         "items": items,
@@ -113,10 +117,16 @@ async def get_door(
             raise HTTPException(status_code=404, detail="door not found")
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("access", "doors/{id}")
+    entry = request.app.state.type_registry.lookup("access", "doors/{id}")
+    if entry.kind == "type":
+        data = entry.payload.from_manager_output(door).to_dict()
+        hint = entry.payload.render_hint("detail")
+    else:
+        data = entry.payload.serialize(door)
+        hint = registry.render_hint_for_resource("access", "doors/{id}")
     return {
-        "data": serializer.serialize(door),
-        "render_hint": registry.render_hint_for_resource("access", "doors/{id}"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -151,11 +161,20 @@ async def get_door_status(
     if status is None:
         raise HTTPException(status_code=404, detail=f"door {door_id} not found")
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_get_door_status")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_get_door_status")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(status).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_get_door_status")
+        data = serializer.serialize(status)
+        hint = registry.render_hint_for_tool("access_get_door_status")
     return {
-        "data": serializer.serialize(status),
-        "render_hint": registry.render_hint_for_tool("access_get_door_status"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -192,10 +211,19 @@ async def list_door_groups(
         list(all_groups), limit=limit, cursor=cursor_obj, key_fn=_door_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_list_door_groups")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_list_door_groups")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        items = [type_class.from_manager_output(g).to_dict() for g in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_list_door_groups")
+        items = [serializer.serialize(g) for g in page]
+        hint = registry.render_hint_for_tool("access_list_door_groups")
     return {
-        "items": [serializer.serialize(g) for g in page],
+        "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("access_list_door_groups"),
+        "render_hint": hint,
     }
