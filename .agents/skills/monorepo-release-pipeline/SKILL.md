@@ -1,15 +1,7 @@
 ---
 name: myco:monorepo-release-pipeline
-description: |
-  Covers the full release pipeline for the unifi-mcp Python monorepo: scoping
-  hatch-vcs version tag globs per package to prevent sibling-tag contamination,
-  pushing tags in strict dependency order (unifi-core → unifi-mcp-shared → app
-  servers → relay), configuring scripts/generate_release_notes.py path scoping
-  per package, wiring per-package publish workflows for OIDC trusted publishing,
-  and coordinating cross-package version bumps in pyproject.toml. Apply this skill
-  when cutting any release, adding a new package, bumping unifi-core, or debugging
-  a versioning or publish-workflow failure — even if the user does not explicitly
-  ask about tag ordering or release notes.
+description: >
+  Covers the full release pipeline for the unifi-mcp Python monorepo: determining release scope by analyzing changed packages, scoping hatch-vcs version tag globs per package to prevent sibling-tag contamination, pushing tags in strict dependency order (unifi-core → unifi-mcp-shared → app servers → relay), configuring scripts/generate_release_notes.py path scoping per package, wiring per-package publish workflows for OIDC trusted publishing, coordinating cross-package version bumps in pyproject.toml, understanding app vs. library versioning and writeback behavior, and validating releases post-tag. Apply this skill when cutting any release, adding a new package, bumping unifi-core, or debugging a versioning or publish-workflow failure — even if the user does not explicitly ask about tag ordering or release notes.
 managed_by: myco
 user-invocable: true
 allowed-tools: Read, Edit, Write, Bash, Grep, Glob
@@ -46,14 +38,103 @@ that bleed across package boundaries.
 | `unifi-mcp-relay` | `packages/unifi-mcp-relay/` | `relay/v*` | `publish-relay.yml` |
 
 When adding a new package, extend this table and complete the new-package checklist
-in Procedure C before pushing any tag.
+in Procedure D before pushing any tag.
 
-## Procedure A: hatch-vcs Tag Glob Scoping
+## Procedure A: Determine Release Scope
+
+Before pushing any tag, identify exactly which packages changed. This decision gates everything downstream — wrong scope means tagging unnecessary packages, causing spurious releases, or forgetting a tag and leaving a gap in PyPI versions.
+
+### List changes per package
+
+For each package candidate, check whether code actually changed since the last tag:
+
+```bash
+# Check packages/unifi-core/:
+git log --oneline core/v$(git tag -l 'core/v*' | sort -V | tail -1)..HEAD -- packages/unifi-core/
+
+# Check apps/network/:
+git log --oneline network/v$(git tag -l 'network/v*' | sort -V | tail -1)..HEAD -- apps/network/ packages/unifi-mcp-shared/
+```
+
+### Apply scope rules
+
+| What changed | Tags required |
+|---|---|
+| `packages/unifi-mcp-shared/` only | `shared/v*` → then `network/v*`, `protect/v*`, `access/v*`, `relay/v*` |
+| `packages/unifi-core/` only | `core/v*` → then `shared/v*` → then all downstream packages |
+| One app only (e.g., `apps/protect/`) | `protect/v*` only |
+| Multiple apps | One tag per changed app, in dependency order |
+| Worker (`~/Repos/unifi-mcp-worker`) | Tag in that repo (see Procedure F) |
+
+### Shared package rule
+
+Any change to `packages/unifi-mcp-shared/` underpins all server apps. Tag `shared` first, then all server apps — even if their own code didn't change — so the next build picks up the shared bump.
+
+### CVE / transitive dependency changes
+
+A security patch in a transitive dependency may only affect one app. Trace the dependency chain before tagging everything:
+
+```bash
+# Identify the patched package from CVE advisory (e.g., Pillow)
+grep -ri "pillow" apps/*/pyproject.toml packages/*/pyproject.toml
+
+# Trace: if only apps/protect/ imports uiprotect (which depends on Pillow),
+# then only protect/v* needs a new tag
+```
+
+Confirm with tests before tagging:
+```bash
+cd apps/protect && pytest --tb=short
+```
+
+Tag only the affected app(s). Unnecessary tags create spurious releases.
+
+## Procedure B: App vs. Library Versioning and Writeback Behavior
+
+Understanding the difference between library and app package versioning is essential because writeback behavior differs, and missing writeback from an app package is a bug — while missing writeback from a library package is correct.
+
+### Library packages (unifi-core, unifi-mcp-shared, relay)
+
+These packages use `dynamic = ["version"]` in `pyproject.toml` with hatch-vcs. Version is derived from the git tag **at build time** — no `_version.py` is ever committed to the repo. When a library tag is pushed:
+
+- The publish workflow builds and publishes the tagged commit as-is
+- `bump-plugin-versions.yml` runs and outputs: `No version changes to commit`
+- This is **correct and expected** — not a bug or a missed step
+- There is no manifest file to update (no plugin.json or server.json)
+
+### App packages (network, protect, access)
+
+These packages have writable manifest assets that get updated on tag:
+
+- `plugins/unifi-network/.claude-plugin/plugin.json`
+- `plugins/unifi-protect/.claude-plugin/plugin.json`
+- `plugins/unifi-access/.claude-plugin/plugin.json`
+- `apps/{network,protect,access}/server.json`
+
+When an app tag is pushed, the workflow commits a version writeback to these files.
+If the writeback commit is missing, the manifests will be stale and users will see
+the wrong version reported by the tool.
+
+**Rule:** Never expect writeback from a library package tag. Never accept a
+missing writeback from an app package tag.
+
+## Procedure C: hatch-vcs Tag Glob Scoping
 
 hatch-vcs derives each package's version from git tags at build time. Without a
 per-package `git_describe_command --match` glob, any tag reachable in the repo can
 influence any package's version — a `network/v0.14.13` tag will contaminate
 `protect`'s version if `protect`'s `git_describe_command` matches all tags.
+
+### Correct tag patterns per package
+
+| Package | Match pattern |
+|---|---|
+| network | `network/v*` |
+| protect | `protect/v*` |
+| access | `access/v*` |
+| relay | `relay/v*` |
+| unifi-core | `core/v*` |
+| unifi-mcp-shared | `shared/v*` |
 
 ### pyproject.toml configuration
 
@@ -97,7 +178,7 @@ tags when the package is built (during CI), not when it is installed. The tag mu
 be reachable on the exact commit being built. If CI triggers before the tag propagates
 to GitHub, the version will be wrong even if the tag exists locally.
 
-## Procedure B: Dependency-Ordered Tag Pushing
+## Procedure D: Dependency-Ordered Tag Pushing
 
 The dependency graph:
 
@@ -148,7 +229,7 @@ npm release flow using OIDC via GitHub Actions. Apply the same ordering principl
 if the worker depends on a Python package version, confirm PyPI is updated before
 pushing the worker tag.
 
-## Procedure C: generate_release_notes.py Path Configuration
+## Procedure E: generate_release_notes.py Path Configuration
 
 GitHub's built-in `--generate-notes` option includes every PR merged between the
 previous tag and the current tag in the entire repo — regardless of which files
@@ -199,13 +280,48 @@ Each app server entry should include:
 
 When adding a new package, before pushing the first tag:
 
-1. Add an entry to `APP_CONFIGS` in `scripts/generate_release_notes.py`.
-2. Add the package to the Package Map table in this skill.
-3. Wire the publish workflow (see Procedure D).
-4. Add `tag_regex` and `git_describe_command` to `pyproject.toml` (see Procedure A).
-5. Register the OIDC trusted publisher on PyPI (see Procedure D).
+1. **hatch-vcs tag pattern** — add `--match newpkg/v*` to the package's
+   `pyproject.toml` `git_describe_command`. Verify with a local `git describe` test.
 
-Skipping step 1 produces empty or cross-contaminated release notes on first publish.
+2. **Release notes path scoping** — add a `PackageConfig` entry for the new
+   package in `scripts/generate_release_notes.py`'s `APP_CONFIGS` dict. This is
+   a hard pre-publish gate: if path scoping is absent, the first release will
+   include every unrelated PR merged since the repo's creation.
+
+   ```python
+   # scripts/generate_release_notes.py — add entry to APP_CONFIGS
+   APP_CONFIGS = {
+       ...,
+       "newpkg": PackageConfig(
+           key="newpkg",
+           display_name="UniFi NewPkg MCP",
+           pypi_package="unifi-newpkg-mcp",
+           install_command="uvx unifi-newpkg-mcp=={version}",
+           path_groups=(
+               PathGroup("NewPkg MCP", ("packages/unifi-newpkg/",)),
+               PathGroup("Shared Libraries", ("packages/unifi-core/", "packages/unifi-mcp-shared/")),
+               PathGroup(
+                   "Release Infrastructure",
+                   (
+                       ".github/workflows/publish-newpkg.yml",
+                       *COMMON_PACKAGE_PATHS,
+                   ),
+               ),
+           ),
+       ),
+   }
+   ```
+
+3. **Publish workflow** — create `.github/workflows/publish-newpkg.yml` following
+   the pattern of an existing workflow for the same type (PyPI vs. npm OIDC).
+   The tag trigger must match the package namespace: `on: push: tags: ["newpkg/v*"]`.
+
+4. **Version bounds in dependents** — if other packages depend on the new package,
+   add pinned version bounds to their `pyproject.toml` before their next release.
+
+5. **Dry-run verification** — after creating the first tag locally (do not push yet),
+   run `scripts/generate_release_notes.py --tag newpkg/v0.1.0 --dry-run` to confirm
+   path scoping is working.
 
 ### Script invocation
 
@@ -218,7 +334,7 @@ python3 scripts/generate_release_notes.py --tag "$TAG" --output /tmp/release-not
 where `$TAG` is the full tag string (e.g., `network/v0.14.13`). The script derives
 the package key from the tag prefix.
 
-## Procedure D: Publish Workflow Wiring (OIDC)
+## Procedure F: Publish Workflow Wiring (OIDC)
 
 Each package has a dedicated workflow in `.github/workflows/`. The workflow triggers
 on a tag push matching the package's prefix and publishes via OIDC (no stored secrets).
@@ -303,7 +419,27 @@ Before the first tag push for a new package:
 3. The package must already exist on PyPI before OIDC publishing works. Create it
    manually with a `0.0.1.dev0` upload if the package is brand new.
 
-## Procedure E: Cross-Package Version Bump Coordination
+## Procedure G: Worker npm Publishing
+
+The `unifi-mcp-worker` npm package lives in `~/Repos/unifi-mcp-worker` (a sibling repo). Publishing is automated via GitHub Actions using OIDC trusted publishing — no npm token required.
+
+1. Make and merge changes in the `unifi-mcp-worker` repo.
+
+2. Create and push a semver tag in that repo:
+
+   ```bash
+   cd ~/Repos/unifi-mcp-worker
+   git tag v<semver>
+   git push origin v<semver>
+   ```
+
+3. GitHub Actions detects the tag, builds, and publishes to npm with `--provenance` (OIDC attestation).
+
+4. Verify: `npm info unifi-mcp-worker version` or check npmjs.com.
+
+> **Note:** Worker tags follow plain `v<semver>` — not app-scoped — because the Worker is a single-package repo.
+
+## Procedure H: Cross-Package Version Bump Coordination
 
 When bumping `unifi-core`, every package that declares `unifi-core` as a dependency
 must have its `pyproject.toml` version constraint updated in the same PR as the code
@@ -336,7 +472,34 @@ The same pattern applies to `unifi-mcp-shared` bumps — grep all app server
 - All downstream `pyproject.toml` version constraints updated
 - No tags in this PR — tags are pushed only after the PR merges and CI is green
 
+## Procedure I: Release Validation
+
+After pushing a tag, verify it resolved correctly before closing the work.
+
+1. **Check CI:** The tag push triggers GitHub Actions. Confirm the version check job goes green.
+
+2. **Verify the version locally:**
+
+   ```bash
+   cd apps/<app>
+   hatch version
+   # Should print exactly the tagged version, e.g., "0.4.0"
+   ```
+
+3. **Confirm PyPI:** `pip index versions unifi-mcp-<app>` or check the PyPI project page.
+
+4. **Install smoke test:**
+
+   ```bash
+   pip install --upgrade unifi-mcp-<app>
+   python -c "import unifi_mcp_<app>; print(unifi_mcp_<app>.__version__)"
+   ```
+
 ## Cross-Cutting Gotchas
+
+**PR merge is NOT the release trigger — the tag push is.** `hatch-vcs` reads git tags at build time to generate `_version.py`. Merging a PR does NOT trigger a release. If the tag is never pushed, PyPI stays on the old version with no error — the build succeeds but installs the previous release. The tag push IS the release trigger. (Session 3: `core/v0.1.2` was never tagged; PyPI stayed at 0.1.1 until the tag was pushed manually.) Always run Procedure I after tagging.
+
+**Silent version freeze.** If a tag is missing, `hatch-vcs` falls back to `fallback_version = "0.0.0"` or the last matching tag. There is no error at merge time. The failure surfaces only when a user installs and notices the wrong version. Always run Procedure I after tagging.
 
 **Sibling tag contamination.** If `git_describe_command` `--match` is too broad
 (e.g., `v*`), hatch-vcs picks up a sibling package's tag and reports the wrong
@@ -364,3 +527,15 @@ builds and publishes successfully.
 run will not retroactively fix the published version. If a tag was pushed to the wrong
 commit, yank the bad PyPI release, delete the tag, re-tag the correct commit, and
 re-run the publish workflow.
+
+**`_version.py` is generated — do not commit it.** Each app's `[tool.hatch.build.hooks.vcs]` writes `version-file = "src/<module>/_version.py"`. If it appears in `git status` after tagging, confirm it is in `.gitignore` for that app.
+
+**Dependency ordering is a hard constraint, not a preference.** If you push a
+downstream tag before the upstream package is live on PyPI, the publish workflow's
+`uv sync` or `pip install` step fails. There is no retry mechanism — delete the
+tag, wait for upstream to propagate (~2 min), and re-push.
+
+**Release notes path scoping is a one-time setup with permanent consequences.**
+A new package published without path scoping in `scripts/generate_release_notes.py`
+will produce release notes including the entire repo's history from day one.
+Treat the path scoping step as a merge blocker for any new-package PR.
