@@ -1,7 +1,7 @@
 """CI gate: checked-in openapi.json matches FastAPI's app.openapi() output.
 
 Re-generate with:
-    uv run --package unifi-api python -c \\
+    uv run --package unifi-api-server python -c \\
       "from unifi_api.server import create_app; \\
        from unifi_api.config import ApiConfig, DbConfig, HttpConfig, LoggingConfig; \\
        import os, tempfile, json; os.environ['UNIFI_API_DB_KEY'] = 'k'; \\

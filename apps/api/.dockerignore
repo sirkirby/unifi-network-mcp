@@ -1,0 +1,35 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+.env
+.envrc
+
+# Tests + docs not needed in the runtime image
+tests/
+docs/
+*.md
+
+# Local artefacts
+*.log
+*.db
+*.sqlite
+*.sqlite-*
+state.db
+.coverage
+coverage.xml
+htmlcov/
+
+# Editor/OS junk
+.idea/
+.vscode/
+.DS_Store
+.playwright-mcp/
+
+# Build outputs (image will rebuild from source)
+dist/
+build/
+*.egg-info/

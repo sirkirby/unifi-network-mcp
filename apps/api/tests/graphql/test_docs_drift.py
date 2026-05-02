@@ -1,7 +1,7 @@
 """CI gate: apps/api/docs/graphql-reference.md matches the docgen render.
 
 Re-generate with:
-    uv run --package unifi-api python -m unifi_api.graphql.docgen
+    uv run --package unifi-api-server python -m unifi_api.graphql.docgen
 """
 
 from pathlib import Path
@@ -19,5 +19,5 @@ def test_reference_md_matches_render() -> None:
     actual = REF_PATH.read_text(encoding="utf-8").strip()
     assert actual == expected, (
         "graphql-reference.md is stale. Re-generate with:\n"
-        "  uv run --package unifi-api python -m unifi_api.graphql.docgen\n"
+        "  uv run --package unifi-api-server python -m unifi_api.graphql.docgen\n"
     )

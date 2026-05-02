@@ -11,7 +11,7 @@ def _run_cli(*args: str, db_path: Path) -> subprocess.CompletedProcess:
     env["UNIFI_API_DB_KEY"] = "test-passphrase"
     env["UNIFI_API_DB_PATH"] = str(db_path)
     return subprocess.run(
-        ["uv", "run", "--package", "unifi-api", "unifi-api", *args],
+        ["uv", "run", "--package", "unifi-api-server", "unifi-api-server", *args],
         capture_output=True, text=True, check=False, env=env,
     )
 
