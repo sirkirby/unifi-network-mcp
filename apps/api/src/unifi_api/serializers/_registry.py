@@ -142,6 +142,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "protect_get_camera_analytics",
     "protect_get_camera_streams",
     "protect_get_snapshot",
+    # PR3 Task A — protect/chimes (1 read shape; mutation acks stay as a
+    # serializer covering trigger/update preview tools)
+    "protect_list_chimes",
 })
 
 

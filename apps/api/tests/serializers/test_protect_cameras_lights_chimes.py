@@ -21,31 +21,30 @@ def _registry():
 
 
 def test_chime_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_list_chimes")
-    sample = [
-        {
-            "id": "chime1",
-            "mac": "aa:bb:cc:dd:ee:01",
-            "name": "Front Door Chime",
-            "model": "UFP-Chime",
-            "type": "UFP-CHIME",
-            "state": "CONNECTED",
-            "is_connected": True,
-            "firmware_version": "1.2.3",
-            "volume": 50,
-            "camera_ids": ["cam1", "cam2"],
-            "ring_settings": [],
-            "available_tracks": [],
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="protect_list_chimes")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "chime1"
-    assert out["data"][0]["name"] == "Front Door Chime"
-    assert out["data"][0]["state"] == "CONNECTED"
-    assert out["data"][0]["paired_cameras"] == ["cam1", "cam2"]
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR3 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.chimes import Chime
+
+    sample = {
+        "id": "chime1",
+        "mac": "aa:bb:cc:dd:ee:01",
+        "name": "Front Door Chime",
+        "model": "UFP-Chime",
+        "type": "UFP-CHIME",
+        "state": "CONNECTED",
+        "is_connected": True,
+        "firmware_version": "1.2.3",
+        "volume": 50,
+        "camera_ids": ["cam1", "cam2"],
+        "ring_settings": [],
+        "available_tracks": [],
+    }
+    out = Chime.from_manager_output(sample).to_dict()
+    assert out["id"] == "chime1"
+    assert out["name"] == "Front Door Chime"
+    assert out["state"] == "CONNECTED"
+    assert out["paired_cameras"] == ["cam1", "cam2"]
+    assert Chime.render_hint("list")["kind"] == "list"
 
 
 # ---- cameras.py extensions ----

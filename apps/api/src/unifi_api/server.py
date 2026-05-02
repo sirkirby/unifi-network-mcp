@@ -125,6 +125,9 @@ from unifi_api.graphql.types.protect.cameras import (
     CameraStreams as ProtectCameraStreamsType,
     Snapshot as ProtectSnapshotType,
 )
+from unifi_api.graphql.types.protect.chimes import (
+    Chime as ProtectChimeType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -796,6 +799,16 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "protect_get_snapshot", ProtectSnapshotType, "detail",
+    )
+
+    # Phase 6 PR3 Task A — protect/chimes migrated to Strawberry types.
+    # ``chimes`` carries resource registration (LIST only — no
+    # ``protect_get_chime`` tool exists in the manifest, mirroring the
+    # original serializer's resource map). Mutation acks (trigger/update)
+    # stay as a serializer in serializers/protect/chimes.py.
+    app.state.type_registry.register_type("protect", "chimes", ProtectChimeType)
+    app.state.type_registry.register_tool_type(
+        "protect_list_chimes", ProtectChimeType, "list",
     )
 
     app.include_router(health.router, prefix="/v1")
