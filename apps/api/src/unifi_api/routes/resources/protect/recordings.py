@@ -13,7 +13,6 @@ id, since the manager exposes no native ``get_recording``.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
@@ -23,7 +22,6 @@ from unifi_api.routes.resources._common import (
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
 
 router = APIRouter()
 
@@ -59,6 +57,7 @@ def _normalize_recordings(result) -> list[dict]:
 @router.get(
     "/sites/{site_id}/recordings",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/events"],
 )
 async def list_recordings(
     request: Request,
@@ -106,6 +105,7 @@ async def list_recordings(
 @router.get(
     "/sites/{site_id}/recordings/{recording_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/events"],
 )
 async def get_recording(
     request: Request,
@@ -148,6 +148,7 @@ async def get_recording(
 @router.get(
     "/sites/{site_id}/recording-status",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/events"],
 )
 async def get_recording_status(
     request: Request,

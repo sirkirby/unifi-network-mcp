@@ -14,17 +14,18 @@ capability-aware dispatcher — that one only owns the bare ``/events`` path.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
+from unifi_api.graphql.pydantic_export import to_pydantic_model
+from unifi_api.graphql.types.protect.events import Event
 from unifi_api.routes.resources._common import (
     require_capability,
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
+from unifi_api.services.pydantic_models import Page
 
 router = APIRouter()
 
@@ -52,7 +53,9 @@ async def _maybe_set_site(cm, site_id: str) -> None:
 
 @router.get(
     "/sites/{site_id}/events",
+    response_model=Page[to_pydantic_model(Event)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/events"],
 )
 async def list_events(
     request: Request,
@@ -97,6 +100,7 @@ async def list_events(
 @router.get(
     "/sites/{site_id}/events/{event_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/events"],
 )
 async def get_event(
     request: Request,
@@ -138,6 +142,7 @@ async def get_event(
 @router.get(
     "/sites/{site_id}/event-thumbnails/{event_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/events"],
 )
 async def get_event_thumbnail(
     request: Request,
@@ -181,6 +186,7 @@ async def get_event_thumbnail(
 @router.get(
     "/sites/{site_id}/smart-detections",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/events"],
 )
 async def list_smart_detections(
     request: Request,
@@ -240,6 +246,7 @@ async def list_smart_detections(
 @router.get(
     "/sites/{site_id}/recent-events",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/events"],
 )
 async def recent_events(
     request: Request,
