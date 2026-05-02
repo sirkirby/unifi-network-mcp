@@ -18,7 +18,7 @@ from unifi_api.routes.resources._common import (
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-from unifi_api.services.pydantic_models import Page
+from unifi_api.services.pydantic_models import Detail, Page
 
 router = APIRouter()
 
@@ -139,6 +139,7 @@ async def list_routes(
 
 @router.get(
     "/sites/{site_id}/static-routes/{route_id}",
+    response_model=Detail[to_pydantic_model(Route)],
     dependencies=[Depends(require_scope(Scope.READ))],
     tags=["network/routes"],
 )
@@ -230,6 +231,7 @@ async def list_traffic_routes(
 
 @router.get(
     "/sites/{site_id}/traffic-routes/{route_id}",
+    response_model=Detail[to_pydantic_model(TrafficRoute)],
     dependencies=[Depends(require_scope(Scope.READ))],
     tags=["network/routes"],
 )

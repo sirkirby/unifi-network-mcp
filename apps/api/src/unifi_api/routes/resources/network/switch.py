@@ -17,13 +17,13 @@ from unifi_core.exceptions import UniFiNotFoundError
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
 from unifi_api.graphql.pydantic_export import to_pydantic_model
-from unifi_api.graphql.types.network.switch import PortProfile
+from unifi_api.graphql.types.network.switch import PortOverrideRow, PortProfile, PortStatRow
 from unifi_api.routes.resources._common import (
     require_capability,
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-from unifi_api.services.pydantic_models import Page
+from unifi_api.services.pydantic_models import Detail, Page
 
 router = APIRouter()
 
@@ -101,6 +101,7 @@ async def list_port_profiles(
 
 @router.get(
     "/sites/{site_id}/port-profiles/{profile_id}",
+    response_model=Detail[to_pydantic_model(PortProfile)],
     dependencies=[Depends(require_scope(Scope.READ))],
     tags=["network/switch"],
 )
@@ -190,7 +191,6 @@ async def list_switch_ports(
     type_registry = request.app.state.type_registry
     tool_type = type_registry.lookup_tool("unifi_get_switch_ports")
     if tool_type is not None:
-        from unifi_api.graphql.types.network.switch import PortOverrideRow
         type_class, _kind = tool_type
         items = [PortOverrideRow.from_manager_output(p).to_dict() for p in page]
         hint = {**type_class.render_hint("list"), "kind": "list"}
@@ -265,7 +265,6 @@ async def list_port_stats(
     type_registry = request.app.state.type_registry
     tool_type = type_registry.lookup_tool("unifi_get_port_stats")
     if tool_type is not None:
-        from unifi_api.graphql.types.network.switch import PortStatRow
         type_class, _kind = tool_type
         items = [PortStatRow.from_manager_output(p).to_dict() for p in page]
         hint = {**type_class.render_hint("list"), "kind": "list"}

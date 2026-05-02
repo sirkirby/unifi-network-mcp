@@ -19,3 +19,15 @@ class Page(BaseModel, Generic[T]):
     items: list[T]
     next_cursor: str | None = None
     render_hint: dict | None = None
+
+
+class Detail(BaseModel, Generic[T]):
+    """Single-resource detail envelope: {data, render_hint}.
+
+    Mirrors what detail handlers return and lets ``response_model=Detail[ItemModel]``
+    project the underlying type into OpenAPI.
+    """
+
+    model_config = ConfigDict(extra="allow")
+    data: T
+    render_hint: dict | None = None

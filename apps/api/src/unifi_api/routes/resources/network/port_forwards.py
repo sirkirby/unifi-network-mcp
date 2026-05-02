@@ -18,7 +18,7 @@ from unifi_api.routes.resources._common import (
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-from unifi_api.services.pydantic_models import Page
+from unifi_api.services.pydantic_models import Detail, Page
 
 router = APIRouter()
 
@@ -86,6 +86,7 @@ async def list_port_forwards(
 
 @router.get(
     "/sites/{site_id}/port-forwards/{port_forward_id}",
+    response_model=Detail[to_pydantic_model(PortForward)],
     dependencies=[Depends(require_scope(Scope.READ))],
     tags=["network/policy"],
 )
