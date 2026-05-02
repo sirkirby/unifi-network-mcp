@@ -44,8 +44,10 @@ def test_camera_serializer_shape() -> None:
 
 
 def test_event_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("protect", "events")
+    """Phase 6 PR3 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.events import Event
+
     sample = {
         "id": "evt1",
         "type": "smartDetectZone",
@@ -56,7 +58,7 @@ def test_event_serializer_shape() -> None:
         "camera_id": "cam1",
         "thumbnail_id": "thumb1",
     }
-    out = s.serialize(sample)
+    out = Event.from_manager_output(sample).to_dict()
     assert out["id"] == "evt1"
     assert out["type"] == "smartDetectZone"
     assert out["start"] == "2026-04-29T10:00:00+00:00"

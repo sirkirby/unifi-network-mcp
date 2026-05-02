@@ -149,6 +149,13 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # a serializer)
     "protect_alarm_get_status",
     "protect_alarm_list_profiles",
+    # PR3 Task B — protect/events (4 read shapes; recent_events,
+    # subscribe_events and acknowledge_event stay as serializers — the
+    # SSE streamer calls .serialize() directly per broadcast event)
+    "protect_list_events",
+    "protect_get_event",
+    "protect_get_event_thumbnail",
+    "protect_list_smart_detections",
 })
 
 

@@ -132,6 +132,11 @@ from unifi_api.graphql.types.protect.cameras import (
 from unifi_api.graphql.types.protect.chimes import (
     Chime as ProtectChimeType,
 )
+from unifi_api.graphql.types.protect.events import (
+    Event as ProtectEventType,
+    EventThumbnail as ProtectEventThumbnailType,
+    SmartDetection as ProtectSmartDetectionType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -813,6 +818,29 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.type_registry.register_type("protect", "chimes", ProtectChimeType)
     app.state.type_registry.register_tool_type(
         "protect_list_chimes", ProtectChimeType, "list",
+    )
+
+    # Phase 6 PR3 Task B — protect/events migrated to Strawberry types.
+    # ``events`` carries resource registration (EVENT_LOG). The detail
+    # tool ``protect_get_event`` reuses the same projection. Smart
+    # detections share the same shape but a different render hint
+    # (display_columns includes smart_detect_types). Thumbnail is its
+    # own DETAIL pass-through type with bytes/dict branches.
+    # ``protect_recent_events``, ``protect_subscribe_events`` and
+    # ``protect_acknowledge_event`` stay as serializers (SSE streamer +
+    # mutation ack flow).
+    app.state.type_registry.register_type("protect", "events", ProtectEventType)
+    app.state.type_registry.register_tool_type(
+        "protect_list_events", ProtectEventType, "event_log",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_event", ProtectEventType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_event_thumbnail", ProtectEventThumbnailType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_smart_detections", ProtectSmartDetectionType, "event_log",
     )
 
     # Phase 6 PR3 Task B — protect/alarms migrated to Strawberry types.

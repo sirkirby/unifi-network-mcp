@@ -103,8 +103,10 @@ def test_liveview_mutation_ack_delete() -> None:
 
 
 def test_event_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_get_event")
+    """Phase 6 PR3 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.events import Event
+
     sample = {
         "id": "evt-1",
         "type": "smartDetectZone",
@@ -115,18 +117,22 @@ def test_event_detail_serializer_shape() -> None:
         "camera_id": "cam1",
         "thumbnail_id": "thumb-1",
     }
-    out = s.serialize_action(sample, tool_name="protect_get_event")
-    assert out["success"] is True
-    assert out["data"]["id"] == "evt-1"
-    assert out["data"]["type"] == "smartDetectZone"
-    assert out["data"]["score"] == 87
-    assert out["data"]["camera"] == "cam1"
-    assert out["render_hint"]["kind"] == "detail"
+    out = Event.from_manager_output(sample).to_dict()
+    assert out["id"] == "evt-1"
+    assert out["type"] == "smartDetectZone"
+    assert out["score"] == 87
+    assert out["camera"] == "cam1"
+    assert out["thumbnail"] == "thumb-1"
+    assert out["smart_detect_types"] == ["person"]
+    assert Event.render_hint("detail")["kind"] == "detail"
+    assert Event.render_hint("event_log")["sort_default"] == "start:desc"
 
 
 def test_event_thumbnail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_get_event_thumbnail")
+    """Phase 6 PR3 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.events import EventThumbnail
+
     sample = {
         "event_id": "evt-1",
         "thumbnail_id": "thumb-1",
@@ -134,48 +140,49 @@ def test_event_thumbnail_serializer_shape() -> None:
         "image_base64": "QUJDRA==",
         "content_type": "image/jpeg",
     }
-    out = s.serialize_action(sample, tool_name="protect_get_event_thumbnail")
-    assert out["success"] is True
-    assert out["data"]["event_id"] == "evt-1"
-    assert out["data"]["content_type"] == "image/jpeg"
-    assert out["data"]["thumbnail_available"] is True
-    assert out["render_hint"]["kind"] == "detail"
+    out = EventThumbnail.from_manager_output(sample).to_dict()
+    assert out["event_id"] == "evt-1"
+    assert out["content_type"] == "image/jpeg"
+    assert out["thumbnail_available"] is True
+    assert EventThumbnail.render_hint("detail")["kind"] == "detail"
 
 
 def test_event_thumbnail_serializer_unavailable_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_get_event_thumbnail")
+    """Phase 6 PR3 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.events import EventThumbnail
+
     sample = {
         "event_id": "evt-1",
         "thumbnail_available": False,
         "message": "Event has no thumbnail (may still be in progress).",
     }
-    out = s.serialize_action(sample, tool_name="protect_get_event_thumbnail")
-    assert out["success"] is True
-    assert out["data"]["thumbnail_available"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = EventThumbnail.from_manager_output(sample).to_dict()
+    assert out["thumbnail_available"] is False
+    assert out["message"] == "Event has no thumbnail (may still be in progress)."
 
 
 def test_smart_detections_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_list_smart_detections")
-    sample = [
-        {
-            "id": "evt-2",
-            "type": "smartDetectZone",
-            "start": "2026-04-29T08:00:00+00:00",
-            "end": "2026-04-29T08:00:05+00:00",
-            "score": 90,
-            "smart_detect_types": ["vehicle"],
-            "camera_id": "cam1",
-            "thumbnail_id": "thumb-2",
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="protect_list_smart_detections")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "evt-2"
-    assert out["data"][0]["smart_detect_types"] == ["vehicle"]
-    assert out["render_hint"]["kind"] == "event_log"
+    """Phase 6 PR3 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.events import SmartDetection
+
+    sample = {
+        "id": "evt-2",
+        "type": "smartDetectZone",
+        "start": "2026-04-29T08:00:00+00:00",
+        "end": "2026-04-29T08:00:05+00:00",
+        "score": 90,
+        "smart_detect_types": ["vehicle"],
+        "camera_id": "cam1",
+        "thumbnail_id": "thumb-2",
+    }
+    out = SmartDetection.from_manager_output(sample).to_dict()
+    assert out["id"] == "evt-2"
+    assert out["smart_detect_types"] == ["vehicle"]
+    assert out["camera"] == "cam1"
+    assert SmartDetection.render_hint("event_log")["kind"] == "event_log"
+    assert "smart_detect_types" in SmartDetection.render_hint("event_log")["display_columns"]
 
 
 def test_recent_events_serializer_passthrough() -> None:

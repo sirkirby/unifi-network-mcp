@@ -148,11 +148,17 @@ async def _list_protect_events(
         ),
     )
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("protect", "events")
+    entry = request.app.state.type_registry.lookup("protect", "events")
+    if entry.kind == "type":
+        items = [entry.payload.from_manager_output(e).to_dict() for e in page]
+        hint = entry.payload.render_hint("event_log")
+    else:
+        items = [entry.payload.serialize(e) for e in page]
+        hint = registry.render_hint_for_resource("protect", "events")
     return {
-        "items": [serializer.serialize(e) for e in page],
+        "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_resource("protect", "events"),
+        "render_hint": hint,
     }
 
 
