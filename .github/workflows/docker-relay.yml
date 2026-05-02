@@ -1,9 +1,8 @@
-name: "Relay: Docker Build and Publish"
+name: "Relay: Docker Build (main + PR)"
 
 on:
   push:
     branches: [ "main" ]
-    tags: [ 'relay/v*.*.*' ]
   pull_request:
     types: [ opened, synchronize, reopened ]
     branches: [ "main" ]
