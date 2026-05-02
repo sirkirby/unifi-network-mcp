@@ -146,6 +146,13 @@ from unifi_api.graphql.types.protect.liveviews import (
 from unifi_api.graphql.types.protect.sensors import (
     Sensor as ProtectSensorType,
 )
+from unifi_api.graphql.types.protect.system import (
+    FirmwareStatus as ProtectFirmwareStatusType,
+    ProtectHealth as ProtectHealthType,
+    ProtectSystemInfo as ProtectSystemInfoType,
+    Viewer as ProtectViewerType,
+    ViewerList as ProtectViewerListType,
+)
 from unifi_api.graphql.types.protect.recordings import (
     Recording as ProtectRecordingType,
     RecordingStatusList as ProtectRecordingStatusListType,
@@ -936,6 +943,35 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "protect_list_liveviews", ProtectLiveviewType, "list",
+    )
+
+    # Phase 6 PR3 Task C — protect/system migrated to Strawberry types.
+    # Four NVR-level read tools — all DETAIL pass-throughs since the
+    # manager surfaces richer / nested structures than any flat field
+    # selection could capture without lossy flattening:
+    #   - protect_get_system_info     -> ProtectSystemInfoType
+    #   - protect_get_health          -> ProtectHealthType
+    #   - protect_get_firmware_status -> ProtectFirmwareStatusType
+    #   - protect_list_viewers        -> ProtectViewerListType (wrapper-dict;
+    #     per-viewer rows project via ProtectViewerType in the REST list
+    #     route, mirroring the AlarmProfile / AlarmProfileList split)
+    # No resource registration — these tools are not surfaced as REST
+    # collection endpoints (system-info / health / firmware-status are
+    # singletons; viewers is a flat ``/viewers`` list).
+    app.state.type_registry.register_type(
+        "protect", "viewers", ProtectViewerType,
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_system_info", ProtectSystemInfoType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_health", ProtectHealthType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_firmware_status", ProtectFirmwareStatusType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_viewers", ProtectViewerListType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")
