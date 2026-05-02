@@ -190,6 +190,10 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # stay as a serializer covering preview/apply mutation paths)
     "access_list_credentials",
     "access_get_credential",
+    # PR4 Task B — access/policies (1 read shape; update_policy ack stays
+    # as a serializer covering preview/apply mutation paths)
+    "access_list_policies",
+    "access_get_policy",
 })
 
 

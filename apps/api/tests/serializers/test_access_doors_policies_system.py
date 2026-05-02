@@ -52,8 +52,10 @@ def test_door_status_serializer_shape() -> None:
 
 
 def test_policy_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_get_policy")
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.policies import Policy
+
     sample = {
         "id": "pol1",
         "name": "Office Hours",
@@ -62,7 +64,7 @@ def test_policy_serializer_shape() -> None:
         "user_group_ids": ["ug1"],
         "status": "active",
     }
-    out = s.serialize(sample)
+    out = Policy.from_manager_output(sample).to_dict()
     assert out["id"] == "pol1"
     assert out["name"] == "Office Hours"
     assert out["schedule_id"] == "sch1"

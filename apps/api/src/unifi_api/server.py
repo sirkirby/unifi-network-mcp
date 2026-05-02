@@ -171,6 +171,9 @@ from unifi_api.graphql.types.access.users import (
 from unifi_api.graphql.types.access.credentials import (
     Credential as AccessCredentialType,
 )
+from unifi_api.graphql.types.access.policies import (
+    Policy as AccessPolicyType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -1056,6 +1059,19 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "access_get_credential", AccessCredentialType, "detail",
+    )
+
+    # Phase 6 PR4 Task B — access/policies migrated to Strawberry types.
+    # Single read serializer (Policy) moved to
+    # graphql/types/access/policies.py. The policy serializer was tool-
+    # keyed only (no resource registration), so register via
+    # register_tool_type. Mutation ack (``access_update_policy``) stays
+    # as a serializer in serializers/access/policies.py.
+    app.state.type_registry.register_tool_type(
+        "access_list_policies", AccessPolicyType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "access_get_policy", AccessPolicyType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")
