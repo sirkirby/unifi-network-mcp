@@ -20,10 +20,10 @@ from unifi_api.serializers._registry import (
 from unifi_api.services.manifest import ManifestRegistry
 
 
-# PR3 close: protect is now covered by ~21 ProtectQuery resolvers. PR4
-# will remove "access" — PR4 close has the set empty (all 122 read tools
-# map to Query fields).
-EXEMPT_PRODUCTS: set[str] = {"access"}
+# PR4 close: ALL THREE PRODUCTS now covered. The allowlist is empty —
+# every read tool in the manifest must map to a GraphQL Query field.
+# Phase 6 close-out invariant: this set stays empty forever.
+EXEMPT_PRODUCTS: set[str] = set()
 
 
 def _read_tools_by_product() -> dict[str, list[str]]:
