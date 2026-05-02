@@ -65,30 +65,32 @@ def test_credential_mutation_ack_revoke() -> None:
 
 
 def test_visitor_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_list_visitors")
-    sample = [
-        {
-            "id": "vis-001",
-            "name": "Jane Doe",
-            "host_user_id": "user-1",
-            "valid_from": "2026-04-29T08:00:00Z",
-            "valid_until": "2026-04-29T18:00:00Z",
-            "status": "active",
-            "credential_count": 1,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="access_list_visitors")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "vis-001"
-    assert out["data"][0]["name"] == "Jane Doe"
-    assert out["data"][0]["status"] == "active"
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.visitors import Visitor
+
+    sample = {
+        "id": "vis-001",
+        "name": "Jane Doe",
+        "host_user_id": "user-1",
+        "valid_from": "2026-04-29T08:00:00Z",
+        "valid_until": "2026-04-29T18:00:00Z",
+        "status": "active",
+        "credential_count": 1,
+    }
+    out = Visitor.from_manager_output(sample).to_dict()
+    assert out["id"] == "vis-001"
+    assert out["name"] == "Jane Doe"
+    assert out["status"] == "active"
+    assert out["credential_count"] == 1
+    assert Visitor.render_hint("list")["kind"] == "list"
 
 
 def test_visitor_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_get_visitor")
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.visitors import Visitor
+
     sample = {
         "id": "vis-002",
         "name": "John Roe",
@@ -98,11 +100,10 @@ def test_visitor_detail_serializer_shape() -> None:
         "status": "scheduled",
         "credential_count": 0,
     }
-    out = s.serialize_action(sample, tool_name="access_get_visitor")
-    assert out["success"] is True
-    assert out["data"]["id"] == "vis-002"
-    assert out["data"]["host_user_id"] == "user-2"
-    assert out["render_hint"]["kind"] == "detail"
+    out = Visitor.from_manager_output(sample).to_dict()
+    assert out["id"] == "vis-002"
+    assert out["host_user_id"] == "user-2"
+    assert Visitor.render_hint("detail")["kind"] == "detail"
 
 
 def test_visitor_mutation_ack_create() -> None:

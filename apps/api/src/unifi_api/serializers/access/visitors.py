@@ -1,54 +1,18 @@
-"""Access visitor serializers.
+"""Access visitor mutation serializers.
 
-``VisitorManager.list_visitors`` / ``get_visitor`` return plain dicts from
-the proxy ``visitors`` endpoint (path is best-effort; the manager returns
-``[]`` on 404). Field names follow the controller convention; we expose
-the catalog-level fields and gracefully fall back to ``None``.
+Phase 6 PR4 Task B — the read serializer (``VisitorSerializer``) moved
+to a Strawberry type in ``unifi_api.graphql.types.access.visitors``. The
+``access_list_visitors`` / ``access_get_visitor`` tools are listed in
+``PHASE6_TYPE_MIGRATED_TOOLS`` and dispatched via the type_registry by
+both the REST routes and the action endpoint.
 
-``create_visitor`` / ``delete_visitor`` are preview-pattern mutations —
-they return dicts with ``visitor_data`` / ``visitor_id`` and
-``proposed_changes``. ``VisitorMutationAckSerializer`` passes those
-through unchanged (matches Cluster 1's mutation-ack pattern).
+This module now only ships ``VisitorMutationAckSerializer`` for the
+``access_create_visitor`` / ``access_delete_visitor`` preview-and-
+confirm tools, which still flow through the manager's preview path and
+produce dict acks.
 """
 
-from typing import Any
-
 from unifi_api.serializers._base import RenderKind, Serializer, register_serializer
-
-
-def _get(obj: Any, key: str, default: Any = None) -> Any:
-    if isinstance(obj, dict):
-        return obj.get(key, default)
-    return getattr(obj, key, default)
-
-
-@register_serializer(
-    tools={
-        "access_list_visitors": {"kind": RenderKind.LIST},
-        "access_get_visitor": {"kind": RenderKind.DETAIL},
-    },
-    resources=[
-        (("access", "visitors"), {"kind": RenderKind.LIST}),
-        (("access", "visitors/{id}"), {"kind": RenderKind.DETAIL}),
-    ],
-)
-class VisitorSerializer(Serializer):
-    kind = RenderKind.LIST
-    primary_key = "id"
-    display_columns = ["name", "host_user_id", "valid_from", "valid_until", "status"]
-    sort_default = "valid_from:desc"
-
-    @staticmethod
-    def serialize(obj) -> dict:
-        return {
-            "id": _get(obj, "id"),
-            "name": _get(obj, "name"),
-            "host_user_id": _get(obj, "host_user_id"),
-            "valid_from": _get(obj, "valid_from") or _get(obj, "access_start"),
-            "valid_until": _get(obj, "valid_until") or _get(obj, "access_end"),
-            "status": _get(obj, "status"),
-            "credential_count": _get(obj, "credential_count"),
-        }
 
 
 @register_serializer(

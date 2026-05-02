@@ -177,6 +177,9 @@ from unifi_api.graphql.types.access.policies import (
 from unifi_api.graphql.types.access.schedules import (
     Schedule as AccessScheduleType,
 )
+from unifi_api.graphql.types.access.visitors import (
+    Visitor as AccessVisitorType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -1085,6 +1088,25 @@ def create_app(config: ApiConfig) -> FastAPI:
     # tools today, so the serializer module was removed.
     app.state.type_registry.register_tool_type(
         "access_list_schedules", AccessScheduleType, "list",
+    )
+
+    # Phase 6 PR4 Task B — access/visitors migrated to Strawberry types.
+    # Single read serializer (Visitor) moved to
+    # graphql/types/access/visitors.py. Resource registrations cover
+    # LIST + DETAIL paths. Mutation acks (``access_create_visitor`` /
+    # ``access_delete_visitor``) stay as a serializer in
+    # serializers/access/visitors.py.
+    app.state.type_registry.register_type(
+        "access", "visitors", AccessVisitorType,
+    )
+    app.state.type_registry.register_type(
+        "access", "visitors/{id}", AccessVisitorType,
+    )
+    app.state.type_registry.register_tool_type(
+        "access_list_visitors", AccessVisitorType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "access_get_visitor", AccessVisitorType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

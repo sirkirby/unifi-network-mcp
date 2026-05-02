@@ -63,12 +63,21 @@ async def list_visitors(
     page, next_cursor = paginate(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_visitor_key,
     )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_list_visitors")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_list_visitors")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        items = [type_class.from_manager_output(v).to_dict() for v in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_list_visitors")
+        items = [serializer.serialize(v) for v in page]
+        hint = registry.render_hint_for_tool("access_list_visitors")
     return {
-        "items": [serializer.serialize(v) for v in page],
+        "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("access_list_visitors"),
+        "render_hint": hint,
     }
 
 
@@ -96,9 +105,18 @@ async def get_visitor(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_get_visitor")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_get_visitor")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(visitor).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_get_visitor")
+        data = serializer.serialize(visitor)
+        hint = registry.render_hint_for_tool("access_get_visitor")
     return {
-        "data": serializer.serialize(visitor),
-        "render_hint": registry.render_hint_for_tool("access_get_visitor"),
+        "data": data,
+        "render_hint": hint,
     }

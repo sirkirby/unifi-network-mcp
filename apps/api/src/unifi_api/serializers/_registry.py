@@ -198,6 +198,10 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # manifest has no schedule mutation tools today, so the serializer
     # module was removed)
     "access_list_schedules",
+    # PR4 Task B — access/visitors (1 read shape; create/delete acks stay
+    # as a serializer covering preview/apply mutation paths)
+    "access_list_visitors",
+    "access_get_visitor",
 })
 
 

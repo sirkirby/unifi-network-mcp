@@ -53,11 +53,19 @@ async def get_categories(request: Request) -> dict:
 async def get_render_hints(request: Request) -> dict:
     manifest = request.app.state.manifest_registry
     serializer_registry = request.app.state.serializer_registry
+    type_registry = request.app.state.type_registry
     by_kind: dict[str, dict] = {}
     for tool_name in manifest.all_tools():
+        kind: str | None = None
         try:
             kind = serializer_registry.kind_for_tool(tool_name).value
         except Exception:
+            # Phase 6 — read tools whose projection lives in the type_registry
+            # have no serializer; fall back to the type_registry's tool lookup.
+            tool_type = type_registry.lookup_tool(tool_name)
+            if tool_type is not None:
+                _type_class, kind = tool_type
+        if kind is None:
             continue
         by_kind.setdefault(kind, {"kind": kind, "tools": [], "resources": []})
         by_kind[kind]["tools"].append(tool_name)
