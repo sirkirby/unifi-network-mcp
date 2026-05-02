@@ -194,6 +194,10 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # as a serializer covering preview/apply mutation paths)
     "access_list_policies",
     "access_get_policy",
+    # PR4 Task B — access/schedules (1 read shape; LIST only — the access
+    # manifest has no schedule mutation tools today, so the serializer
+    # module was removed)
+    "access_list_schedules",
 })
 
 

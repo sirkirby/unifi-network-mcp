@@ -74,15 +74,17 @@ def test_policy_serializer_shape() -> None:
 
 
 def test_schedule_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_list_schedules")
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.schedules import Schedule
+
     sample = {
         "id": "sch1",
         "name": "Weekdays 9-5",
         "week_schedule": {"monday": [{"start": "09:00", "end": "17:00"}]},
         "status": "active",
     }
-    out = s.serialize(sample)
+    out = Schedule.from_manager_output(sample).to_dict()
     assert out["id"] == "sch1"
     assert out["name"] == "Weekdays 9-5"
     assert out["weekly_pattern"] == sample["week_schedule"]
