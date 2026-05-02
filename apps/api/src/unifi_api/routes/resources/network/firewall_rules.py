@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
+from unifi_api.graphql.pydantic_export import to_pydantic_model
+from unifi_api.graphql.types.network.firewall import FirewallRule
 from unifi_api.routes.resources._common import (
     require_capability,
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
+from unifi_api.services.pydantic_models import Page
 
 router = APIRouter()
 
@@ -26,7 +27,9 @@ def _rule_key(obj) -> tuple:
 
 @router.get(
     "/sites/{site_id}/firewall/rules",
+    response_model=Page[to_pydantic_model(FirewallRule)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/firewall"],
 )
 async def list_firewall_rules(
     request: Request,
@@ -72,6 +75,7 @@ async def list_firewall_rules(
 @router.get(
     "/sites/{site_id}/firewall/rules/{rule_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/firewall"],
 )
 async def get_firewall_rule(
     request: Request,
