@@ -20,17 +20,27 @@ from unifi_api.serializers._registry import (
 from unifi_api.services.manifest import ManifestRegistry
 
 
-# PR1 baseline: every product is exempt (no resolvers yet, just the smoke
-# `health` field). PR2 will remove "network" from this set; PR3 "protect"; PR4 "access".
-EXEMPT_PRODUCTS: set[str] = {"network", "protect", "access"}
+# PR2.5 close: network is now covered by ~80 NetworkQuery resolvers. The
+# gate enforces every network read tool maps to a Query field. PR3 will
+# remove "protect"; PR4 "access". PR4 close has the set empty.
+EXEMPT_PRODUCTS: set[str] = {"protect", "access"}
 
 
 def _read_tools_by_product() -> dict[str, list[str]]:
-    """Group read tools (LIST + DETAIL kinds) by product."""
+    """Group read tools (LIST + DETAIL kinds, `unifi_list_*` / `unifi_get_*` prefix) by product.
+
+    Mutation tools (`unifi_update_*`, `unifi_block_*`, `unifi_configure_*`, etc.)
+    are also registered with DETAIL render kind because the action endpoint
+    returns a single result — but they are out of scope for Phase 6's read-only
+    GraphQL surface. Filter by prefix in addition to kind.
+    """
     reg = ManifestRegistry.load_from_apps()
     serializer_reg = serializer_registry_singleton()
     out: dict[str, list[str]] = {"network": [], "protect": [], "access": []}
     for tool_name in reg.all_tools():
+        # Read-tool prefix filter — Phase 6 scope is unifi_list_* / unifi_get_* only.
+        if not (tool_name.startswith("unifi_list_") or tool_name.startswith("unifi_get_")):
+            continue
         try:
             entry = reg.resolve(tool_name)
         except Exception:
@@ -49,11 +59,18 @@ def _read_tools_by_product() -> dict[str, list[str]]:
 def _query_field_names() -> set[str]:
     """Walk the schema's Query type and any nested namespaces for field names."""
     names: set[str] = set()
+    seen: set[int] = set()
     gql_schema = graphql_schema._schema  # underlying graphql-core GraphQLSchema
 
     def _walk(type_obj) -> None:
         if not hasattr(type_obj, "fields"):
             return
+        # Cycle protection — relationship edges (e.g. Client.device -> Device,
+        # Device.portClients -> [Client]) form cycles in the type graph.
+        type_id = id(type_obj)
+        if type_id in seen:
+            return
+        seen.add(type_id)
         for field_name, field in type_obj.fields.items():
             names.add(field_name)
             # If the field's return type is itself a typed object with subfields

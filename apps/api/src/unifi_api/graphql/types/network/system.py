@@ -284,7 +284,9 @@ class SnmpSettings:
 class EventTypes:
     # The catalog of event-type prefixes is unstructured (varies by
     # firmware), so each descriptor passes through as a plain dict.
-    _event_types: strawberry.Private[list[dict]]
+    # Exposed as a ``JSON`` scalar on the GraphQL surface so the
+    # heterogeneous payload survives without an enumerated sub-type.
+    event_types: strawberry.scalars.JSON  # type: ignore[name-defined]
 
     @classmethod
     def render_hint(cls, kind: str) -> dict:
@@ -294,17 +296,17 @@ class EventTypes:
     def from_manager_output(cls, obj: Any) -> "EventTypes":
         if isinstance(obj, list):
             return cls(
-                _event_types=[e for e in obj if isinstance(e, dict)],
+                event_types=[e for e in obj if isinstance(e, dict)],
             )
         if isinstance(obj, dict):
             inner = obj.get("event_types")
             if isinstance(inner, list):
-                return cls(_event_types=list(inner))
-            return cls(_event_types=[obj])
-        return cls(_event_types=[])
+                return cls(event_types=list(inner))
+            return cls(event_types=[obj])
+        return cls(event_types=[])
 
     def to_dict(self) -> dict:
-        return {"event_types": list(self._event_types)}
+        return {"event_types": list(self.event_types)}
 
 
 @strawberry.type(description="Auto-backup schedule + retention settings.")

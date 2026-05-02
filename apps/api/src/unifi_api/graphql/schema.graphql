@@ -1,3 +1,105 @@
+"""A MAC ACL rule (V2 /acl-rules entry)."""
+type AclRule {
+  id: ID
+  name: String
+  enabled: Boolean!
+  action: String
+  source: JSON
+  destination: JSON
+}
+
+"""Paginated page of ACL rules."""
+type AclRulePage {
+  items: [AclRule!]!
+  nextCursor: String
+}
+
+"""An active kernel routing-table entry on a gateway."""
+type ActiveRoute {
+  targetSubnet: String
+  gateway: String
+  interface: String
+  distance: Int
+}
+
+"""Paginated page of active kernel routes."""
+type ActiveRoutePage {
+  items: [ActiveRoute!]!
+  nextCursor: String
+}
+
+"""A controller alarm (V1 /list/alarm entry)."""
+type Alarm {
+  id: ID
+  key: String
+  msg: String
+  archived: Boolean!
+  time: Int
+}
+
+"""Paginated page of controller alarms."""
+type AlarmPage {
+  items: [Alarm!]!
+  nextCursor: String
+}
+
+"""A UniFi AP group (collection of AP MAC addresses)."""
+type ApGroup {
+  id: ID
+  name: String
+  apCount: Int!
+  deviceMacs: [String!]!
+}
+
+"""Paginated page of AP groups."""
+type ApGroupPage {
+  items: [ApGroup!]!
+  nextCursor: String
+}
+
+"""Auto-backup schedule + retention settings."""
+type AutoBackupSettings {
+  enabled: Boolean!
+  schedule: String
+  maxCount: Int
+}
+
+"""A wireless channel allowed by the regulatory domain."""
+type AvailableChannel {
+  channel: Int
+  frequencyMhz: Int
+  widthMhz: Int
+  allowed: Boolean!
+}
+
+"""A controller backup file metadata record."""
+type Backup {
+  id: ID
+  filename: String
+  size: Int
+  createdAt: Int
+}
+
+"""Paginated page of controller backup descriptors."""
+type BackupPage {
+  items: [Backup!]!
+  nextCursor: String
+}
+
+"""A client currently blocked on the UniFi Network controller."""
+type BlockedClient {
+  mac: ID
+  hostname: String
+  lastSeen: String
+  blocked: Boolean!
+}
+
+"""Paginated page of blocked clients."""
+type BlockedClientPage {
+  items: [BlockedClient!]!
+  nextCursor: String
+}
+
 """A client device on the UniFi Network controller."""
 type Client {
   mac: ID
@@ -10,11 +112,80 @@ type Client {
   firstSeen: String
   note: String
   usergroupId: String
+
+  """The AP or switch this client connects through."""
+  device: Device
+}
+
+"""A network member client group (V2 /network-members-group entry)."""
+type ClientGroup {
+  id: ID
+  name: String
+  qosRateMaxDown: Int
+  qosRateMaxUp: Int
+}
+
+"""Paginated page of network member client groups."""
+type ClientGroupPage {
+  items: [ClientGroup!]!
+  nextCursor: String
+}
+
+"""Result of a by-IP client lookup — online presence + last seen."""
+type ClientLookup {
+  mac: ID
+  ip: String
+  hostname: String
+  isOnline: Boolean!
+  lastSeen: String
 }
 
 """Paginated page of clients."""
 type ClientPage {
   items: [Client!]!
+  nextCursor: String
+}
+
+"""A client association session entry."""
+type ClientSession {
+  mac: String
+  hostname: String
+  ap: String
+  ssid: String
+  connectedAt: Int
+  disconnectedAt: Int
+  duration: Int
+}
+
+"""Paginated page of client association sessions."""
+type ClientSessionPage {
+  items: [ClientSession!]!
+  nextCursor: String
+}
+
+"""Current WiFi parameters for a client."""
+type ClientWifiDetails {
+  mac: String
+  ssid: String
+  ap: String
+  signal: Int
+  txRate: Int
+  rxRate: Int
+  channel: Int
+}
+
+"""A content-filtering profile (V2 /content-filtering entry)."""
+type ContentFilter {
+  id: ID
+  name: String
+  enabled: Boolean!
+  profile: String
+  appliesTo: JSON!
+}
+
+"""Paginated page of content filters."""
+type ContentFilterPage {
+  items: [ContentFilter!]!
   nextCursor: String
 }
 
@@ -29,12 +200,131 @@ type Device {
   state: String
   ip: String
   ports: JSON
+
+  """Clients currently connected through this AP/switch."""
+  portClients: [Client!]!
 }
 
 """Paginated page of devices."""
 type DevicePage {
   items: [Device!]!
   nextCursor: String
+}
+
+"""Wrapper dict containing the radio table for a device."""
+type DeviceRadio {
+  mac: ID
+  name: String
+  model: String
+  radios: [RadioEntry!]!
+}
+
+"""A static DNS record served by the controller."""
+type DnsRecord {
+  id: ID
+  hostname: String
+  ip: String
+  type: String
+  ttl: Int
+  enabled: Boolean!
+}
+
+"""Paginated page of DNS records."""
+type DnsRecordPage {
+  items: [DnsRecord!]!
+  nextCursor: String
+}
+
+"""A DPI application classification entry."""
+type DpiApplication {
+  id: Int
+  name: String
+  categoryId: Int
+}
+
+"""Paginated page of DPI applications."""
+type DpiApplicationPage {
+  items: [DpiApplication!]!
+  nextCursor: String
+}
+
+"""A DPI application category."""
+type DpiCategory {
+  id: Int
+  name: String
+}
+
+"""Paginated page of DPI categories."""
+type DpiCategoryPage {
+  items: [DpiCategory!]!
+  nextCursor: String
+}
+
+"""DPI stats wrapper: applications + categories arrays."""
+type DpiStats {
+  applications: JSON!
+  categories: JSON!
+}
+
+"""A curated event-log entry."""
+type EventLog {
+  id: ID
+  key: String
+  msg: String
+  time: Int
+  mac: String
+  ip: String
+  severity: String
+}
+
+"""Paginated page of event-log entries."""
+type EventLogPage {
+  items: [EventLog!]!
+  nextCursor: String
+}
+
+"""Wrapper for event-type prefix descriptors."""
+type EventTypes {
+  eventTypes: JSON!
+}
+
+"""A firewall address/port group (V1 /rest/firewallgroup)."""
+type FirewallGroup {
+  id: ID
+  name: String
+  groupType: String
+  members: JSON!
+}
+
+"""Paginated page of firewall groups."""
+type FirewallGroupPage {
+  items: [FirewallGroup!]!
+  nextCursor: String
+}
+
+"""A firewall policy rule."""
+type FirewallRule {
+  id: ID
+  name: String
+  action: String
+  enabled: Boolean!
+  predefined: Boolean!
+  source: JSON
+  destination: JSON
+}
+
+"""Paginated page of firewall policies/rules."""
+type FirewallRulePage {
+  items: [FirewallRule!]!
+  nextCursor: String
+}
+
+"""A firewall zone (V2 /firewall/zone-matrix entry)."""
+type FirewallZone {
+  id: ID
+  name: String
+  networks: JSON!
+  defaultPolicy: String
 }
 
 """Service health snapshot — smoke field for the GraphQL endpoint."""
@@ -49,6 +339,38 @@ The `JSON` scalar type represents JSON values as specified by [ECMA-404](https:/
 """
 scalar JSON @specifiedBy(url: "https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf")
 
+"""A known rogue AP (allowlisted by the operator)."""
+type KnownRogueAp {
+  bssid: ID
+  ssid: String
+  channel: Int
+  signalDbm: Int
+  lastSeen: Int
+  isKnown: Boolean!
+}
+
+"""Paginated page of known (allowlisted) rogue APs."""
+type KnownRogueApPage {
+  items: [KnownRogueAp!]!
+  nextCursor: String
+}
+
+"""Wrapper dict containing LLDP neighbors for a switch."""
+type LldpNeighbors {
+  name: String
+  model: String
+  lldpTable: [LldpRow!]!
+}
+
+"""A single LLDP neighbor row reported by a switch."""
+type LldpRow {
+  localPortIdx: Int
+  chassisId: String
+  portId: String
+  systemName: String
+  capabilities: [String!]!
+}
+
 """A UniFi LAN/VLAN network configuration."""
 type Network {
   id: ID
@@ -57,6 +379,20 @@ type Network {
   enabled: Boolean!
   vlan: Int
   subnet: String
+
+  """Clients on this network."""
+  clients: [Client!]!
+}
+
+"""A network-health subsystem entry."""
+type NetworkHealth {
+  subsystem: String
+  status: String
+  numUser: Int
+  numGuest: Int
+  numIot: Int
+  rxBytes: Int
+  txBytes: Int
 }
 
 """Paginated page of network configurations."""
@@ -70,13 +406,359 @@ type NetworkQuery {
   """List clients on the given controller/site (paginated)."""
   clients(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): ClientPage!
 
+  """Look up a single client by MAC address."""
+  client(controller: ID!, mac: ID!, site: String! = "default"): Client
+
+  """List clients currently blocked from the network (paginated)."""
+  blockedClients(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): BlockedClientPage!
+
+  """Look up a client by IP address (online-presence check)."""
+  clientByIp(controller: ID!, ip: String!, site: String! = "default"): ClientLookup
+
   """List devices on the given controller/site (paginated)."""
   devices(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): DevicePage!
+
+  """Look up a single device by MAC address."""
+  device(controller: ID!, mac: ID!, site: String! = "default"): Device
+
+  """Get the radio configuration for a UniFi access point."""
+  deviceRadio(controller: ID!, mac: ID!, site: String! = "default"): DeviceRadio
+
+  """Get LLDP neighbors reported by a switch."""
+  lldpNeighbors(controller: ID!, deviceMac: ID!, site: String! = "default"): LldpNeighbors
+
+  """List rogue (unknown) APs detected within a window (paginated)."""
+  rogueAps(controller: ID!, site: String! = "default", withinHours: Int! = 24, limit: Int! = 50, cursor: String = null): RogueApPage!
+
+  """List known (allowlisted) rogue APs (paginated)."""
+  knownRogueAps(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): KnownRogueApPage!
+
+  """List RF-scan results for a specific access point."""
+  rfScanResults(controller: ID!, apMac: ID!, site: String! = "default"): [RfScanResult!]!
+
+  """List wireless channels allowed by the regulatory domain."""
+  availableChannels(controller: ID!, site: String! = "default"): [AvailableChannel!]!
+
+  """Get the gateway speedtest status (idle/running + last results)."""
+  speedtestStatus(controller: ID!, gatewayMac: ID!, site: String! = "default"): SpeedtestStatus
 
   """
   List configured LAN/VLAN networks on the given controller/site (paginated).
   """
   networks(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): NetworkPage!
+
+  """
+  Look up a single LAN/VLAN network by id. (Named ``networkDetail`` because ``network`` is reserved for the namespace.)
+  """
+  networkDetail(controller: ID!, id: ID!, site: String! = "default"): Network
+
+  """Get the controller's network-health subsystems list."""
+  networkHealth(controller: ID!, site: String! = "default"): [NetworkHealth!]!
+
+  """
+  List WLAN/SSID configurations on the given controller/site (paginated).
+  """
+  wlans(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): WlanPage!
+
+  """Look up a single WLAN/SSID by id."""
+  wlan(controller: ID!, id: ID!, site: String! = "default"): Wlan
+
+  """List configured VPN clients (outbound tunnels) (paginated)."""
+  vpnClients(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): VpnClientPage!
+
+  """Look up a single VPN client by id."""
+  vpnClient(controller: ID!, id: ID!, site: String! = "default"): VpnClient
+
+  """List configured VPN servers (inbound tunnels) (paginated)."""
+  vpnServers(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): VpnServerPage!
+
+  """Look up a single VPN server by id."""
+  vpnServer(controller: ID!, id: ID!, site: String! = "default"): VpnServer
+
+  """List static DNS records on the given controller/site (paginated)."""
+  dnsRecords(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): DnsRecordPage!
+
+  """Look up a single DNS record by id."""
+  dnsRecord(controller: ID!, id: ID!, site: String! = "default"): DnsRecord
+
+  """List configured static routes (paginated)."""
+  routes(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): RoutePage!
+
+  """Look up a single static route by id."""
+  route(controller: ID!, id: ID!, site: String! = "default"): Route
+
+  """List the gateway's active kernel routing-table entries (paginated)."""
+  activeRoutes(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): ActiveRoutePage!
+
+  """List traffic-route policies (V2 /trafficroutes) (paginated)."""
+  trafficRoutes(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): TrafficRoutePage!
+
+  """Look up a single traffic-route policy by id."""
+  trafficRoute(controller: ID!, id: ID!, site: String! = "default"): TrafficRoute
+
+  """List firewall policies/rules on the given controller/site (paginated)."""
+  firewallPolicies(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): FirewallRulePage!
+
+  """Look up a single firewall policy/rule by id."""
+  firewallPolicy(controller: ID!, id: ID!, site: String! = "default"): FirewallRule
+
+  """List firewall address/port groups (paginated)."""
+  firewallGroups(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): FirewallGroupPage!
+
+  """Look up a single firewall group by id."""
+  firewallGroup(controller: ID!, id: ID!, site: String! = "default"): FirewallGroup
+
+  """List firewall zones (typically a small flat list — no pagination)."""
+  firewallZones(controller: ID!, site: String! = "default"): [FirewallZone!]!
+
+  """List QoS rules on the given controller/site (paginated)."""
+  qosRules(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): QosRulePage!
+
+  """Look up a single QoS rule by id."""
+  qosRule(controller: ID!, id: ID!, site: String! = "default"): QosRule
+
+  """List DPI applications (paginated)."""
+  dpiApplications(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): DpiApplicationPage!
+
+  """List DPI categories (paginated)."""
+  dpiCategories(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): DpiCategoryPage!
+
+  """List content filters on the given controller/site (paginated)."""
+  contentFilters(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): ContentFilterPage!
+
+  """Look up a single content filter by id."""
+  contentFilter(controller: ID!, id: ID!, site: String! = "default"): ContentFilter
+
+  """List ACL rules on the given controller/site (paginated)."""
+  aclRules(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): AclRulePage!
+
+  """Look up a single ACL rule by id."""
+  aclRule(controller: ID!, id: ID!, site: String! = "default"): AclRule
+
+  """List OON (out-of-network) policies (paginated)."""
+  oonPolicies(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): OonPolicyPage!
+
+  """Look up a single OON policy by id."""
+  oonPolicy(controller: ID!, id: ID!, site: String! = "default"): OonPolicy
+
+  """List port forwards on the given controller/site (paginated)."""
+  portForwards(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): PortForwardPage!
+
+  """Look up a single port forward by id."""
+  portForward(controller: ID!, id: ID!, site: String! = "default"): PortForward
+
+  """Site dashboard timeseries (all-points)."""
+  dashboardStats(controller: ID!, site: String! = "default", durationHours: Int! = 1): [StatPoint!]!
+
+  """Network-wide stats timeseries."""
+  networkStats(controller: ID!, site: String! = "default", durationHours: Int! = 1): [StatPoint!]!
+
+  """Gateway stats timeseries."""
+  gatewayStats(controller: ID!, site: String! = "default", durationHours: Int! = 24): [StatPoint!]!
+
+  """Per-client stats timeseries (by MAC)."""
+  clientStats(controller: ID!, mac: ID!, site: String! = "default", durationHours: Int! = 1): [StatPoint!]!
+
+  """Per-device stats timeseries (by MAC)."""
+  deviceStats(controller: ID!, mac: ID!, site: String! = "default", durationHours: Int! = 1): [StatPoint!]!
+
+  """Per-client DPI traffic breakdown."""
+  clientDpiTraffic(controller: ID!, mac: ID!, site: String! = "default"): [StatPoint!]!
+
+  """Site-wide DPI traffic breakdown."""
+  siteDpiTraffic(controller: ID!, site: String! = "default"): [StatPoint!]!
+
+  """DPI stats catalog (applications + categories)."""
+  dpiStats(controller: ID!, site: String! = "default"): DpiStats
+
+  """List recent controller events (paginated)."""
+  eventLog(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): EventLogPage!
+
+  """List active alerts (paginated)."""
+  alerts(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): EventLogPage!
+
+  """List recent anomalies (paginated)."""
+  anomalies(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): EventLogPage!
+
+  """List recent IPS/IDS events (paginated)."""
+  ipsEvents(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): EventLogPage!
+
+  """List controller alarms (paginated)."""
+  alarms(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): AlarmPage!
+
+  """Get controller system info (build, uptime, hardware)."""
+  systemInfo(controller: ID!, site: String! = "default"): SystemInfo
+
+  """Get site-level settings (locale, timezone, advanced)."""
+  siteSettings(controller: ID!, site: String! = "default"): SiteSettings
+
+  """Get SNMP settings."""
+  snmpSettings(controller: ID!, site: String! = "default"): SnmpSettings
+
+  """Get the controller's event-type prefix catalog."""
+  eventTypes(controller: ID!, site: String! = "default"): EventTypes
+
+  """Get auto-backup schedule + retention settings."""
+  autobackupSettings(controller: ID!, site: String! = "default"): AutoBackupSettings
+
+  """List controller backups (paginated)."""
+  backups(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): BackupPage!
+
+  """List recent speedtest results (paginated)."""
+  speedtestResults(controller: ID!, site: String! = "default", durationHours: Int! = 24, limit: Int! = 50, cursor: String = null): SpeedtestResultPage!
+
+  """List top-traffic clients within a window."""
+  topClients(controller: ID!, site: String! = "default", withinHours: Int! = 24): [TopClient!]!
+
+  """List hotspot vouchers on the given controller/site (paginated)."""
+  vouchers(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): VoucherPage!
+
+  """Look up a single hotspot voucher by id."""
+  voucher(controller: ID!, id: ID!, site: String! = "default"): Voucher
+
+  """List a client's association sessions (paginated)."""
+  clientSessions(controller: ID!, site: String! = "default", mac: String = null, durationHours: Int! = 24, limit: Int! = 50, cursor: String = null): ClientSessionPage!
+
+  """Get a client's current WiFi parameters (signal, rates)."""
+  clientWifiDetails(controller: ID!, mac: ID!, site: String! = "default"): ClientWifiDetails
+
+  """List switch port profiles on the given controller/site (paginated)."""
+  portProfiles(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): PortProfilePage!
+
+  """Look up a single switch port profile by id."""
+  portProfile(controller: ID!, id: ID!, site: String! = "default"): PortProfile
+
+  """
+  Get the port-override wrapper for a switch (name/model + per-port overrides).
+  """
+  switchPorts(controller: ID!, deviceMac: ID!, site: String! = "default"): SwitchPorts
+
+  """Get the per-port stats wrapper for a switch (name/model + port_table)."""
+  portStats(controller: ID!, deviceMac: ID!, site: String! = "default"): PortStats
+
+  """Get switch capabilities (caps dict + STP / dot1x flags)."""
+  switchCapabilities(controller: ID!, deviceMac: ID!, site: String! = "default"): SwitchCapabilities
+
+  """List AP groups on the given controller/site (paginated)."""
+  apGroups(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): ApGroupPage!
+
+  """Look up a single AP group by id."""
+  apGroup(controller: ID!, id: ID!, site: String! = "default"): ApGroup
+
+  """
+  List network member client groups on the given controller/site (paginated).
+  """
+  clientGroups(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): ClientGroupPage!
+
+  """Look up a single network member client group by id."""
+  clientGroup(controller: ID!, id: ID!, site: String! = "default"): ClientGroup
+
+  """
+  List QoS user groups (V1 /rest/usergroup) on the given controller/site (paginated).
+  """
+  userGroups(controller: ID!, site: String! = "default", limit: Int! = 50, cursor: String = null): UserGroupPage!
+
+  """Look up a single QoS user group by id."""
+  userGroup(controller: ID!, id: ID!, site: String! = "default"): UserGroup
+}
+
+"""An out-of-network (OON) policy entry."""
+type OonPolicy {
+  id: ID
+  name: String
+  enabled: Boolean!
+  appliesTo: JSON!
+  restrictionLevel: String
+}
+
+"""Paginated page of OON (out-of-network) policies."""
+type OonPolicyPage {
+  items: [OonPolicy!]!
+  nextCursor: String
+}
+
+"""A port-forward rule (V1 /rest/portforward entry)."""
+type PortForward {
+  id: ID
+  name: String
+  enabled: Boolean!
+  fwdProtocol: String
+  dstPort: String
+  fwdPort: String
+  src: String
+  log: Boolean!
+}
+
+"""Paginated page of port forwards."""
+type PortForwardPage {
+  items: [PortForward!]!
+  nextCursor: String
+}
+
+"""A single port-override row on a switch."""
+type PortOverrideRow {
+  portIdx: Int
+  name: String
+  portconfId: String
+  poeMode: String
+  opMode: String
+}
+
+"""A switch port profile (PoE / VLAN tagging template)."""
+type PortProfile {
+  id: ID
+  name: String
+  nativeNetworkconfId: String
+  taggedNetworkconfIds: [String!]!
+  poeMode: String
+  isolation: Boolean
+}
+
+"""Paginated page of switch port profiles."""
+type PortProfilePage {
+  items: [PortProfile!]!
+  nextCursor: String
+}
+
+"""A single port-table row reporting per-port stats."""
+type PortStatRow {
+  portIdx: Int
+  name: String
+  enable: Boolean!
+  speed: Int
+  duplex: Boolean
+  txBytes: Int!
+  rxBytes: Int!
+  txPackets: Int!
+  rxPackets: Int!
+  txDropped: Int!
+  rxDropped: Int!
+  poeEnable: Boolean!
+  poeMode: String
+  poePower: Float
+}
+
+"""Wrapper dict containing the per-port stats table for a switch."""
+type PortStats {
+  name: String
+  model: String
+  portTable: [PortStatRow!]!
+}
+
+"""A QoS rate-limit rule (V2 /qos-rules entry)."""
+type QosRule {
+  id: ID
+  name: String
+  enabled: Boolean!
+  rateMaxDown: Int
+  rateMaxUp: Int
+  priority: Int
+}
+
+"""Paginated page of QoS rules."""
+type QosRulePage {
+  items: [QosRule!]!
+  nextCursor: String
 }
 
 type Query {
@@ -85,4 +767,236 @@ type Query {
 
   """Read-only access to UniFi Network resources."""
   network: NetworkQuery!
+}
+
+"""Radio configuration entry on a UniFi access point."""
+type RadioEntry {
+  name: String
+  radio: String
+  channel: Int
+  ht: Int
+  txPower: Int
+  txPowerMode: String
+  currentChannel: Int
+  currentTxPower: Int
+  numSta: Int
+}
+
+"""A single RF-scan result row reported by an AP."""
+type RfScanResult {
+  bssid: ID
+  ssid: String
+  channel: Int
+  signalDbm: Int
+  capturedAt: Int
+}
+
+"""A rogue (unknown) AP detected by the controller."""
+type RogueAp {
+  bssid: ID
+  ssid: String
+  channel: Int
+  signalDbm: Int
+  lastSeen: Int
+  isKnown: Boolean!
+}
+
+"""Paginated page of detected rogue APs."""
+type RogueApPage {
+  items: [RogueAp!]!
+  nextCursor: String
+}
+
+"""A static route configured on the gateway."""
+type Route {
+  id: ID
+  name: String
+  targetSubnet: String
+  gateway: String
+  distance: Int
+  enabled: Boolean!
+}
+
+"""Paginated page of static routes."""
+type RoutePage {
+  items: [Route!]!
+  nextCursor: String
+}
+
+"""Controller site settings."""
+type SiteSettings {
+  siteId: String
+  name: String
+  role: String
+  country: Int
+}
+
+"""Controller SNMP settings."""
+type SnmpSettings {
+  enabled: Boolean!
+  community: String
+  port: Int
+  version: String
+}
+
+"""A speedtest result entry."""
+type SpeedtestResult {
+  timestamp: Int
+  downloadMbps: Float
+  uploadMbps: Float
+  latencyMs: Float
+}
+
+"""Paginated page of speedtest result entries."""
+type SpeedtestResultPage {
+  items: [SpeedtestResult!]!
+  nextCursor: String
+}
+
+"""Speedtest status reported by a UniFi gateway."""
+type SpeedtestStatus {
+  status: String
+  downloadMbps: Float
+  uploadMbps: Float
+  latencyMs: Int
+  lastRun: Int
+}
+
+"""A single timeseries point: {ts: <ms>, ...metrics}."""
+type StatPoint {
+  ts: Int!
+}
+
+"""Switch capabilities (caps dict + STP / dot1x flags)."""
+type SwitchCapabilities {
+  name: String
+  model: String
+  switchCaps: JSON
+  stpVersion: String
+  stpPriority: String
+  jumboframeEnabled: Boolean
+  dot1xPortctrlEnabled: Boolean
+}
+
+"""Wrapper dict containing port-override rows for a switch."""
+type SwitchPorts {
+  name: String
+  model: String
+  portOverrides: [PortOverrideRow!]!
+}
+
+"""Controller system information."""
+type SystemInfo {
+  name: String
+  version: String
+  hostname: String
+  uptime: Int
+  numDevices: Int
+  numClients: Int
+}
+
+"""A top-traffic client entry."""
+type TopClient {
+  mac: String
+  hostname: String
+  txBytes: Int
+  rxBytes: Int
+  totalBytes: Int
+}
+
+"""A traffic-route policy (V2 /trafficroutes entry)."""
+type TrafficRoute {
+  id: ID
+  name: String
+  matchingTarget: String
+  sourceTargets: JSON
+  destinationTargets: JSON
+  nextHop: String
+  enabled: Boolean!
+}
+
+"""Paginated page of traffic-route policies."""
+type TrafficRoutePage {
+  items: [TrafficRoute!]!
+  nextCursor: String
+}
+
+"""A QoS user group (V1 /rest/usergroup entry)."""
+type UserGroup {
+  id: ID
+  name: String
+  qosRateMaxDown: Int
+  qosRateMaxUp: Int
+}
+
+"""Paginated page of QoS user groups."""
+type UserGroupPage {
+  items: [UserGroup!]!
+  nextCursor: String
+}
+
+"""A hotspot voucher (V1 /stat/voucher entry)."""
+type Voucher {
+  id: ID
+  code: String
+  status: String
+  duration: Int
+  qosOverwrite: Boolean!
+  createdAt: Int
+  usedAt: Int
+}
+
+"""Paginated page of hotspot vouchers."""
+type VoucherPage {
+  items: [Voucher!]!
+  nextCursor: String
+}
+
+"""A configured VPN client (outbound tunnel)."""
+type VpnClient {
+  id: ID
+  name: String
+  type: String
+  enabled: Boolean!
+  serverAddress: String
+  lastHandshake: Int
+}
+
+"""Paginated page of VPN clients."""
+type VpnClientPage {
+  items: [VpnClient!]!
+  nextCursor: String
+}
+
+"""A configured VPN server (inbound tunnel)."""
+type VpnServer {
+  id: ID
+  name: String
+  type: String
+  enabled: Boolean!
+  listenPort: Int
+  allowedSubnets: [String!]
+}
+
+"""Paginated page of VPN servers."""
+type VpnServerPage {
+  items: [VpnServer!]!
+  nextCursor: String
+}
+
+"""A UniFi WLAN/SSID configuration."""
+type Wlan {
+  id: ID
+  name: String
+  enabled: Boolean!
+  security: String
+  networkId: String
+  hideSsid: Boolean!
+  vlanId: Int
+}
+
+"""Paginated page of WLAN/SSID configurations."""
+type WlanPage {
+  items: [Wlan!]!
+  nextCursor: String
 }

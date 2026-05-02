@@ -20,9 +20,13 @@ exposes the same dict contract the REST routes return today.
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import strawberry
+from strawberry.types import Info
+
+if TYPE_CHECKING:
+    from unifi_api.graphql.types.network.client import Client
 
 
 _STATE_MAP = {
@@ -59,6 +63,10 @@ class Device:
     ip: str | None
     ports: strawberry.scalars.JSON | None  # type: ignore[name-defined]
 
+    # Context for relationship edges — NOT in SDL, NOT in to_dict().
+    _controller_id: strawberry.Private[str | None] = None
+    _site: strawberry.Private[str | None] = None
+
     @classmethod
     def render_hint(cls, kind: str) -> dict:
         return {
@@ -85,7 +93,34 @@ class Device:
         )
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        out = asdict(self)
+        return {k: v for k, v in out.items() if not k.startswith("_") and not callable(v)}
+
+    @strawberry.field(description="Clients currently connected through this AP/switch.")
+    async def port_clients(
+        self, info: Info,
+    ) -> list[Annotated["Client", strawberry.lazy("unifi_api.graphql.types.network.client")]]:
+        """Resolves to clients whose ap_mac matches this device's mac."""
+        from unifi_api.graphql.resolvers.network import _fetch_clients
+        from unifi_api.graphql.types.network.client import Client
+
+        if not self._controller_id:
+            return []
+        site = self._site or "default"
+        raw_clients = await _fetch_clients(info.context, self._controller_id, site)
+        out: list[Client] = []
+        for c in raw_clients:
+            if isinstance(c, dict):
+                ap_mac = c.get("ap_mac")
+            else:
+                raw = getattr(c, "raw", None)
+                ap_mac = raw.get("ap_mac") if isinstance(raw, dict) else getattr(c, "ap_mac", None)
+            if ap_mac == self.mac:
+                inst = Client.from_manager_output(c)
+                inst._controller_id = self._controller_id
+                inst._site = site
+                out.append(inst)
+        return out
 
 
 @strawberry.type(description="Radio configuration entry on a UniFi access point.")
