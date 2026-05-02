@@ -58,10 +58,19 @@ async def list_schedules(
     page, next_cursor = paginate(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_list_schedules")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_list_schedules")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        items = [type_class.from_manager_output(s).to_dict() for s in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_list_schedules")
+        items = [serializer.serialize(s) for s in page]
+        hint = registry.render_hint_for_tool("access_list_schedules")
     return {
-        "items": [serializer.serialize(s) for s in page],
+        "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("access_list_schedules"),
+        "render_hint": hint,
     }

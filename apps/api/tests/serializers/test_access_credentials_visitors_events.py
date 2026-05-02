@@ -65,30 +65,32 @@ def test_credential_mutation_ack_revoke() -> None:
 
 
 def test_visitor_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_list_visitors")
-    sample = [
-        {
-            "id": "vis-001",
-            "name": "Jane Doe",
-            "host_user_id": "user-1",
-            "valid_from": "2026-04-29T08:00:00Z",
-            "valid_until": "2026-04-29T18:00:00Z",
-            "status": "active",
-            "credential_count": 1,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="access_list_visitors")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "vis-001"
-    assert out["data"][0]["name"] == "Jane Doe"
-    assert out["data"][0]["status"] == "active"
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.visitors import Visitor
+
+    sample = {
+        "id": "vis-001",
+        "name": "Jane Doe",
+        "host_user_id": "user-1",
+        "valid_from": "2026-04-29T08:00:00Z",
+        "valid_until": "2026-04-29T18:00:00Z",
+        "status": "active",
+        "credential_count": 1,
+    }
+    out = Visitor.from_manager_output(sample).to_dict()
+    assert out["id"] == "vis-001"
+    assert out["name"] == "Jane Doe"
+    assert out["status"] == "active"
+    assert out["credential_count"] == 1
+    assert Visitor.render_hint("list")["kind"] == "list"
 
 
 def test_visitor_detail_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_get_visitor")
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.visitors import Visitor
+
     sample = {
         "id": "vis-002",
         "name": "John Roe",
@@ -98,11 +100,10 @@ def test_visitor_detail_serializer_shape() -> None:
         "status": "scheduled",
         "credential_count": 0,
     }
-    out = s.serialize_action(sample, tool_name="access_get_visitor")
-    assert out["success"] is True
-    assert out["data"]["id"] == "vis-002"
-    assert out["data"]["host_user_id"] == "user-2"
-    assert out["render_hint"]["kind"] == "detail"
+    out = Visitor.from_manager_output(sample).to_dict()
+    assert out["id"] == "vis-002"
+    assert out["host_user_id"] == "user-2"
+    assert Visitor.render_hint("detail")["kind"] == "detail"
 
 
 def test_visitor_mutation_ack_create() -> None:
@@ -142,24 +143,23 @@ def test_visitor_mutation_ack_delete() -> None:
 
 
 def test_access_event_log_list_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_list_events")
-    sample = [
-        {
-            "id": "evt-1",
-            "type": "access_granted",
-            "timestamp": "2026-04-29T08:00:00Z",
-            "door_id": "door-1",
-            "user_id": "user-1",
-            "credential_id": "cred-001",
-            "result": "granted",
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="access_list_events")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "evt-1"
-    assert out["data"][0]["result"] == "granted"
-    assert out["render_hint"]["kind"] == "event_log"
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.events import Event
+
+    sample = {
+        "id": "evt-1",
+        "type": "access_granted",
+        "timestamp": "2026-04-29T08:00:00Z",
+        "door_id": "door-1",
+        "user_id": "user-1",
+        "credential_id": "cred-001",
+        "result": "granted",
+    }
+    out = Event.from_manager_output(sample).to_dict()
+    assert out["id"] == "evt-1"
+    assert out["result"] == "granted"
+    assert Event.render_hint("list")["kind"] == "list"
 
 
 def test_access_recent_events_shape() -> None:
@@ -184,8 +184,10 @@ def test_access_recent_events_shape() -> None:
 
 
 def test_access_event_detail_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_get_event")
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.events import Event
+
     sample = {
         "id": "evt-3",
         "type": "door_open",
@@ -195,16 +197,17 @@ def test_access_event_detail_shape() -> None:
         "credential_id": "cred-002",
         "result": "granted",
     }
-    out = s.serialize_action(sample, tool_name="access_get_event")
-    assert out["success"] is True
-    assert out["data"]["id"] == "evt-3"
-    assert out["data"]["door_id"] == "door-2"
-    assert out["render_hint"]["kind"] == "detail"
+    out = Event.from_manager_output(sample).to_dict()
+    assert out["id"] == "evt-3"
+    assert out["door_id"] == "door-2"
+    assert Event.render_hint("detail")["kind"] == "detail"
 
 
 def test_activity_summary_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_get_activity_summary")
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.events import ActivitySummary
+
     sample = {
         "period_start": "2026-04-22T00:00:00Z",
         "period_end": "2026-04-29T00:00:00Z",
@@ -213,12 +216,11 @@ def test_activity_summary_shape() -> None:
         "denied_count": 12,
         "top_users": [{"user_id": "user-1", "count": 47}],
     }
-    out = s.serialize_action(sample, tool_name="access_get_activity_summary")
-    assert out["success"] is True
-    assert out["data"]["total_events"] == 142
-    assert out["data"]["granted_count"] == 130
-    assert out["data"]["top_users"][0]["user_id"] == "user-1"
-    assert out["render_hint"]["kind"] == "detail"
+    out = ActivitySummary.from_manager_output(sample).to_dict()
+    assert out["total_events"] == 142
+    assert out["granted_count"] == 130
+    assert out["top_users"][0]["user_id"] == "user-1"
+    assert ActivitySummary.render_hint("detail")["kind"] == "detail"
 
 
 def test_subscribe_events_shape() -> None:

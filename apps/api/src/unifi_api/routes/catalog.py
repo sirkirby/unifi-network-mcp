@@ -53,11 +53,19 @@ async def get_categories(request: Request) -> dict:
 async def get_render_hints(request: Request) -> dict:
     manifest = request.app.state.manifest_registry
     serializer_registry = request.app.state.serializer_registry
+    type_registry = request.app.state.type_registry
     by_kind: dict[str, dict] = {}
     for tool_name in manifest.all_tools():
+        kind: str | None = None
         try:
             kind = serializer_registry.kind_for_tool(tool_name).value
         except Exception:
+            # Phase 6 — read tools whose projection lives in the type_registry
+            # have no serializer; fall back to the type_registry's tool lookup.
+            tool_type = type_registry.lookup_tool(tool_name)
+            if tool_type is not None:
+                _type_class, kind = tool_type
+        if kind is None:
             continue
         by_kind.setdefault(kind, {"kind": kind, "tools": [], "resources": []})
         by_kind[kind]["tools"].append(tool_name)
@@ -86,20 +94,20 @@ async def get_resources(request: Request) -> dict:
 
     def _render_hint(product: str, resource: str) -> dict:
         try:
-            entry = type_registry.lookup(product, resource)
+            type_class = type_registry.lookup(product, resource)
         except Exception:
-            entry = None
-        if entry is not None and entry.kind == "type":
-            # Phase 6 PR2 — typed projections expose render_hint(kind).
-            # The kind matches the original serializer's kind; use the
-            # serializer registry as the kind oracle when available, falling
-            # back to a heuristic on the resource shape.
+            type_class = None
+        if type_class is not None:
+            # Phase 6 close — typed projections expose render_hint(kind). The
+            # kind matches the original serializer's kind; use the serializer
+            # registry as the kind oracle when available, falling back to a
+            # heuristic on the resource shape.
             try:
                 kind = serializer_registry.kind_for_resource(product, resource).value
             except Exception:
                 kind = "detail" if "{" in resource else "list"
             try:
-                return entry.payload.render_hint(kind)
+                return type_class.render_hint(kind)
             except Exception:
                 return {"kind": kind}
         try:

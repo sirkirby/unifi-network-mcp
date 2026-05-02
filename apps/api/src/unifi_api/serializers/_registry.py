@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 import pkgutil
 import sys
-from typing import Iterable
+from typing import Any, Iterable
 
 from unifi_api.serializers import _base
 from unifi_api.serializers._base import (
@@ -18,162 +18,6 @@ from unifi_api.serializers._base import (
 
 class SerializerRegistryError(Exception):
     """Raised when the registry is in an invalid state (e.g., missing serializer)."""
-
-
-# Phase 6 PR2 migration: read tools whose dict-shaping logic moved from
-# serializers to Strawberry types in unifi_api.graphql.types.<product>.<resource>.
-# These tools are covered by the type_registry instead of the serializer
-# registry. Task 27 will repoint the coverage gate to type_registry directly
-# and this constant will be removed.
-PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
-    # Task 19 — network/clients
-    "unifi_list_clients",
-    "unifi_get_client_details",
-    "unifi_list_blocked_clients",
-    "unifi_lookup_by_ip",
-    # Task 20 — network/devices
-    "unifi_list_devices",
-    "unifi_get_device_details",
-    "unifi_get_device_radio",
-    "unifi_get_lldp_neighbors",
-    "unifi_list_rogue_aps",
-    "unifi_list_known_rogue_aps",
-    "unifi_get_rf_scan_results",
-    "unifi_list_available_channels",
-    "unifi_get_speedtest_status",
-    # Task 21 — network/networks
-    "unifi_list_networks",
-    "unifi_get_network_details",
-    # Task 21 — network/wlans
-    "unifi_list_wlans",
-    "unifi_get_wlan_details",
-    # Task 21 — network/vpn
-    "unifi_list_vpn_clients",
-    "unifi_get_vpn_client_details",
-    "unifi_list_vpn_servers",
-    "unifi_get_vpn_server_details",
-    # Task 21 — network/dns
-    "unifi_list_dns_records",
-    "unifi_get_dns_record_details",
-    # Task 21 — network/routes
-    "unifi_list_routes",
-    "unifi_get_route_details",
-    "unifi_list_active_routes",
-    "unifi_list_traffic_routes",
-    "unifi_get_traffic_route_details",
-    # Task 22 — network/firewall (rules + groups + zones)
-    "unifi_list_firewall_policies",
-    "unifi_get_firewall_policy_details",
-    "unifi_list_firewall_groups",
-    "unifi_get_firewall_group_details",
-    "unifi_list_firewall_zones",
-    # Task 22 — network/qos
-    "unifi_list_qos_rules",
-    "unifi_get_qos_rule_details",
-    # Task 22 — network/dpi
-    "unifi_list_dpi_applications",
-    "unifi_list_dpi_categories",
-    # Task 22 — network/content_filter
-    "unifi_list_content_filters",
-    "unifi_get_content_filter_details",
-    # Task 22 — network/acl
-    "unifi_list_acl_rules",
-    "unifi_get_acl_rule_details",
-    # Task 22 — network/oon
-    "unifi_list_oon_policies",
-    "unifi_get_oon_policy_details",
-    # Task 22 — network/port_forwards
-    "unifi_list_port_forwards",
-    "unifi_get_port_forward",
-    # Task 23 — network/vouchers
-    "unifi_list_vouchers",
-    "unifi_get_voucher_details",
-    # Task 23 — network/sessions
-    "unifi_get_client_sessions",
-    "unifi_get_client_wifi_details",
-    # Task 23 — network/events (EVENT_LOG kind; recent_events stays as a
-    # serializer because the SSE stream generator calls .serialize() directly)
-    "unifi_list_events",
-    "unifi_get_alerts",
-    "unifi_get_anomalies",
-    "unifi_get_ips_events",
-    # Task 23 — network/stats (TIMESERIES + DETAIL multi-kind)
-    "unifi_get_dashboard",
-    "unifi_get_network_stats",
-    "unifi_get_gateway_stats",
-    "unifi_get_client_dpi_traffic",
-    "unifi_get_site_dpi_traffic",
-    "unifi_get_device_stats",
-    "unifi_get_client_stats",
-    "unifi_get_dpi_stats",
-    # Task 23 — network/system (9 read shapes; mutation acks stay as
-    # serializers)
-    "unifi_list_alarms",
-    "unifi_list_backups",
-    "unifi_get_system_info",
-    "unifi_get_network_health",
-    "unifi_get_site_settings",
-    "unifi_get_snmp_settings",
-    "unifi_get_event_types",
-    "unifi_get_autobackup_settings",
-    "unifi_get_top_clients",
-    "unifi_get_speedtest_results",
-    # Task 24 — network/switch (4 read shapes; mutation acks stay as
-    # serializers)
-    "unifi_list_port_profiles",
-    "unifi_get_port_profile_details",
-    "unifi_get_switch_ports",
-    "unifi_get_port_stats",
-    "unifi_get_switch_capabilities",
-    # Task 24 — network/ap_groups (1 read shape; mutation acks stay as a
-    # serializer)
-    "unifi_list_ap_groups",
-    "unifi_get_ap_group_details",
-    # Task 24 — network/client_groups + usergroups (2 read shapes; mutation
-    # acks stay as a serializer covering both manager kinds)
-    "unifi_list_client_groups",
-    "unifi_get_client_group_details",
-    "unifi_list_usergroups",
-    "unifi_get_usergroup_details",
-    # PR3 Task A — protect/cameras (4 read shapes; mutation acks stay as a
-    # serializer covering PTZ/reboot/toggle/update preview tools)
-    "protect_list_cameras",
-    "protect_get_camera",
-    "protect_get_camera_analytics",
-    "protect_get_camera_streams",
-    "protect_get_snapshot",
-    # PR3 Task A — protect/chimes (1 read shape; mutation acks stay as a
-    # serializer covering trigger/update preview tools)
-    "protect_list_chimes",
-    # PR3 Task B — protect/alarms (2 read shapes; arm/disarm acks stay as
-    # a serializer)
-    "protect_alarm_get_status",
-    "protect_alarm_list_profiles",
-    # PR3 Task B — protect/events (4 read shapes; recent_events,
-    # subscribe_events and acknowledge_event stay as serializers — the
-    # SSE streamer calls .serialize() directly per broadcast event)
-    "protect_list_events",
-    "protect_get_event",
-    "protect_get_event_thumbnail",
-    "protect_list_smart_detections",
-    # PR3 Task B — protect/recordings (2 read shapes; delete/export acks
-    # stay as a serializer)
-    "protect_list_recordings",
-    "protect_get_recording_status",
-    # PR3 Task C — protect/lights (1 read shape; update_light ack stays as
-    # a serializer)
-    "protect_list_lights",
-    # PR3 Task C — protect/sensors (1 read shape; no mutation acks)
-    "protect_list_sensors",
-    # PR3 Task C — protect/liveviews (1 read shape; create/delete acks
-    # stay as a serializer)
-    "protect_list_liveviews",
-    # PR3 Task C — protect/system (4 read shapes; no mutation acks)
-    "protect_get_system_info",
-    "protect_get_health",
-    "protect_get_firmware_status",
-    "protect_list_viewers",
-})
 
 
 class SerializerRegistry:
@@ -218,17 +62,23 @@ class SerializerRegistry:
         kind = self.kind_for_resource(product, resource)
         return s._render_hint(kind)
 
-    def validate_manifest(self, manifest_tool_names: set[str]) -> None:
-        """Every tool in the manifest must have a serializer registered, except
-        Phase 6-migrated read tools whose projections live in the type_registry."""
-        missing = (
-            manifest_tool_names
-            - set(_TOOL_REGISTRY.keys())
-            - PHASE6_TYPE_MIGRATED_TOOLS
-        )
+    def validate_manifest(
+        self,
+        manifest_tool_names: set[str],
+        type_registry: Any | None = None,
+    ) -> None:
+        """Every tool in the manifest must have a projection — either a
+        serializer (mutation tools) or a Strawberry type (read tools, since
+        Phase 6 close).
+        """
+        serializer_tools = set(_TOOL_REGISTRY.keys())
+        type_tools: set[str] = set()
+        if type_registry is not None:
+            type_tools = set(type_registry.all_tools())
+        missing = manifest_tool_names - serializer_tools - type_tools
         if missing:
             raise SerializerRegistryError(
-                f"missing serializer for {len(missing)} tools: {sorted(missing)[:5]}..."
+                f"missing projection for {len(missing)} tools: {sorted(missing)[:5]}..."
             )
 
 
@@ -242,9 +92,16 @@ def serializer_registry_singleton() -> SerializerRegistry:
     return _singleton
 
 
-def discover_serializers(manifest_tool_names: set[str]) -> SerializerRegistry:
+def discover_serializers(
+    manifest_tool_names: set[str],
+    type_registry: Any | None = None,
+) -> SerializerRegistry:
     """Walk the serializers package, import every submodule (decorators self-register),
-    then validate against the manifest. Called once during lifespan startup."""
+    then validate against the manifest. Called once during lifespan startup.
+
+    ``type_registry`` is consulted by ``validate_manifest`` so read tools whose
+    projection is a Strawberry type (Phase 6 close) count as covered.
+    """
     pkg = importlib.import_module("unifi_api.serializers")
     for product in ("network", "protect", "access"):
         try:
@@ -256,7 +113,7 @@ def discover_serializers(manifest_tool_names: set[str]) -> SerializerRegistry:
                 continue
             importlib.import_module(f"unifi_api.serializers.{product}.{modname}")
     reg = serializer_registry_singleton()
-    reg.validate_manifest(manifest_tool_names)
+    reg.validate_manifest(manifest_tool_names, type_registry=type_registry)
     return reg
 
 

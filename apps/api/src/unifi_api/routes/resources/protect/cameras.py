@@ -76,14 +76,9 @@ async def list_cameras(
         list(all_cameras), limit=limit, cursor=cursor_obj, key_fn=_camera_key,
     )
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("protect", "cameras")
-    if entry.kind == "type":
-        items = [entry.payload.from_manager_output(c).to_dict() for c in page]
-        hint = entry.payload.render_hint("list")
-    else:
-        items = [entry.payload.serialize(c) for c in page]
-        hint = registry.render_hint_for_resource("protect", "cameras")
+    type_class = request.app.state.type_registry.lookup("protect", "cameras")
+    items = [type_class.from_manager_output(c).to_dict() for c in page]
+    hint = type_class.render_hint("list")
 
     return {
         "items": items,
@@ -116,14 +111,9 @@ async def get_camera(
         except ValueError:
             raise HTTPException(status_code=404, detail="camera not found")
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("protect", "cameras/{id}")
-    if entry.kind == "type":
-        data = entry.payload.from_manager_output(camera).to_dict()
-        hint = entry.payload.render_hint("detail")
-    else:
-        data = entry.payload.serialize(camera)
-        hint = registry.render_hint_for_resource("protect", "cameras/{id}")
+    type_class = request.app.state.type_registry.lookup("protect", "cameras/{id}")
+    data = type_class.from_manager_output(camera).to_dict()
+    hint = type_class.render_hint("detail")
     return {
         "data": data,
         "render_hint": hint,

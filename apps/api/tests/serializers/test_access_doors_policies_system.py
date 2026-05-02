@@ -17,15 +17,17 @@ def _registry():
 
 
 def test_door_group_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_list_door_groups")
+    """Phase 6 PR4 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.doors import DoorGroup
+
     sample = {
         "id": "grp1",
         "name": "Lobby Group",
         "door_ids": ["door1", "door2"],
         "location": "HQ Floor 1",
     }
-    out = s.serialize(sample)
+    out = DoorGroup.from_manager_output(sample).to_dict()
     assert out["id"] == "grp1"
     assert out["name"] == "Lobby Group"
     assert out["door_ids"] == ["door1", "door2"]
@@ -33,23 +35,27 @@ def test_door_group_serializer_shape() -> None:
 
 
 def test_door_status_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_get_door_status")
+    """Phase 6 PR4 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.doors import DoorStatus
+
     sample = {
         "id": "door1",
         "name": "Front Door",
         "door_position_status": "close",
         "lock_relay_status": "lock",
     }
-    out = s.serialize(sample)
+    out = DoorStatus.from_manager_output(sample).to_dict()
     assert out["door_id"] == "door1"
     assert out["is_locked"] is True
     assert out["lock_state"] == "lock"
 
 
 def test_policy_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_get_policy")
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.policies import Policy
+
     sample = {
         "id": "pol1",
         "name": "Office Hours",
@@ -58,7 +64,7 @@ def test_policy_serializer_shape() -> None:
         "user_group_ids": ["ug1"],
         "status": "active",
     }
-    out = s.serialize(sample)
+    out = Policy.from_manager_output(sample).to_dict()
     assert out["id"] == "pol1"
     assert out["name"] == "Office Hours"
     assert out["schedule_id"] == "sch1"
@@ -68,15 +74,17 @@ def test_policy_serializer_shape() -> None:
 
 
 def test_schedule_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_list_schedules")
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.schedules import Schedule
+
     sample = {
         "id": "sch1",
         "name": "Weekdays 9-5",
         "week_schedule": {"monday": [{"start": "09:00", "end": "17:00"}]},
         "status": "active",
     }
-    out = s.serialize(sample)
+    out = Schedule.from_manager_output(sample).to_dict()
     assert out["id"] == "sch1"
     assert out["name"] == "Weekdays 9-5"
     assert out["weekly_pattern"] == sample["week_schedule"]
@@ -84,8 +92,10 @@ def test_schedule_serializer_shape() -> None:
 
 
 def test_access_device_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_list_devices")
+    """Phase 6 PR4 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.devices import AccessDevice
+
     sample = {
         "unique_id": "dev1",
         "name": "Front Reader",
@@ -94,7 +104,7 @@ def test_access_device_serializer_shape() -> None:
         "firmware": "2.10.0",
         "_door_name": "Front Door",
     }
-    out = s.serialize(sample)
+    out = AccessDevice.from_manager_output(sample).to_dict()
     assert out["id"] == "dev1"
     assert out["name"] == "Front Reader"
     assert out["type"] == "UA-G2"
@@ -104,21 +114,25 @@ def test_access_device_serializer_shape() -> None:
 
 
 def test_access_system_info_and_health() -> None:
-    reg = _registry()
-    info = reg.serializer_for_tool("access_get_system_info")
+    """Phase 6 PR4 Task B — projections moved to Strawberry types. Same dict
+    shape contract as the old serializers; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.system import (
+        AccessHealth,
+        AccessSystemInfo,
+    )
+
     info_sample = {
         "name": "Access Application",
         "version": "1.24.0",
         "hostname": "udm-pro",
         "uptime": 12345,
     }
-    info_out = info.serialize(info_sample)
+    info_out = AccessSystemInfo.from_manager_output(info_sample).to_dict()
     assert info_out["name"] == "Access Application"
     assert info_out["version"] == "1.24.0"
     assert info_out["hostname"] == "udm-pro"
     assert info_out["uptime"] == 12345
 
-    health = reg.serializer_for_tool("access_get_health")
     health_sample = {
         "host": "10.0.0.1",
         "is_connected": True,
@@ -127,7 +141,7 @@ def test_access_system_info_and_health() -> None:
         "api_client_healthy": True,
         "proxy_healthy": True,
     }
-    health_out = health.serialize(health_sample)
+    health_out = AccessHealth.from_manager_output(health_sample).to_dict()
     assert "status" in health_out
     assert health_out["status"] == "healthy"
 

@@ -68,10 +68,9 @@ async def list_credentials(
         list(all_credentials), limit=limit, cursor=cursor_obj, key_fn=_credential_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("access", "credentials")
-    items = [serializer.serialize(c) for c in page]
-    hint = registry.render_hint_for_resource("access", "credentials")
+    type_class = request.app.state.type_registry.lookup("access", "credentials")
+    items = [type_class.from_manager_output(c).to_dict() for c in page]
+    hint = type_class.render_hint("list")
 
     return {
         "items": items,
@@ -104,9 +103,10 @@ async def get_credential(
         except ValueError:
             raise HTTPException(status_code=404, detail="credential not found")
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("access", "credentials/{id}")
+    type_class = request.app.state.type_registry.lookup("access", "credentials/{id}")
+    data = type_class.from_manager_output(credential).to_dict()
+    hint = type_class.render_hint("detail")
     return {
-        "data": serializer.serialize(credential),
-        "render_hint": registry.render_hint_for_resource("access", "credentials/{id}"),
+        "data": data,
+        "render_hint": hint,
     }

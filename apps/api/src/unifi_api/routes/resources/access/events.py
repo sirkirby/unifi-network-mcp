@@ -85,12 +85,21 @@ async def list_access_events(
         list(all_events), limit=limit, cursor=cursor_obj, key_fn=_event_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_list_events")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_list_events")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        items = [type_class.from_manager_output(e).to_dict() for e in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_list_events")
+        items = [serializer.serialize(e) for e in page]
+        hint = registry.render_hint_for_tool("access_list_events")
     return {
-        "items": [serializer.serialize(e) for e in page],
+        "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("access_list_events"),
+        "render_hint": hint,
     }
 
 
@@ -118,11 +127,20 @@ async def get_access_event(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_get_event")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_get_event")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(event).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_get_event")
+        data = serializer.serialize(event)
+        hint = registry.render_hint_for_tool("access_get_event")
     return {
-        "data": serializer.serialize(event),
-        "render_hint": registry.render_hint_for_tool("access_get_event"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -208,9 +226,18 @@ async def get_access_activity_summary(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_get_activity_summary")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_get_activity_summary")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(payload).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_get_activity_summary")
+        data = serializer.serialize(payload)
+        hint = registry.render_hint_for_tool("access_get_activity_summary")
     return {
-        "data": serializer.serialize(payload),
-        "render_hint": registry.render_hint_for_tool("access_get_activity_summary"),
+        "data": data,
+        "render_hint": hint,
     }

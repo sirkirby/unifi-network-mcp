@@ -67,12 +67,21 @@ async def list_access_devices(
     page, next_cursor = paginate(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_list_devices")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_list_devices")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        items_out = [type_class.from_manager_output(d).to_dict() for d in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_list_devices")
+        items_out = [serializer.serialize(d) for d in page]
+        hint = registry.render_hint_for_tool("access_list_devices")
     return {
-        "items": [serializer.serialize(d) for d in page],
+        "items": items_out,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("access_list_devices"),
+        "render_hint": hint,
     }
 
 
@@ -100,9 +109,18 @@ async def get_access_device(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_get_device")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_get_device")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(device).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_get_device")
+        data = serializer.serialize(device)
+        hint = registry.render_hint_for_tool("access_get_device")
     return {
-        "data": serializer.serialize(device),
-        "render_hint": registry.render_hint_for_tool("access_get_device"),
+        "data": data,
+        "render_hint": hint,
     }

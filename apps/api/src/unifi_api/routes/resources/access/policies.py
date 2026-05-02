@@ -64,12 +64,21 @@ async def list_policies(
     page, next_cursor = paginate(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_list_policies")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_list_policies")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        items = [type_class.from_manager_output(p).to_dict() for p in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_list_policies")
+        items = [serializer.serialize(p) for p in page]
+        hint = registry.render_hint_for_tool("access_list_policies")
     return {
-        "items": [serializer.serialize(p) for p in page],
+        "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("access_list_policies"),
+        "render_hint": hint,
     }
 
 
@@ -99,9 +108,18 @@ async def get_policy(
     if not policy:
         raise HTTPException(status_code=404, detail=f"policy {policy_id} not found")
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_get_policy")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_get_policy")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(policy).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_get_policy")
+        data = serializer.serialize(policy)
+        hint = registry.render_hint_for_tool("access_get_policy")
     return {
-        "data": serializer.serialize(policy),
-        "render_hint": registry.render_hint_for_tool("access_get_policy"),
+        "data": data,
+        "render_hint": hint,
     }

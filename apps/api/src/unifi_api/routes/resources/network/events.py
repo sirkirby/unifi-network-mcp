@@ -147,14 +147,9 @@ async def _list_protect_events(
             (e.get("id") if isinstance(e, dict) else getattr(e, "raw", {}).get("id")) or "",
         ),
     )
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("protect", "events")
-    if entry.kind == "type":
-        items = [entry.payload.from_manager_output(e).to_dict() for e in page]
-        hint = entry.payload.render_hint("event_log")
-    else:
-        items = [entry.payload.serialize(e) for e in page]
-        hint = registry.render_hint_for_resource("protect", "events")
+    type_class = request.app.state.type_registry.lookup("protect", "events")
+    items = [type_class.from_manager_output(e).to_dict() for e in page]
+    hint = type_class.render_hint("event_log")
     return {
         "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,

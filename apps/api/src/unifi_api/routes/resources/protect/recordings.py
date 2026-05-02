@@ -92,14 +92,9 @@ async def list_recordings(
         list(all_recordings), limit=limit, cursor=cursor_obj, key_fn=_recording_key,
     )
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("protect", "recordings")
-    if entry.kind == "type":
-        items = [entry.payload.from_manager_output(r).to_dict() for r in page]
-        hint = entry.payload.render_hint("list")
-    else:
-        items = [entry.payload.serialize(r) for r in page]
-        hint = registry.render_hint_for_resource("protect", "recordings")
+    type_class = request.app.state.type_registry.lookup("protect", "recordings")
+    items = [type_class.from_manager_output(r).to_dict() for r in page]
+    hint = type_class.render_hint("list")
 
     return {
         "items": items,
@@ -141,14 +136,9 @@ async def get_recording(
     if match is None:
         raise HTTPException(status_code=404, detail="recording not found")
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("protect", "recordings/{id}")
-    if entry.kind == "type":
-        data = entry.payload.from_manager_output(match).to_dict()
-        hint = entry.payload.render_hint("detail")
-    else:
-        data = entry.payload.serialize(match)
-        hint = registry.render_hint_for_resource("protect", "recordings/{id}")
+    type_class = request.app.state.type_registry.lookup("protect", "recordings/{id}")
+    data = type_class.from_manager_output(match).to_dict()
+    hint = type_class.render_hint("detail")
     return {
         "data": data,
         "render_hint": hint,

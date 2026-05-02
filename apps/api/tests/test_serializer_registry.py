@@ -60,7 +60,7 @@ def test_validate_against_manifest_fails_on_missing() -> None:
             return obj
     reg = serializer_registry_singleton()
     # Manifest has tools the registry doesn't know about
-    with pytest.raises(SerializerRegistryError, match="missing serializer"):
+    with pytest.raises(SerializerRegistryError, match="missing projection"):
         reg.validate_manifest({"only_one", "other_tool", "another_tool"})
 
 

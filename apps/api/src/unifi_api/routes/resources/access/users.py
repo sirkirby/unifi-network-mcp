@@ -70,10 +70,9 @@ async def list_users(
         list(all_users), limit=limit, cursor=cursor_obj, key_fn=_user_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("access", "users")
-    items = [serializer.serialize(u) for u in page]
-    hint = registry.render_hint_for_resource("access", "users")
+    type_class = request.app.state.type_registry.lookup("access", "users")
+    items = [type_class.from_manager_output(u).to_dict() for u in page]
+    hint = type_class.render_hint("list")
 
     return {
         "items": items,
@@ -113,9 +112,10 @@ async def get_user(
     if match is None:
         raise HTTPException(status_code=404, detail="user not found")
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("access", "users/{id}")
+    type_class = request.app.state.type_registry.lookup("access", "users/{id}")
+    data = type_class.from_manager_output(match).to_dict()
+    hint = type_class.render_hint("detail")
     return {
-        "data": serializer.serialize(match),
-        "render_hint": registry.render_hint_for_resource("access", "users/{id}"),
+        "data": data,
+        "render_hint": hint,
     }

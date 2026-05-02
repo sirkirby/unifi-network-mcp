@@ -1,41 +1,37 @@
 """CI gate: every read tool in the manifest has a corresponding GraphQL Query field.
 
-During Phase 6 PR1–PR3, this gate is parameterized with a per-PR allowlist:
-products not yet migrated are exempt. PR4 close removes the allowlist —
-all 122 read tools must have a Query field.
+Phase 6 close: every read tool (122 total across network/protect/access) is
+projected via a Strawberry type and resolved by a GraphQL Query field. The
+EXEMPT_PRODUCTS allowlist is permanently empty.
 
-Read tools are filtered via the serializer registry's kind_for_tool() —
-RenderKind.LIST or RenderKind.DETAIL. ACTION-kind tools are mutations and
-out of scope for read coverage.
+Read tools are filtered via the type_registry's lookup_tool() — only tools
+with a registered Strawberry projection count. Mutation tools live in the
+serializer_registry and are out of scope for the read-only GraphQL surface.
 """
 
 from __future__ import annotations
 
 from unifi_api.graphql.schema import schema as graphql_schema
-from unifi_api.serializers._base import RenderKind
-from unifi_api.serializers._registry import (
-    discover_serializers,
-    serializer_registry_singleton,
-)
+from unifi_api.graphql.type_registry_init import build_type_registry
 from unifi_api.services.manifest import ManifestRegistry
 
 
-# PR3 close: protect is now covered by ~21 ProtectQuery resolvers. PR4
-# will remove "access" — PR4 close has the set empty (all 122 read tools
-# map to Query fields).
-EXEMPT_PRODUCTS: set[str] = {"access"}
+# PR4 close: ALL THREE PRODUCTS now covered. The allowlist is empty —
+# every read tool in the manifest must map to a GraphQL Query field.
+# Phase 6 close-out invariant: this set stays empty forever.
+EXEMPT_PRODUCTS: set[str] = set()
 
 
 def _read_tools_by_product() -> dict[str, list[str]]:
     """Group read tools (LIST + DETAIL kinds, `unifi_list_*` / `unifi_get_*` prefix) by product.
 
-    Mutation tools (`unifi_update_*`, `unifi_block_*`, `unifi_configure_*`, etc.)
-    are also registered with DETAIL render kind because the action endpoint
-    returns a single result — but they are out of scope for Phase 6's read-only
-    GraphQL surface. Filter by prefix in addition to kind.
+    Phase 6 close: read tools are sourced from the type_registry. Only tools
+    whose kind is "list" or "detail" count as read coverage targets — the
+    timeseries/event_log shapes are nested inside Query fields rather than
+    top-level fields and don't participate in this naming gate.
     """
     reg = ManifestRegistry.load_from_apps()
-    serializer_reg = serializer_registry_singleton()
+    type_registry = build_type_registry()
     out: dict[str, list[str]] = {"network": [], "protect": [], "access": []}
     for tool_name in reg.all_tools():
         # Read-tool prefix filter — Phase 6 scope is unifi_list_* / unifi_get_* only.
@@ -45,11 +41,11 @@ def _read_tools_by_product() -> dict[str, list[str]]:
             entry = reg.resolve(tool_name)
         except Exception:
             continue
-        try:
-            kind = serializer_reg.kind_for_tool(tool_name)
-        except Exception:
+        tool_type = type_registry.lookup_tool(tool_name)
+        if tool_type is None:
             continue
-        if kind not in (RenderKind.LIST, RenderKind.DETAIL):
+        _type_class, kind = tool_type
+        if kind not in ("list", "detail"):
             continue
         if entry.product in out:
             out[entry.product].append(tool_name)
@@ -95,10 +91,9 @@ def test_every_read_tool_has_graphql_field() -> None:
     `health` field). PR2 removes network from EXEMPT_PRODUCTS, etc. PR4 close
     has EXEMPT_PRODUCTS empty — all 122 read tools must map.
     """
-    # Force serializer registration to populate the registry
-    manifest = ManifestRegistry.load_from_apps()
-    discover_serializers(set(manifest.all_tools()))
-
+    # No serializer registration needed — Phase 6 close routes all read
+    # tools through the type_registry, which build_type_registry() builds
+    # synchronously inside _read_tools_by_product().
     fields = _query_field_names()
     by_product = _read_tools_by_product()
 

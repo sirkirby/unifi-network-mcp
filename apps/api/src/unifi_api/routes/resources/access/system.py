@@ -51,11 +51,20 @@ async def get_access_health(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_get_health")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_get_health")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(payload).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_get_health")
+        data = serializer.serialize(payload)
+        hint = registry.render_hint_for_tool("access_get_health")
     return {
-        "data": serializer.serialize(payload),
-        "render_hint": registry.render_hint_for_tool("access_get_health"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -82,9 +91,18 @@ async def get_access_system_info(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("access_get_system_info")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("access_get_system_info")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(payload).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("access_get_system_info")
+        data = serializer.serialize(payload)
+        hint = registry.render_hint_for_tool("access_get_system_info")
     return {
-        "data": serializer.serialize(payload),
-        "render_hint": registry.render_hint_for_tool("access_get_system_info"),
+        "data": data,
+        "render_hint": hint,
     }

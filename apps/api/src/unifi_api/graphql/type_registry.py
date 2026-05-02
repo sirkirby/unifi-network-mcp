@@ -1,69 +1,58 @@
-"""Hybrid projection registry for Phase 6 migration.
+"""Resource-keyed and tool-keyed projection registry for typed Strawberry classes.
 
-During the Phase 6 PR sequence, network/protect/access products migrate
-from dict-based serializers to Strawberry types one product at a time.
-This registry knows about both kinds and exposes a uniform `lookup()` API
-so resolvers + REST routes don't care which kind they're consuming.
+Phase 6 close: all 34 read resources and 122 read tools are projected via
+Strawberry types. The Phase 6 migration window's hybrid serializer-fallback
+branch is dead code and removed.
 
-At the end of PR4, all entries are types; the kind="serializer" branch
-becomes dead code and the registry can collapse to types-only.
+Mutation tools (the 115 ones in serializer_registry.all_tools()) continue
+to use the legacy serializer_registry's serializer_for_tool() path on the
+REST /v1/actions/{tool} endpoint. Those serializers live in serializers/
+and are out of scope for type_registry.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Iterable, Literal
+from typing import Any, Iterable
 
 
 class UnknownProjection(KeyError):
-    """Raised when no projection (type or serializer) is registered for a resource."""
-
-
-@dataclass(frozen=True)
-class ProjectionEntry:
-    kind: Literal["type", "serializer"]
-    payload: Any  # the type class OR the serializer instance
+    """Raised when no type is registered for a resource."""
 
 
 class TypeRegistry:
-    """Per-product, per-resource projection lookup.
-
-    Types take precedence over serializers when both are registered for the
-    same (product, resource) — this gives mid-migration PRs a safety net.
-    """
+    """Per-product, per-resource (and per-tool) Strawberry type lookup."""
 
     def __init__(self) -> None:
         self._types: dict[tuple[str, str], Any] = {}
-        self._serializers: dict[tuple[str, str], Any] = {}
-        # Phase 6 PR2 — read MCP tools whose serializer was migrated to a type
-        # need a tool-keyed lookup for the /v1/actions/{tool_name} endpoint.
-        # Stores (type_class, kind) where kind is "list" or "detail".
+        # Tool-keyed lookups for the /v1/actions/{tool_name} endpoint and
+        # tool-only routes. Stores (type_class, kind) where kind is the
+        # RenderKind value ("list" / "detail" / "timeseries" / "event_log").
         self._tool_types: dict[str, tuple[Any, str]] = {}
 
     def register_type(self, product: str, resource: str, type_class: Any) -> None:
         self._types[(product, resource)] = type_class
 
     def register_tool_type(self, tool_name: str, type_class: Any, kind: str) -> None:
-        """Register a Strawberry type as the projection for an MCP tool.
+        """Register a Strawberry type as the projection for a read tool.
 
-        ``kind`` is the RenderKind value ("list" or "detail") — drives how the
-        action endpoint shapes the manager output (list vs single dict).
+        ``kind`` is the RenderKind value ("list" / "detail" / "timeseries" /
+        "event_log") — drives how the action endpoint shapes the manager
+        output (list vs single dict).
         """
         self._tool_types[tool_name] = (type_class, kind)
+
+    def lookup(self, product: str, resource: str) -> Any:
+        """Return the Strawberry type class for a (product, resource) projection."""
+        try:
+            return self._types[(product, resource)]
+        except KeyError:
+            raise UnknownProjection(f"no type registered for {product}/{resource}")
 
     def lookup_tool(self, tool_name: str) -> tuple[Any, str] | None:
         return self._tool_types.get(tool_name)
 
-    def register_serializer(self, product: str, resource: str, serializer: Any) -> None:
-        self._serializers[(product, resource)] = serializer
-
-    def lookup(self, product: str, resource: str) -> ProjectionEntry:
-        key = (product, resource)
-        if key in self._types:
-            return ProjectionEntry(kind="type", payload=self._types[key])
-        if key in self._serializers:
-            return ProjectionEntry(kind="serializer", payload=self._serializers[key])
-        raise UnknownProjection(f"no projection registered for {product}/{resource}")
-
     def all_resources(self) -> Iterable[tuple[str, str]]:
-        return set(self._types.keys()) | set(self._serializers.keys())
+        return self._types.keys()
+
+    def all_tools(self) -> Iterable[str]:
+        return self._tool_types.keys()
