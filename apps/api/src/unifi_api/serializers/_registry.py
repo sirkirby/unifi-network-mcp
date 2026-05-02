@@ -202,6 +202,12 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # as a serializer covering preview/apply mutation paths)
     "access_list_visitors",
     "access_get_visitor",
+    # PR4 Task B — access/events (2 read shapes; access_recent_events and
+    # access_subscribe_events stay as serializers — the SSE streamer
+    # calls .serialize() directly per broadcast event)
+    "access_list_events",
+    "access_get_event",
+    "access_get_activity_summary",
 })
 
 

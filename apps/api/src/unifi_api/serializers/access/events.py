@@ -1,17 +1,24 @@
-"""Access event serializers.
+"""Access event stream + recent-buffer serializers.
 
-``EventManager.list_events`` / ``get_recent_from_buffer`` return
-``list[dict[str, Any]]`` — registered as EVENT_LOG.
-``EventManager.get_event`` returns a single dict — registered as DETAIL.
-``EventManager.get_activity_summary`` returns the histogram payload from
-``activities/histogram`` (a dict) — DETAIL pass-through with normalised
-fields.
+Phase 6 PR4 Task B — read serializers (``EventDetailSerializer``,
+``ActivitySummarySerializer``, and the LIST half of
+``AccessEventSerializer``) moved to Strawberry types in
+``unifi_api.graphql.types.access.events``. Their tools
+(``access_list_events``, ``access_get_event``,
+``access_get_activity_summary``) are listed in
+``PHASE6_TYPE_MIGRATED_TOOLS`` and dispatched via the type_registry.
 
-The ``access_subscribe_events`` tool now uses STREAM kind via
-``AccessStreamSubscriptionSerializer``: it returns
-``{stream_url, transport: "sse", buffer_size, instructions}`` so MCP
-consumers can discover the rich-API stream surface; rich-API clients
-connect to ``GET /v1/streams/access/events``.
+Two serializers stay here because they cannot move to a typed read
+surface without rewriting the SSE stream generator:
+
+  - ``AccessEventSerializer`` (``access_recent_events``) — EVENT_LOG
+    pass-through for the buffer-snapshot read; the SSE streamer at
+    ``routes/streams/access.py`` and ``routes/streams/access_per_door.py``
+    calls ``serializer.serialize`` directly per broadcast event, so the
+    serializer must remain dict-shaped.
+  - ``AccessStreamSubscriptionSerializer`` (``access_subscribe_events``) —
+    STREAM kind shim that returns ``{stream_url, transport: "sse",
+    buffer_size, instructions}``.
 """
 
 from typing import Any
@@ -39,14 +46,17 @@ def _event_payload(obj) -> dict:
 
 @register_serializer(
     tools={
-        "access_list_events": {"kind": RenderKind.EVENT_LOG},
         "access_recent_events": {"kind": RenderKind.EVENT_LOG},
     },
-    resources=[
-        (("access", "events"), {"kind": RenderKind.EVENT_LOG}),
-    ],
 )
 class AccessEventSerializer(Serializer):
+    """EVENT_LOG pass-through for the recent-events SSE stream.
+
+    Stays as a serializer because ``routes/streams/access.py`` calls
+    ``serializer.serialize`` directly per broadcast event (mirrors
+    protect's ``RecentEventsSerializer`` pattern).
+    """
+
     kind = RenderKind.EVENT_LOG
     primary_key = "id"
     display_columns = ["type", "timestamp", "door_id", "user_id", "result"]
@@ -55,45 +65,6 @@ class AccessEventSerializer(Serializer):
     @staticmethod
     def serialize(obj) -> dict:
         return _event_payload(obj)
-
-
-@register_serializer(tools={"access_get_event": {"kind": RenderKind.DETAIL}})
-class EventDetailSerializer(Serializer):
-    """Single-event detail; mirrors ``AccessEventSerializer`` payload."""
-
-    kind = RenderKind.DETAIL
-
-    @staticmethod
-    def serialize(obj) -> dict:
-        return _event_payload(obj)
-
-
-@register_serializer(tools={"access_get_activity_summary": {"kind": RenderKind.DETAIL}})
-class ActivitySummarySerializer(Serializer):
-    """Activity histogram summary (``activities/histogram`` payload).
-
-    Manager passes through the controller's response shape; we surface
-    catalog-level fields with ``None`` fallbacks when keys are absent.
-    """
-
-    kind = RenderKind.DETAIL
-
-    @staticmethod
-    def serialize(obj) -> dict:
-        if not isinstance(obj, dict):
-            if hasattr(obj, "model_dump"):
-                obj = obj.model_dump()
-            else:
-                return {"result": str(obj)}
-        return {
-            "period_start": obj.get("period_start") or obj.get("since"),
-            "period_end": obj.get("period_end") or obj.get("until"),
-            "total_events": obj.get("total_events") or obj.get("total"),
-            "granted_count": obj.get("granted_count"),
-            "denied_count": obj.get("denied_count"),
-            "top_users": obj.get("top_users"),
-            "buckets": obj.get("buckets") or obj.get("histogram"),
-        }
 
 
 @register_serializer(tools={"access_subscribe_events": {"kind": RenderKind.STREAM}})

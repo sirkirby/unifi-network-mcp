@@ -180,6 +180,10 @@ from unifi_api.graphql.types.access.schedules import (
 from unifi_api.graphql.types.access.visitors import (
     Visitor as AccessVisitorType,
 )
+from unifi_api.graphql.types.access.events import (
+    Event as AccessEventType,
+    ActivitySummary as AccessActivitySummaryType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -1107,6 +1111,26 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "access_get_visitor", AccessVisitorType, "detail",
+    )
+
+    # Phase 6 PR4 Task B — access/events migrated to Strawberry types.
+    # Two read serializers (Event for list+detail, ActivitySummary) moved
+    # to graphql/types/access/events.py. Resource registration covers
+    # the LIST path (events/{id} has no resource registration today).
+    # ``access_recent_events`` and ``access_subscribe_events`` stay as
+    # serializers — the SSE streamer at routes/streams/access.py calls
+    # ``serializer.serialize`` directly per broadcast event.
+    app.state.type_registry.register_type(
+        "access", "events", AccessEventType,
+    )
+    app.state.type_registry.register_tool_type(
+        "access_list_events", AccessEventType, "event_log",
+    )
+    app.state.type_registry.register_tool_type(
+        "access_get_event", AccessEventType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "access_get_activity_summary", AccessActivitySummaryType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")
