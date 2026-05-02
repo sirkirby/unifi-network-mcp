@@ -156,6 +156,10 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "protect_get_event",
     "protect_get_event_thumbnail",
     "protect_list_smart_detections",
+    # PR3 Task B — protect/recordings (2 read shapes; delete/export acks
+    # stay as a serializer)
+    "protect_list_recordings",
+    "protect_get_recording_status",
 })
 
 

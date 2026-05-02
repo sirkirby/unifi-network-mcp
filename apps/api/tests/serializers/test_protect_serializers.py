@@ -86,8 +86,10 @@ def test_light_serializer_shape() -> None:
 
 
 def test_recording_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("protect", "recordings")
+    """Phase 6 PR3 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.recordings import Recording
+
     sample = {
         "id": "rec1",
         "type": "timelapse",
@@ -96,9 +98,10 @@ def test_recording_serializer_shape() -> None:
         "end": "2026-04-29T09:15:00+00:00",
         "file_size": 12345678,
     }
-    out = s.serialize(sample)
+    out = Recording.from_manager_output(sample).to_dict()
     assert out["id"] == "rec1"
     assert out["type"] == "timelapse"
+    assert out["camera"] == "cam1"
     assert out["start"] == "2026-04-29T09:00:00+00:00"
     assert out["end"] == "2026-04-29T09:15:00+00:00"
     assert out["file_size"] == 12345678

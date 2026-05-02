@@ -137,6 +137,10 @@ from unifi_api.graphql.types.protect.events import (
     EventThumbnail as ProtectEventThumbnailType,
     SmartDetection as ProtectSmartDetectionType,
 )
+from unifi_api.graphql.types.protect.recordings import (
+    Recording as ProtectRecordingType,
+    RecordingStatusList as ProtectRecordingStatusListType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -841,6 +845,29 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "protect_list_smart_detections", ProtectSmartDetectionType, "event_log",
+    )
+
+    # Phase 6 PR3 Task B — protect/recordings migrated to Strawberry types.
+    # ``recordings`` carries resource registration on both the LIST path
+    # and the ``recordings/{id}`` DETAIL path because the REST detail
+    # endpoint filters the same list response by id (UniFi Protect has
+    # no discrete-segment ``protect_get_recording`` tool).
+    # ``protect_get_recording_status`` is a wrapper-dict DETAIL pass-
+    # through. Mutation acks (delete/export) stay as a serializer in
+    # serializers/protect/recordings.py.
+    app.state.type_registry.register_type(
+        "protect", "recordings", ProtectRecordingType,
+    )
+    app.state.type_registry.register_type(
+        "protect", "recordings/{id}", ProtectRecordingType,
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_recordings", ProtectRecordingType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_recording_status",
+        ProtectRecordingStatusListType,
+        "detail",
     )
 
     # Phase 6 PR3 Task B — protect/alarms migrated to Strawberry types.
