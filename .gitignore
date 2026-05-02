@@ -42,9 +42,6 @@ ENV/
 logs/
 !apps/api/src/unifi_api/templates/admin/logs/
 
-# Docker
-.dockerignore
-
 # Cache
 .cache/
 
