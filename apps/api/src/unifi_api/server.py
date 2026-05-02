@@ -165,6 +165,9 @@ from unifi_api.graphql.types.access.doors import (
 from unifi_api.graphql.types.access.devices import (
     AccessDevice as AccessDeviceType,
 )
+from unifi_api.graphql.types.access.users import (
+    User as AccessUserType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -1017,6 +1020,20 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "access_get_device", AccessDeviceType, "detail",
+    )
+
+    # Phase 6 PR4 Task A — access/users migrated to Strawberry types.
+    # Single read serializer (User) moved to graphql/types/access/users.py.
+    # Resource registrations cover the LIST + DETAIL paths (the access
+    # SystemManager has no native ``get_user``; the detail route fetches
+    # the full list and filters by id). The access manifest has no user
+    # mutation tools today, so the serializer module was removed.
+    app.state.type_registry.register_type("access", "users", AccessUserType)
+    app.state.type_registry.register_type(
+        "access", "users/{id}", AccessUserType,
+    )
+    app.state.type_registry.register_tool_type(
+        "access_list_users", AccessUserType, "list",
     )
 
     app.include_router(health.router, prefix="/v1")

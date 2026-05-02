@@ -183,6 +183,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # serializer covering preview/apply mutation paths)
     "access_list_devices",
     "access_get_device",
+    # PR4 Task A — access/users (1 read shape; access manifest has no user
+    # mutation tools today, so the serializer module was removed)
+    "access_list_users",
 })
 
 
