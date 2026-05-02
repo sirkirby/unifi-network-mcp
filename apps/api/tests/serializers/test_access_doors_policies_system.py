@@ -114,21 +114,25 @@ def test_access_device_serializer_shape() -> None:
 
 
 def test_access_system_info_and_health() -> None:
-    reg = _registry()
-    info = reg.serializer_for_tool("access_get_system_info")
+    """Phase 6 PR4 Task B — projections moved to Strawberry types. Same dict
+    shape contract as the old serializers; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.system import (
+        AccessHealth,
+        AccessSystemInfo,
+    )
+
     info_sample = {
         "name": "Access Application",
         "version": "1.24.0",
         "hostname": "udm-pro",
         "uptime": 12345,
     }
-    info_out = info.serialize(info_sample)
+    info_out = AccessSystemInfo.from_manager_output(info_sample).to_dict()
     assert info_out["name"] == "Access Application"
     assert info_out["version"] == "1.24.0"
     assert info_out["hostname"] == "udm-pro"
     assert info_out["uptime"] == 12345
 
-    health = reg.serializer_for_tool("access_get_health")
     health_sample = {
         "host": "10.0.0.1",
         "is_connected": True,
@@ -137,7 +141,7 @@ def test_access_system_info_and_health() -> None:
         "api_client_healthy": True,
         "proxy_healthy": True,
     }
-    health_out = health.serialize(health_sample)
+    health_out = AccessHealth.from_manager_output(health_sample).to_dict()
     assert "status" in health_out
     assert health_out["status"] == "healthy"
 

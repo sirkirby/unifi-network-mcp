@@ -184,6 +184,10 @@ from unifi_api.graphql.types.access.events import (
     Event as AccessEventType,
     ActivitySummary as AccessActivitySummaryType,
 )
+from unifi_api.graphql.types.access.system import (
+    AccessSystemInfo as AccessSystemInfoType,
+    AccessHealth as AccessHealthType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -1131,6 +1135,19 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "access_get_activity_summary", AccessActivitySummaryType, "detail",
+    )
+
+    # Phase 6 PR4 Task B — access/system migrated to Strawberry types.
+    # Two read serializers (AccessSystemInfo, AccessHealth) moved to
+    # graphql/types/access/system.py. Tool-keyed only (system endpoints
+    # are singletons, not resource collections). The access manifest has
+    # no system mutation tools today, so the serializer module was
+    # removed.
+    app.state.type_registry.register_tool_type(
+        "access_get_system_info", AccessSystemInfoType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "access_get_health", AccessHealthType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

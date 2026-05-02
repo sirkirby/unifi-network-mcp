@@ -208,6 +208,11 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "access_list_events",
     "access_get_event",
     "access_get_activity_summary",
+    # PR4 Task B — access/system (2 read shapes; the access manifest has
+    # no system mutation tools today, so the serializer module was
+    # removed)
+    "access_get_system_info",
+    "access_get_health",
 })
 
 
