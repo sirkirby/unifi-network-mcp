@@ -1607,8 +1607,14 @@ class NetworkQuery:
         page, next_cursor = paginate(
             list(raw), limit=limit, cursor=cursor_obj, key_fn=_client_key,
         )
+        items = []
+        for c in page:
+            inst = Client.from_manager_output(c)
+            inst._controller_id = controller
+            inst._site = site
+            items.append(inst)
         return ClientPage(
-            items=[Client.from_manager_output(c) for c in page],
+            items=items,
             next_cursor=next_cursor.encode() if next_cursor else None,
         )
 
@@ -1629,7 +1635,10 @@ class NetworkQuery:
             r = _raw(c)
             c_mac = r.get("mac") if isinstance(r, dict) else getattr(r, "mac", None)
             if c_mac == mac:
-                return Client.from_manager_output(c)
+                inst = Client.from_manager_output(c)
+                inst._controller_id = controller
+                inst._site = site
+                return inst
         return None
 
     @strawberry.field(
@@ -1698,8 +1707,14 @@ class NetworkQuery:
         page, next_cursor = paginate(
             list(raw), limit=limit, cursor=cursor_obj, key_fn=_device_key,
         )
+        items = []
+        for d in page:
+            inst = Device.from_manager_output(d)
+            inst._controller_id = controller
+            inst._site = site
+            items.append(inst)
         return DevicePage(
-            items=[Device.from_manager_output(d) for d in page],
+            items=items,
             next_cursor=next_cursor.encode() if next_cursor else None,
         )
 
@@ -1720,7 +1735,10 @@ class NetworkQuery:
             r = _raw(d)
             d_mac = r.get("mac") if isinstance(r, dict) else getattr(r, "mac", None)
             if d_mac == mac:
-                return Device.from_manager_output(d)
+                inst = Device.from_manager_output(d)
+                inst._controller_id = controller
+                inst._site = site
+                return inst
         return None
 
     @strawberry.field(
@@ -1879,8 +1897,14 @@ class NetworkQuery:
         page, next_cursor = paginate(
             list(raw), limit=limit, cursor=cursor_obj, key_fn=_network_key,
         )
+        items = []
+        for n in page:
+            inst = Network.from_manager_output(n)
+            inst._controller_id = controller
+            inst._site = site
+            items.append(inst)
         return NetworkPage(
-            items=[Network.from_manager_output(n) for n in page],
+            items=items,
             next_cursor=next_cursor.encode() if next_cursor else None,
         )
 
@@ -1905,7 +1929,10 @@ class NetworkQuery:
             else:
                 nid = getattr(r, "_id", None) or getattr(r, "id", None)
             if nid == id:
-                return Network.from_manager_output(n)
+                inst = Network.from_manager_output(n)
+                inst._controller_id = controller
+                inst._site = site
+                return inst
         return None
 
     @strawberry.field(

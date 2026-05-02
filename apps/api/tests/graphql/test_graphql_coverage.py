@@ -49,11 +49,18 @@ def _read_tools_by_product() -> dict[str, list[str]]:
 def _query_field_names() -> set[str]:
     """Walk the schema's Query type and any nested namespaces for field names."""
     names: set[str] = set()
+    seen: set[int] = set()
     gql_schema = graphql_schema._schema  # underlying graphql-core GraphQLSchema
 
     def _walk(type_obj) -> None:
         if not hasattr(type_obj, "fields"):
             return
+        # Cycle protection — relationship edges (e.g. Client.device -> Device,
+        # Device.portClients -> [Client]) form cycles in the type graph.
+        type_id = id(type_obj)
+        if type_id in seen:
+            return
+        seen.add(type_id)
         for field_name, field in type_obj.fields.items():
             names.add(field_name)
             # If the field's return type is itself a typed object with subfields

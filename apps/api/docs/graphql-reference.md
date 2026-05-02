@@ -120,6 +120,9 @@ type Client {
   firstSeen: String
   note: String
   usergroupId: String
+
+  """The AP or switch this client connects through."""
+  device: Device
 }
 
 """A network member client group (V2 /network-members-group entry)."""
@@ -205,6 +208,9 @@ type Device {
   state: String
   ip: String
   ports: JSON
+
+  """Clients currently connected through this AP/switch."""
+  portClients: [Client!]!
 }
 
 """Paginated page of devices."""
@@ -381,6 +387,9 @@ type Network {
   enabled: Boolean!
   vlan: Int
   subnet: String
+
+  """Clients on this network."""
+  clients: [Client!]!
 }
 
 """A network-health subsystem entry."""

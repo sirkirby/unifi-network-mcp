@@ -14,9 +14,13 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import strawberry
+from strawberry.types import Info
+
+if TYPE_CHECKING:
+    from unifi_api.graphql.types.network.device import Device
 
 
 def _iso(ts: int | None) -> str | None:
@@ -47,6 +51,13 @@ class Client:
     note: str | None
     usergroup_id: str | None
 
+    # Context for relationship edges — NOT in SDL, NOT in to_dict().
+    # Set by the resolver after construction so edge resolvers can look up
+    # related resources via the request cache.
+    _controller_id: strawberry.Private[str | None] = None
+    _site: strawberry.Private[str | None] = None
+    _ap_mac: strawberry.Private[str | None] = None
+
     @classmethod
     def render_hint(cls, kind: str) -> dict:
         return {
@@ -70,10 +81,38 @@ class Client:
             first_seen=_iso(raw.get("first_seen")),
             note=raw.get("note") or None,
             usergroup_id=raw.get("usergroup_id") or None,
+            _ap_mac=raw.get("ap_mac"),
         )
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        out = asdict(self)
+        return {k: v for k, v in out.items() if not k.startswith("_") and not callable(v)}
+
+    @strawberry.field(description="The AP or switch this client connects through.")
+    async def device(
+        self, info: Info,
+    ) -> Annotated["Device", strawberry.lazy("unifi_api.graphql.types.network.device")] | None:
+        """Resolves to the parent AP/switch — uses the request cache to avoid N+1."""
+        # Forward references to avoid circular imports.
+        from unifi_api.graphql.resolvers.network import _fetch_devices
+        from unifi_api.graphql.types.network.device import Device
+
+        if not self._controller_id or not self._ap_mac:
+            return None
+        site = self._site or "default"
+        raw_devices = await _fetch_devices(info.context, self._controller_id, site)
+        for d in raw_devices:
+            if isinstance(d, dict):
+                d_mac = d.get("mac")
+            else:
+                raw = getattr(d, "raw", None)
+                d_mac = raw.get("mac") if isinstance(raw, dict) else getattr(d, "mac", None)
+            if d_mac == self._ap_mac:
+                instance = Device.from_manager_output(d)
+                instance._controller_id = self._controller_id
+                instance._site = site
+                return instance
+        return None
 
 
 @strawberry.type(description="A client currently blocked on the UniFi Network controller.")
@@ -102,7 +141,8 @@ class BlockedClient:
         )
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        out = asdict(self)
+        return {k: v for k, v in out.items() if not k.startswith("_") and not callable(v)}
 
 
 @strawberry.type(description="Result of a by-IP client lookup — online presence + last seen.")
@@ -128,4 +168,5 @@ class ClientLookup:
         )
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        out = asdict(self)
+        return {k: v for k, v in out.items() if not k.startswith("_") and not callable(v)}
