@@ -20,10 +20,10 @@ from unifi_api.serializers._registry import (
 from unifi_api.services.manifest import ManifestRegistry
 
 
-# PR2.5 close: network is now covered by ~80 NetworkQuery resolvers. The
-# gate enforces every network read tool maps to a Query field. PR3 will
-# remove "protect"; PR4 "access". PR4 close has the set empty.
-EXEMPT_PRODUCTS: set[str] = {"protect", "access"}
+# PR3 close: protect is now covered by ~21 ProtectQuery resolvers. PR4
+# will remove "access" — PR4 close has the set empty (all 122 read tools
+# map to Query fields).
+EXEMPT_PRODUCTS: set[str] = {"access"}
 
 
 def _read_tools_by_product() -> dict[str, list[str]]:
