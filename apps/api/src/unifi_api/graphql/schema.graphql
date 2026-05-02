@@ -43,6 +43,25 @@ type AlarmPage {
   nextCursor: String
 }
 
+"""Wrapper for protect_alarm_list_profiles — {profiles, count}."""
+type AlarmProfileList {
+  profiles: JSON
+  count: Int
+}
+
+"""UniFi Protect alarm system arm-state snapshot."""
+type AlarmStatus {
+  armed: Boolean
+  status: String
+  activeProfileId: String
+  activeProfileName: String
+  armedAt: String
+  willBeArmedAt: String
+  breachDetectedAt: String
+  breachEventCount: Int
+  profileCount: Int
+}
+
 """A UniFi AP group (collection of AP MAC addresses)."""
 type ApGroup {
   id: ID
@@ -97,6 +116,70 @@ type BlockedClient {
 """Paginated page of blocked clients."""
 type BlockedClientPage {
   items: [BlockedClient!]!
+  nextCursor: String
+}
+
+"""A UniFi Protect camera (list + detail shape)."""
+type Camera {
+  id: ID
+  mac: String
+  name: String
+  model: String
+  type: String
+  state: String
+  isRecording: Boolean
+  isMotionDetected: Boolean
+  isSmartDetected: Boolean
+  host: String
+  channels: JSON
+}
+
+"""Analytics summary for a Protect camera."""
+type CameraAnalytics {
+  cameraId: ID
+  cameraName: String
+  detections: JSON
+  smartDetects: JSON
+  smartAudioDetects: JSON
+  currentlyDetected: JSON
+  motionZoneCount: Int!
+  smartDetectZoneCount: Int!
+  stats: JSON
+}
+
+"""Paginated page of UniFi Protect cameras."""
+type CameraPage {
+  items: [Camera!]!
+  nextCursor: String
+}
+
+"""Stream catalog for a Protect camera (channels + RTSPS URLs)."""
+type CameraStreams {
+  cameraId: ID
+  cameraName: String
+  channels: JSON
+  rtspsStreams: JSON
+}
+
+"""A UniFi Protect chime (paired-camera doorbell ringer)."""
+type Chime {
+  id: ID
+  mac: String
+  name: String
+  model: String
+  type: String
+  state: String
+  isConnected: Boolean
+  firmwareVersion: String
+  volume: Int
+  pairedCameras: [String!]!
+  ringSettings: JSON
+  availableTracks: JSON
+}
+
+"""Paginated page of UniFi Protect chimes."""
+type ChimePage {
+  items: [Chime!]!
   nextCursor: String
 }
 
@@ -266,6 +349,18 @@ type DpiStats {
   categories: JSON!
 }
 
+"""A UniFi Protect event row (list + detail share this shape)."""
+type Event {
+  id: ID
+  type: String
+  start: String
+  end: String
+  score: Int
+  smartDetectTypes: [String!]!
+  camera: ID
+  thumbnail: ID
+}
+
 """A curated event-log entry."""
 type EventLog {
   id: ID
@@ -281,6 +376,24 @@ type EventLog {
 type EventLogPage {
   items: [EventLog!]!
   nextCursor: String
+}
+
+"""Paginated page of UniFi Protect events."""
+type EventPage {
+  items: [Event!]!
+  nextCursor: String
+}
+
+"""Thumbnail metadata for a Protect event."""
+type EventThumbnail {
+  eventId: ID
+  thumbnailId: ID
+  thumbnailAvailable: Boolean
+  imageBase64: String
+  contentType: String
+  message: String
+  url: String
+  sizeBytes: Int
 }
 
 """Wrapper for event-type prefix descriptors."""
@@ -327,6 +440,14 @@ type FirewallZone {
   defaultPolicy: String
 }
 
+"""Firmware status for the NVR plus its devices."""
+type FirmwareStatus {
+  nvr: JSON
+  devices: JSON
+  totalDevices: Int
+  devicesWithUpdates: Int
+}
+
 """Service health snapshot — smoke field for the GraphQL endpoint."""
 type HealthSnapshot {
   ok: Boolean!
@@ -352,6 +473,43 @@ type KnownRogueAp {
 """Paginated page of known (allowlisted) rogue APs."""
 type KnownRogueApPage {
   items: [KnownRogueAp!]!
+  nextCursor: String
+}
+
+"""A UniFi Protect light (PIR-triggered floodlight)."""
+type Light {
+  id: ID
+  mac: String
+  name: String
+  model: String
+  state: String
+  isPirMotionDetected: Boolean
+  isLightOn: Boolean
+}
+
+"""Paginated page of UniFi Protect lights."""
+type LightPage {
+  items: [Light!]!
+  nextCursor: String
+}
+
+"""A UniFi Protect liveview (multi-camera grid layout)."""
+type Liveview {
+  id: ID
+  name: String
+  layout: Int
+  isDefault: Boolean
+  isGlobal: Boolean
+  ownerId: String
+  cameras: [String!]!
+  slots: JSON
+  slotCount: Int
+  cameraCount: Int
+}
+
+"""Paginated page of UniFi Protect liveviews."""
+type LiveviewPage {
+  items: [Liveview!]!
   nextCursor: String
 }
 
@@ -745,6 +903,103 @@ type PortStats {
   portTable: [PortStatRow!]!
 }
 
+"""UniFi Protect NVR health snapshot (pass-through)."""
+type ProtectHealth {
+  cpu: JSON
+  memory: JSON
+  storage: JSON
+  isUpdating: Boolean
+  uptimeSeconds: Int
+}
+
+"""Read-only access to UniFi Protect resources."""
+type ProtectQuery {
+  """List cameras on the Protect controller (paginated)."""
+  cameras(controller: ID!, limit: Int! = 50, cursor: String = null): CameraPage!
+
+  """Look up a single Protect camera by id."""
+  camera(controller: ID!, id: ID!): Camera
+
+  """Get analytics summary for a Protect camera."""
+  cameraAnalytics(controller: ID!, id: ID!): CameraAnalytics
+
+  """Get the stream catalog (channels + RTSPS URLs) for a camera."""
+  cameraStreams(controller: ID!, id: ID!): CameraStreams
+
+  """Capture a JPEG snapshot from a camera (metadata only)."""
+  snapshot(controller: ID!, id: ID!, width: Int = null, height: Int = null): Snapshot
+
+  """List paired Protect chimes (paginated)."""
+  chimes(controller: ID!, limit: Int! = 50, cursor: String = null): ChimePage!
+
+  """Get the alarm system arm-state snapshot."""
+  alarmStatus(controller: ID!): AlarmStatus
+
+  """List configured alarm profiles ({profiles, count})."""
+  alarmProfiles(controller: ID!): AlarmProfileList
+
+  """List Protect events (paginated, most recent first)."""
+  events(controller: ID!, limit: Int! = 50, cursor: String = null, eventType: String = null, cameraId: String = null): EventPage!
+
+  """Look up a single Protect event by id."""
+  event(controller: ID!, id: ID!): Event
+
+  """Get the thumbnail for a Protect event."""
+  eventThumbnail(controller: ID!, eventId: ID!, width: Int = null, height: Int = null): EventThumbnail
+
+  """List Protect smart-detection events (paginated, most recent first)."""
+  smartDetections(controller: ID!, limit: Int! = 50, cursor: String = null, cameraId: String = null, detectionType: String = null, minConfidence: Int = null): SmartDetectionPage!
+
+  """
+  List Protect recording windows for a camera. UniFi Protect exposes a single continuous recording window per camera.
+  """
+  recordings(controller: ID!, cameraId: ID!, limit: Int! = 50, cursor: String = null): RecordingPage!
+
+  """Get current recording state for one or all cameras ({cameras, count})."""
+  recordingStatus(controller: ID!, cameraId: String = null): RecordingStatusList
+
+  """List Protect lights (PIR-triggered floodlights)."""
+  lights(controller: ID!, limit: Int! = 50, cursor: String = null): LightPage!
+
+  """List Protect sensors (motion / leak / temperature)."""
+  sensors(controller: ID!, limit: Int! = 50, cursor: String = null): SensorPage!
+
+  """List Protect liveviews (multi-camera grid layouts)."""
+  liveviews(controller: ID!, limit: Int! = 50, cursor: String = null): LiveviewPage!
+
+  """Get the NVR-level system info snapshot."""
+  systemInfo(controller: ID!): ProtectSystemInfo
+
+  """Get the NVR health snapshot (cpu / memory / storage)."""
+  health(controller: ID!): ProtectHealth
+
+  """Get firmware status for the NVR plus its devices."""
+  firmwareStatus(controller: ID!): FirmwareStatus
+
+  """List Protect viewers ({viewers, count})."""
+  viewers(controller: ID!): ViewerList
+}
+
+"""UniFi Protect NVR-level system info (pass-through)."""
+type ProtectSystemInfo {
+  id: ID
+  name: String
+  model: String
+  firmwareVersion: String
+  version: String
+  host: String
+  mac: String
+  uptimeSeconds: Int
+  upSince: String
+  isUpdating: Boolean
+  storage: JSON
+  cameraCount: Int
+  lightCount: Int
+  sensorCount: Int
+  viewerCount: Int
+  chimeCount: Int
+}
+
 """A QoS rate-limit rule (V2 /qos-rules entry)."""
 type QosRule {
   id: ID
@@ -767,6 +1022,9 @@ type Query {
 
   """Read-only access to UniFi Network resources."""
   network: NetworkQuery!
+
+  """Read-only access to UniFi Protect resources."""
+  protect: ProtectQuery!
 }
 
 """Radio configuration entry on a UniFi access point."""
@@ -780,6 +1038,28 @@ type RadioEntry {
   currentChannel: Int
   currentTxPower: Int
   numSta: Int
+}
+
+"""A UniFi Protect recording window for a camera."""
+type Recording {
+  id: ID
+  type: String
+  camera: ID
+  start: String
+  end: String
+  fileSize: Int
+}
+
+"""Paginated page of UniFi Protect recording windows."""
+type RecordingPage {
+  items: [Recording!]!
+  nextCursor: String
+}
+
+"""Recording-status wrapper for protect_get_recording_status."""
+type RecordingStatusList {
+  cameras: JSON
+  count: Int
 }
 
 """A single RF-scan result row reported by an AP."""
@@ -823,12 +1103,56 @@ type RoutePage {
   nextCursor: String
 }
 
+"""A UniFi Protect sensor (motion / leak / temperature)."""
+type Sensor {
+  id: ID
+  mac: String
+  name: String
+  type: String
+  batteryStatus: String
+  humidityStatus: String
+  lightStatus: String
+  motionDetectedAt: String
+}
+
+"""Paginated page of UniFi Protect sensors."""
+type SensorPage {
+  items: [Sensor!]!
+  nextCursor: String
+}
+
 """Controller site settings."""
 type SiteSettings {
   siteId: String
   name: String
   role: String
   country: Int
+}
+
+"""A UniFi Protect smart-detection event row."""
+type SmartDetection {
+  id: ID
+  type: String
+  start: String
+  end: String
+  score: Int
+  smartDetectTypes: [String!]!
+  camera: ID
+  thumbnail: ID
+}
+
+"""Paginated page of UniFi Protect smart-detections."""
+type SmartDetectionPage {
+  items: [SmartDetection!]!
+  nextCursor: String
+}
+
+"""Metadata for a JPEG snapshot captured from a Protect camera."""
+type Snapshot {
+  sizeBytes: Int
+  contentType: String
+  capturedAt: String
+  url: String
 }
 
 """Controller SNMP settings."""
@@ -933,6 +1257,12 @@ type UserGroup {
 type UserGroupPage {
   items: [UserGroup!]!
   nextCursor: String
+}
+
+"""Wrapper for protect_list_viewers — {viewers, count}."""
+type ViewerList {
+  viewers: JSON
+  count: Int
 }
 
 """A hotspot voucher (V1 /stat/voucher entry)."""

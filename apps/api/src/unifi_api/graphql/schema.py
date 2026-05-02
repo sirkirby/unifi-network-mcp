@@ -13,6 +13,7 @@ import strawberry
 from unifi_api._version import __version__ as _api_version
 from unifi_api.graphql.permissions import IsRead
 from unifi_api.graphql.resolvers.network import NetworkQuery
+from unifi_api.graphql.resolvers.protect import ProtectQuery
 
 
 @strawberry.type(description="Service health snapshot — smoke field for the GraphQL endpoint.")
@@ -38,6 +39,10 @@ class Query:
     @strawberry.field(description="Read-only access to UniFi Network resources.")
     def network(self) -> NetworkQuery:
         return NetworkQuery()
+
+    @strawberry.field(description="Read-only access to UniFi Protect resources.")
+    def protect(self) -> ProtectQuery:
+        return ProtectQuery()
 
 
 schema = strawberry.Schema(query=Query)
