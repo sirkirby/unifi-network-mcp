@@ -137,6 +137,9 @@ from unifi_api.graphql.types.protect.events import (
     EventThumbnail as ProtectEventThumbnailType,
     SmartDetection as ProtectSmartDetectionType,
 )
+from unifi_api.graphql.types.protect.lights import (
+    Light as ProtectLightType,
+)
 from unifi_api.graphql.types.protect.recordings import (
     Recording as ProtectRecordingType,
     RecordingStatusList as ProtectRecordingStatusListType,
@@ -881,6 +884,21 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "protect_alarm_list_profiles", ProtectAlarmProfileListType, "detail",
+    )
+
+    # Phase 6 PR3 Task C — protect/lights migrated to Strawberry types.
+    # ``lights`` carries resource registration (LIST + DETAIL by id since
+    # the REST detail endpoint filters from the LIST response — there is
+    # no native ``protect_get_light`` tool, mirroring lights/sensors/
+    # liveviews / network firewall_rules). Mutation ack
+    # (``protect_update_light``) stays as a serializer in
+    # serializers/protect/lights.py.
+    app.state.type_registry.register_type("protect", "lights", ProtectLightType)
+    app.state.type_registry.register_type(
+        "protect", "lights/{id}", ProtectLightType,
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_lights", ProtectLightType, "list",
     )
 
     app.include_router(health.router, prefix="/v1")

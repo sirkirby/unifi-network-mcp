@@ -1,48 +1,18 @@
-"""Protect light serializers (Phase 4A PR2 Cluster 1).
+"""Protect light mutation serializers.
 
-``LightManager.list_lights`` returns plain dicts shaped by
-``_format_light_summary``.
+Phase 6 PR3 Task C — the read serializer (``LightSerializer``) moved to a
+Strawberry type in ``unifi_api.graphql.types.protect.lights``. The
+``protect_list_lights`` tool is listed in ``PHASE6_TYPE_MIGRATED_TOOLS``
+and dispatched via the type_registry by both the REST route and the
+action endpoint.
 
-PR2 adds ``LightMutationAckSerializer`` for ``protect_update_light``.
-The manager's ``update_light`` returns a preview dict
+This module now only ships ``LightMutationAckSerializer`` for the
+``protect_update_light`` preview-and-confirm tool, which still flows
+through the manager's preview path and produces a dict ack of the form
 ``{light_id, light_name, current_state, proposed_changes}``.
 """
 
-from typing import Any
-
 from unifi_api.serializers._base import RenderKind, Serializer, register_serializer
-
-
-def _get(obj: Any, key: str, default: Any = None) -> Any:
-    if isinstance(obj, dict):
-        return obj.get(key, default)
-    return getattr(obj, key, default)
-
-
-@register_serializer(
-    tools={
-        "protect_list_lights": {"kind": RenderKind.LIST},
-    },
-    resources=[
-        (("protect", "lights"), {"kind": RenderKind.LIST}),
-    ],
-)
-class LightSerializer(Serializer):
-    kind = RenderKind.LIST
-    primary_key = "id"
-    display_columns = ["name", "model", "state", "is_light_on"]
-
-    @staticmethod
-    def serialize(obj) -> dict:
-        return {
-            "id": _get(obj, "id"),
-            "mac": _get(obj, "mac"),
-            "name": _get(obj, "name"),
-            "model": _get(obj, "model"),
-            "state": _get(obj, "state"),
-            "is_pir_motion_detected": _get(obj, "is_pir_motion_detected"),
-            "is_light_on": _get(obj, "is_light_on"),
-        }
 
 
 @register_serializer(tools={"protect_update_light": {"kind": RenderKind.DETAIL}})

@@ -160,6 +160,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # stay as a serializer)
     "protect_list_recordings",
     "protect_get_recording_status",
+    # PR3 Task C — protect/lights (1 read shape; update_light ack stays as
+    # a serializer)
+    "protect_list_lights",
 })
 
 

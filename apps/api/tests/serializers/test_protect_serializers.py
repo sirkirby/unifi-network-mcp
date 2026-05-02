@@ -67,8 +67,10 @@ def test_event_serializer_shape() -> None:
 
 
 def test_light_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("protect", "lights")
+    """Phase 6 PR3 Task C — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.lights import Light
+
     sample = {
         "id": "light1",
         "mac": "aa:bb:cc:dd:ee:02",
@@ -78,11 +80,12 @@ def test_light_serializer_shape() -> None:
         "is_pir_motion_detected": False,
         "is_light_on": True,
     }
-    out = s.serialize(sample)
+    out = Light.from_manager_output(sample).to_dict()
     assert out["id"] == "light1"
     assert out["mac"] == "aa:bb:cc:dd:ee:02"
     assert out["name"] == "Driveway Light"
     assert out["state"] == "CONNECTED"
+    assert Light.render_hint("list")["kind"] == "list"
 
 
 def test_recording_serializer_shape() -> None:
