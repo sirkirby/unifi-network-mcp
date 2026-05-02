@@ -111,8 +111,10 @@ def test_recording_serializer_shape() -> None:
 
 
 def test_sensor_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("protect", "sensors")
+    """Phase 6 PR3 Task C — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.sensors import Sensor
+
     sample = {
         "id": "sensor1",
         "mac": "aa:bb:cc:dd:ee:03",
@@ -125,9 +127,12 @@ def test_sensor_serializer_shape() -> None:
         },
         "motion_detected_at": "2026-04-29T08:30:00+00:00",
     }
-    out = s.serialize(sample)
+    out = Sensor.from_manager_output(sample).to_dict()
     assert out["id"] == "sensor1"
     assert out["mac"] == "aa:bb:cc:dd:ee:03"
     assert out["name"] == "Garage Sensor"
     assert out["type"] == "UFP-SENSOR"
     assert out["battery_status"] == "normal"
+    assert out["humidity_status"] == "normal"
+    assert out["light_status"] == "normal"
+    assert Sensor.render_hint("list")["kind"] == "list"
