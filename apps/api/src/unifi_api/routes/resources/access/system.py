@@ -13,7 +13,6 @@ equivalents (PR3 Cluster 2).
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
@@ -24,13 +23,13 @@ from unifi_api.routes.resources._common import (
 )
 from unifi_api.routes.resources.access.events import _maybe_set_site
 
-
 router = APIRouter()
 
 
 @router.get(
     "/sites/{site_id}/access/health",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/system"],
 )
 async def get_access_health(
     request: Request,
@@ -71,6 +70,7 @@ async def get_access_health(
 @router.get(
     "/sites/{site_id}/access/system-info",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/system"],
 )
 async def get_access_system_info(
     request: Request,

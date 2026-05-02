@@ -17,7 +17,6 @@ from unifi_api.routes.resources._common import (
 from unifi_api.routes.resources.access.doors import _maybe_set_site
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
 
-
 router = APIRouter()
 
 
@@ -29,6 +28,7 @@ def _id_key(obj) -> tuple:
 @router.get(
     "/sites/{site_id}/schedules",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/schedules"],
 )
 async def list_schedules(
     request: Request,

@@ -19,7 +19,6 @@ capability-aware ``/events`` dispatcher (PR2) and protect's ``/events``
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
@@ -29,7 +28,6 @@ from unifi_api.routes.resources._common import (
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
 
 router = APIRouter()
 
@@ -55,6 +53,7 @@ async def _maybe_set_site(cm, site_id: str) -> None:
 @router.get(
     "/sites/{site_id}/access/events",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/events"],
 )
 async def list_access_events(
     request: Request,
@@ -106,6 +105,7 @@ async def list_access_events(
 @router.get(
     "/sites/{site_id}/access/events/{event_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/events"],
 )
 async def get_access_event(
     request: Request,
@@ -147,6 +147,7 @@ async def get_access_event(
 @router.get(
     "/sites/{site_id}/access/recent-events",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/events"],
 )
 async def recent_access_events(
     request: Request,
@@ -204,6 +205,7 @@ async def recent_access_events(
 @router.get(
     "/sites/{site_id}/access/activity-summary",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/events"],
 )
 async def get_access_activity_summary(
     request: Request,
