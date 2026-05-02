@@ -88,8 +88,10 @@ def test_schedule_serializer_shape() -> None:
 
 
 def test_access_device_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("access_list_devices")
+    """Phase 6 PR4 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.devices import AccessDevice
+
     sample = {
         "unique_id": "dev1",
         "name": "Front Reader",
@@ -98,7 +100,7 @@ def test_access_device_serializer_shape() -> None:
         "firmware": "2.10.0",
         "_door_name": "Front Door",
     }
-    out = s.serialize(sample)
+    out = AccessDevice.from_manager_output(sample).to_dict()
     assert out["id"] == "dev1"
     assert out["name"] == "Front Reader"
     assert out["type"] == "UA-G2"

@@ -162,6 +162,9 @@ from unifi_api.graphql.types.access.doors import (
     DoorGroup as AccessDoorGroupType,
     DoorStatus as AccessDoorStatusType,
 )
+from unifi_api.graphql.types.access.devices import (
+    AccessDevice as AccessDeviceType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -1001,6 +1004,19 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "access_get_door_status", AccessDoorStatusType, "detail",
+    )
+
+    # Phase 6 PR4 Task A — access/devices migrated to Strawberry types.
+    # Single read serializer (AccessDevice) moved to
+    # graphql/types/access/devices.py. The access devices REST routes are
+    # tool-keyed only (the spec uses /access-devices, not a resource
+    # registration). Mutation ack (``access_reboot_device``) stays as a
+    # serializer in serializers/access/devices.py.
+    app.state.type_registry.register_tool_type(
+        "access_list_devices", AccessDeviceType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "access_get_device", AccessDeviceType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")
