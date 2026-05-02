@@ -61,12 +61,12 @@ include = [
     "/README.md",
 ]
 
+# force-include only paths that live OUTSIDE src/unifi_api/ (which is already
+# picked up by `packages = ["src/unifi_api"]` above). Re-including paths that
+# are already in the package produces duplicate ZIP entries that PyPI 400s on.
 [tool.hatch.build.targets.wheel.force-include]
-"src/unifi_api/config.yaml" = "unifi_api/config.yaml"
 "alembic.ini" = "unifi_api/alembic.ini"
 "alembic" = "unifi_api/alembic"
-"src/unifi_api/static" = "unifi_api/static"
-"src/unifi_api/templates" = "unifi_api/templates"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -1,9 +1,14 @@
-name: "API: Docker Build and Publish"
+name: "API: Docker Build (main + PR)"
+
+# Validates the Docker image on every push-to-main and PR.
+# On main, also pushes :main and :sha-<sha> dev images.
+# api/v* TAG releases are owned by release-api.yml — that workflow
+# fan-outs PyPI + Docker in parallel, then creates the GitHub Release
+# only when both succeed.
 
 on:
   push:
     branches: [ "main" ]
-    tags: [ 'api/v*' ]
   pull_request:
     types: [ opened, synchronize, reopened ]
     branches: [ "main" ]
@@ -52,7 +57,6 @@ jobs:
             RAW=""
             BASE="0.0.0"
           fi
-          # If exactly on a tag, use the clean version; otherwise build a PEP 440 dev version
           if [ -n "$RAW" ] && ! echo "$RAW" | grep -q '-'; then
             VERSION="$BASE"
           else
@@ -61,7 +65,6 @@ jobs:
             VERSION="${BASE}.dev${COMMITS}+g${SHA}"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Detected version: $VERSION"
 
       - name: Extract metadata for Docker
         id: meta
@@ -69,21 +72,14 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Set latest tag only for stable api/v* tags (not pre-releases) on the default branch
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/api/v') && !contains(github.ref, '-') }}
-            # Tag with branch name (e.g., main)
             type=ref,event=branch
-            # Tag with PR number (e.g., pr-2) — PR builds don't push, but the tag is metadata-only
             type=ref,event=pr
-            # Tag with the version derived from api/v* on tag pushes
-            type=raw,value=${{ steps.version.outputs.version }},enable=${{ startsWith(github.ref, 'refs/tags/api/v') }}
-            # Tag with git sha
             type=sha,format=short
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
-          context: .  # Workspace root (monorepo layout)
+          context: .
           file: apps/api/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
