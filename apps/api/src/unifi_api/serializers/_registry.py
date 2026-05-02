@@ -165,6 +165,9 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "protect_list_lights",
     # PR3 Task C — protect/sensors (1 read shape; no mutation acks)
     "protect_list_sensors",
+    # PR3 Task C — protect/liveviews (1 read shape; create/delete acks
+    # stay as a serializer)
+    "protect_list_liveviews",
 })
 
 

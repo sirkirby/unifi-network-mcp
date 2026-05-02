@@ -36,31 +36,32 @@ def _registry():
 
 
 def test_liveview_list_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_list_liveviews")
-    sample = [
-        {
-            "id": "lv-001",
-            "name": "Front Yard",
-            "is_default": True,
-            "is_global": False,
-            "layout": 4,
-            "owner_id": "user-1",
-            "slots": [
-                {"camera_ids": ["cam1", "cam2"], "cycle_mode": "none", "cycle_interval": 0},
-                {"camera_ids": ["cam3"], "cycle_mode": "none", "cycle_interval": 0},
-            ],
-            "slot_count": 2,
-            "camera_count": 3,
-        }
-    ]
-    out = s.serialize_action(sample, tool_name="protect_list_liveviews")
-    assert out["success"] is True
-    assert out["data"][0]["id"] == "lv-001"
-    assert out["data"][0]["name"] == "Front Yard"
-    assert out["data"][0]["layout"] == 4
-    assert out["data"][0]["cameras"] == ["cam1", "cam2", "cam3"]
-    assert out["render_hint"]["kind"] == "list"
+    """Phase 6 PR3 Task C — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.liveviews import Liveview
+
+    sample = {
+        "id": "lv-001",
+        "name": "Front Yard",
+        "is_default": True,
+        "is_global": False,
+        "layout": 4,
+        "owner_id": "user-1",
+        "slots": [
+            {"camera_ids": ["cam1", "cam2"], "cycle_mode": "none", "cycle_interval": 0},
+            {"camera_ids": ["cam3"], "cycle_mode": "none", "cycle_interval": 0},
+        ],
+        "slot_count": 2,
+        "camera_count": 3,
+    }
+    out = Liveview.from_manager_output(sample).to_dict()
+    assert out["id"] == "lv-001"
+    assert out["name"] == "Front Yard"
+    assert out["layout"] == 4
+    assert out["cameras"] == ["cam1", "cam2", "cam3"]
+    assert out["slot_count"] == 2
+    assert out["camera_count"] == 3
+    assert Liveview.render_hint("list")["kind"] == "list"
 
 
 def test_liveview_mutation_ack_create() -> None:

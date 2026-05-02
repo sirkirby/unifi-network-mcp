@@ -140,6 +140,9 @@ from unifi_api.graphql.types.protect.events import (
 from unifi_api.graphql.types.protect.lights import (
     Light as ProtectLightType,
 )
+from unifi_api.graphql.types.protect.liveviews import (
+    Liveview as ProtectLiveviewType,
+)
 from unifi_api.graphql.types.protect.sensors import (
     Sensor as ProtectSensorType,
 )
@@ -916,6 +919,23 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "protect_list_sensors", ProtectSensorType, "list",
+    )
+
+    # Phase 6 PR3 Task C — protect/liveviews migrated to Strawberry types.
+    # ``liveviews`` carries resource registration (LIST + DETAIL by id
+    # since the REST detail endpoint filters from the LIST response —
+    # there is no native ``protect_get_liveview`` tool, mirroring lights /
+    # sensors). Mutation acks (``protect_create_liveview`` /
+    # ``protect_delete_liveview``) stay as a serializer in
+    # serializers/protect/liveviews.py.
+    app.state.type_registry.register_type(
+        "protect", "liveviews", ProtectLiveviewType,
+    )
+    app.state.type_registry.register_type(
+        "protect", "liveviews/{id}", ProtectLiveviewType,
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_liveviews", ProtectLiveviewType, "list",
     )
 
     app.include_router(health.router, prefix="/v1")
