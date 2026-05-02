@@ -6,17 +6,18 @@ Phase 5A PR1 Cluster 3 — networks/WLANs/VPN/DNS/routing.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
+from unifi_api.graphql.pydantic_export import to_pydantic_model
+from unifi_api.graphql.types.network.vpn import VpnClient, VpnServer
 from unifi_api.routes.resources._common import (
     require_capability,
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
+from unifi_api.services.pydantic_models import Page
 
 router = APIRouter()
 
@@ -40,7 +41,9 @@ def _decode_cursor(cursor: str | None) -> Cursor | None:
 
 @router.get(
     "/sites/{site_id}/vpn-clients",
+    response_model=Page[to_pydantic_model(VpnClient)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/vpn"],
 )
 async def list_vpn_clients(
     request: Request,
@@ -86,6 +89,7 @@ async def list_vpn_clients(
 @router.get(
     "/sites/{site_id}/vpn-clients/{client_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/vpn"],
 )
 async def get_vpn_client_details(
     request: Request,
@@ -130,7 +134,9 @@ async def get_vpn_client_details(
 
 @router.get(
     "/sites/{site_id}/vpn-servers",
+    response_model=Page[to_pydantic_model(VpnServer)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/vpn"],
 )
 async def list_vpn_servers(
     request: Request,
@@ -176,6 +182,7 @@ async def list_vpn_servers(
 @router.get(
     "/sites/{site_id}/vpn-servers/{server_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/vpn"],
 )
 async def get_vpn_server_details(
     request: Request,
