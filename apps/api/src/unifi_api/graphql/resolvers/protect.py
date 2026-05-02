@@ -60,7 +60,6 @@ from unifi_api.graphql.types.protect.system import (
     ViewerList,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
@@ -118,28 +117,56 @@ def _id_key(obj: Any) -> tuple:
     return (0, str(_id_of(obj) or ""))
 
 
+def _ts_to_int(ts: Any) -> int:
+    """Coerce a Protect timestamp to an integer for sort-key comparison.
+
+    UniFi Protect returns timestamps as Unix epoch milliseconds (int) in
+    older firmware and as ISO-8601 strings in newer builds.  Accept both.
+    """
+    if ts is None:
+        return 0
+    if isinstance(ts, (int, float)):
+        return int(ts)
+    s = str(ts).strip()
+    if not s:
+        return 0
+    # Fast path: plain integer string
+    if s.lstrip("-").isdigit():
+        return int(s)
+    # ISO-8601 string — convert to epoch milliseconds
+    try:
+        from datetime import datetime
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return int(dt.timestamp() * 1000)
+    except ValueError:
+        return 0
+
+
 def _event_key(obj: Any) -> tuple:
     """Sort by (start, id) descending (paginate sorts ascending; Protect
-    routes already sort desc upstream — this reproduces a stable order)."""
+    routes already sort desc upstream — this reproduces a stable order).
+
+    Handles both integer-epoch-ms and ISO-8601 timestamp formats.
+    """
     raw = _raw(obj)
     if isinstance(raw, dict):
-        ts = raw.get("start") or 0
+        ts = raw.get("start")
         rid = raw.get("id") or ""
     else:
-        ts = getattr(raw, "start", None) or 0
+        ts = getattr(raw, "start", None)
         rid = getattr(raw, "id", None) or ""
-    return (int(ts or 0), str(rid))
+    return (_ts_to_int(ts), str(rid))
 
 
 def _recording_key(obj: Any) -> tuple:
     raw = _raw(obj)
     if isinstance(raw, dict):
-        ts = raw.get("start") or 0
+        ts = raw.get("start")
         rid = raw.get("id") or ""
     else:
-        ts = getattr(raw, "start", None) or 0
+        ts = getattr(raw, "start", None)
         rid = getattr(raw, "id", None) or ""
-    return (int(ts or 0), str(rid))
+    return (_ts_to_int(ts), str(rid))
 
 
 # ---------------------------------------------------------------------------
