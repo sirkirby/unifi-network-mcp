@@ -41,7 +41,10 @@ def _get(obj: Any, key: str, default: Any = None) -> Any:
     return getattr(obj, key, default)
 
 
-@strawberry.type(description="A UniFi Access event row (list + detail share this shape).")
+@strawberry.type(
+    name="AccessEvent",
+    description="A UniFi Access event row (list + detail share this shape).",
+)
 class Event:
     """Mirrors ``_event_payload`` projection byte-for-byte.
 

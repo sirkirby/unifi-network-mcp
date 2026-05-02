@@ -1,3 +1,112 @@
+"""A UniFi Access device (reader / hub / lock)."""
+type AccessDevice {
+  id: ID
+  name: String
+  type: String
+  isOnline: Boolean
+  firmwareVersion: String
+  location: String
+}
+
+"""Paginated page of UniFi Access devices."""
+type AccessDevicePage {
+  items: [AccessDevice!]!
+  nextCursor: String
+}
+
+"""A UniFi Access event row (list + detail share this shape)."""
+type AccessEvent {
+  id: ID
+  type: String
+  timestamp: String
+  doorId: String
+  userId: String
+  credentialId: String
+  result: String
+}
+
+"""Paginated page of UniFi Access events."""
+type AccessEventPage {
+  items: [AccessEvent!]!
+  nextCursor: String
+}
+
+"""UniFi Access health probe summary."""
+type AccessHealth {
+  status: String!
+  numDoors: Int
+  numDevices: Int
+  numOfflineDevices: Int
+}
+
+"""Read-only access to UniFi Access resources."""
+type AccessQuery {
+  """List doors on the Access controller (paginated)."""
+  doors(controller: ID!, limit: Int! = 50, cursor: String = null): DoorPage!
+
+  """Look up a single Access door by id."""
+  door(controller: ID!, id: ID!): Door
+
+  """List Access door groups (paginated)."""
+  doorGroups(controller: ID!, limit: Int! = 50, cursor: String = null): DoorGroupPage!
+
+  """Get the live status (lock state + last event) of a door."""
+  doorStatus(controller: ID!, id: ID!): DoorStatus
+
+  """List Access devices (readers / hubs / locks, paginated)."""
+  devices(controller: ID!, limit: Int! = 50, cursor: String = null): AccessDevicePage!
+
+  """Look up a single Access device by id."""
+  device(controller: ID!, id: ID!): AccessDevice
+
+  """List Access users (employees / cardholders, paginated)."""
+  users(controller: ID!, limit: Int! = 50, cursor: String = null): UserPage!
+
+  """List Access credentials (NFC / PIN / etc., paginated)."""
+  credentials(controller: ID!, limit: Int! = 50, cursor: String = null): CredentialPage!
+
+  """Look up a single Access credential by id."""
+  credential(controller: ID!, id: ID!): Credential
+
+  """List Access policies (who-can-access-what bindings)."""
+  policies(controller: ID!, limit: Int! = 50, cursor: String = null): PolicyPage!
+
+  """Look up a single Access policy by id."""
+  policy(controller: ID!, id: ID!): Policy
+
+  """List Access schedules (weekly access windows)."""
+  schedules(controller: ID!, limit: Int! = 50, cursor: String = null): SchedulePage!
+
+  """List Access visitors (time-bounded guest passes)."""
+  visitors(controller: ID!, limit: Int! = 50, cursor: String = null): VisitorPage!
+
+  """Look up a single Access visitor by id."""
+  visitor(controller: ID!, id: ID!): Visitor
+
+  """List Access events (paginated, most recent first)."""
+  events(controller: ID!, limit: Int! = 50, cursor: String = null): AccessEventPage!
+
+  """Look up a single Access event by id."""
+  event(controller: ID!, id: ID!): AccessEvent
+
+  """Get the access activity histogram summary."""
+  activitySummary(controller: ID!, doorId: String = null, days: Int! = 7): ActivitySummary
+
+  """Get the Access application info (name + version + host)."""
+  systemInfo(controller: ID!): AccessSystemInfo
+
+  """Get the Access health probe summary."""
+  health(controller: ID!): AccessHealth
+}
+
+"""UniFi Access application info (name + version + host)."""
+type AccessSystemInfo {
+  name: String
+  version: String
+  hostname: String
+  uptime: Int
+}
+
 """A MAC ACL rule (V2 /acl-rules entry)."""
 type AclRule {
   id: ID
@@ -26,6 +135,17 @@ type ActiveRoute {
 type ActiveRoutePage {
   items: [ActiveRoute!]!
   nextCursor: String
+}
+
+"""Access activity histogram summary."""
+type ActivitySummary {
+  periodStart: String
+  periodEnd: String
+  totalEvents: Int
+  grantedCount: Int
+  deniedCount: Int
+  topUsers: JSON
+  buckets: JSON
 }
 
 """A controller alarm (V1 /list/alarm entry)."""
@@ -278,6 +398,22 @@ type ContentFilterPage {
   nextCursor: String
 }
 
+"""A UniFi Access credential (NFC, PIN, etc.)."""
+type Credential {
+  id: ID
+  userId: String
+  type: String
+  status: String
+  expiry: String
+  lastUsed: String
+}
+
+"""Paginated page of UniFi Access credentials."""
+type CredentialPage {
+  items: [Credential!]!
+  nextCursor: String
+}
+
 """A UniFi network device (AP, switch, gateway)."""
 type Device {
   mac: ID
@@ -322,6 +458,48 @@ type DnsRecord {
 type DnsRecordPage {
   items: [DnsRecord!]!
   nextCursor: String
+}
+
+"""A UniFi Access door (list + detail shape)."""
+type Door {
+  id: ID
+  name: String
+  location: String
+  isOnline: Boolean
+  isLocked: Boolean
+  lockState: String
+  lastEvent: JSON
+}
+
+"""A UniFi Access door group (list of doors)."""
+type DoorGroup {
+  id: ID
+  name: String
+  doorIds: [String!]!
+  location: String
+}
+
+"""Paginated page of UniFi Access door groups."""
+type DoorGroupPage {
+  items: [DoorGroup!]!
+  nextCursor: String
+}
+
+"""Paginated page of UniFi Access doors."""
+type DoorPage {
+  items: [Door!]!
+  nextCursor: String
+}
+
+"""Per-door live status (lock state + last event)."""
+type DoorStatus {
+  doorId: ID
+  name: String
+  isLocked: Boolean
+  lockState: String
+  doorPositionStatus: String
+  lastEventAt: String
+  lastEventType: String
 }
 
 """A DPI application classification entry."""
@@ -844,6 +1022,22 @@ type OonPolicyPage {
   nextCursor: String
 }
 
+"""A UniFi Access policy (who-can-access-what binding)."""
+type Policy {
+  id: ID
+  name: String
+  scheduleId: String
+  doorIds: [String!]!
+  userGroupIds: [String!]!
+  enabled: Boolean!
+}
+
+"""Paginated page of UniFi Access policies."""
+type PolicyPage {
+  items: [Policy!]!
+  nextCursor: String
+}
+
 """A port-forward rule (V1 /rest/portforward entry)."""
 type PortForward {
   id: ID
@@ -1034,6 +1228,9 @@ type Query {
 
   """Read-only access to UniFi Protect resources."""
   protect: ProtectQuery!
+
+  """Read-only access to UniFi Access resources."""
+  access: AccessQuery!
 }
 
 """Radio configuration entry on a UniFi access point."""
@@ -1112,6 +1309,20 @@ type Route {
 """Paginated page of static routes."""
 type RoutePage {
   items: [Route!]!
+  nextCursor: String
+}
+
+"""A UniFi Access schedule (weekly access window)."""
+type Schedule {
+  id: ID
+  name: String
+  weeklyPattern: JSON!
+  enabled: Boolean!
+}
+
+"""Paginated page of UniFi Access schedules."""
+type SchedulePage {
+  items: [Schedule!]!
   nextCursor: String
 }
 
@@ -1257,6 +1468,16 @@ type TrafficRoutePage {
   nextCursor: String
 }
 
+"""A UniFi Access user (employee / cardholder)."""
+type User {
+  id: ID
+  name: String
+  employeeId: String
+  status: String
+  role: String
+  createdAt: String
+}
+
 """A QoS user group (V1 /rest/usergroup entry)."""
 type UserGroup {
   id: ID
@@ -1271,10 +1492,33 @@ type UserGroupPage {
   nextCursor: String
 }
 
+"""Paginated page of UniFi Access users."""
+type UserPage {
+  items: [User!]!
+  nextCursor: String
+}
+
 """Wrapper for protect_list_viewers — {viewers, count}."""
 type ViewerList {
   viewers: JSON
   count: Int
+}
+
+"""A UniFi Access visitor (time-bounded guest pass)."""
+type Visitor {
+  id: ID
+  name: String
+  hostUserId: String
+  validFrom: String
+  validUntil: String
+  status: String
+  credentialCount: Int
+}
+
+"""Paginated page of UniFi Access visitors."""
+type VisitorPage {
+  items: [Visitor!]!
+  nextCursor: String
 }
 
 """A hotspot voucher (V1 /stat/voucher entry)."""
