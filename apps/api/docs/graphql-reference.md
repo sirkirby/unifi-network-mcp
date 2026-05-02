@@ -1,11 +1,14 @@
-# unifi-api GraphQL Reference
+# unifi-api-server GraphQL Reference
 
 > Auto-generated from the Strawberry schema by `unifi_api.graphql.docgen`.
-> Do not edit by hand. Regenerate with `python -m unifi_api.graphql.docgen`.
+> Regenerate with `python -m unifi_api.graphql.docgen`.
 
-## Schema (SDL)
+
+## Schema (full SDL)
+
 
 ```graphql
+
 """A UniFi Access device (reader / hub / lock)."""
 type AccessDevice {
   id: ID
@@ -1606,4 +1609,173 @@ type WlanPage {
   items: [Wlan!]!
   nextCursor: String
 }
+
 ```
+
+
+## Query namespaces
+
+
+### `query.access`
+
+
+Read-only access to UniFi Access resources.
+
+
+**Fields:**
+
+- `activitySummary: ActivitySummary`  — Get the access activity histogram summary.
+- `credential: Credential`  — Look up a single Access credential by id.
+- `credentials: CredentialPage!`  — List Access credentials (NFC / PIN / etc., paginated).
+- `device: AccessDevice`  — Look up a single Access device by id.
+- `devices: AccessDevicePage!`  — List Access devices (readers / hubs / locks, paginated).
+- `door: Door`  — Look up a single Access door by id.
+- `doorGroups: DoorGroupPage!`  — List Access door groups (paginated).
+- `doorStatus: DoorStatus`  — Get the live status (lock state + last event) of a door.
+- `doors: DoorPage!`  — List doors on the Access controller (paginated).
+- `event: AccessEvent`  — Look up a single Access event by id.
+- `events: AccessEventPage!`  — List Access events (paginated, most recent first).
+- `health: AccessHealth`  — Get the Access health probe summary.
+- `policies: PolicyPage!`  — List Access policies (who-can-access-what bindings).
+- `policy: Policy`  — Look up a single Access policy by id.
+- `schedules: SchedulePage!`  — List Access schedules (weekly access windows).
+- `systemInfo: AccessSystemInfo`  — Get the Access application info (name + version + host).
+- `users: UserPage!`  — List Access users (employees / cardholders, paginated).
+- `visitor: Visitor`  — Look up a single Access visitor by id.
+- `visitors: VisitorPage!`  — List Access visitors (time-bounded guest passes).
+
+
+### `query.health`
+
+
+Liveness probe; mirrors GET /v1/health/ready.
+
+
+**Fields:**
+
+- `ok: Boolean!`
+- `pythonVersion: String!`
+- `version: String!`
+
+
+### `query.network`
+
+
+Read-only access to UniFi Network resources.
+
+
+**Fields:**
+
+- `aclRule: AclRule`  — Look up a single ACL rule by id.
+- `aclRules: AclRulePage!`  — List ACL rules on the given controller/site (paginated).
+- `activeRoutes: ActiveRoutePage!`  — List the gateway's active kernel routing-table entries (paginated).
+- `alarms: AlarmPage!`  — List controller alarms (paginated).
+- `alerts: EventLogPage!`  — List active alerts (paginated).
+- `anomalies: EventLogPage!`  — List recent anomalies (paginated).
+- `apGroup: ApGroup`  — Look up a single AP group by id.
+- `apGroups: ApGroupPage!`  — List AP groups on the given controller/site (paginated).
+- `autobackupSettings: AutoBackupSettings`  — Get auto-backup schedule + retention settings.
+- `availableChannels: [AvailableChannel!]!`  — List wireless channels allowed by the regulatory domain.
+- `backups: BackupPage!`  — List controller backups (paginated).
+- `blockedClients: BlockedClientPage!`  — List clients currently blocked from the network (paginated).
+- `client: Client`  — Look up a single client by MAC address.
+- `clientByIp: ClientLookup`  — Look up a client by IP address (online-presence check).
+- `clientDpiTraffic: [StatPoint!]!`  — Per-client DPI traffic breakdown.
+- `clientGroup: ClientGroup`  — Look up a single network member client group by id.
+- `clientGroups: ClientGroupPage!`  — List network member client groups on the given controller/site (paginated).
+- `clientSessions: ClientSessionPage!`  — List a client's association sessions (paginated).
+- `clientStats: [StatPoint!]!`  — Per-client stats timeseries (by MAC).
+- `clientWifiDetails: ClientWifiDetails`  — Get a client's current WiFi parameters (signal, rates).
+- `clients: ClientPage!`  — List clients on the given controller/site (paginated).
+- `contentFilter: ContentFilter`  — Look up a single content filter by id.
+- `contentFilters: ContentFilterPage!`  — List content filters on the given controller/site (paginated).
+- `dashboardStats: [StatPoint!]!`  — Site dashboard timeseries (all-points).
+- `device: Device`  — Look up a single device by MAC address.
+- `deviceRadio: DeviceRadio`  — Get the radio configuration for a UniFi access point.
+- `deviceStats: [StatPoint!]!`  — Per-device stats timeseries (by MAC).
+- `devices: DevicePage!`  — List devices on the given controller/site (paginated).
+- `dnsRecord: DnsRecord`  — Look up a single DNS record by id.
+- `dnsRecords: DnsRecordPage!`  — List static DNS records on the given controller/site (paginated).
+- `dpiApplications: DpiApplicationPage!`  — List DPI applications (paginated).
+- `dpiCategories: DpiCategoryPage!`  — List DPI categories (paginated).
+- `dpiStats: DpiStats`  — DPI stats catalog (applications + categories).
+- `eventLog: EventLogPage!`  — List recent controller events (paginated).
+- `eventTypes: EventTypes`  — Get the controller's event-type prefix catalog.
+- `firewallGroup: FirewallGroup`  — Look up a single firewall group by id.
+- `firewallGroups: FirewallGroupPage!`  — List firewall address/port groups (paginated).
+- `firewallPolicies: FirewallRulePage!`  — List firewall policies/rules on the given controller/site (paginated).
+- `firewallPolicy: FirewallRule`  — Look up a single firewall policy/rule by id.
+- `firewallZones: [FirewallZone!]!`  — List firewall zones (typically a small flat list — no pagination).
+- `gatewayStats: [StatPoint!]!`  — Gateway stats timeseries.
+- `ipsEvents: EventLogPage!`  — List recent IPS/IDS events (paginated).
+- `knownRogueAps: KnownRogueApPage!`  — List known (allowlisted) rogue APs (paginated).
+- `lldpNeighbors: LldpNeighbors`  — Get LLDP neighbors reported by a switch.
+- `networkDetail: Network`  — Look up a single LAN/VLAN network by id. (Named ``networkDetail`` because ``network`` is reserved for the namespace.)
+- `networkHealth: [NetworkHealth!]!`  — Get the controller's network-health subsystems list.
+- `networkStats: [StatPoint!]!`  — Network-wide stats timeseries.
+- `networks: NetworkPage!`  — List configured LAN/VLAN networks on the given controller/site (paginated).
+- `oonPolicies: OonPolicyPage!`  — List OON (out-of-network) policies (paginated).
+- `oonPolicy: OonPolicy`  — Look up a single OON policy by id.
+- `portForward: PortForward`  — Look up a single port forward by id.
+- `portForwards: PortForwardPage!`  — List port forwards on the given controller/site (paginated).
+- `portProfile: PortProfile`  — Look up a single switch port profile by id.
+- `portProfiles: PortProfilePage!`  — List switch port profiles on the given controller/site (paginated).
+- `portStats: PortStats`  — Get the per-port stats wrapper for a switch (name/model + port_table).
+- `qosRule: QosRule`  — Look up a single QoS rule by id.
+- `qosRules: QosRulePage!`  — List QoS rules on the given controller/site (paginated).
+- `rfScanResults: [RfScanResult!]!`  — List RF-scan results for a specific access point.
+- `rogueAps: RogueApPage!`  — List rogue (unknown) APs detected within a window (paginated).
+- `route: Route`  — Look up a single static route by id.
+- `routes: RoutePage!`  — List configured static routes (paginated).
+- `siteDpiTraffic: [StatPoint!]!`  — Site-wide DPI traffic breakdown.
+- `siteSettings: SiteSettings`  — Get site-level settings (locale, timezone, advanced).
+- `snmpSettings: SnmpSettings`  — Get SNMP settings.
+- `speedtestResults: SpeedtestResultPage!`  — List recent speedtest results (paginated).
+- `speedtestStatus: SpeedtestStatus`  — Get the gateway speedtest status (idle/running + last results).
+- `switchCapabilities: SwitchCapabilities`  — Get switch capabilities (caps dict + STP / dot1x flags).
+- `switchPorts: SwitchPorts`  — Get the port-override wrapper for a switch (name/model + per-port overrides).
+- `systemInfo: SystemInfo`  — Get controller system info (build, uptime, hardware).
+- `topClients: [TopClient!]!`  — List top-traffic clients within a window.
+- `trafficRoute: TrafficRoute`  — Look up a single traffic-route policy by id.
+- `trafficRoutes: TrafficRoutePage!`  — List traffic-route policies (V2 /trafficroutes) (paginated).
+- `userGroup: UserGroup`  — Look up a single QoS user group by id.
+- `userGroups: UserGroupPage!`  — List QoS user groups (V1 /rest/usergroup) on the given controller/site (paginated).
+- `voucher: Voucher`  — Look up a single hotspot voucher by id.
+- `vouchers: VoucherPage!`  — List hotspot vouchers on the given controller/site (paginated).
+- `vpnClient: VpnClient`  — Look up a single VPN client by id.
+- `vpnClients: VpnClientPage!`  — List configured VPN clients (outbound tunnels) (paginated).
+- `vpnServer: VpnServer`  — Look up a single VPN server by id.
+- `vpnServers: VpnServerPage!`  — List configured VPN servers (inbound tunnels) (paginated).
+- `wlan: Wlan`  — Look up a single WLAN/SSID by id.
+- `wlans: WlanPage!`  — List WLAN/SSID configurations on the given controller/site (paginated).
+
+
+### `query.protect`
+
+
+Read-only access to UniFi Protect resources.
+
+
+**Fields:**
+
+- `alarmProfiles: AlarmProfileList`  — List configured alarm profiles ({profiles, count}).
+- `alarmStatus: AlarmStatus`  — Get the alarm system arm-state snapshot.
+- `camera: Camera`  — Look up a single Protect camera by id.
+- `cameraAnalytics: CameraAnalytics`  — Get analytics summary for a Protect camera.
+- `cameraStreams: CameraStreams`  — Get the stream catalog (channels + RTSPS URLs) for a camera.
+- `cameras: CameraPage!`  — List cameras on the Protect controller (paginated).
+- `chimes: ChimePage!`  — List paired Protect chimes (paginated).
+- `event: Event`  — Look up a single Protect event by id.
+- `eventThumbnail: EventThumbnail`  — Get the thumbnail for a Protect event.
+- `events: EventPage!`  — List Protect events (paginated, most recent first).
+- `firmwareStatus: FirmwareStatus`  — Get firmware status for the NVR plus its devices.
+- `health: ProtectHealth`  — Get the NVR health snapshot (cpu / memory / storage).
+- `lights: LightPage!`  — List Protect lights (PIR-triggered floodlights).
+- `liveviews: LiveviewPage!`  — List Protect liveviews (multi-camera grid layouts).
+- `recordingStatus: RecordingStatusList`  — Get current recording state for one or all cameras ({cameras, count}).
+- `recordings: RecordingPage!`  — List Protect recording windows for a camera. UniFi Protect exposes a single continuous recording window per camera.
+- `sensors: SensorPage!`  — List Protect sensors (motion / leak / temperature).
+- `smartDetections: SmartDetectionPage!`  — List Protect smart-detection events (paginated, most recent first).
+- `snapshot: Snapshot`  — Capture a JPEG snapshot from a camera (metadata only).
+- `systemInfo: ProtectSystemInfo`  — Get the NVR-level system info snapshot.
+- `viewers: ViewerList`  — List Protect viewers ({viewers, count}).
