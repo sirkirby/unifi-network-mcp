@@ -77,9 +77,13 @@ async def list_cameras(
     )
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("protect", "cameras")
-    items = [serializer.serialize(c) for c in page]
-    hint = registry.render_hint_for_resource("protect", "cameras")
+    entry = request.app.state.type_registry.lookup("protect", "cameras")
+    if entry.kind == "type":
+        items = [entry.payload.from_manager_output(c).to_dict() for c in page]
+        hint = entry.payload.render_hint("list")
+    else:
+        items = [entry.payload.serialize(c) for c in page]
+        hint = registry.render_hint_for_resource("protect", "cameras")
 
     return {
         "items": items,
@@ -113,10 +117,16 @@ async def get_camera(
             raise HTTPException(status_code=404, detail="camera not found")
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("protect", "cameras/{id}")
+    entry = request.app.state.type_registry.lookup("protect", "cameras/{id}")
+    if entry.kind == "type":
+        data = entry.payload.from_manager_output(camera).to_dict()
+        hint = entry.payload.render_hint("detail")
+    else:
+        data = entry.payload.serialize(camera)
+        hint = registry.render_hint_for_resource("protect", "cameras/{id}")
     return {
-        "data": serializer.serialize(camera),
-        "render_hint": registry.render_hint_for_resource("protect", "cameras/{id}"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -158,11 +168,20 @@ async def get_camera_analytics(
             status_code=404, detail=f"camera analytics for {camera_id} not found",
         )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_get_camera_analytics")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_get_camera_analytics")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(analytics).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_get_camera_analytics")
+        data = serializer.serialize(analytics)
+        hint = registry.render_hint_for_tool("protect_get_camera_analytics")
     return {
-        "data": serializer.serialize(analytics),
-        "render_hint": registry.render_hint_for_tool("protect_get_camera_analytics"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -194,11 +213,20 @@ async def get_camera_streams(
             status_code=404, detail=f"camera streams for {camera_id} not found",
         )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_get_camera_streams")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_get_camera_streams")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(streams).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_get_camera_streams")
+        data = serializer.serialize(streams)
+        hint = registry.render_hint_for_tool("protect_get_camera_streams")
     return {
-        "data": serializer.serialize(streams),
-        "render_hint": registry.render_hint_for_tool("protect_get_camera_streams"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -236,9 +264,18 @@ async def get_camera_snapshot(
             status_code=404, detail=f"snapshot for {camera_id} not found",
         )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_get_snapshot")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_get_snapshot")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(snapshot).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_get_snapshot")
+        data = serializer.serialize(snapshot)
+        hint = registry.render_hint_for_tool("protect_get_snapshot")
     return {
-        "data": serializer.serialize(snapshot),
-        "render_hint": registry.render_hint_for_tool("protect_get_snapshot"),
+        "data": data,
+        "render_hint": hint,
     }

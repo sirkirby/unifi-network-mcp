@@ -52,8 +52,10 @@ def test_chime_list_serializer_shape() -> None:
 
 
 def test_camera_analytics_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_get_camera_analytics")
+    """Phase 6 PR3 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.cameras import CameraAnalytics
+
     sample = {
         "camera_id": "cam1",
         "camera_name": "Front Door",
@@ -69,17 +71,18 @@ def test_camera_analytics_serializer_shape() -> None:
         "smart_detect_zone_count": 1,
         "stats": {},
     }
-    out = s.serialize_action(sample, tool_name="protect_get_camera_analytics")
-    assert out["success"] is True
-    assert out["data"]["camera_id"] == "cam1"
-    assert out["data"]["motion_zone_count"] == 2
-    assert out["data"]["smart_detects"] == {"person": "2026-04-29T08:30:00+00:00"}
-    assert out["render_hint"]["kind"] == "detail"
+    out = CameraAnalytics.from_manager_output(sample).to_dict()
+    assert out["camera_id"] == "cam1"
+    assert out["motion_zone_count"] == 2
+    assert out["smart_detects"] == {"person": "2026-04-29T08:30:00+00:00"}
+    assert CameraAnalytics.render_hint("detail")["kind"] == "detail"
 
 
 def test_camera_streams_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_get_camera_streams")
+    """Phase 6 PR3 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.cameras import CameraStreams
+
     sample = {
         "camera_id": "cam1",
         "camera_name": "Front Door",
@@ -98,23 +101,23 @@ def test_camera_streams_serializer_shape() -> None:
         },
         "rtsps_streams": {"high": "rtsps://nvr.local:7441/xyz789"},
     }
-    out = s.serialize_action(sample, tool_name="protect_get_camera_streams")
-    assert out["success"] is True
-    assert out["data"]["camera_id"] == "cam1"
-    assert "high" in out["data"]["channels"]
-    assert out["data"]["channels"]["high"]["rtsps_url"].startswith("rtsps://")
-    assert out["render_hint"]["kind"] == "detail"
+    out = CameraStreams.from_manager_output(sample).to_dict()
+    assert out["camera_id"] == "cam1"
+    assert "high" in out["channels"]
+    assert out["channels"]["high"]["rtsps_url"].startswith("rtsps://")
+    assert CameraStreams.render_hint("detail")["kind"] == "detail"
 
 
 def test_snapshot_serializer_bytes_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_get_snapshot")
+    """Phase 6 PR3 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.cameras import Snapshot
+
     sample = b"\xff\xd8\xff\xe0" + b"\x00" * 1020  # fake JPEG header + padding
-    out = s.serialize_action(sample, tool_name="protect_get_snapshot")
-    assert out["success"] is True
-    assert out["data"]["size_bytes"] == 1024
-    assert out["data"]["content_type"] == "image/jpeg"
-    assert out["render_hint"]["kind"] == "detail"
+    out = Snapshot.from_manager_output(sample).to_dict()
+    assert out["size_bytes"] == 1024
+    assert out["content_type"] == "image/jpeg"
+    assert Snapshot.render_hint("detail")["kind"] == "detail"
 
 
 def test_camera_mutation_ack_ptz_move() -> None:

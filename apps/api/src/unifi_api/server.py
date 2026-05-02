@@ -119,6 +119,12 @@ from unifi_api.graphql.types.network.vpn import (
 from unifi_api.graphql.types.network.wlan import (
     Wlan as NetworkWlanType,
 )
+from unifi_api.graphql.types.protect.cameras import (
+    Camera as ProtectCameraType,
+    CameraAnalytics as ProtectCameraAnalyticsType,
+    CameraStreams as ProtectCameraStreamsType,
+    Snapshot as ProtectSnapshotType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -765,6 +771,31 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_usergroup_details", NetworkUserGroupType, "detail",
+    )
+
+    # Phase 6 PR3 Task A — protect/cameras migrated to Strawberry types.
+    # ``cameras`` carries resource registration (LIST + DETAIL by id); the
+    # nested per-camera reads (analytics, streams, snapshot) are tool-keyed
+    # only. Mutation acks (PTZ/reboot/toggle/update) stay as a serializer in
+    # serializers/protect/cameras.py.
+    app.state.type_registry.register_type("protect", "cameras", ProtectCameraType)
+    app.state.type_registry.register_type(
+        "protect", "cameras/{id}", ProtectCameraType,
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_cameras", ProtectCameraType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_camera", ProtectCameraType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_camera_analytics", ProtectCameraAnalyticsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_camera_streams", ProtectCameraStreamsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_snapshot", ProtectSnapshotType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

@@ -135,6 +135,13 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "unifi_get_client_group_details",
     "unifi_list_usergroups",
     "unifi_get_usergroup_details",
+    # PR3 Task A — protect/cameras (4 read shapes; mutation acks stay as a
+    # serializer covering PTZ/reboot/toggle/update preview tools)
+    "protect_list_cameras",
+    "protect_get_camera",
+    "protect_get_camera_analytics",
+    "protect_get_camera_streams",
+    "protect_get_snapshot",
 })
 
 

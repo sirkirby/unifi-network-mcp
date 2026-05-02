@@ -18,8 +18,10 @@ def _registry():
 
 
 def test_camera_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("protect", "cameras")
+    """Phase 6 PR3 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.cameras import Camera
+
     sample = {
         "id": "cam1",
         "mac": "aa:bb:cc:dd:ee:01",
@@ -33,7 +35,7 @@ def test_camera_serializer_shape() -> None:
         "ip_address": "10.0.0.50",
         "channels": [{"id": 0, "name": "high"}],
     }
-    out = s.serialize(sample)
+    out = Camera.from_manager_output(sample).to_dict()
     assert out["id"] == "cam1"
     assert out["mac"] == "aa:bb:cc:dd:ee:01"
     assert out["name"] == "Front Door"
