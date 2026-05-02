@@ -41,15 +41,15 @@ jobs:
 
     - name: Run unit tests
       run: |
-        uv run --package unifi-access-mcp pytest apps/access/tests/unit/ -v --tb=short
+        uv run --package unifi-access-mcp pytest apps/access/tests/unit/ -n auto -v --tb=short
 
     - name: Run integration tests
       run: |
-        uv run --package unifi-access-mcp pytest apps/access/tests/integration/ -v --tb=short || test $? -eq 5
+        uv run --package unifi-access-mcp pytest apps/access/tests/integration/ -n auto -v --tb=short || test $? -eq 5
 
     - name: Run all tests with coverage
       run: |
-        uv run --package unifi-access-mcp pytest apps/access/tests/ -v --cov=unifi_access_mcp --cov-report=term-missing --cov-report=xml
+        uv run --package unifi-access-mcp pytest apps/access/tests/ -n auto -v --cov=unifi_access_mcp --cov-report=term-missing --cov-report=xml
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v6

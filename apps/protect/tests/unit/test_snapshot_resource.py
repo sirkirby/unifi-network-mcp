@@ -187,6 +187,9 @@ class TestSnapshotResourceRegistration:
 
     def test_snapshot_template_registered(self):
         """The camera_snapshot function should be registered as a resource template."""
+        # Import the module so its @server.resource decorators run; with pytest-xdist
+        # workers are isolated so we can't rely on another test triggering the import.
+        import unifi_protect_mcp.resources.snapshots  # noqa: F401
         from unifi_protect_mcp.runtime import server
 
         templates = server._resource_manager.list_templates()
@@ -195,6 +198,7 @@ class TestSnapshotResourceRegistration:
 
     def test_snapshot_index_registered(self):
         """The camera_snapshot_index function should be registered as a concrete resource."""
+        import unifi_protect_mcp.resources.snapshots  # noqa: F401
         from unifi_protect_mcp.runtime import server
 
         resources = server._resource_manager.list_resources()
@@ -203,6 +207,7 @@ class TestSnapshotResourceRegistration:
 
     def test_snapshot_template_mime_type(self):
         """The snapshot template should have image/jpeg MIME type."""
+        import unifi_protect_mcp.resources.snapshots  # noqa: F401
         from unifi_protect_mcp.runtime import server
 
         templates = server._resource_manager.list_templates()
@@ -212,6 +217,7 @@ class TestSnapshotResourceRegistration:
 
     def test_snapshot_index_mime_type(self):
         """The snapshot index should have application/json MIME type."""
+        import unifi_protect_mcp.resources.snapshots  # noqa: F401
         from unifi_protect_mcp.runtime import server
 
         resources = server._resource_manager.list_resources()

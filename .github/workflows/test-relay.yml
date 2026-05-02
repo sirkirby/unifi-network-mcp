@@ -39,4 +39,4 @@ jobs:
       run: uv sync
 
     - name: Run tests
-      run: uv run --package unifi-mcp-relay pytest packages/unifi-mcp-relay/tests/ -v --tb=short
+      run: uv run --package unifi-mcp-relay pytest packages/unifi-mcp-relay/tests/ -n auto -v --tb=short
