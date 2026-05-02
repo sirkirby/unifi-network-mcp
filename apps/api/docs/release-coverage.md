@@ -23,9 +23,30 @@ resources (zero ACL rules, zero traffic routes, zero recordings, zero
 visitors) leave the corresponding code paths un-validated by Layer 1.
 This is the gap that PR #130 surfaced and Layer 2 closes.
 
-**Resolvers confirmed by Layer 1 in the most recent PR4 final smoke:**
+**Resolvers confirmed by Layer 1 in the PR4 final smoke (2026-05-02):** 31/31
+assertions passed against all three real controllers (network, protect, access).
 
-_(filled in by PR4 Task 42)_
+REST list endpoints verified (Page envelope shape):
+`network/clients`, `network/devices`, `network/networks`, `network/firewall-rules`;
+`protect/cameras`, `protect/events`, `protect/recordings`;
+`access/doors`, `access/access-devices`, `access/users`, `access/credentials`,
+`access/policies`, `access/schedules`, `access/access-events`.
+
+REST detail / non-list endpoints verified:
+`network/controllers/{id}` (admin), `network/clients` pagination cursor round-trip,
+`protect/cameras/{id}/snapshot` (binary content-type), `protect/health`,
+`protect/system-info`.
+
+GraphQL queries verified (no `errors` in response):
+`network.clients`, `network.networks`, `network.clients[].device` edge;
+`protect.cameras`, `protect.events`, `protect.cameras[].events` edge;
+`access.doors`, `access.events`.
+
+Auth scope rejection verified per product (missing-bearer → 401).
+
+**Endpoints intentionally `skipped` by Layer 1 (require elevated proxy permissions
+on the test controllers):** `/api/v2/devices/topology4`, `/api/v2/schedules`.
+These are covered by Layer 2 fixture tests; their REST shape is asserted there.
 
 ## Layer 2: per-resolver fixture e2e tests (synthetic data)
 
