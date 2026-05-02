@@ -10,6 +10,7 @@ Leverage agents and agentic AI workflows to manage your UniFi deployment.
 [![PyPI - Protect](https://img.shields.io/pypi/v/unifi-protect-mcp)](https://pypi.org/project/unifi-protect-mcp/)
 [![PyPI - Access](https://img.shields.io/pypi/v/unifi-access-mcp)](https://pypi.org/project/unifi-access-mcp/)
 [![PyPI - Relay](https://img.shields.io/pypi/v/unifi-mcp-relay)](https://pypi.org/project/unifi-mcp-relay/)
+[![PyPI - API Server](https://img.shields.io/pypi/v/unifi-api-server)](https://pypi.org/project/unifi-api-server/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/downloads/)
 
@@ -29,6 +30,14 @@ Leverage agents and agentic AI workflows to manage your UniFi deployment.
 | [Worker Gateway](https://github.com/sirkirby/unifi-mcp-worker) | Beta | [`unifi-mcp-worker`](https://www.npmjs.com/package/unifi-mcp-worker) (CLI) |
 
 The relay bridges your local MCP servers to a Cloudflare Worker, letting cloud agents access your UniFi tools without exposing local ports. Supports multi-location with annotation-based fan-out for read-only tools. Deploy the worker with `npm install -g unifi-mcp-worker && unifi-mcp-worker install`, then see the [relay README](packages/unifi-mcp-relay/) for connecting your local servers.
+
+## REST + GraphQL API (non-MCP)
+
+| Component | Status | Package |
+|-----------|--------|---------|
+| [API Server](apps/api/) | Beta (0.1.0) | [`unifi-api-server`](https://pypi.org/project/unifi-api-server/) · [GHCR image](https://github.com/sirkirby/unifi-mcp/pkgs/container/unifi-api-server) |
+
+`unifi-api-server` is a standalone HTTP service exposing the same UniFi capabilities as the MCP servers, but as a REST + GraphQL API for desktop apps, dashboards, and any consumer that doesn't speak MCP. It runs **independently** of the MCP servers — both share the `unifi-core` manager packages, neither depends on the other being running. See [`apps/api/README.md`](apps/api/README.md) for quick-start and deployment patterns.
 
 ## What is this?
 
