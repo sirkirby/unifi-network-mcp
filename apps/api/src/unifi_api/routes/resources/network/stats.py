@@ -16,7 +16,6 @@ Stats endpoints span TIMESERIES and DETAIL kinds. After PR4:
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
@@ -26,7 +25,6 @@ from unifi_api.routes.resources._common import (
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
 
 router = APIRouter()
 
@@ -109,6 +107,7 @@ async def _maybe_set_site(cm, site_id: str) -> None:
 @router.get(
     "/sites/{site_id}/stats/dashboard",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_dashboard_stats(
     request: Request,
@@ -135,6 +134,7 @@ async def get_dashboard_stats(
 @router.get(
     "/sites/{site_id}/stats/network",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_network_stats(
     request: Request,
@@ -161,6 +161,7 @@ async def get_network_stats(
 @router.get(
     "/sites/{site_id}/stats/gateway",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_gateway_stats(
     request: Request,
@@ -187,6 +188,7 @@ async def get_gateway_stats(
 @router.get(
     "/sites/{site_id}/stats/dpi/site",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_site_dpi_traffic(
     request: Request,
@@ -213,6 +215,7 @@ async def get_site_dpi_traffic(
 @router.get(
     "/sites/{site_id}/stats/dpi/clients/{mac}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_client_dpi_traffic(
     request: Request,
@@ -243,6 +246,7 @@ async def get_client_dpi_traffic(
 @router.get(
     "/sites/{site_id}/stats/dpi",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_dpi_stats(
     request: Request,
@@ -270,6 +274,7 @@ async def get_dpi_stats(
 @router.get(
     "/sites/{site_id}/stats/devices/{mac}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_device_stats(
     request: Request,
@@ -301,6 +306,7 @@ async def get_device_stats(
 @router.get(
     "/sites/{site_id}/stats/clients/{mac}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_client_stats(
     request: Request,

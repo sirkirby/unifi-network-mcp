@@ -16,13 +16,13 @@ from unifi_api.routes.resources._common import (
     resolve_controller,
 )
 
-
 router = APIRouter()
 
 
 @router.get(
     "/sites/{site_id}/snmp-settings",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/snmp"],
 )
 async def get_snmp_settings(
     request: Request,

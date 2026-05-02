@@ -8,7 +8,6 @@ manager method name diverges from the tool name).
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
@@ -18,13 +17,13 @@ from unifi_api.routes.resources._common import (
     resolve_controller,
 )
 
-
 router = APIRouter()
 
 
 @router.get(
     "/sites/{site_id}/lookup-by-ip",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/lookup"],
 )
 async def lookup_client_by_ip(
     request: Request,
