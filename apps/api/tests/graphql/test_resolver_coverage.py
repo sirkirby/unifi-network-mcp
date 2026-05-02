@@ -33,7 +33,6 @@ def _scan_fixture_tools() -> set[str]:
     return covered
 
 
-@pytest.mark.xfail(strict=True, reason="Phase 8 PR2 in progress — gate turns green when all cluster tasks land")
 def test_every_typed_resolver_has_fixture_coverage() -> None:
     type_registry = build_type_registry()
     expected = set(type_registry._tool_types.keys())  # noqa: SLF001
