@@ -20,17 +20,27 @@ from unifi_api.serializers._registry import (
 from unifi_api.services.manifest import ManifestRegistry
 
 
-# PR1 baseline: every product is exempt (no resolvers yet, just the smoke
-# `health` field). PR2 will remove "network" from this set; PR3 "protect"; PR4 "access".
-EXEMPT_PRODUCTS: set[str] = {"network", "protect", "access"}
+# PR2.5 close: network is now covered by ~80 NetworkQuery resolvers. The
+# gate enforces every network read tool maps to a Query field. PR3 will
+# remove "protect"; PR4 "access". PR4 close has the set empty.
+EXEMPT_PRODUCTS: set[str] = {"protect", "access"}
 
 
 def _read_tools_by_product() -> dict[str, list[str]]:
-    """Group read tools (LIST + DETAIL kinds) by product."""
+    """Group read tools (LIST + DETAIL kinds, `unifi_list_*` / `unifi_get_*` prefix) by product.
+
+    Mutation tools (`unifi_update_*`, `unifi_block_*`, `unifi_configure_*`, etc.)
+    are also registered with DETAIL render kind because the action endpoint
+    returns a single result — but they are out of scope for Phase 6's read-only
+    GraphQL surface. Filter by prefix in addition to kind.
+    """
     reg = ManifestRegistry.load_from_apps()
     serializer_reg = serializer_registry_singleton()
     out: dict[str, list[str]] = {"network": [], "protect": [], "access": []}
     for tool_name in reg.all_tools():
+        # Read-tool prefix filter — Phase 6 scope is unifi_list_* / unifi_get_* only.
+        if not (tool_name.startswith("unifi_list_") or tool_name.startswith("unifi_get_")):
+            continue
         try:
             entry = reg.resolve(tool_name)
         except Exception:
