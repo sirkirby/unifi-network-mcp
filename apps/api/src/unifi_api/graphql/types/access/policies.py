@@ -75,6 +75,9 @@ class Policy:
     user_group_ids: list[str]
     enabled: bool
 
+    # Context for relationship edges — NOT in SDL, NOT in to_dict().
+    _controller_id: strawberry.Private[str | None] = None
+
     @classmethod
     def render_hint(cls, kind: str) -> dict:
         return {

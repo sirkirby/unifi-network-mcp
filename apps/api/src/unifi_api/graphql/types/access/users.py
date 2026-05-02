@@ -19,9 +19,13 @@ Name handling: prefer the explicit ``name`` field, otherwise stitch
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import strawberry
+from strawberry.types import Info
+
+if TYPE_CHECKING:
+    from unifi_api.graphql.types.access.credentials import Credential
 
 
 def _get(obj: Any, key: str, default: Any = None) -> Any:
@@ -54,6 +58,9 @@ class User:
     role: str | None
     created_at: str | None
 
+    # Context for relationship edges — NOT in SDL, NOT in to_dict().
+    _controller_id: strawberry.Private[str | None] = None
+
     @classmethod
     def render_hint(cls, kind: str) -> dict:
         return {
@@ -76,3 +83,27 @@ class User:
     def to_dict(self) -> dict:
         out = asdict(self)
         return {k: v for k, v in out.items() if not k.startswith("_") and not callable(v)}
+
+    @strawberry.field(description="Credentials registered for this user.")
+    async def credentials(
+        self, info: Info,
+    ) -> list[
+        Annotated["Credential", strawberry.lazy("unifi_api.graphql.types.access.credentials")]
+    ]:
+        from unifi_api.graphql.resolvers.access import _fetch_credentials
+        from unifi_api.graphql.types.access.credentials import Credential
+
+        if not self._controller_id or not self.id:
+            return []
+        all_creds = await _fetch_credentials(info.context, self._controller_id)
+        out: list[Credential] = []
+        for c in all_creds:
+            user_id = (
+                c.get("user_id") if isinstance(c, dict)
+                else getattr(c, "user_id", None)
+            )
+            if user_id == self.id:
+                inst = Credential.from_manager_output(c)
+                inst._controller_id = self._controller_id
+                out.append(inst)
+        return out

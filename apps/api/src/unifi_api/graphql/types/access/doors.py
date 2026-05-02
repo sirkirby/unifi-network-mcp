@@ -23,9 +23,13 @@ old serializer byte-for-byte.
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import strawberry
+from strawberry.types import Info
+
+if TYPE_CHECKING:
+    from unifi_api.graphql.types.access.policies import Policy
 
 
 def _get(obj: Any, key: str, default: Any = None) -> Any:
@@ -84,6 +88,9 @@ class Door:
     lock_state: str | None
     last_event: strawberry.scalars.JSON | None  # type: ignore[name-defined]
 
+    # Context for relationship edges — NOT in SDL, NOT in to_dict().
+    _controller_id: strawberry.Private[str | None] = None
+
     @classmethod
     def render_hint(cls, kind: str) -> dict:
         return {
@@ -107,6 +114,41 @@ class Door:
     def to_dict(self) -> dict:
         out = asdict(self)
         return {k: v for k, v in out.items() if not k.startswith("_") and not callable(v)}
+
+    @strawberry.field(description="Policies assigned to this door.")
+    async def policy_assignments(
+        self, info: Info,
+    ) -> list[
+        Annotated["Policy", strawberry.lazy("unifi_api.graphql.types.access.policies")]
+    ]:
+        from unifi_api.graphql.resolvers.access import _fetch_policies
+        from unifi_api.graphql.types.access.policies import Policy
+
+        if not self._controller_id or not self.id:
+            return []
+        all_policies = await _fetch_policies(info.context, self._controller_id)
+        out: list[Policy] = []
+        for p in all_policies:
+            door_ids = (
+                p.get("door_ids") if isinstance(p, dict)
+                else getattr(p, "door_ids", None)
+            )
+            if not isinstance(door_ids, list):
+                resources = (
+                    p.get("resources") if isinstance(p, dict)
+                    else getattr(p, "resources", None)
+                )
+                if isinstance(resources, list):
+                    door_ids = [
+                        r.get("id") if isinstance(r, dict) else r
+                        for r in resources
+                        if r is not None
+                    ]
+            if door_ids and self.id in door_ids:
+                inst = Policy.from_manager_output(p)
+                inst._controller_id = self._controller_id
+                out.append(inst)
+        return out
 
 
 @strawberry.type(description="A UniFi Access door group (list of doors).")

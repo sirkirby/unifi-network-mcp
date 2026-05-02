@@ -31,6 +31,12 @@ type AccessEvent {
   userId: String
   credentialId: String
   result: String
+
+  """The door this event references."""
+  door: Door
+
+  """The user this event references."""
+  user: User
 }
 
 """Paginated page of UniFi Access events."""
@@ -477,6 +483,9 @@ type Door {
   isLocked: Boolean
   lockState: String
   lastEvent: JSON
+
+  """Policies assigned to this door."""
+  policyAssignments: [Policy!]!
 }
 
 """A UniFi Access door group (list of doors)."""
@@ -1484,6 +1493,9 @@ type User {
   status: String
   role: String
   createdAt: String
+
+  """Credentials registered for this user."""
+  credentials: [Credential!]!
 }
 
 """A QoS user group (V1 /rest/usergroup entry)."""

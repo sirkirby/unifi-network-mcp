@@ -586,8 +586,13 @@ class AccessQuery:
         page, next_cursor = paginate(
             list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
         )
+        items: list[Credential] = []
+        for c in page:
+            inst = Credential.from_manager_output(c)
+            inst._controller_id = str(controller)
+            items.append(inst)
         return CredentialPage(
-            items=[Credential.from_manager_output(c) for c in page],
+            items=items,
             next_cursor=next_cursor.encode() if next_cursor else None,
         )
 
@@ -605,7 +610,9 @@ class AccessQuery:
         raw = await _fetch_credentials(ctx, controller)
         for c in raw:
             if _id_of(c) == id:
-                return Credential.from_manager_output(c)
+                inst = Credential.from_manager_output(c)
+                inst._controller_id = str(controller)
+                return inst
         return None
 
     # ---- Policies --------------------------------------------------------
@@ -630,8 +637,13 @@ class AccessQuery:
         page, next_cursor = paginate(
             list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
         )
+        items: list[Policy] = []
+        for p in page:
+            inst = Policy.from_manager_output(p)
+            inst._controller_id = str(controller)
+            items.append(inst)
         return PolicyPage(
-            items=[Policy.from_manager_output(p) for p in page],
+            items=items,
             next_cursor=next_cursor.encode() if next_cursor else None,
         )
 
@@ -649,7 +661,9 @@ class AccessQuery:
         raw = await _fetch_policies(ctx, controller)
         for p in raw:
             if _id_of(p) == id:
-                return Policy.from_manager_output(p)
+                inst = Policy.from_manager_output(p)
+                inst._controller_id = str(controller)
+                return inst
         return None
 
     # ---- Schedules -------------------------------------------------------

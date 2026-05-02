@@ -39,6 +39,9 @@ class Credential:
     expiry: str | None
     last_used: str | None
 
+    # Context for relationship edges — NOT in SDL, NOT in to_dict().
+    _controller_id: strawberry.Private[str | None] = None
+
     @classmethod
     def render_hint(cls, kind: str) -> dict:
         return {
