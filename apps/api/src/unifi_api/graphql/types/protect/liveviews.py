@@ -17,9 +17,13 @@ preview dicts since uiprotect does not expose direct create/delete APIs.
 
 from __future__ import annotations
 
-from typing import Any, List
+from typing import TYPE_CHECKING, Annotated, Any, List
 
 import strawberry
+from strawberry.types import Info
+
+if TYPE_CHECKING:
+    from unifi_api.graphql.types.protect.cameras import Camera
 
 
 def _get(obj: Any, key: str, default: Any = None) -> Any:
@@ -64,6 +68,9 @@ class Liveview:
     slot_count: int | None
     camera_count: int | None
 
+    # Context for relationship edges — NOT in SDL, NOT in to_dict().
+    _controller_id: strawberry.Private[str | None] = None
+
     @classmethod
     def render_hint(cls, kind: str) -> dict:
         return {
@@ -101,3 +108,31 @@ class Liveview:
             "slot_count": self.slot_count,
             "camera_count": self.camera_count,
         }
+
+    @strawberry.field(description="Cameras included in this liveview's slots.")
+    async def camera_details(
+        self, info: Info,
+    ) -> list[Annotated["Camera", strawberry.lazy("unifi_api.graphql.types.protect.cameras")]]:
+        """Resolves the deduped slot ``camera_ids`` to typed Camera rows.
+
+        Named ``cameraDetails`` (not ``cameras``) to avoid colliding with the
+        public ``cameras: [String!]!`` id-list field that REST consumers
+        depend on.
+        """
+        from unifi_api.graphql.resolvers.protect import _fetch_cameras
+        from unifi_api.graphql.types.protect.cameras import Camera
+
+        if not self._controller_id:
+            return []
+        camera_ids = set(self.cameras or [])
+        if not camera_ids:
+            return []
+        all_cameras = await _fetch_cameras(info.context, self._controller_id)
+        out: list[Camera] = []
+        for c in all_cameras:
+            cam_id = _get(c, "id")
+            if cam_id in camera_ids:
+                inst = Camera.from_manager_output(c)
+                inst._controller_id = self._controller_id
+                out.append(inst)
+        return out

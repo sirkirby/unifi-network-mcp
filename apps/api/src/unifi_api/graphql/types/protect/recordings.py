@@ -23,9 +23,13 @@ preview-and-confirm path.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import strawberry
+from strawberry.types import Info
+
+if TYPE_CHECKING:
+    from unifi_api.graphql.types.protect.cameras import Camera
 
 
 def _get(obj: Any, key: str, default: Any = None) -> Any:
@@ -55,6 +59,10 @@ class Recording:
     end: str | None
     file_size: int | None
 
+    # Context for relationship edges — NOT in SDL, NOT in to_dict().
+    _controller_id: strawberry.Private[str | None] = None
+    _camera_id: strawberry.Private[str | None] = None
+
     @classmethod
     def render_hint(cls, kind: str) -> dict:
         return {
@@ -66,14 +74,19 @@ class Recording:
 
     @classmethod
     def from_manager_output(cls, obj: Any) -> "Recording":
-        return cls(
+        cam_id = _get(obj, "camera_id")
+        inst = cls(
             id=_get(obj, "id"),
             type=_get(obj, "type"),
-            camera=_get(obj, "camera_id"),
+            camera=cam_id,
             start=_get(obj, "start"),
             end=_get(obj, "end"),
             file_size=_get(obj, "file_size"),
         )
+        # Seed the private linkage from the same source so `cameraDetail`
+        # works even when no resolver explicitly sets it (e.g. in REST).
+        inst._camera_id = cam_id
+        return inst
 
     def to_dict(self) -> dict:
         return {
@@ -84,6 +97,29 @@ class Recording:
             "end": self.end,
             "file_size": self.file_size,
         }
+
+    @strawberry.field(description="The camera this recording came from.")
+    async def camera_detail(
+        self, info: Info,
+    ) -> Annotated["Camera", strawberry.lazy("unifi_api.graphql.types.protect.cameras")] | None:
+        """Resolves the parent camera for this recording.
+
+        Named ``cameraDetail`` (not ``camera``) to avoid colliding with the
+        public scalar ``camera: ID`` field that REST consumers depend on.
+        """
+        from unifi_api.graphql.resolvers.protect import _fetch_cameras
+        from unifi_api.graphql.types.protect.cameras import Camera
+
+        if not self._controller_id or not self._camera_id:
+            return None
+        all_cameras = await _fetch_cameras(info.context, self._controller_id)
+        for c in all_cameras:
+            cam_id = _get(c, "id")
+            if cam_id == self._camera_id:
+                inst = Camera.from_manager_output(c)
+                inst._controller_id = self._controller_id
+                return inst
+        return None
 
 
 @strawberry.type(description="Recording-status wrapper for protect_get_recording_status.")

@@ -62,6 +62,9 @@ class Event:
     camera: strawberry.ID | None
     thumbnail: strawberry.ID | None
 
+    # Context for relationship edges — NOT in SDL, NOT in to_dict().
+    _controller_id: strawberry.Private[str | None] = None
+
     @classmethod
     def render_hint(cls, kind: str) -> dict:
         return {

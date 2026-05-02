@@ -604,8 +604,13 @@ class ProtectQuery:
         page, next_cursor = paginate(
             list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
         )
+        items: list[Camera] = []
+        for c in page:
+            inst = Camera.from_manager_output(c)
+            inst._controller_id = str(controller)
+            items.append(inst)
         return CameraPage(
-            items=[Camera.from_manager_output(c) for c in page],
+            items=items,
             next_cursor=next_cursor.encode() if next_cursor else None,
         )
 
@@ -623,7 +628,9 @@ class ProtectQuery:
         raw = await _fetch_cameras(ctx, controller)
         for c in raw:
             if _id_of(c) == id:
-                return Camera.from_manager_output(c)
+                inst = Camera.from_manager_output(c)
+                inst._controller_id = str(controller)
+                return inst
         return None
 
     @strawberry.field(
@@ -763,8 +770,13 @@ class ProtectQuery:
         page, next_cursor = paginate(
             list(raw), limit=limit, cursor=cursor_obj, key_fn=_event_key,
         )
+        items: list[Event] = []
+        for e in page:
+            inst = Event.from_manager_output(e)
+            inst._controller_id = str(controller)
+            items.append(inst)
         return EventPage(
-            items=[Event.from_manager_output(e) for e in page],
+            items=items,
             next_cursor=next_cursor.encode() if next_cursor else None,
         )
 
@@ -785,7 +797,9 @@ class ProtectQuery:
         raw = await _fetch_events(ctx, controller, None, None, 100)
         for e in raw:
             if _id_of(e) == id:
-                return Event.from_manager_output(e)
+                inst = Event.from_manager_output(e)
+                inst._controller_id = str(controller)
+                return inst
         return None
 
     @strawberry.field(
@@ -872,8 +886,14 @@ class ProtectQuery:
         page, next_cursor = paginate(
             list(raw), limit=limit, cursor=cursor_obj, key_fn=_recording_key,
         )
+        items: list[Recording] = []
+        for r in page:
+            inst = Recording.from_manager_output(r)
+            inst._controller_id = str(controller)
+            inst._camera_id = str(camera_id)
+            items.append(inst)
         return RecordingPage(
-            items=[Recording.from_manager_output(r) for r in page],
+            items=items,
             next_cursor=next_cursor.encode() if next_cursor else None,
         )
 
@@ -968,8 +988,13 @@ class ProtectQuery:
         page, next_cursor = paginate(
             list(raw), limit=limit, cursor=cursor_obj, key_fn=_id_key,
         )
+        items: list[Liveview] = []
+        for lv in page:
+            inst = Liveview.from_manager_output(lv)
+            inst._controller_id = str(controller)
+            items.append(inst)
         return LiveviewPage(
-            items=[Liveview.from_manager_output(c) for c in page],
+            items=items,
             next_cursor=next_cursor.encode() if next_cursor else None,
         )
 
