@@ -1,0 +1,100 @@
+name: "unifi-core: Release (test → PyPI → GitHub Release)"
+
+# Triggered on core/v* tags. test → publish-pypi → github-release.
+# Library-only package — no Docker image.
+
+on:
+  push:
+    tags:
+      - 'core/v*.*.*'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Run unifi-core tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install workspace
+        run: uv sync --all-packages
+      - name: Run tests
+        run: uv run --package unifi-core pytest packages/unifi-core/tests -n auto -q
+
+  publish-pypi:
+    name: Build wheel + publish to PyPI
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/unifi-core
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Build wheel
+        run: uv build --package unifi-core
+      - name: Upload distributions for github-release
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+      - name: Publish to PyPI via OIDC
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: Create GitHub Release
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Generate path-scoped release notes
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: python3 scripts/generate_release_notes.py --tag "${REF_NAME}" --output /tmp/release-notes.md
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          VERSION="${REF_NAME#core/v}"
+          if echo "${VERSION}" | grep -qE -- '-(rc|alpha|beta|dev)'; then
+            PRERELEASE_FLAG="--prerelease"
+          else
+            PRERELEASE_FLAG=""
+          fi
+          gh release create "${REF_NAME}" \
+            --title "unifi-core v${VERSION}" \
+            --notes-file /tmp/release-notes.md \
+            --latest=false \
+            --verify-tag \
+            ${PRERELEASE_FLAG} \
+            dist/*
