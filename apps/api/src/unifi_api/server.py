@@ -168,6 +168,9 @@ from unifi_api.graphql.types.access.devices import (
 from unifi_api.graphql.types.access.users import (
     User as AccessUserType,
 )
+from unifi_api.graphql.types.access.credentials import (
+    Credential as AccessCredentialType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -1034,6 +1037,25 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "access_list_users", AccessUserType, "list",
+    )
+
+    # Phase 6 PR4 Task B — access/credentials migrated to Strawberry types.
+    # Single read serializer (Credential) moved to
+    # graphql/types/access/credentials.py. Resource registrations cover
+    # LIST + DETAIL paths. Mutation acks (``access_create_credential`` /
+    # ``access_revoke_credential``) stay as a serializer in
+    # serializers/access/credentials.py.
+    app.state.type_registry.register_type(
+        "access", "credentials", AccessCredentialType,
+    )
+    app.state.type_registry.register_type(
+        "access", "credentials/{id}", AccessCredentialType,
+    )
+    app.state.type_registry.register_tool_type(
+        "access_list_credentials", AccessCredentialType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "access_get_credential", AccessCredentialType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

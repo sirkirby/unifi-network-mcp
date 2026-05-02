@@ -71,8 +71,10 @@ def test_user_serializer_shape() -> None:
 
 
 def test_credential_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("access", "credentials")
+    """Phase 6 PR4 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.access.credentials import Credential
+
     sample = {
         "id": "cred1",
         "user_id": "user1",
@@ -81,7 +83,7 @@ def test_credential_serializer_shape() -> None:
         "expiry": "2027-01-01T00:00:00+00:00",
         "last_used": "2026-04-28T18:30:00+00:00",
     }
-    out = s.serialize(sample)
+    out = Credential.from_manager_output(sample).to_dict()
     assert out["id"] == "cred1"
     assert out["user_id"] == "user1"
     assert out["type"] == "nfc_card"

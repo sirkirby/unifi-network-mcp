@@ -69,9 +69,13 @@ async def list_credentials(
     )
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("access", "credentials")
-    items = [serializer.serialize(c) for c in page]
-    hint = registry.render_hint_for_resource("access", "credentials")
+    entry = request.app.state.type_registry.lookup("access", "credentials")
+    if entry.kind == "type":
+        items = [entry.payload.from_manager_output(c).to_dict() for c in page]
+        hint = entry.payload.render_hint("list")
+    else:
+        items = [entry.payload.serialize(c) for c in page]
+        hint = registry.render_hint_for_resource("access", "credentials")
 
     return {
         "items": items,
@@ -105,8 +109,14 @@ async def get_credential(
             raise HTTPException(status_code=404, detail="credential not found")
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("access", "credentials/{id}")
+    entry = request.app.state.type_registry.lookup("access", "credentials/{id}")
+    if entry.kind == "type":
+        data = entry.payload.from_manager_output(credential).to_dict()
+        hint = entry.payload.render_hint("detail")
+    else:
+        data = entry.payload.serialize(credential)
+        hint = registry.render_hint_for_resource("access", "credentials/{id}")
     return {
-        "data": serializer.serialize(credential),
-        "render_hint": registry.render_hint_for_resource("access", "credentials/{id}"),
+        "data": data,
+        "render_hint": hint,
     }
