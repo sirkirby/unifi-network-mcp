@@ -84,9 +84,13 @@ async def list_events(
     )
 
     registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_resource("protect", "events")
-    items = [serializer.serialize(e) for e in page]
-    hint = registry.render_hint_for_resource("protect", "events")
+    entry = request.app.state.type_registry.lookup("protect", "events")
+    if entry.kind == "type":
+        items = [entry.payload.from_manager_output(e).to_dict() for e in page]
+        hint = entry.payload.render_hint("event_log")
+    else:
+        items = [entry.payload.serialize(e) for e in page]
+        hint = registry.render_hint_for_resource("protect", "events")
 
     return {
         "items": items,
@@ -119,11 +123,20 @@ async def get_event(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_get_event")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_get_event")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(event).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_get_event")
+        data = serializer.serialize(event)
+        hint = registry.render_hint_for_tool("protect_get_event")
     return {
-        "data": serializer.serialize(event),
-        "render_hint": registry.render_hint_for_tool("protect_get_event"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -153,11 +166,20 @@ async def get_event_thumbnail(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_get_event_thumbnail")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_get_event_thumbnail")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(payload).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_get_event_thumbnail")
+        data = serializer.serialize(payload)
+        hint = registry.render_hint_for_tool("protect_get_event_thumbnail")
     return {
-        "data": serializer.serialize(payload),
-        "render_hint": registry.render_hint_for_tool("protect_get_event_thumbnail"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -202,12 +224,21 @@ async def list_smart_detections(
         list(all_events), limit=limit, cursor=cursor_obj, key_fn=_event_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_list_smart_detections")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_list_smart_detections")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        items = [type_class.from_manager_output(e).to_dict() for e in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_list_smart_detections")
+        items = [serializer.serialize(e) for e in page]
+        hint = registry.render_hint_for_tool("protect_list_smart_detections")
     return {
-        "items": [serializer.serialize(e) for e in page],
+        "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("protect_list_smart_detections"),
+        "render_hint": hint,
     }
 
 

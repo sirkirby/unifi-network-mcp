@@ -18,8 +18,10 @@ def _registry():
 
 
 def test_camera_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("protect", "cameras")
+    """Phase 6 PR3 Task A — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.cameras import Camera
+
     sample = {
         "id": "cam1",
         "mac": "aa:bb:cc:dd:ee:01",
@@ -33,7 +35,7 @@ def test_camera_serializer_shape() -> None:
         "ip_address": "10.0.0.50",
         "channels": [{"id": 0, "name": "high"}],
     }
-    out = s.serialize(sample)
+    out = Camera.from_manager_output(sample).to_dict()
     assert out["id"] == "cam1"
     assert out["mac"] == "aa:bb:cc:dd:ee:01"
     assert out["name"] == "Front Door"
@@ -42,8 +44,10 @@ def test_camera_serializer_shape() -> None:
 
 
 def test_event_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("protect", "events")
+    """Phase 6 PR3 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.events import Event
+
     sample = {
         "id": "evt1",
         "type": "smartDetectZone",
@@ -54,7 +58,7 @@ def test_event_serializer_shape() -> None:
         "camera_id": "cam1",
         "thumbnail_id": "thumb1",
     }
-    out = s.serialize(sample)
+    out = Event.from_manager_output(sample).to_dict()
     assert out["id"] == "evt1"
     assert out["type"] == "smartDetectZone"
     assert out["start"] == "2026-04-29T10:00:00+00:00"
@@ -63,8 +67,10 @@ def test_event_serializer_shape() -> None:
 
 
 def test_light_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("protect", "lights")
+    """Phase 6 PR3 Task C — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.lights import Light
+
     sample = {
         "id": "light1",
         "mac": "aa:bb:cc:dd:ee:02",
@@ -74,16 +80,19 @@ def test_light_serializer_shape() -> None:
         "is_pir_motion_detected": False,
         "is_light_on": True,
     }
-    out = s.serialize(sample)
+    out = Light.from_manager_output(sample).to_dict()
     assert out["id"] == "light1"
     assert out["mac"] == "aa:bb:cc:dd:ee:02"
     assert out["name"] == "Driveway Light"
     assert out["state"] == "CONNECTED"
+    assert Light.render_hint("list")["kind"] == "list"
 
 
 def test_recording_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("protect", "recordings")
+    """Phase 6 PR3 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.recordings import Recording
+
     sample = {
         "id": "rec1",
         "type": "timelapse",
@@ -92,17 +101,20 @@ def test_recording_serializer_shape() -> None:
         "end": "2026-04-29T09:15:00+00:00",
         "file_size": 12345678,
     }
-    out = s.serialize(sample)
+    out = Recording.from_manager_output(sample).to_dict()
     assert out["id"] == "rec1"
     assert out["type"] == "timelapse"
+    assert out["camera"] == "cam1"
     assert out["start"] == "2026-04-29T09:00:00+00:00"
     assert out["end"] == "2026-04-29T09:15:00+00:00"
     assert out["file_size"] == 12345678
 
 
 def test_sensor_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_resource("protect", "sensors")
+    """Phase 6 PR3 Task C — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.sensors import Sensor
+
     sample = {
         "id": "sensor1",
         "mac": "aa:bb:cc:dd:ee:03",
@@ -115,9 +127,12 @@ def test_sensor_serializer_shape() -> None:
         },
         "motion_detected_at": "2026-04-29T08:30:00+00:00",
     }
-    out = s.serialize(sample)
+    out = Sensor.from_manager_output(sample).to_dict()
     assert out["id"] == "sensor1"
     assert out["mac"] == "aa:bb:cc:dd:ee:03"
     assert out["name"] == "Garage Sensor"
     assert out["type"] == "UFP-SENSOR"
     assert out["battery_status"] == "normal"
+    assert out["humidity_status"] == "normal"
+    assert out["light_status"] == "normal"
+    assert Sensor.render_hint("list")["kind"] == "list"

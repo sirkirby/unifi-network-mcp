@@ -119,6 +119,44 @@ from unifi_api.graphql.types.network.vpn import (
 from unifi_api.graphql.types.network.wlan import (
     Wlan as NetworkWlanType,
 )
+from unifi_api.graphql.types.protect.alarms import (
+    AlarmProfileList as ProtectAlarmProfileListType,
+    AlarmStatus as ProtectAlarmStatusType,
+)
+from unifi_api.graphql.types.protect.cameras import (
+    Camera as ProtectCameraType,
+    CameraAnalytics as ProtectCameraAnalyticsType,
+    CameraStreams as ProtectCameraStreamsType,
+    Snapshot as ProtectSnapshotType,
+)
+from unifi_api.graphql.types.protect.chimes import (
+    Chime as ProtectChimeType,
+)
+from unifi_api.graphql.types.protect.events import (
+    Event as ProtectEventType,
+    EventThumbnail as ProtectEventThumbnailType,
+    SmartDetection as ProtectSmartDetectionType,
+)
+from unifi_api.graphql.types.protect.lights import (
+    Light as ProtectLightType,
+)
+from unifi_api.graphql.types.protect.liveviews import (
+    Liveview as ProtectLiveviewType,
+)
+from unifi_api.graphql.types.protect.sensors import (
+    Sensor as ProtectSensorType,
+)
+from unifi_api.graphql.types.protect.system import (
+    FirmwareStatus as ProtectFirmwareStatusType,
+    ProtectHealth as ProtectHealthType,
+    ProtectSystemInfo as ProtectSystemInfoType,
+    Viewer as ProtectViewerType,
+    ViewerList as ProtectViewerListType,
+)
+from unifi_api.graphql.types.protect.recordings import (
+    Recording as ProtectRecordingType,
+    RecordingStatusList as ProtectRecordingStatusListType,
+)
 from unifi_api.db.crypto import ColumnCipher, derive_key
 from unifi_api.db.engine import create_engine
 from unifi_api.db.session import get_sessionmaker
@@ -765,6 +803,175 @@ def create_app(config: ApiConfig) -> FastAPI:
     )
     app.state.type_registry.register_tool_type(
         "unifi_get_usergroup_details", NetworkUserGroupType, "detail",
+    )
+
+    # Phase 6 PR3 Task A — protect/cameras migrated to Strawberry types.
+    # ``cameras`` carries resource registration (LIST + DETAIL by id); the
+    # nested per-camera reads (analytics, streams, snapshot) are tool-keyed
+    # only. Mutation acks (PTZ/reboot/toggle/update) stay as a serializer in
+    # serializers/protect/cameras.py.
+    app.state.type_registry.register_type("protect", "cameras", ProtectCameraType)
+    app.state.type_registry.register_type(
+        "protect", "cameras/{id}", ProtectCameraType,
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_cameras", ProtectCameraType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_camera", ProtectCameraType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_camera_analytics", ProtectCameraAnalyticsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_camera_streams", ProtectCameraStreamsType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_snapshot", ProtectSnapshotType, "detail",
+    )
+
+    # Phase 6 PR3 Task A — protect/chimes migrated to Strawberry types.
+    # ``chimes`` carries resource registration (LIST only — no
+    # ``protect_get_chime`` tool exists in the manifest, mirroring the
+    # original serializer's resource map). Mutation acks (trigger/update)
+    # stay as a serializer in serializers/protect/chimes.py.
+    app.state.type_registry.register_type("protect", "chimes", ProtectChimeType)
+    app.state.type_registry.register_tool_type(
+        "protect_list_chimes", ProtectChimeType, "list",
+    )
+
+    # Phase 6 PR3 Task B — protect/events migrated to Strawberry types.
+    # ``events`` carries resource registration (EVENT_LOG). The detail
+    # tool ``protect_get_event`` reuses the same projection. Smart
+    # detections share the same shape but a different render hint
+    # (display_columns includes smart_detect_types). Thumbnail is its
+    # own DETAIL pass-through type with bytes/dict branches.
+    # ``protect_recent_events``, ``protect_subscribe_events`` and
+    # ``protect_acknowledge_event`` stay as serializers (SSE streamer +
+    # mutation ack flow).
+    app.state.type_registry.register_type("protect", "events", ProtectEventType)
+    app.state.type_registry.register_tool_type(
+        "protect_list_events", ProtectEventType, "event_log",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_event", ProtectEventType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_event_thumbnail", ProtectEventThumbnailType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_smart_detections", ProtectSmartDetectionType, "event_log",
+    )
+
+    # Phase 6 PR3 Task B — protect/recordings migrated to Strawberry types.
+    # ``recordings`` carries resource registration on both the LIST path
+    # and the ``recordings/{id}`` DETAIL path because the REST detail
+    # endpoint filters the same list response by id (UniFi Protect has
+    # no discrete-segment ``protect_get_recording`` tool).
+    # ``protect_get_recording_status`` is a wrapper-dict DETAIL pass-
+    # through. Mutation acks (delete/export) stay as a serializer in
+    # serializers/protect/recordings.py.
+    app.state.type_registry.register_type(
+        "protect", "recordings", ProtectRecordingType,
+    )
+    app.state.type_registry.register_type(
+        "protect", "recordings/{id}", ProtectRecordingType,
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_recordings", ProtectRecordingType, "list",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_recording_status",
+        ProtectRecordingStatusListType,
+        "detail",
+    )
+
+    # Phase 6 PR3 Task B — protect/alarms migrated to Strawberry types.
+    # Both reads are tool-keyed only (no resource registration in the
+    # original serializer). ``protect_alarm_get_status`` is a flat DETAIL
+    # pass-through; ``protect_alarm_list_profiles`` is a wrapper-dict DETAIL
+    # pass-through (``{profiles, count}``). Mutation acks (arm/disarm)
+    # stay as a serializer in serializers/protect/alarms.py.
+    app.state.type_registry.register_tool_type(
+        "protect_alarm_get_status", ProtectAlarmStatusType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_alarm_list_profiles", ProtectAlarmProfileListType, "detail",
+    )
+
+    # Phase 6 PR3 Task C — protect/lights migrated to Strawberry types.
+    # ``lights`` carries resource registration (LIST + DETAIL by id since
+    # the REST detail endpoint filters from the LIST response — there is
+    # no native ``protect_get_light`` tool, mirroring lights/sensors/
+    # liveviews / network firewall_rules). Mutation ack
+    # (``protect_update_light``) stays as a serializer in
+    # serializers/protect/lights.py.
+    app.state.type_registry.register_type("protect", "lights", ProtectLightType)
+    app.state.type_registry.register_type(
+        "protect", "lights/{id}", ProtectLightType,
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_lights", ProtectLightType, "list",
+    )
+
+    # Phase 6 PR3 Task C — protect/sensors migrated to Strawberry types.
+    # ``sensors`` carries resource registration (LIST + DETAIL by id since
+    # the REST detail endpoint filters from the LIST response — there is
+    # no native ``protect_get_sensor`` tool, mirroring lights /
+    # liveviews). No mutation serializer survives — SensorManager exposes
+    # no preview-and-confirm flows today.
+    app.state.type_registry.register_type("protect", "sensors", ProtectSensorType)
+    app.state.type_registry.register_type(
+        "protect", "sensors/{id}", ProtectSensorType,
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_sensors", ProtectSensorType, "list",
+    )
+
+    # Phase 6 PR3 Task C — protect/liveviews migrated to Strawberry types.
+    # ``liveviews`` carries resource registration (LIST + DETAIL by id
+    # since the REST detail endpoint filters from the LIST response —
+    # there is no native ``protect_get_liveview`` tool, mirroring lights /
+    # sensors). Mutation acks (``protect_create_liveview`` /
+    # ``protect_delete_liveview``) stay as a serializer in
+    # serializers/protect/liveviews.py.
+    app.state.type_registry.register_type(
+        "protect", "liveviews", ProtectLiveviewType,
+    )
+    app.state.type_registry.register_type(
+        "protect", "liveviews/{id}", ProtectLiveviewType,
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_liveviews", ProtectLiveviewType, "list",
+    )
+
+    # Phase 6 PR3 Task C — protect/system migrated to Strawberry types.
+    # Four NVR-level read tools — all DETAIL pass-throughs since the
+    # manager surfaces richer / nested structures than any flat field
+    # selection could capture without lossy flattening:
+    #   - protect_get_system_info     -> ProtectSystemInfoType
+    #   - protect_get_health          -> ProtectHealthType
+    #   - protect_get_firmware_status -> ProtectFirmwareStatusType
+    #   - protect_list_viewers        -> ProtectViewerListType (wrapper-dict;
+    #     per-viewer rows project via ProtectViewerType in the REST list
+    #     route, mirroring the AlarmProfile / AlarmProfileList split)
+    # No resource registration — these tools are not surfaced as REST
+    # collection endpoints (system-info / health / firmware-status are
+    # singletons; viewers is a flat ``/viewers`` list).
+    app.state.type_registry.register_type(
+        "protect", "viewers", ProtectViewerType,
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_system_info", ProtectSystemInfoType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_health", ProtectHealthType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_get_firmware_status", ProtectFirmwareStatusType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_list_viewers", ProtectViewerListType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

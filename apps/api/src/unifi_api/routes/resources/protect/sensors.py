@@ -65,12 +65,21 @@ async def list_sensors(
     page, next_cursor = paginate(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_list_sensors")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_list_sensors")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        rows = [type_class.from_manager_output(i).to_dict() for i in page]
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_list_sensors")
+        rows = [serializer.serialize(i) for i in page]
+        hint = registry.render_hint_for_tool("protect_list_sensors")
     return {
-        "items": [serializer.serialize(i) for i in page],
+        "items": rows,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("protect_list_sensors"),
+        "render_hint": hint,
     }
 
 
@@ -108,11 +117,19 @@ async def get_sensor_details(
     if found is None:
         raise HTTPException(status_code=404, detail=f"sensor {sensor_id} not found")
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_list_sensors")
-    list_hint = registry.render_hint_for_tool("protect_list_sensors")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_list_sensors")
+    if tool_type is not None:
+        type_class, _ = tool_type
+        data = type_class.from_manager_output(found).to_dict()
+        list_hint = type_class.render_hint("list")
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_list_sensors")
+        data = serializer.serialize(found)
+        list_hint = registry.render_hint_for_tool("protect_list_sensors")
     detail_hint = {**list_hint, "kind": "detail"}
     return {
-        "data": serializer.serialize(found),
+        "data": data,
         "render_hint": detail_hint,
     }

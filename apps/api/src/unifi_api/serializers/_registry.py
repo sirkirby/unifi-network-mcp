@@ -135,6 +135,44 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     "unifi_get_client_group_details",
     "unifi_list_usergroups",
     "unifi_get_usergroup_details",
+    # PR3 Task A — protect/cameras (4 read shapes; mutation acks stay as a
+    # serializer covering PTZ/reboot/toggle/update preview tools)
+    "protect_list_cameras",
+    "protect_get_camera",
+    "protect_get_camera_analytics",
+    "protect_get_camera_streams",
+    "protect_get_snapshot",
+    # PR3 Task A — protect/chimes (1 read shape; mutation acks stay as a
+    # serializer covering trigger/update preview tools)
+    "protect_list_chimes",
+    # PR3 Task B — protect/alarms (2 read shapes; arm/disarm acks stay as
+    # a serializer)
+    "protect_alarm_get_status",
+    "protect_alarm_list_profiles",
+    # PR3 Task B — protect/events (4 read shapes; recent_events,
+    # subscribe_events and acknowledge_event stay as serializers — the
+    # SSE streamer calls .serialize() directly per broadcast event)
+    "protect_list_events",
+    "protect_get_event",
+    "protect_get_event_thumbnail",
+    "protect_list_smart_detections",
+    # PR3 Task B — protect/recordings (2 read shapes; delete/export acks
+    # stay as a serializer)
+    "protect_list_recordings",
+    "protect_get_recording_status",
+    # PR3 Task C — protect/lights (1 read shape; update_light ack stays as
+    # a serializer)
+    "protect_list_lights",
+    # PR3 Task C — protect/sensors (1 read shape; no mutation acks)
+    "protect_list_sensors",
+    # PR3 Task C — protect/liveviews (1 read shape; create/delete acks
+    # stay as a serializer)
+    "protect_list_liveviews",
+    # PR3 Task C — protect/system (4 read shapes; no mutation acks)
+    "protect_get_system_info",
+    "protect_get_health",
+    "protect_get_firmware_status",
+    "protect_list_viewers",
 })
 
 

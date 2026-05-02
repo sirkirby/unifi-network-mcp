@@ -74,11 +74,20 @@ async def get_firmware_status(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_get_firmware_status")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_get_firmware_status")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(payload).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_get_firmware_status")
+        data = serializer.serialize(payload)
+        hint = registry.render_hint_for_tool("protect_get_firmware_status")
     return {
-        "data": serializer.serialize(payload),
-        "render_hint": registry.render_hint_for_tool("protect_get_firmware_status"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -110,11 +119,20 @@ async def alarm_get_status(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_alarm_get_status")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_alarm_get_status")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(payload).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_alarm_get_status")
+        data = serializer.serialize(payload)
+        hint = registry.render_hint_for_tool("protect_alarm_get_status")
     return {
-        "data": serializer.serialize(payload),
-        "render_hint": registry.render_hint_for_tool("protect_alarm_get_status"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -145,12 +163,28 @@ async def alarm_list_profiles(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_alarm_list_profiles")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_alarm_list_profiles")
+    if tool_type is not None:
+        # The action endpoint wraps the whole list as {profiles, count};
+        # the REST per-page surface emits one row per profile via the
+        # sub-row type ``AlarmProfile``.
+        from unifi_api.graphql.types.protect.alarms import AlarmProfile
+
+        rows = [AlarmProfile.from_manager_output(p).to_dict() for p in page]
+        # Reuse the wrapper type's render hint kind, but emit per-row
+        # display columns from the sub-row class (mirrors the original
+        # serializer's render_hint contract).
+        hint = AlarmProfile.render_hint(tool_type[1])
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_alarm_list_profiles")
+        rows = [serializer.serialize(p) for p in page]
+        hint = registry.render_hint_for_tool("protect_alarm_list_profiles")
     return {
-        "items": [serializer.serialize(p) for p in page],
+        "items": rows,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("protect_alarm_list_profiles"),
+        "render_hint": hint,
     }
 
 
@@ -182,11 +216,20 @@ async def get_protect_health(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_get_health")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_get_health")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(payload).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_get_health")
+        data = serializer.serialize(payload)
+        hint = registry.render_hint_for_tool("protect_get_health")
     return {
-        "data": serializer.serialize(payload),
-        "render_hint": registry.render_hint_for_tool("protect_get_health"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -213,11 +256,20 @@ async def get_protect_system_info(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_get_system_info")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_get_system_info")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(payload).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_get_system_info")
+        data = serializer.serialize(payload)
+        hint = registry.render_hint_for_tool("protect_get_system_info")
     return {
-        "data": serializer.serialize(payload),
-        "render_hint": registry.render_hint_for_tool("protect_get_system_info"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -253,15 +305,29 @@ async def list_viewers(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_list_viewers")
-    # ViewerSerializer hint kind is "detail" but the surface is a LIST —
-    # override to "list" so consumers render rows. Mirror the chimes
-    # approach if the registry exposes a list-render hint; here we just
-    # set kind explicitly.
-    list_hint = {**registry.render_hint_for_tool("protect_list_viewers"), "kind": "list"}
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_list_viewers")
+    if tool_type is not None:
+        # The action endpoint wraps the whole list as {viewers, count};
+        # the REST per-page surface emits one row per viewer via the
+        # sub-row type ``Viewer`` (mirrors AlarmProfile / AlarmProfileList
+        # in protect/alarms).
+        from unifi_api.graphql.types.protect.system import Viewer
+
+        rows = [Viewer.from_manager_output(v).to_dict() for v in page]
+        list_hint = Viewer.render_hint("list")
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_list_viewers")
+        rows = [serializer.serialize(v) for v in page]
+        # ViewerSerializer hint kind is "detail" but the surface is a LIST —
+        # override to "list" so consumers render rows.
+        list_hint = {
+            **registry.render_hint_for_tool("protect_list_viewers"),
+            "kind": "list",
+        }
     return {
-        "items": [serializer.serialize(v) for v in page],
+        "items": rows,
         "next_cursor": next_cursor.encode() if next_cursor else None,
         "render_hint": list_hint,
     }

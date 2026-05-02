@@ -40,8 +40,10 @@ def _registry():
 
 
 def test_alarm_status_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_alarm_get_status")
+    """Phase 6 PR3 Task B — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.alarms import AlarmStatus
+
     sample = {
         "armed": True,
         "status": "active",
@@ -53,19 +55,25 @@ def test_alarm_status_serializer_shape() -> None:
         "breach_event_count": 0,
         "profile_count": 3,
     }
-    out = s.serialize_action(sample, tool_name="protect_alarm_get_status")
-    assert out["success"] is True
-    assert out["data"]["armed"] is True
-    assert out["data"]["status"] == "active"
-    assert out["data"]["active_profile_id"] == "p1"
-    assert out["data"]["active_profile_name"] == "Night"
-    assert out["data"]["breach_event_count"] == 0
-    assert out["render_hint"]["kind"] == "detail"
+    out = AlarmStatus.from_manager_output(sample).to_dict()
+    assert out["armed"] is True
+    assert out["status"] == "active"
+    assert out["active_profile_id"] == "p1"
+    assert out["active_profile_name"] == "Night"
+    assert out["breach_event_count"] == 0
+    assert AlarmStatus.render_hint("detail")["kind"] == "detail"
 
 
 def test_alarm_list_profiles_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_alarm_list_profiles")
+    """Phase 6 PR3 Task B — projection moved to a Strawberry type. The
+    wrapper type ``AlarmProfileList`` carries the {profiles, count} action-
+    endpoint payload; ``AlarmProfile`` carries each per-row REST projection.
+    """
+    from unifi_api.graphql.types.protect.alarms import (
+        AlarmProfile,
+        AlarmProfileList,
+    )
+
     # Tool layer wraps manager list in {profiles, count} dict.
     sample = {
         "profiles": [
@@ -88,13 +96,24 @@ def test_alarm_list_profiles_serializer_shape() -> None:
         ],
         "count": 2,
     }
-    out = s.serialize_action(sample, tool_name="protect_alarm_list_profiles")
-    assert out["success"] is True
-    assert out["data"]["count"] == 2
-    assert out["data"]["profiles"][0]["id"] == "p1"
-    assert out["data"]["profiles"][0]["name"] == "Night"
-    assert out["data"]["profiles"][1]["activation_delay_ms"] == 0
-    assert out["render_hint"]["kind"] == "detail"
+    out = AlarmProfileList.from_manager_output(sample).to_dict()
+    assert out["count"] == 2
+    assert out["profiles"][0]["id"] == "p1"
+    assert out["profiles"][0]["name"] == "Night"
+    assert out["profiles"][1]["activation_delay_ms"] == 0
+    assert AlarmProfileList.render_hint("detail")["kind"] == "detail"
+
+    # REST per-row projection passes profile dicts through unchanged.
+    row = AlarmProfile.from_manager_output(sample["profiles"][0]).to_dict()
+    assert row["id"] == "p1"
+    assert row["record_everything"] is False
+    assert row["activation_delay_ms"] == 30000
+    assert AlarmProfile.render_hint("list")["primary_key"] == "id"
+
+    # Bare list coerces to a wrapper.
+    bare = AlarmProfileList.from_manager_output(sample["profiles"]).to_dict()
+    assert bare["count"] == 2
+    assert bare["profiles"][0]["id"] == "p1"
 
 
 def test_alarm_mutation_ack_arm() -> None:
@@ -127,8 +146,10 @@ def test_alarm_mutation_ack_disarm_idempotent() -> None:
 
 
 def test_system_info_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_get_system_info")
+    """Phase 6 PR3 Task C — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.system import ProtectSystemInfo
+
     sample = {
         "id": "nvr-1",
         "name": "Home NVR",
@@ -152,18 +173,21 @@ def test_system_info_serializer_shape() -> None:
         "viewer_count": 1,
         "chime_count": 0,
     }
-    out = s.serialize_action(sample, tool_name="protect_get_system_info")
-    assert out["success"] is True
-    assert out["data"]["id"] == "nvr-1"
-    assert out["data"]["model"] == "UNVR"
-    assert out["data"]["camera_count"] == 5
-    assert out["data"]["storage"]["utilization_pct"] == 42.5
-    assert out["render_hint"]["kind"] == "detail"
+    out = ProtectSystemInfo.from_manager_output(sample).to_dict()
+    assert out["id"] == "nvr-1"
+    assert out["model"] == "UNVR"
+    assert out["camera_count"] == 5
+    assert out["storage"]["utilization_pct"] == 42.5
+    # Pass-through preserves extra keys (e.g. hardware_platform).
+    assert out["hardware_platform"] == "UNVR"
+    assert ProtectSystemInfo.render_hint("detail")["kind"] == "detail"
 
 
 def test_health_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_get_health")
+    """Phase 6 PR3 Task C — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.system import ProtectHealth
+
     sample = {
         "cpu": {"average_load": 1.2, "temperature_c": 45.0},
         "memory": {"available_bytes": 1_000_000, "free_bytes": 500_000, "total_bytes": 4_000_000},
@@ -177,17 +201,18 @@ def test_health_serializer_shape() -> None:
         "is_updating": False,
         "uptime_seconds": 99999,
     }
-    out = s.serialize_action(sample, tool_name="protect_get_health")
-    assert out["success"] is True
-    assert out["data"]["cpu"]["temperature_c"] == 45.0
-    assert out["data"]["memory"]["total_bytes"] == 4_000_000
-    assert out["data"]["storage"]["is_recycling"] is False
-    assert out["render_hint"]["kind"] == "detail"
+    out = ProtectHealth.from_manager_output(sample).to_dict()
+    assert out["cpu"]["temperature_c"] == 45.0
+    assert out["memory"]["total_bytes"] == 4_000_000
+    assert out["storage"]["is_recycling"] is False
+    assert ProtectHealth.render_hint("detail")["kind"] == "detail"
 
 
 def test_firmware_status_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_get_firmware_status")
+    """Phase 6 PR3 Task C — projection moved to a Strawberry type. Same dict
+    shape contract as the old serializer; verified via Type.to_dict()."""
+    from unifi_api.graphql.types.protect.system import FirmwareStatus
+
     sample = {
         "nvr": {
             "id": "nvr-1",
@@ -214,17 +239,20 @@ def test_firmware_status_serializer_shape() -> None:
         "total_devices": 1,
         "devices_with_updates": 1,
     }
-    out = s.serialize_action(sample, tool_name="protect_get_firmware_status")
-    assert out["success"] is True
-    assert out["data"]["nvr"]["id"] == "nvr-1"
-    assert out["data"]["devices_with_updates"] == 1
-    assert out["data"]["devices"][0]["update_available"] is True
-    assert out["render_hint"]["kind"] == "detail"
+    out = FirmwareStatus.from_manager_output(sample).to_dict()
+    assert out["nvr"]["id"] == "nvr-1"
+    assert out["devices_with_updates"] == 1
+    assert out["devices"][0]["update_available"] is True
+    assert FirmwareStatus.render_hint("detail")["kind"] == "detail"
 
 
 def test_list_viewers_serializer_shape() -> None:
-    reg = _registry()
-    s = reg.serializer_for_tool("protect_list_viewers")
+    """Phase 6 PR3 Task C — projection moved to a Strawberry type. The
+    wrapper type ``ViewerList`` carries the {viewers, count} action-
+    endpoint payload; ``Viewer`` carries each per-row REST projection.
+    """
+    from unifi_api.graphql.types.protect.system import Viewer, ViewerList
+
     # Tool layer wraps manager list in {viewers, count} dict.
     sample = {
         "viewers": [
@@ -245,9 +273,20 @@ def test_list_viewers_serializer_shape() -> None:
         ],
         "count": 1,
     }
-    out = s.serialize_action(sample, tool_name="protect_list_viewers")
-    assert out["success"] is True
-    assert out["data"]["count"] == 1
-    assert out["data"]["viewers"][0]["id"] == "viewer-1"
-    assert out["data"]["viewers"][0]["liveview_id"] == "lv-1"
-    assert out["render_hint"]["kind"] == "detail"
+    out = ViewerList.from_manager_output(sample).to_dict()
+    assert out["count"] == 1
+    assert out["viewers"][0]["id"] == "viewer-1"
+    assert out["viewers"][0]["liveview_id"] == "lv-1"
+    assert ViewerList.render_hint("detail")["kind"] == "detail"
+
+    # REST per-row projection passes viewer dicts through unchanged.
+    row = Viewer.from_manager_output(sample["viewers"][0]).to_dict()
+    assert row["id"] == "viewer-1"
+    assert row["liveview_id"] == "lv-1"
+    assert row["state"] == "CONNECTED"
+    assert Viewer.render_hint("list")["primary_key"] == "id"
+
+    # Bare list coerces to a wrapper.
+    bare = ViewerList.from_manager_output(sample["viewers"]).to_dict()
+    assert bare["count"] == 1
+    assert bare["viewers"][0]["id"] == "viewer-1"
