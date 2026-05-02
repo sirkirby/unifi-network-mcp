@@ -1,8 +1,7 @@
 """CI gate: every Query field name follows the canonical map from manifest tool name."""
 
 from unifi_api.graphql._naming import tool_to_field_path
-from unifi_api.serializers._base import RenderKind
-from unifi_api.serializers._registry import discover_serializers, serializer_registry_singleton
+from unifi_api.graphql.type_registry_init import build_type_registry
 from unifi_api.services.manifest import ManifestRegistry
 
 
@@ -19,20 +18,26 @@ def test_canonical_naming_examples() -> None:
 
 
 def test_naming_convention_no_collisions_in_manifest() -> None:
-    """No two read tools should map to the same field path (would mask a duplicate)."""
+    """No two read tools should map to the same field path (would mask a duplicate).
+
+    Phase 6 close: read-tool kinds come from the type_registry now that all
+    read serializers have been migrated to Strawberry types.
+    """
     manifest = ManifestRegistry.load_from_apps()
-    discover_serializers(set(manifest.all_tools()))
-    sr = serializer_registry_singleton()
+    type_registry = build_type_registry()
 
     # Build per-product LIST stem set first (collision-aware DETAIL mapping needs this).
     list_stems_by_product: dict[str, set[str]] = {"network": set(), "protect": set(), "access": set()}
     for name in manifest.all_tools():
         try:
             entry = manifest.resolve(name)
-            kind = sr.kind_for_tool(name)
         except Exception:
             continue
-        if kind != RenderKind.LIST or not name.startswith("unifi_list_"):
+        tool_type = type_registry.lookup_tool(name)
+        if tool_type is None:
+            continue
+        _type_class, kind = tool_type
+        if kind != "list" or not name.startswith("unifi_list_"):
             continue
         stem = name[len("unifi_list_"):]
         from unifi_api.graphql._naming import _to_camel
@@ -42,10 +47,13 @@ def test_naming_convention_no_collisions_in_manifest() -> None:
     for name in manifest.all_tools():
         try:
             entry = manifest.resolve(name)
-            kind = sr.kind_for_tool(name)
         except Exception:
             continue
-        if kind not in (RenderKind.LIST, RenderKind.DETAIL):
+        tool_type = type_registry.lookup_tool(name)
+        if tool_type is None:
+            continue
+        _type_class, kind = tool_type
+        if kind not in ("list", "detail"):
             continue
         path = tool_to_field_path(
             name, product=entry.product,

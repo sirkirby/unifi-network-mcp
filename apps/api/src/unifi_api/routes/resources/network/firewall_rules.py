@@ -58,14 +58,9 @@ async def list_firewall_rules(
         list(all_rules), limit=limit, cursor=cursor_obj, key_fn=_rule_key,
     )
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("network", "firewall/rules")
-    if entry.kind == "type":
-        items = [entry.payload.from_manager_output(r).to_dict() for r in page]
-        hint = entry.payload.render_hint("list")
-    else:
-        items = [entry.payload.serialize(r) for r in page]
-        hint = registry.render_hint_for_resource("network", "firewall/rules")
+    type_class = request.app.state.type_registry.lookup("network", "firewall/rules")
+    items = [type_class.from_manager_output(r).to_dict() for r in page]
+    hint = type_class.render_hint("list")
 
     return {
         "items": items,
@@ -112,14 +107,9 @@ async def get_firewall_rule(
     if rule is None:
         raise HTTPException(status_code=404, detail="firewall rule not found")
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("network", "firewall/rules/{id}")
-    if entry.kind == "type":
-        data = entry.payload.from_manager_output(rule).to_dict()
-        hint = entry.payload.render_hint("detail")
-    else:
-        data = entry.payload.serialize(rule)
-        hint = registry.render_hint_for_resource("network", "firewall/rules/{id}")
+    type_class = request.app.state.type_registry.lookup("network", "firewall/rules/{id}")
+    data = type_class.from_manager_output(rule).to_dict()
+    hint = type_class.render_hint("detail")
     return {
         "data": data,
         "render_hint": hint,

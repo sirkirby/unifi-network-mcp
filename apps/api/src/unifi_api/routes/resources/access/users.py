@@ -70,14 +70,9 @@ async def list_users(
         list(all_users), limit=limit, cursor=cursor_obj, key_fn=_user_key,
     )
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("access", "users")
-    if entry.kind == "type":
-        items = [entry.payload.from_manager_output(u).to_dict() for u in page]
-        hint = entry.payload.render_hint("list")
-    else:
-        items = [entry.payload.serialize(u) for u in page]
-        hint = registry.render_hint_for_resource("access", "users")
+    type_class = request.app.state.type_registry.lookup("access", "users")
+    items = [type_class.from_manager_output(u).to_dict() for u in page]
+    hint = type_class.render_hint("list")
 
     return {
         "items": items,
@@ -117,14 +112,9 @@ async def get_user(
     if match is None:
         raise HTTPException(status_code=404, detail="user not found")
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("access", "users/{id}")
-    if entry.kind == "type":
-        data = entry.payload.from_manager_output(match).to_dict()
-        hint = entry.payload.render_hint("detail")
-    else:
-        data = entry.payload.serialize(match)
-        hint = registry.render_hint_for_resource("access", "users/{id}")
+    type_class = request.app.state.type_registry.lookup("access", "users/{id}")
+    data = type_class.from_manager_output(match).to_dict()
+    hint = type_class.render_hint("detail")
     return {
         "data": data,
         "render_hint": hint,

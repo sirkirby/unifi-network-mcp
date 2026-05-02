@@ -61,14 +61,9 @@ async def list_blocked_clients(
         list(all_blocked), limit=limit, cursor=cursor_obj, key_fn=_blocked_key,
     )
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("network", "blocked_clients")
-    if entry.kind == "type":
-        items = [entry.payload.from_manager_output(c).to_dict() for c in page]
-        hint = entry.payload.render_hint("list")
-    else:
-        items = [entry.payload.serialize(c) for c in page]
-        hint = registry.render_hint_for_tool("unifi_list_blocked_clients")
+    type_class = request.app.state.type_registry.lookup("network", "blocked_clients")
+    items = [type_class.from_manager_output(c).to_dict() for c in page]
+    hint = type_class.render_hint("list")
     return {
         "items": items,
         "next_cursor": next_cursor.encode() if next_cursor else None,

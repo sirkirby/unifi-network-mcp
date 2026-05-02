@@ -76,14 +76,9 @@ async def list_doors(
         list(all_doors), limit=limit, cursor=cursor_obj, key_fn=_door_key,
     )
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("access", "doors")
-    if entry.kind == "type":
-        items = [entry.payload.from_manager_output(d).to_dict() for d in page]
-        hint = entry.payload.render_hint("list")
-    else:
-        items = [entry.payload.serialize(d) for d in page]
-        hint = registry.render_hint_for_resource("access", "doors")
+    type_class = request.app.state.type_registry.lookup("access", "doors")
+    items = [type_class.from_manager_output(d).to_dict() for d in page]
+    hint = type_class.render_hint("list")
 
     return {
         "items": items,
@@ -116,14 +111,9 @@ async def get_door(
         except ValueError:
             raise HTTPException(status_code=404, detail="door not found")
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("access", "doors/{id}")
-    if entry.kind == "type":
-        data = entry.payload.from_manager_output(door).to_dict()
-        hint = entry.payload.render_hint("detail")
-    else:
-        data = entry.payload.serialize(door)
-        hint = registry.render_hint_for_resource("access", "doors/{id}")
+    type_class = request.app.state.type_registry.lookup("access", "doors/{id}")
+    data = type_class.from_manager_output(door).to_dict()
+    hint = type_class.render_hint("detail")
     return {
         "data": data,
         "render_hint": hint,

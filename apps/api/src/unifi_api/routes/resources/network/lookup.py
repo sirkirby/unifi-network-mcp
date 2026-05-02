@@ -49,14 +49,9 @@ async def lookup_client_by_ip(
     if client is None:
         raise HTTPException(status_code=404, detail=f"client with ip {ip} not found")
 
-    registry = request.app.state.serializer_registry
-    entry = request.app.state.type_registry.lookup("network", "client_lookup")
-    if entry.kind == "type":
-        data = entry.payload.from_manager_output(client).to_dict()
-        hint = entry.payload.render_hint("detail")
-    else:
-        data = entry.payload.serialize(client)
-        hint = registry.render_hint_for_tool("unifi_lookup_by_ip")
+    type_class = request.app.state.type_registry.lookup("network", "client_lookup")
+    data = type_class.from_manager_output(client).to_dict()
+    hint = type_class.render_hint("detail")
     return {
         "data": data,
         "render_hint": hint,
