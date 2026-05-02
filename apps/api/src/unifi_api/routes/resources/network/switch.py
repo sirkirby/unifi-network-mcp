@@ -12,17 +12,18 @@ row-level serialization inline (matching the wrapper serializer's row shape).
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
+from unifi_api.graphql.pydantic_export import to_pydantic_model
+from unifi_api.graphql.types.network.switch import PortProfile
 from unifi_api.routes.resources._common import (
     require_capability,
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
+from unifi_api.services.pydantic_models import Page
 
 router = APIRouter()
 
@@ -52,7 +53,9 @@ def _decode_cursor(cursor: str | None) -> Cursor | None:
 
 @router.get(
     "/sites/{site_id}/port-profiles",
+    response_model=Page[to_pydantic_model(PortProfile)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/switch"],
 )
 async def list_port_profiles(
     request: Request,
@@ -99,6 +102,7 @@ async def list_port_profiles(
 @router.get(
     "/sites/{site_id}/port-profiles/{profile_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/switch"],
 )
 async def get_port_profile_details(
     request: Request,
@@ -153,6 +157,7 @@ def _normalize_port_override(p: dict) -> dict:
 @router.get(
     "/sites/{site_id}/switch-ports",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/switch"],
 )
 async def list_switch_ports(
     request: Request,
@@ -227,6 +232,7 @@ def _normalize_port_stat(p: dict) -> dict:
 @router.get(
     "/sites/{site_id}/port-stats",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/switch"],
 )
 async def list_port_stats(
     request: Request,
@@ -281,6 +287,7 @@ async def list_port_stats(
 @router.get(
     "/sites/{site_id}/switch-capabilities",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/switch"],
 )
 async def get_switch_capabilities(
     request: Request,

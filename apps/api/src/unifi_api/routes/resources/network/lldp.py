@@ -16,7 +16,6 @@ from unifi_api.routes.resources._common import (
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
 
-
 router = APIRouter()
 
 
@@ -39,6 +38,7 @@ def _normalize_lldp_row(r: dict) -> dict:
 @router.get(
     "/sites/{site_id}/lldp-neighbors",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/lldp"],
 )
 async def list_lldp_neighbors(
     request: Request,

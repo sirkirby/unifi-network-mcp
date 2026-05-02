@@ -6,12 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
+from unifi_api.graphql.pydantic_export import to_pydantic_model
+from unifi_api.graphql.types.network.device import AvailableChannel
 from unifi_api.routes.resources._common import (
     require_capability,
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
+from unifi_api.services.pydantic_models import Page
 
 router = APIRouter()
 
@@ -24,7 +26,9 @@ def _channel_key(row) -> tuple:
 
 @router.get(
     "/sites/{site_id}/available-channels",
+    response_model=Page[to_pydantic_model(AvailableChannel)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/wireless"],
 )
 async def list_available_channels(
     request: Request,

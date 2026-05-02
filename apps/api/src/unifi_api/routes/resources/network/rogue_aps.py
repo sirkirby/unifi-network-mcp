@@ -11,12 +11,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
+from unifi_api.graphql.pydantic_export import to_pydantic_model
+from unifi_api.graphql.types.network.device import RfScanResult
 from unifi_api.routes.resources._common import (
     require_capability,
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
+from unifi_api.services.pydantic_models import Page
 
 router = APIRouter()
 
@@ -54,6 +56,7 @@ def _serialize_rogue(row, *, is_known: bool) -> dict:
 @router.get(
     "/sites/{site_id}/rogue-aps",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/wireless"],
 )
 async def list_rogue_aps(
     request: Request,
@@ -99,6 +102,7 @@ async def list_rogue_aps(
 @router.get(
     "/sites/{site_id}/known-rogue-aps",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/wireless"],
 )
 async def list_known_rogue_aps(
     request: Request,
@@ -142,7 +146,9 @@ async def list_known_rogue_aps(
 
 @router.get(
     "/sites/{site_id}/rf-scan-results",
+    response_model=Page[to_pydantic_model(RfScanResult)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/wireless"],
 )
 async def list_rf_scan_results(
     request: Request,
