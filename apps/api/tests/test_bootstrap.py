@@ -11,7 +11,7 @@ def _run_migrate(cfg_path: Path, db_path: Path) -> subprocess.CompletedProcess:
     env["UNIFI_API_DB_KEY"] = "test-passphrase"
     env["UNIFI_API_DB_PATH"] = str(db_path)
     return subprocess.run(
-        ["uv", "run", "--package", "unifi-api", "unifi-api", "migrate", "--config-path", str(cfg_path)],
+        ["uv", "run", "--package", "unifi-api-server", "unifi-api-server", "migrate", "--config-path", str(cfg_path)],
         capture_output=True,
         text=True,
         check=False,

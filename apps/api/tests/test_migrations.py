@@ -9,7 +9,7 @@ def _run_alembic(*args: str, db_path: Path) -> subprocess.CompletedProcess:
     env = dict(os.environ)
     env["UNIFI_API_DB_PATH"] = str(db_path)
     return subprocess.run(
-        ["uv", "run", "--package", "unifi-api", "alembic", *args],
+        ["uv", "run", "--package", "unifi-api-server", "alembic", *args],
         cwd=Path(__file__).resolve().parents[1],  # apps/api
         env=env,
         capture_output=True,

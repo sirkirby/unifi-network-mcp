@@ -4,7 +4,7 @@ If a maintainer changes Python decorators in a way that mutates the SDL but
 doesn't re-export, this gate fails — preventing silent contract drift.
 
 Re-export with:
-    uv run --package unifi-api python -c \\
+    uv run --package unifi-api-server python -c \\
       "from unifi_api.graphql.schema import schema; print(str(schema))" \\
       > apps/api/src/unifi_api/graphql/schema.graphql
 """
@@ -26,7 +26,7 @@ def test_sdl_artifact_matches_schema() -> None:
     actual = SDL_PATH.read_text(encoding="utf-8").strip()
     assert actual == expected, (
         "schema.graphql is stale. Re-export with:\n"
-        "  uv run --package unifi-api python -c \\\n"
+        "  uv run --package unifi-api-server python -c \\\n"
         '    "from unifi_api.graphql.schema import schema; print(str(schema))" \\\n'
         f"    > {SDL_PATH.relative_to(Path.cwd()) if str(SDL_PATH).startswith(str(Path.cwd())) else SDL_PATH}\n"
     )

@@ -1,5 +1,5 @@
 [project]
-name = "unifi-api"
+name = "unifi-api-server"
 dynamic = ["version"]
 description = "UniFi rich HTTP API service"
 readme = "README.md"
@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.scripts]
-unifi-api = "unifi_api.cli:app"
+unifi-api-server = "unifi_api.cli:app"
 
 [dependency-groups]
 dev = [

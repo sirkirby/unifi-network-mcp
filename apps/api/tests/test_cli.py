@@ -5,7 +5,7 @@ import subprocess
 
 def _run(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["uv", "run", "--package", "unifi-api", "unifi-api", *args],
+        ["uv", "run", "--package", "unifi-api-server", "unifi-api-server", *args],
         capture_output=True,
         text=True,
         check=False,

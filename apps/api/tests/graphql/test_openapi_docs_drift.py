@@ -12,5 +12,5 @@ def test_openapi_reference_matches_render() -> None:
     actual = REF_PATH.read_text(encoding="utf-8").strip()
     assert actual == expected, (
         "openapi-reference.md is stale. Re-generate with:\n"
-        "  uv run --package unifi-api python -m unifi_api.graphql.docgen\n"
+        "  uv run --package unifi-api-server python -m unifi_api.graphql.docgen\n"
     )

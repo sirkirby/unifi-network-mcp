@@ -1,6 +1,6 @@
 """Auto-generate apps/api/docs/graphql-reference.md and openapi-reference.md.
 
-Run: `uv run --package unifi-api python -m unifi_api.graphql.docgen`
+Run: `uv run --package unifi-api-server python -m unifi_api.graphql.docgen`
 to regenerate. CI gates catch staleness.
 """
 

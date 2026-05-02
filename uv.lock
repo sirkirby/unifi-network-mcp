@@ -9,7 +9,7 @@ resolution-markers = [
 [manifest]
 members = [
     "unifi-access-mcp",
-    "unifi-api",
+    "unifi-api-server",
     "unifi-core",
     "unifi-mcp",
     "unifi-mcp-relay",
@@ -1905,7 +1905,7 @@ dev = [
 ]
 
 [[package]]
-name = "unifi-api"
+name = "unifi-api-server"
 source = { editable = "apps/api" }
 dependencies = [
     { name = "aiosqlite" },
