@@ -18,6 +18,7 @@ unifi-mcp-relay = "unifi_mcp_relay.__main__:main"
 dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",
+    "pytest-xdist>=3.6.0",
     "aioresponses>=0.7.0",
 ]
 

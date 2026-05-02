@@ -1,10 +1,12 @@
-name: "API: Release (PyPI + GHCR + GitHub Release)"
+name: "API: Release (PyPI + GitHub Release)"
 
-# Triggered on api/v* tags. Each tag fires the full release pipeline:
+# Triggered on api/v* tags. Each tag fires:
 #   1. Run the unifi-api-server test suite
 #   2. Build the wheel and publish to PyPI via OIDC trusted publishing
-#   3. Build a multi-arch Docker image and push to GHCR
-#   4. Create a GitHub Release with auto-generated notes + the wheel attached
+#   3. Create a GitHub Release with auto-generated notes + the wheel attached
+#
+# Docker images are built and pushed by the separate docker-api.yml workflow,
+# which also fires on api/v* tags (in addition to main pushes and PRs).
 #
 # One-time PyPI prerequisite: register `unifi-api-server` as a pending publisher
 # at https://pypi.org/manage/account/publishing/ with:
@@ -20,10 +22,6 @@ on:
 
 permissions:
   contents: read
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/unifi-api-server
 
 jobs:
   # ----------------------------------------------------------------------- 1
@@ -88,75 +86,9 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
 
   # ----------------------------------------------------------------------- 3
-  publish-docker:
-    name: Build + push Docker image
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
-      - uses: docker/setup-qemu-action@v4
-
-      - uses: docker/setup-buildx-action@v4
-        with:
-          platforms: linux/amd64,linux/arm64
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Derive version + image tag list from git tag
-        id: version
-        env:
-          REF_NAME: ${{ github.ref_name }}
-          IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        run: |
-          # api/v0.1.0       -> 0.1.0       -> tags: 0.1.0, latest
-          # api/v0.1.0-rc.1  -> 0.1.0-rc.1  -> tags: 0.1.0-rc.1   (no `latest` for pre-releases)
-          VERSION="${REF_NAME#api/v}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          if echo "${VERSION}" | grep -qE -- '-(rc|alpha|beta|dev)'; then
-            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
-            {
-              echo "tags<<EOF"
-              echo "${IMAGE_REF}:${VERSION}"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-          else
-            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
-            {
-              echo "tags<<EOF"
-              echo "${IMAGE_REF}:${VERSION}"
-              echo "${IMAGE_REF}:latest"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/api/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.version.outputs.tags }}
-          build-args: |
-            VERSION=${{ steps.version.outputs.version }}
-
-  # ----------------------------------------------------------------------- 4
   github-release:
     name: Create GitHub Release
-    needs: [publish-pypi, publish-docker]
+    needs: publish-pypi
     runs-on: ubuntu-latest
     permissions:
       contents: write

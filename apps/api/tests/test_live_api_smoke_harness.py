@@ -5,16 +5,41 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 # Make scripts/ importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 
 
-def test_load_env_returns_dict():
-    """If .env exists, load_env returns a dict of key→value strings."""
-    from live_api_smoke import load_env
+def test_load_env_parses_a_synthetic_dotenv(tmp_path, monkeypatch):
+    """load_env() parses comments, quoted values, and KEY=VALUE pairs.
 
-    env = load_env()
-    assert isinstance(env, dict)
+    Uses a synthetic .env in tmp_path so this works in CI (where the real
+    repo-root .env is absent) and locally (without depending on actual creds).
+    """
+    import live_api_smoke
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "# a comment\n"
+        "\n"
+        'PLAIN=value1\n'
+        'QUOTED="value with spaces"\n'
+        "SINGLE='single'\n"
+    )
+    monkeypatch.setattr(live_api_smoke, "REPO_ROOT", tmp_path)
+
+    env = live_api_smoke.load_env()
+    assert env == {"PLAIN": "value1", "QUOTED": "value with spaces", "SINGLE": "single"}
+
+
+def test_load_env_raises_when_dotenv_absent(tmp_path, monkeypatch):
+    """load_env() raises SystemExit if .env is missing — preserves the existing contract."""
+    import live_api_smoke
+
+    monkeypatch.setattr(live_api_smoke, "REPO_ROOT", tmp_path)
+    with pytest.raises(SystemExit, match=".env not found"):
+        live_api_smoke.load_env()
 
 
 def test_assertion_dataclass_serializes():

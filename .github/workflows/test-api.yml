@@ -1,4 +1,4 @@
-name: "Protect: Test"
+name: "API: Test"
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
     branches: [ main, develop ]
 
 env:
-  # Needed until first protect/v* tag exists — hatch-vcs can't resolve version without it
+  # Fallback for branches without an api/v* tag in ancestry — hatch-vcs needs this
   SETUPTOOLS_SCM_PRETEND_VERSION: "0.0.0.dev0"
 
 jobs:
@@ -35,27 +35,24 @@ jobs:
       with:
         enable-cache: true
 
-    - name: Install dependencies
-      run: |
-        uv sync
+    - name: Install workspace
+      run: uv sync --all-packages
 
-    - name: Run unit tests
+    - name: Run tests with coverage
+      # -n auto parallelizes across runner cores (xdist). 702 tests run in ~20s
+      # locally with parallelism vs ~75s sequential. CI runners have 4 cores.
+      # --tb=short keeps any failure output compact.
       run: |
-        uv run --package unifi-protect-mcp pytest apps/protect/tests/unit/ -n auto -v --tb=short
-
-    - name: Run integration tests
-      run: |
-        uv run --package unifi-protect-mcp pytest apps/protect/tests/integration/ -n auto -v --tb=short || test $? -eq 5
-
-    - name: Run all tests with coverage
-      run: |
-        uv run --package unifi-protect-mcp pytest apps/protect/tests/ -n auto -v --cov=unifi_protect_mcp --cov-report=term-missing --cov-report=xml
+        uv run --package unifi-api-server pytest apps/api/tests \
+          -n auto \
+          --cov=unifi_api --cov-report=xml \
+          -q --tb=short
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
+        flags: api
+        name: codecov-api
         fail_ci_if_error: false
