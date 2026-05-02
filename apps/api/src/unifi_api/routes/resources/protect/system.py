@@ -16,7 +16,6 @@ The ``/protect/...`` prefix is in the URL path — not a router prefix.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
@@ -27,7 +26,6 @@ from unifi_api.routes.resources._common import (
 )
 from unifi_api.routes.resources.protect.cameras import _maybe_set_site
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
 
 router = APIRouter()
 
@@ -54,6 +52,7 @@ def _decode_cursor(cursor: str | None) -> Cursor | None:
 @router.get(
     "/sites/{site_id}/firmware-status",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/system"],
 )
 async def get_firmware_status(
     request: Request,
@@ -99,6 +98,7 @@ async def get_firmware_status(
 @router.get(
     "/sites/{site_id}/alarm-status",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/system"],
 )
 async def alarm_get_status(
     request: Request,
@@ -139,6 +139,7 @@ async def alarm_get_status(
 @router.get(
     "/sites/{site_id}/alarm-profiles",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/system"],
 )
 async def alarm_list_profiles(
     request: Request,
@@ -196,6 +197,7 @@ async def alarm_list_profiles(
 @router.get(
     "/sites/{site_id}/protect/health",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/system"],
 )
 async def get_protect_health(
     request: Request,
@@ -236,6 +238,7 @@ async def get_protect_health(
 @router.get(
     "/sites/{site_id}/protect/system-info",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/system"],
 )
 async def get_protect_system_info(
     request: Request,
@@ -281,6 +284,7 @@ async def get_protect_system_info(
 @router.get(
     "/sites/{site_id}/viewers",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/system"],
 )
 async def list_viewers(
     request: Request,

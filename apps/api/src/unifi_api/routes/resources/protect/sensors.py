@@ -9,7 +9,6 @@ the LIST response (mirrors lights.py / network firewall_rules).
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
@@ -20,7 +19,6 @@ from unifi_api.routes.resources._common import (
 )
 from unifi_api.routes.resources.protect.cameras import _maybe_set_site
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
 
 router = APIRouter()
 
@@ -42,6 +40,7 @@ def _decode_cursor(cursor: str | None) -> Cursor | None:
 @router.get(
     "/sites/{site_id}/sensors",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/sensors"],
 )
 async def list_sensors(
     request: Request,
@@ -86,6 +85,7 @@ async def list_sensors(
 @router.get(
     "/sites/{site_id}/sensors/{sensor_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["protect/sensors"],
 )
 async def get_sensor_details(
     request: Request,

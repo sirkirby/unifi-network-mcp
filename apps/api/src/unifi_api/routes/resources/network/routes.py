@@ -7,17 +7,18 @@ Three resources in one module since they all live in the routing domain.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
+from unifi_api.graphql.pydantic_export import to_pydantic_model
+from unifi_api.graphql.types.network.route import ActiveRoute, Route, TrafficRoute
 from unifi_api.routes.resources._common import (
     require_capability,
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
+from unifi_api.services.pydantic_models import Detail, Page
 
 router = APIRouter()
 
@@ -41,7 +42,9 @@ def _decode_cursor(cursor: str | None) -> Cursor | None:
 
 @router.get(
     "/sites/{site_id}/active-routes",
+    response_model=Page[to_pydantic_model(ActiveRoute)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/routes"],
 )
 async def list_active_routes(
     request: Request,
@@ -89,7 +92,9 @@ async def list_active_routes(
 
 @router.get(
     "/sites/{site_id}/static-routes",
+    response_model=Page[to_pydantic_model(Route)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/routes"],
 )
 async def list_routes(
     request: Request,
@@ -134,7 +139,9 @@ async def list_routes(
 
 @router.get(
     "/sites/{site_id}/static-routes/{route_id}",
+    response_model=Detail[to_pydantic_model(Route)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/routes"],
 )
 async def get_route_details(
     request: Request,
@@ -177,7 +184,9 @@ async def get_route_details(
 
 @router.get(
     "/sites/{site_id}/traffic-routes",
+    response_model=Page[to_pydantic_model(TrafficRoute)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/routes"],
 )
 async def list_traffic_routes(
     request: Request,
@@ -222,7 +231,9 @@ async def list_traffic_routes(
 
 @router.get(
     "/sites/{site_id}/traffic-routes/{route_id}",
+    response_model=Detail[to_pydantic_model(TrafficRoute)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/routes"],
 )
 async def get_traffic_route_details(
     request: Request,

@@ -11,7 +11,6 @@ DeviceManager.get_device raises UniFiNotFoundError on miss → 404.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
@@ -22,7 +21,6 @@ from unifi_api.routes.resources._common import (
 )
 from unifi_api.routes.resources.access.doors import _maybe_set_site
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
 
 router = APIRouter()
 
@@ -44,6 +42,7 @@ def _decode_cursor(cursor: str | None) -> Cursor | None:
 @router.get(
     "/sites/{site_id}/access-devices",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/devices"],
 )
 async def list_access_devices(
     request: Request,
@@ -88,6 +87,7 @@ async def list_access_devices(
 @router.get(
     "/sites/{site_id}/access-devices/{device_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/devices"],
 )
 async def get_access_device(
     request: Request,

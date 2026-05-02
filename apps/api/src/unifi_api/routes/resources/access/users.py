@@ -13,12 +13,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
+from unifi_api.graphql.pydantic_export import to_pydantic_model
+from unifi_api.graphql.types.access.users import User
 from unifi_api.routes.resources._common import (
     require_capability,
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
+from unifi_api.services.pydantic_models import Detail, Page
 
 router = APIRouter()
 
@@ -39,7 +41,9 @@ async def _maybe_set_site(cm, site_id: str) -> None:
 
 @router.get(
     "/sites/{site_id}/users",
+    response_model=Page[to_pydantic_model(User)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/users"],
 )
 async def list_users(
     request: Request,
@@ -83,7 +87,9 @@ async def list_users(
 
 @router.get(
     "/sites/{site_id}/users/{user_id}",
+    response_model=Detail[to_pydantic_model(User)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/users"],
 )
 async def get_user(
     request: Request,

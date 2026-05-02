@@ -8,17 +8,18 @@ Phase 5A PR1 Cluster 2 — clients & user groups. Manager methods are
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
+from unifi_api.graphql.pydantic_export import to_pydantic_model
+from unifi_api.graphql.types.network.client_group import UserGroup
 from unifi_api.routes.resources._common import (
     require_capability,
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
+from unifi_api.services.pydantic_models import Detail, Page
 
 router = APIRouter()
 
@@ -39,7 +40,9 @@ def _decode_cursor(cursor: str | None) -> Cursor | None:
 
 @router.get(
     "/sites/{site_id}/user-groups",
+    response_model=Page[to_pydantic_model(UserGroup)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/groups"],
 )
 async def list_user_groups(
     request: Request,
@@ -85,7 +88,9 @@ async def list_user_groups(
 
 @router.get(
     "/sites/{site_id}/user-groups/{group_id}",
+    response_model=Detail[to_pydantic_model(UserGroup)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/groups"],
 )
 async def get_user_group_details(
     request: Request,

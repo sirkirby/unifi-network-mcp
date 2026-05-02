@@ -8,17 +8,18 @@ AP groups live on ``NetworkManager`` per Phase 4A discovery, not a separate
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
 from unifi_api.auth.scopes import Scope
+from unifi_api.graphql.pydantic_export import to_pydantic_model
+from unifi_api.graphql.types.network.ap_group import ApGroup
 from unifi_api.routes.resources._common import (
     require_capability,
     resolve_controller,
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
+from unifi_api.services.pydantic_models import Detail, Page
 
 router = APIRouter()
 
@@ -39,7 +40,9 @@ def _decode_cursor(cursor: str | None) -> Cursor | None:
 
 @router.get(
     "/sites/{site_id}/ap-groups",
+    response_model=Page[to_pydantic_model(ApGroup)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/groups"],
 )
 async def list_ap_groups(
     request: Request,
@@ -84,7 +87,9 @@ async def list_ap_groups(
 
 @router.get(
     "/sites/{site_id}/ap-groups/{group_id}",
+    response_model=Detail[to_pydantic_model(ApGroup)],
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/groups"],
 )
 async def get_ap_group_details(
     request: Request,

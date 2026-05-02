@@ -20,7 +20,6 @@ from unifi_api.routes.resources._common import (
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
 
-
 router = APIRouter()
 
 
@@ -76,6 +75,7 @@ def _controller_products(controller) -> list[str]:
 @router.get(
     "/sites/{site_id}/events",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def list_events_dispatch(
     request: Request,
@@ -160,6 +160,7 @@ async def _list_protect_events(
 @router.get(
     "/sites/{site_id}/alerts",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_alerts(
     request: Request,
@@ -186,6 +187,7 @@ async def get_alerts(
 @router.get(
     "/sites/{site_id}/anomalies",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_anomalies(
     request: Request,
@@ -212,6 +214,7 @@ async def get_anomalies(
 @router.get(
     "/sites/{site_id}/ips-events",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_ips_events(
     request: Request,

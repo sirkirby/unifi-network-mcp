@@ -22,7 +22,6 @@ from unifi_api.routes.resources._common import (
 )
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
 
-
 router = APIRouter()
 
 
@@ -91,6 +90,7 @@ def _detail_response(request, payload, tool_name):
 @router.get(
     "/sites/{site_id}/alarms",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/system"],
 )
 async def list_alarms(
     request: Request,
@@ -117,6 +117,7 @@ async def list_alarms(
 @router.get(
     "/sites/{site_id}/backups",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/system"],
 )
 async def list_backups(
     request: Request,
@@ -143,6 +144,7 @@ async def list_backups(
 @router.get(
     "/sites/{site_id}/top-clients",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/system"],
 )
 async def get_top_clients(
     request: Request,
@@ -169,6 +171,7 @@ async def get_top_clients(
 @router.get(
     "/sites/{site_id}/client-sessions",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/clients"],
 )
 async def get_client_sessions(
     request: Request,
@@ -195,6 +198,7 @@ async def get_client_sessions(
 @router.get(
     "/sites/{site_id}/network-health",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/system"],
 )
 async def get_network_health(
     request: Request,
@@ -222,6 +226,7 @@ async def get_network_health(
 @router.get(
     "/sites/{site_id}/speedtest-results",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/observability"],
 )
 async def get_speedtest_results(
     request: Request,
@@ -251,6 +256,7 @@ async def get_speedtest_results(
 @router.get(
     "/sites/{site_id}/event-types",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/system"],
 )
 async def get_event_types(
     request: Request,
@@ -276,6 +282,7 @@ async def get_event_types(
 @router.get(
     "/sites/{site_id}/autobackup-settings",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/system"],
 )
 async def get_autobackup_settings(
     request: Request,
@@ -298,6 +305,7 @@ async def get_autobackup_settings(
 @router.get(
     "/sites/{site_id}/site-settings",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/system"],
 )
 async def get_site_settings(
     request: Request,
@@ -320,6 +328,7 @@ async def get_site_settings(
 @router.get(
     "/sites/{site_id}/system-info",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/system"],
 )
 async def get_system_info(
     request: Request,
@@ -342,6 +351,7 @@ async def get_system_info(
 @router.get(
     "/sites/{site_id}/client-wifi-details/{mac}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/clients"],
 )
 async def get_client_wifi_details(
     request: Request,

@@ -6,7 +6,6 @@ VisitorManager.get_visitor raises UniFiNotFoundError on miss → 404.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from unifi_core.exceptions import UniFiNotFoundError
 
 from unifi_api.auth.middleware import require_scope
@@ -17,7 +16,6 @@ from unifi_api.routes.resources._common import (
 )
 from unifi_api.routes.resources.access.doors import _maybe_set_site
 from unifi_api.services.pagination import Cursor, InvalidCursor, paginate
-
 
 router = APIRouter()
 
@@ -40,6 +38,7 @@ def _decode_cursor(cursor: str | None) -> Cursor | None:
 @router.get(
     "/sites/{site_id}/visitors",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/visitors"],
 )
 async def list_visitors(
     request: Request,
@@ -84,6 +83,7 @@ async def list_visitors(
 @router.get(
     "/sites/{site_id}/visitors/{visitor_id}",
     dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["access/visitors"],
 )
 async def get_visitor(
     request: Request,
