@@ -119,6 +119,10 @@ from unifi_api.graphql.types.network.vpn import (
 from unifi_api.graphql.types.network.wlan import (
     Wlan as NetworkWlanType,
 )
+from unifi_api.graphql.types.protect.alarms import (
+    AlarmProfileList as ProtectAlarmProfileListType,
+    AlarmStatus as ProtectAlarmStatusType,
+)
 from unifi_api.graphql.types.protect.cameras import (
     Camera as ProtectCameraType,
     CameraAnalytics as ProtectCameraAnalyticsType,
@@ -809,6 +813,19 @@ def create_app(config: ApiConfig) -> FastAPI:
     app.state.type_registry.register_type("protect", "chimes", ProtectChimeType)
     app.state.type_registry.register_tool_type(
         "protect_list_chimes", ProtectChimeType, "list",
+    )
+
+    # Phase 6 PR3 Task B — protect/alarms migrated to Strawberry types.
+    # Both reads are tool-keyed only (no resource registration in the
+    # original serializer). ``protect_alarm_get_status`` is a flat DETAIL
+    # pass-through; ``protect_alarm_list_profiles`` is a wrapper-dict DETAIL
+    # pass-through (``{profiles, count}``). Mutation acks (arm/disarm)
+    # stay as a serializer in serializers/protect/alarms.py.
+    app.state.type_registry.register_tool_type(
+        "protect_alarm_get_status", ProtectAlarmStatusType, "detail",
+    )
+    app.state.type_registry.register_tool_type(
+        "protect_alarm_list_profiles", ProtectAlarmProfileListType, "detail",
     )
 
     app.include_router(health.router, prefix="/v1")

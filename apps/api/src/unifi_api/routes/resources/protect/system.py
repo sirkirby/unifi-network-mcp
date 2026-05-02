@@ -110,11 +110,20 @@ async def alarm_get_status(
     except UniFiNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_alarm_get_status")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_alarm_get_status")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(payload).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_alarm_get_status")
+        data = serializer.serialize(payload)
+        hint = registry.render_hint_for_tool("protect_alarm_get_status")
     return {
-        "data": serializer.serialize(payload),
-        "render_hint": registry.render_hint_for_tool("protect_alarm_get_status"),
+        "data": data,
+        "render_hint": hint,
     }
 
 
@@ -145,12 +154,28 @@ async def alarm_list_profiles(
         list(items), limit=limit, cursor=cursor_obj, key_fn=_id_key,
     )
 
-    registry = request.app.state.serializer_registry
-    serializer = registry.serializer_for_tool("protect_alarm_list_profiles")
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("protect_alarm_list_profiles")
+    if tool_type is not None:
+        # The action endpoint wraps the whole list as {profiles, count};
+        # the REST per-page surface emits one row per profile via the
+        # sub-row type ``AlarmProfile``.
+        from unifi_api.graphql.types.protect.alarms import AlarmProfile
+
+        rows = [AlarmProfile.from_manager_output(p).to_dict() for p in page]
+        # Reuse the wrapper type's render hint kind, but emit per-row
+        # display columns from the sub-row class (mirrors the original
+        # serializer's render_hint contract).
+        hint = AlarmProfile.render_hint(tool_type[1])
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("protect_alarm_list_profiles")
+        rows = [serializer.serialize(p) for p in page]
+        hint = registry.render_hint_for_tool("protect_alarm_list_profiles")
     return {
-        "items": [serializer.serialize(p) for p in page],
+        "items": rows,
         "next_cursor": next_cursor.encode() if next_cursor else None,
-        "render_hint": registry.render_hint_for_tool("protect_alarm_list_profiles"),
+        "render_hint": hint,
     }
 
 

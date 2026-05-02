@@ -145,6 +145,10 @@ PHASE6_TYPE_MIGRATED_TOOLS: frozenset[str] = frozenset({
     # PR3 Task A — protect/chimes (1 read shape; mutation acks stay as a
     # serializer covering trigger/update preview tools)
     "protect_list_chimes",
+    # PR3 Task B — protect/alarms (2 read shapes; arm/disarm acks stay as
+    # a serializer)
+    "protect_alarm_get_status",
+    "protect_alarm_list_profiles",
 })
 
 
