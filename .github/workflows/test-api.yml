@@ -39,10 +39,14 @@ jobs:
       run: uv sync --all-packages
 
     - name: Run tests with coverage
+      # -n auto parallelizes across runner cores (xdist). 702 tests run in ~20s
+      # locally with parallelism vs ~75s sequential. CI runners have 4 cores.
+      # --tb=short keeps any failure output compact.
       run: |
         uv run --package unifi-api-server pytest apps/api/tests \
-          --cov=unifi_api --cov-report=term-missing --cov-report=xml \
-          -v --tb=short
+          -n auto \
+          --cov=unifi_api --cov-report=xml \
+          -q --tb=short
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v6
