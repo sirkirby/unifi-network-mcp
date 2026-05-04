@@ -43,9 +43,12 @@ class TestVersion:
 
         pkg_version = version("unifi-network-mcp")
 
-        # Get git describe output
+        # Get git describe output, scoped to this package's tag namespace so
+        # sibling-package tags on the same commit (e.g. core/, api/) don't get
+        # picked up as the closest tag. Mirrors the --match pattern that
+        # hatch-vcs's git_describe_command uses in pyproject.toml.
         result = subprocess.run(
-            ["git", "describe", "--tags", "--always"],
+            ["git", "describe", "--tags", "--always", "--match", "network/v*", "--match", "v*"],
             capture_output=True,
             text=True,
             cwd=Path(__file__).parent.parent.parent,
@@ -56,8 +59,12 @@ class TestVersion:
 
         git_describe = result.stdout.strip()
 
-        # Strip leading 'v' from git tag
-        git_version = git_describe.lstrip("v")
+        # Strip the network/v or leading v prefix to get a bare version string.
+        git_version = git_describe
+        for prefix in ("network/v", "v"):
+            if git_version.startswith(prefix):
+                git_version = git_version[len(prefix):]
+                break
 
         # Check if working tree is dirty (uncommitted changes)
         dirty_check = subprocess.run(
