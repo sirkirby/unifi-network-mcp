@@ -1153,3 +1153,185 @@ async def set_site_leds(
     except Exception as e:
         logger.error("Error setting site LEDs: %s", e, exc_info=True)
         return {"success": False, "error": f"Failed to set site-wide LED state: {e}"}
+
+
+# ---- Smart Power Strip (UP6 / USP-Strip) Outlet Control ----
+
+
+@server.tool(
+    name="unifi_get_pdu_outlets",
+    description=(
+        "Return per-outlet state for a UniFi Smart Power PDU (UP6 / USP-Strip). "
+        "Combines the device's sensed outlet_table (live relay_state, cycle_enabled, "
+        "has_relay, has_metering) with the controller's desired outlet_overrides "
+        "so callers see both reported and intended state per outlet. "
+        "Returns an error if the device is not a PDU."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+)
+async def get_pdu_outlets(
+    mac_address: Annotated[
+        str,
+        Field(
+            description="MAC address of the PDU, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='pdu')"
+        ),
+    ],
+) -> Dict[str, Any]:
+    """Implementation for fetching per-outlet state on a Smart Power PDU."""
+    try:
+        result = await device_manager.get_pdu_outlets(mac_address)
+        if result is None:
+            return {
+                "success": False,
+                "error": f"Device {mac_address} is not a Smart Power PDU.",
+            }
+        return {
+            "success": True,
+            "site": device_manager._connection.site,
+            **result,
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error getting PDU outlets for %s: %s", mac_address, e, exc_info=True)
+        return {"success": False, "error": f"Failed to get PDU outlets for {mac_address}: {e}"}
+
+
+@server.tool(
+    name="unifi_set_outlet_state",
+    description=(
+        "Set per-outlet relay state (on/off) and optionally cycle_enabled on a UniFi "
+        "Smart Power PDU (UP6 / USP-Strip). The controller stores per-outlet desired "
+        "state in the outlet_overrides array on the device document; this tool reads "
+        "the existing array, replaces only the entry whose index matches outlet_index, "
+        "and PUTs the full array back -- preserving all sibling outlets' overrides "
+        "(name, relay_state, cycle_enabled) verbatim. If no override exists for the "
+        "target outlet yet, one is created from the outlet's current sensed state. "
+        "Use unifi_get_pdu_outlets first to inspect current state."
+    ),
+    permission_category="devices",
+    permission_action="update",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False),
+)
+async def set_outlet_state(
+    mac_address: Annotated[
+        str,
+        Field(
+            description="MAC address of the PDU, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='pdu')"
+        ),
+    ],
+    outlet_index: Annotated[
+        int,
+        Field(
+            description="1-based outlet index on the strip (e.g. 1..6 for UP6, 1..7 if a USB outlet group is present)"
+        ),
+    ],
+    relay_state: Annotated[
+        bool,
+        Field(description="Desired relay state for this outlet: true to power on, false to power off"),
+    ],
+    cycle_enabled: Annotated[
+        Optional[bool],
+        Field(
+            description=(
+                "Optional override for the per-outlet 'power cycle on power loss' toggle. "
+                "Omit (null) to leave it unchanged."
+            )
+        ),
+    ] = None,
+    confirm: Annotated[
+        bool,
+        Field(description="When true, writes the change. When false (default), returns a preview"),
+    ] = False,
+) -> Dict[str, Any]:
+    """Set per-outlet relay/cycle state on a UP6 / USP-Strip PDU."""
+    if outlet_index < 1:
+        return {"success": False, "error": "outlet_index must be >= 1."}
+
+    try:
+        pdu = await device_manager.get_pdu_outlets(mac_address)
+        if pdu is None:
+            return {
+                "success": False,
+                "error": f"Device {mac_address} is not a Smart Power PDU.",
+            }
+
+        outlets = pdu.get("outlets", [])
+        target = next((o for o in outlets if o.get("index") == outlet_index), None)
+        if target is None:
+            available = sorted(o.get("index") for o in outlets if o.get("index") is not None)
+            return {
+                "success": False,
+                "error": (
+                    f"Outlet index {outlet_index} not found on PDU {mac_address}. Available indices: {available}"
+                ),
+            }
+        if target.get("has_relay") is False:
+            return {
+                "success": False,
+                "error": (
+                    f"Outlet {outlet_index} ('{target.get('name')}') on PDU {mac_address} "
+                    "does not have a controllable relay (has_relay=false)."
+                ),
+            }
+
+        device_name = pdu.get("name", mac_address)
+        # Effective current desired state = override if present, else sensed.
+        current_relay = target.get("override_relay_state")
+        if current_relay is None:
+            current_relay = target.get("relay_state")
+        current_cycle = target.get("override_cycle_enabled")
+        if current_cycle is None:
+            current_cycle = target.get("cycle_enabled")
+
+        proposed: Dict[str, Any] = {"relay_state": relay_state}
+        if cycle_enabled is not None:
+            proposed["cycle_enabled"] = cycle_enabled
+
+        if not confirm:
+            preview = update_preview(
+                resource_type="pdu_outlet",
+                resource_id=f"{mac_address}/outlet/{outlet_index}",
+                resource_name=f"{device_name} -- outlet {outlet_index} ({target.get('name')})",
+                current_state={"relay_state": current_relay, "cycle_enabled": current_cycle},
+                updates=proposed,
+            )
+            warnings: List[str] = []
+            if current_relay is True and relay_state is False:
+                warnings.append(
+                    f"Outlet {outlet_index} ('{target.get('name')}') is currently powered ON -- "
+                    "anything plugged into it will lose power."
+                )
+            warnings.append(
+                "All other outlets on this strip will be left untouched (their existing overrides are preserved)."
+            )
+            preview["warnings"] = warnings
+            return preview
+
+        result = await device_manager.set_outlet_state(
+            device_mac=mac_address,
+            outlet_index=outlet_index,
+            relay_state=relay_state,
+            cycle_enabled=cycle_enabled,
+        )
+        if result is None:
+            return {
+                "success": False,
+                "error": f"Failed to set outlet state on PDU {mac_address}.",
+            }
+        return {
+            "success": True,
+            "message": (
+                f"Outlet {outlet_index} ('{result.get('name')}') on {device_name} "
+                f"set to relay_state={result['relay_state']}."
+            ),
+            "outlet": result,
+        }
+    except UniFiNotFoundError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error("Error setting outlet state on %s: %s", mac_address, e, exc_info=True)
+        return {
+            "success": False,
+            "error": f"Failed to set outlet state on PDU {mac_address}: {e}",
+        }
