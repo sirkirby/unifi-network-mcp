@@ -10,6 +10,7 @@
 # tool: unifi_list_available_channels
 # tool: unifi_get_speedtest_status
 # tool: unifi_get_lldp_neighbors
+# tool: unifi_get_pdu_outlets
 """
 
 from __future__ import annotations
@@ -214,3 +215,39 @@ async def test_lldp_neighbors(tmp_path, monkeypatch):
     assert body.get("errors") is None, body
     # Returns the LldpNeighbors wrapper (name/model from device dict)
     assert body["data"]["network"]["lldpNeighbors"] is not None
+
+
+@pytest.mark.asyncio
+async def test_pdu_outlets(tmp_path, monkeypatch):
+    monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
+    app, key, cid = await bootstrap(tmp_path, product="network")
+    stub_managers(monkeypatch, {
+        ("network", "device_manager", "get_pdu_outlets"): {
+            "mac": "ac:8b:a9:11:22:33",
+            "name": "Rack PDU",
+            "model": "USPRPS",
+            "outlets": [
+                {
+                    "index": 1,
+                    "name": "Outlet 1",
+                    "has_relay": True,
+                    "has_metering": True,
+                    "relay_state": True,
+                    "cycle_enabled": False,
+                    "override_relay_state": True,
+                    "override_cycle_enabled": False,
+                    "has_override": True,
+                },
+            ],
+        },
+    })
+    body = await graphql_query(app, key, f'''{{
+        network {{ pduOutlets(controller: "{cid}", mac: "ac:8b:a9:11:22:33") {{
+            mac name model outlets {{ index name relayState }}
+        }} }}
+    }}''')
+    assert body.get("errors") is None, body
+    pdu = body["data"]["network"]["pduOutlets"]
+    assert pdu["mac"] == "ac:8b:a9:11:22:33"
+    assert pdu["outlets"][0]["index"] == 1
+    assert pdu["outlets"][0]["relayState"] is True

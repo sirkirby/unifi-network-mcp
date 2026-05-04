@@ -1,4 +1,4 @@
-# Network Server Tool Reference (169 tools)
+# Network Server Tool Reference (171 tools)
 
 Complete reference for `unifi_*` tools. All read tools are always available. Mutating tools require permissions (see main skill for details).
 
@@ -8,6 +8,7 @@ Complete reference for `unifi_*` tools. All read tools are always available. Mut
 - [Devices](#devices)
 - [Firewall](#firewall)
 - [Networks & WLANs](#networks--wlans)
+- [DNS Records](#dns-records)
 - [Port Forwarding](#port-forwarding)
 - [QoS / Traffic Shaping](#qos--traffic-shaping)
 - [Traffic Routes](#traffic-routes)
@@ -67,12 +68,13 @@ Always available, regardless of registration mode.
 ## Devices
 
 <!-- AUTO:tools:devices -->
-20 tools.
+22 tools.
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `unifi_get_device_details` | Read | Returns the full raw device object for one device by MAC address — includes radio tables, port tables, system stats, WAN info, firmware d... |
 | `unifi_get_device_radio` | Read | Get radio configuration and live statistics for an access point. |
+| `unifi_get_pdu_outlets` | Read | Return per-outlet state for a UniFi Smart Power PDU (UP6 / USP-Strip). |
 | `unifi_get_rf_scan_results` | Read | Get RF spectrum scan results for an access point. |
 | `unifi_get_speedtest_status` | Read | Check the status of a running speedtest on the gateway. |
 | `unifi_list_available_channels` | Read | List allowed RF channels for the site's regulatory domain. |
@@ -85,6 +87,7 @@ Always available, regardless of registration mode.
 | `unifi_reboot_device` | Mutate | Reboot a specific device by MAC address |
 | `unifi_rename_device` | Mutate | Rename a device in the Unifi Network controller by MAC address |
 | `unifi_set_device_led` | Mutate | Set the LED override state on a specific device. |
+| `unifi_set_outlet_state` | Mutate | Set per-outlet relay state (on/off) and optionally cycle_enabled on a UniFi Smart Power PDU (UP6 / USP-Strip). |
 | `unifi_set_site_leds` | Mutate | Toggle all device LEDs site-wide on or off. |
 | `unifi_toggle_device` | Mutate | Enable or disable a device without unadopting it. |
 | `unifi_trigger_rf_scan` | Mutate | Trigger an RF spectrum scan on an access point. |
@@ -158,6 +161,24 @@ Always available, regardless of registration mode.
 - Network creation is disabled by default — requires `UNIFI_POLICY_NETWORK_NETWORKS_CREATE=true`
 - WLAN creation similarly requires `UNIFI_POLICY_NETWORK_WLANS_CREATE=true`
 - Networks and WLANs are related but separate: a WLAN connects to a network
+
+---
+
+## DNS Records
+
+Manage static DNS A/AAAA/CNAME/MX/TXT/NS/SRV records on the controller's local DNS resolver.
+
+<!-- AUTO:tools:dns -->
+5 tools.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `unifi_get_dns_record_details` | Read | Get details for a specific DNS record by ID. |
+| `unifi_list_dns_records` | Read | List all static DNS records configured on the controller. |
+| `unifi_create_dns_record` | Mutate | Create a new static DNS record. |
+| `unifi_delete_dns_record` | Mutate | Delete a static DNS record. |
+| `unifi_update_dns_record` | Mutate | Update an existing DNS record. |
+<!-- /AUTO:tools:dns -->
 
 ---
 

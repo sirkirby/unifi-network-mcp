@@ -1,5 +1,5 @@
 {
-  "count": 169,
+  "count": 171,
   "generated_by": "scripts/generate_tool_manifest.py",
   "module_map": {
     "unifi_adopt_device": "unifi_network_mcp.tools.devices",
@@ -70,6 +70,7 @@
     "unifi_get_network_health": "unifi_network_mcp.tools.system",
     "unifi_get_network_stats": "unifi_network_mcp.tools.stats",
     "unifi_get_oon_policy_details": "unifi_network_mcp.tools.oon",
+    "unifi_get_pdu_outlets": "unifi_network_mcp.tools.devices",
     "unifi_get_port_forward": "unifi_network_mcp.tools.port_forwards",
     "unifi_get_port_profile_details": "unifi_network_mcp.tools.switch",
     "unifi_get_port_stats": "unifi_network_mcp.tools.switch",
@@ -134,6 +135,7 @@
     "unifi_set_client_ip_settings": "unifi_network_mcp.tools.clients",
     "unifi_set_device_led": "unifi_network_mcp.tools.devices",
     "unifi_set_jumbo_frames": "unifi_network_mcp.tools.switch",
+    "unifi_set_outlet_state": "unifi_network_mcp.tools.devices",
     "unifi_set_site_leds": "unifi_network_mcp.tools.devices",
     "unifi_set_switch_port_profile": "unifi_network_mcp.tools.switch",
     "unifi_subscribe_events": "unifi_network_mcp.tools.events",
@@ -2133,6 +2135,28 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
+      "description": "Return per-outlet state for a UniFi Smart Power PDU (UP6 / USP-Strip). Combines the device's sensed outlet_table (live relay_state, cycle_enabled, has_relay, has_metering) with the controller's desired outlet_overrides so callers see both reported and intended state per outlet. Returns an error if the device is not a PDU.",
+      "name": "unifi_get_pdu_outlets",
+      "schema": {
+        "input": {
+          "properties": {
+            "mac_address": {
+              "description": "MAC address of the PDU, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='pdu')",
+              "type": "string"
+            }
+          },
+          "required": [
+            "mac_address"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Get a specific port forwarding rule by ID from your Unifi Network controller.",
       "name": "unifi_get_port_forward",
       "schema": {
@@ -3466,6 +3490,50 @@
           "required": [
             "device_mac",
             "enabled"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Set per-outlet relay state (on/off) and optionally cycle_enabled on a UniFi Smart Power PDU (UP6 / USP-Strip). The controller stores per-outlet desired state in the outlet_overrides array on the device document; this tool reads the existing array, replaces only the entry whose index matches outlet_index, and PUTs the full array back -- preserving all sibling outlets' overrides (name, relay_state, cycle_enabled) verbatim. If no override exists for the target outlet yet, one is created from the outlet's current sensed state. Use unifi_get_pdu_outlets first to inspect current state.",
+      "name": "unifi_set_outlet_state",
+      "permission_action": "update",
+      "permission_category": "devices",
+      "schema": {
+        "input": {
+          "properties": {
+            "confirm": {
+              "description": "When true, writes the change. When false (default), returns a preview",
+              "type": "boolean"
+            },
+            "cycle_enabled": {
+              "description": "Optional override for the per-outlet 'power cycle on power loss' toggle. Omit (null) to leave it unchanged.",
+              "type": "boolean"
+            },
+            "mac_address": {
+              "description": "MAC address of the PDU, in format AA:BB:CC:DD:EE:FF (from unifi_list_devices with device_type='pdu')",
+              "type": "string"
+            },
+            "outlet_index": {
+              "description": "1-based outlet index on the strip (e.g. 1..6 for UP6, 1..7 if a USB outlet group is present)",
+              "type": "integer"
+            },
+            "relay_state": {
+              "description": "Desired relay state for this outlet: true to power on, false to power off",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "mac_address",
+            "outlet_index",
+            "relay_state"
           ],
           "type": "object"
         }

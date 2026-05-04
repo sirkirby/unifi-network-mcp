@@ -150,3 +150,48 @@ async def get_device_radio(
         data = serializer.serialize(radio)
         hint = registry.render_hint_for_tool("unifi_get_device_radio")
     return {"data": data, "render_hint": hint}
+
+
+@router.get(
+    "/sites/{site_id}/devices/{mac}/outlets",
+    dependencies=[Depends(require_scope(Scope.READ))],
+    tags=["network/devices"],
+)
+async def get_pdu_outlets(
+    request: Request,
+    site_id: str,
+    mac: str,
+    controller=Depends(resolve_controller),
+) -> dict:
+    require_capability(controller, "network")
+    factory = request.app.state.manager_factory
+    sm = request.app.state.sessionmaker
+    try:
+        async with sm() as session:
+            mgr = await factory.get_domain_manager(
+                session, controller.id, "network", "device_manager",
+            )
+            cm = await factory.get_connection_manager(session, controller.id, "network")
+            if cm.site != site_id:
+                await cm.set_site(site_id)
+            outlets = await mgr.get_pdu_outlets(mac)
+    except UniFiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    if outlets is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"device {mac} is not a Smart Power PDU",
+        )
+
+    type_registry = request.app.state.type_registry
+    tool_type = type_registry.lookup_tool("unifi_get_pdu_outlets")
+    if tool_type is not None:
+        type_class, kind = tool_type
+        data = type_class.from_manager_output(outlets).to_dict()
+        hint = type_class.render_hint(kind)
+    else:
+        registry = request.app.state.serializer_registry
+        serializer = registry.serializer_for_tool("unifi_get_pdu_outlets")
+        data = serializer.serialize(outlets)
+        hint = registry.render_hint_for_tool("unifi_get_pdu_outlets")
+    return {"data": data, "render_hint": hint}

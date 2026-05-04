@@ -512,6 +512,163 @@ class DeviceManager:
             logger.error("Error setting disabled state on device %s: %s", device_mac, e)
             raise
 
+    @staticmethod
+    def _is_pdu(raw: Dict[str, Any]) -> bool:
+        """Return True if the raw device payload represents a Smart Power PDU.
+
+        Mirrors the classification used by ``unifi_list_devices`` so the same
+        devices the controller surfaces as ``device_category=pdu`` are accepted
+        here.
+        """
+        device_type = raw.get("type", "")
+        if device_type.startswith("usp"):
+            return True
+        if device_type.startswith("uap"):
+            is_ap = raw.get("is_access_point")
+            if is_ap is False:
+                return True
+            if is_ap is None:
+                model = (raw.get("model") or "").upper()
+                return any(model.startswith(p) for p in ("UP1", "UP6", "USP"))
+        return False
+
+    async def get_pdu_outlets(self, device_mac: str) -> Optional[Dict[str, Any]]:
+        """Return per-outlet state for a Smart Power PDU.
+
+        Combines the device's sensed ``outlet_table`` with the controller's
+        desired-state ``outlet_overrides`` so callers can see both what the
+        hardware reports and what the controller intends.
+
+        Returns ``None`` if the device exists but is not a PDU.
+
+        Raises:
+            UniFiNotFoundError: If the device does not exist.
+        """
+        device = await self.get_device_details(device_mac)  # raises on miss
+        if not self._is_pdu(device.raw):
+            return None
+
+        overrides_by_index: Dict[int, Dict[str, Any]] = {
+            int(o["index"]): o for o in device.raw.get("outlet_overrides", []) if "index" in o
+        }
+        outlets: List[Dict[str, Any]] = []
+        for outlet in device.raw.get("outlet_table", []):
+            index = outlet.get("index")
+            if index is None:
+                continue
+            override = overrides_by_index.get(int(index), {})
+            outlets.append(
+                {
+                    "index": int(index),
+                    "name": override.get("name") or outlet.get("name") or f"Outlet {index}",
+                    "has_relay": outlet.get("has_relay"),
+                    "has_metering": outlet.get("has_metering"),
+                    # Sensed (live) state from the strip itself
+                    "relay_state": outlet.get("relay_state"),
+                    "cycle_enabled": outlet.get("cycle_enabled"),
+                    # Controller desired state (only present when an override exists)
+                    "override_relay_state": override.get("relay_state"),
+                    "override_cycle_enabled": override.get("cycle_enabled"),
+                    "has_override": bool(override),
+                }
+            )
+
+        return {
+            "mac": device_mac,
+            "name": device.raw.get("name", device.raw.get("model", "Unknown")),
+            "model": device.raw.get("model", ""),
+            "outlets": outlets,
+        }
+
+    async def set_outlet_state(
+        self,
+        device_mac: str,
+        outlet_index: int,
+        relay_state: bool,
+        cycle_enabled: Optional[bool] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Set per-outlet relay / cycle state on a UP6 / USP-Strip PDU.
+
+        Preserves all other outlets' overrides verbatim -- only the entry whose
+        ``index`` matches ``outlet_index`` is modified. If no override exists
+        for that index yet, one is appended using the outlet's current
+        ``outlet_table`` entry as the seed.
+
+        Args:
+            device_mac: MAC address of the PDU.
+            outlet_index: 1-based outlet index.
+            relay_state: True to power the outlet on, False to power it off.
+            cycle_enabled: Optional override for the per-outlet "power cycle on
+                power loss" toggle. ``None`` keeps the current value.
+
+        Returns:
+            Dict describing the outlet that was modified, or ``None`` if the
+            device is not a PDU or has no outlet at that index.
+
+        Raises:
+            UniFiNotFoundError: If the device does not exist.
+        """
+        device = await self.get_device_details(device_mac)  # raises on miss
+        if not self._is_pdu(device.raw):
+            return None
+        if "_id" not in device.raw:
+            logger.error("Cannot set outlet state on %s: missing _id in raw payload.", device_mac)
+            return None
+        device_id = device.raw["_id"]
+
+        outlet_table = device.raw.get("outlet_table", [])
+        sensed = next(
+            (o for o in outlet_table if o.get("index") is not None and int(o["index"]) == outlet_index),
+            None,
+        )
+        if sensed is None:
+            logger.error("Outlet index %s not found on PDU %s.", outlet_index, device_mac)
+            return None
+
+        overrides: List[Dict[str, Any]] = copy.deepcopy(device.raw.get("outlet_overrides", []))
+
+        target = next(
+            (o for o in overrides if o.get("index") is not None and int(o["index"]) == outlet_index),
+            None,
+        )
+        if target is None:
+            target = {
+                "index": outlet_index,
+                "name": sensed.get("name") or f"Outlet {outlet_index}",
+                "relay_state": relay_state,
+                "cycle_enabled": (
+                    cycle_enabled if cycle_enabled is not None else bool(sensed.get("cycle_enabled", False))
+                ),
+            }
+            overrides.append(target)
+        else:
+            target["relay_state"] = relay_state
+            if cycle_enabled is not None:
+                target["cycle_enabled"] = cycle_enabled
+
+        api_request = ApiRequest(
+            method="put",
+            path=f"/rest/device/{device_id}",
+            data={"outlet_overrides": overrides},
+        )
+        await self._connection.request(api_request)
+        logger.info(
+            "Outlet %s on PDU %s set to relay_state=%s cycle_enabled=%s (preserved %d sibling overrides)",
+            outlet_index,
+            device_mac,
+            relay_state,
+            target.get("cycle_enabled"),
+            max(len(overrides) - 1, 0),
+        )
+        self._connection._invalidate_cache(CACHE_PREFIX_DEVICES)
+        return {
+            "outlet_index": outlet_index,
+            "name": target.get("name"),
+            "relay_state": target["relay_state"],
+            "cycle_enabled": target.get("cycle_enabled"),
+            "siblings_preserved": max(len(overrides) - 1, 0),
+        }
+
     async def set_site_led_enabled(self, enabled: bool) -> bool:
         """Toggle all device LEDs site-wide.
 

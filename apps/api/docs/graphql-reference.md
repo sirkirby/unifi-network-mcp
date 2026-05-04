@@ -792,6 +792,9 @@ type NetworkQuery {
   """Get LLDP neighbors reported by a switch."""
   lldpNeighbors(controller: ID!, deviceMac: ID!, site: String! = "default"): LldpNeighbors
 
+  """Get per-outlet state for a UniFi Smart Power PDU (UP6 / USP-Strip)."""
+  pduOutlets(controller: ID!, mac: ID!, site: String! = "default"): PduOutlets
+
   """List rogue (unknown) APs detected within a window (paginated)."""
   rogueAps(controller: ID!, site: String! = "default", withinHours: Int! = 24, limit: Int! = 50, cursor: String = null): RogueApPage!
 
@@ -1040,6 +1043,27 @@ type OonPolicy {
 type OonPolicyPage {
   items: [OonPolicy!]!
   nextCursor: String
+}
+
+"""A single outlet on a UniFi Smart Power PDU (UP6 / USP-Strip)."""
+type PduOutletEntry {
+  index: Int
+  name: String
+  hasRelay: Boolean
+  hasMetering: Boolean
+  relayState: Boolean
+  cycleEnabled: Boolean
+  overrideRelayState: Boolean
+  overrideCycleEnabled: Boolean
+  hasOverride: Boolean!
+}
+
+"""Wrapper dict containing per-outlet state for a Smart Power PDU."""
+type PduOutlets {
+  mac: ID
+  name: String
+  model: String
+  outlets: [PduOutletEntry!]!
 }
 
 """A UniFi Access policy (who-can-access-what binding)."""
@@ -1716,6 +1740,7 @@ Read-only access to UniFi Network resources.
 - `networks: NetworkPage!`  — List configured LAN/VLAN networks on the given controller/site (paginated).
 - `oonPolicies: OonPolicyPage!`  — List OON (out-of-network) policies (paginated).
 - `oonPolicy: OonPolicy`  — Look up a single OON policy by id.
+- `pduOutlets: PduOutlets`  — Get per-outlet state for a UniFi Smart Power PDU (UP6 / USP-Strip).
 - `portForward: PortForward`  — Look up a single port forward by id.
 - `portForwards: PortForwardPage!`  — List port forwards on the given controller/site (paginated).
 - `portProfile: PortProfile`  — Look up a single switch port profile by id.

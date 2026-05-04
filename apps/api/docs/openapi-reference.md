@@ -404,6 +404,18 @@ Fetch a user by listing then filtering — no native get_user method.
 
 **Returns:** `Detail_DeviceModel_`
 
+### `GET /v1/sites/{site_id}/devices/{mac}/outlets` — Get Pdu Outlets
+
+
+**Parameters:**
+
+- `site_id` (path) (required)
+- `mac` (path) (required)
+- `controller` (query)
+
+
+**Returns:** `object`
+
 ### `GET /v1/sites/{site_id}/devices/{mac}/radio` — Get Device Radio
 
 
