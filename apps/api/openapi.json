@@ -8404,6 +8404,77 @@
         ]
       }
     },
+    "/v1/sites/{site_id}/devices/{mac}/outlets": {
+      "get": {
+        "operationId": "get_pdu_outlets_v1_sites__site_id__devices__mac__outlets_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "site_id",
+            "required": true,
+            "schema": {
+              "title": "Site Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mac",
+            "required": true,
+            "schema": {
+              "title": "Mac",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Controller UUID; omit to use default",
+            "in": "query",
+            "name": "controller",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Controller UUID; omit to use default",
+              "title": "Controller"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Pdu Outlets V1 Sites  Site Id  Devices  Mac  Outlets Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Pdu Outlets",
+        "tags": [
+          "network/devices"
+        ]
+      }
+    },
     "/v1/sites/{site_id}/devices/{mac}/radio": {
       "get": {
         "operationId": "get_device_radio_v1_sites__site_id__devices__mac__radio_get",

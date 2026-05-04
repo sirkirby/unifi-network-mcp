@@ -36,6 +36,7 @@ from unifi_api.graphql.types.network.device import (
     DeviceRadio,
     KnownRogueAp,
     LldpNeighbors,
+    PduOutlets,
     RfScanResult,
     RogueAp,
     SpeedtestStatus,
@@ -225,6 +226,26 @@ async def _fetch_lldp_neighbors(
             if cm.site != site:
                 await cm.set_site(site)
             return await mgr.get_lldp_neighbors(device_mac)
+
+    return await ctx.cache.get_or_fetch(key, _do)
+
+
+async def _fetch_pdu_outlets(
+    ctx: GraphQLContext, controller: str, site: str, mac: str,
+) -> Any:
+    key = f"network/pdu-outlets/{controller}/{site}/{mac}"
+
+    async def _do() -> Any:
+        async with ctx.sessionmaker() as session:
+            mgr = await ctx.manager_factory.get_domain_manager(
+                session, controller, "network", "device_manager",
+            )
+            cm = await ctx.manager_factory.get_connection_manager(
+                session, controller, "network",
+            )
+            if cm.site != site:
+                await cm.set_site(site)
+            return await mgr.get_pdu_outlets(mac)
 
     return await ctx.cache.get_or_fetch(key, _do)
 
@@ -1774,6 +1795,23 @@ class NetworkQuery:
         if raw is None:
             return None
         return LldpNeighbors.from_manager_output(raw)
+
+    @strawberry.field(
+        permission_classes=[IsRead],
+        description="Get per-outlet state for a UniFi Smart Power PDU (UP6 / USP-Strip).",
+    )
+    async def pdu_outlets(
+        self,
+        info: Info,
+        controller: strawberry.ID,
+        mac: strawberry.ID,
+        site: str = "default",
+    ) -> PduOutlets | None:
+        ctx: GraphQLContext = info.context
+        raw = await _fetch_pdu_outlets(ctx, controller, site, mac)
+        if raw is None:
+            return None
+        return PduOutlets.from_manager_output(raw)
 
     @strawberry.field(
         permission_classes=[IsRead],

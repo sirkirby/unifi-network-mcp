@@ -64,6 +64,7 @@ from unifi_api.graphql.types.network.device import (
     DeviceRadio as NetworkDeviceRadioType,
     KnownRogueAp as NetworkKnownRogueApType,
     LldpNeighbors as NetworkLldpNeighborsType,
+    PduOutlets as NetworkPduOutletsType,
     RfScanResult as NetworkRfScanResultType,
     RogueAp as NetworkRogueApType,
     SpeedtestStatus as NetworkSpeedtestStatusType,
@@ -214,6 +215,7 @@ def build_type_registry() -> TypeRegistry:
     reg.register_tool_type(
         "unifi_get_speedtest_status", NetworkSpeedtestStatusType, "detail",
     )
+    reg.register_tool_type("unifi_get_pdu_outlets", NetworkPduOutletsType, "detail")
 
     # network/networks
     reg.register_type("network", "networks", NetworkNetworkType)

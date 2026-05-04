@@ -407,3 +407,67 @@ class SpeedtestStatus:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+@strawberry.type(description="A single outlet on a UniFi Smart Power PDU (UP6 / USP-Strip).")
+class PduOutletEntry:
+    index: int | None
+    name: str | None
+    has_relay: bool | None
+    has_metering: bool | None
+    relay_state: bool | None
+    cycle_enabled: bool | None
+    override_relay_state: bool | None
+    override_cycle_enabled: bool | None
+    has_override: bool
+
+    @classmethod
+    def from_manager_output(cls, r: Any) -> "PduOutletEntry":
+        return cls(
+            index=_get(r, "index"),
+            name=_get(r, "name"),
+            has_relay=_get(r, "has_relay"),
+            has_metering=_get(r, "has_metering"),
+            relay_state=_get(r, "relay_state"),
+            cycle_enabled=_get(r, "cycle_enabled"),
+            override_relay_state=_get(r, "override_relay_state"),
+            override_cycle_enabled=_get(r, "override_cycle_enabled"),
+            has_override=bool(_get(r, "has_override", False)),
+        )
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@strawberry.type(description="Wrapper dict containing per-outlet state for a Smart Power PDU.")
+class PduOutlets:
+    """Wrapper-dict shape: ``DeviceManager.get_pdu_outlets`` returns
+    ``{mac, name, model, outlets: [...]}`` combining sensed outlet_table with
+    desired outlet_overrides per outlet."""
+
+    mac: strawberry.ID | None
+    name: str | None
+    model: str | None
+    outlets: list[PduOutletEntry]
+
+    @classmethod
+    def render_hint(cls, kind: str) -> dict:
+        return {"kind": kind}
+
+    @classmethod
+    def from_manager_output(cls, obj: Any) -> "PduOutlets":
+        rows = _get(obj, "outlets", []) or []
+        return cls(
+            mac=_get(obj, "mac"),
+            name=_get(obj, "name"),
+            model=_get(obj, "model"),
+            outlets=[PduOutletEntry.from_manager_output(r) for r in rows],
+        )
+
+    def to_dict(self) -> dict:
+        return {
+            "mac": self.mac,
+            "name": self.name,
+            "model": self.model,
+            "outlets": [o.to_dict() for o in self.outlets],
+        }
