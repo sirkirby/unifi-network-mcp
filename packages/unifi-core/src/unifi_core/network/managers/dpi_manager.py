@@ -36,7 +36,7 @@ CACHE_PREFIX_DPI_CATEGORIES = "dpi_categories"
 class DpiManager:
     """Manages DPI application and category lookups via the official UniFi API."""
 
-    def __init__(self, connection_manager: ConnectionManager, auth: UniFiAuth):
+    def __init__(self, connection_manager: ConnectionManager, auth: UniFiAuth | None):
         self._connection = connection_manager
         self._auth = auth
 
@@ -50,8 +50,13 @@ class DpiManager:
         Returns:
             Response dict, or None on failure.
         """
-        if not self._auth.has_api_key:
-            logger.error("No API key configured. Set UNIFI_API_KEY or UNIFI_NETWORK_API_KEY.")
+        if self._auth is None or not self._auth.has_api_key:
+            logger.error(
+                "DPI integration API requires an API key. "
+                "Configure the controller with an API token (Settings → "
+                "Control Plane → Integrations) or set UNIFI_API_KEY / "
+                "UNIFI_NETWORK_API_KEY in the network MCP environment."
+            )
             return None
 
         base_url = f"https://{self._connection.host}:{self._connection.port}"

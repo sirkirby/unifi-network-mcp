@@ -309,7 +309,10 @@ async def test_list_dpi_applications_happy_path(tmp_path, monkeypatch) -> None:
     """
     monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
     app, key, cid = await _bootstrap(tmp_path)
-    _stub_connection(app, cid)
+    fake_cm = _stub_connection(app, cid)
+    # DPI route requires the cm to carry a UniFiAuth with an API key.
+    from unifi_core.auth import UniFiAuth
+    fake_cm.unifi_auth = UniFiAuth(api_key="test-token")
 
     wrapper = {
         "data": [
@@ -339,10 +342,36 @@ async def test_list_dpi_applications_happy_path(tmp_path, monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_list_dpi_applications_returns_501_when_no_api_token(
+    tmp_path, monkeypatch
+) -> None:
+    """When the controller has no API token, DPI must return 501 with a
+    clear `api_key_required` hint, not a silent empty list or 500."""
+    monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
+    app, key, cid = await _bootstrap(tmp_path)
+    fake_cm = _stub_connection(app, cid)
+    from unifi_core.auth import UniFiAuth
+    fake_cm.unifi_auth = UniFiAuth(api_key=None)  # explicit no-token
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get(
+            f"/v1/sites/default/dpi-applications?controller={cid}",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+    assert r.status_code == 501, r.text
+    detail = r.json()["detail"]
+    assert detail["kind"] == "api_key_required"
+    assert detail["missing"] == "controller_api_token"
+    assert detail["controller"] == cid
+
+
+@pytest.mark.asyncio
 async def test_list_dpi_categories_happy_path(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
     app, key, cid = await _bootstrap(tmp_path)
-    _stub_connection(app, cid)
+    fake_cm = _stub_connection(app, cid)
+    from unifi_core.auth import UniFiAuth
+    fake_cm.unifi_auth = UniFiAuth(api_key="test-token")
 
     wrapper = {
         "data": [

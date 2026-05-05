@@ -30,6 +30,36 @@ from unifi_api.services.pydantic_models import Page
 router = APIRouter()
 
 
+def _require_dpi_auth(cm: Any, controller_id: str) -> None:
+    """Raise 501 with a clear hint when the controller has no API token.
+
+    DPI lookups go through UniFi's integration API which requires a
+    bearer API key separate from the session-based auth used for
+    everything else. The api_token field on the controller record carries
+    it; when unset, the manager's `_request_integration_api` returns None
+    and the manager normalizes that to an empty wrapper — which would
+    silently look like 'no DPI apps found' rather than a configuration
+    issue. Surface the actual cause instead.
+    """
+    auth = getattr(cm, "unifi_auth", None)
+    if auth is None or not auth.has_api_key:
+        raise HTTPException(
+            status_code=501,
+            detail={
+                "kind": "api_key_required",
+                "missing": "controller_api_token",
+                "controller": controller_id,
+                "hint": (
+                    "The DPI integration endpoint requires a UniFi API "
+                    "token. Add one via Settings → Control Plane → "
+                    "Integrations on the controller, then update this "
+                    "controller via PATCH /v1/controllers/{id} (or the "
+                    "Controllers tab in the admin UI) with the token."
+                ),
+            },
+        )
+
+
 def _id_key(obj) -> tuple:
     """Sort by id; treats `None` (missing) as `0` so present 0s order naturally."""
     raw = obj if isinstance(obj, dict) else getattr(obj, "raw", {}) or {}
@@ -81,6 +111,7 @@ async def list_dpi_applications(
             session, controller.id, "network", "dpi_manager",
         )
         cm = await factory.get_connection_manager(session, controller.id, "network")
+        _require_dpi_auth(cm, controller.id)
         if cm.site != site_id:
             await cm.set_site(site_id)
         # Manager returns the integration-API wrapper. Ask for a wide page so
@@ -131,6 +162,7 @@ async def list_dpi_categories(
             session, controller.id, "network", "dpi_manager",
         )
         cm = await factory.get_connection_manager(session, controller.id, "network")
+        _require_dpi_auth(cm, controller.id)
         if cm.site != site_id:
             await cm.set_site(site_id)
         result = await mgr.get_dpi_categories(limit=500, offset=0)

@@ -72,10 +72,11 @@ def _build_network_managers() -> dict[str, Callable[[Any], Any]]:
         "content_filter_manager": lambda cm: ContentFilterManager(cm),
         "device_manager": lambda cm: DeviceManager(cm),
         "dns_manager": lambda cm: DnsManager(cm),
-        # DpiManager takes (cm, auth) — we pass None for auth here; tools
-        # that require auth will fail at call time. Action dispatcher path
-        # is for managers that work with bare connection. Tracked for Task 13.
-        "dpi_manager": lambda cm: DpiManager(cm, None),
+        # DpiManager takes (cm, auth). The connection manager carries a
+        # UniFiAuth instance (see _construct_connection_manager); when no
+        # API token is configured for the controller, the auth is unset
+        # internally and DpiManager returns None with a clear log line.
+        "dpi_manager": lambda cm: DpiManager(cm, getattr(cm, "unifi_auth", None)),
         "event_manager": lambda cm: EventManager(cm),
         "firewall_manager": lambda cm: FirewallManager(cm),
         "hotspot_manager": lambda cm: HotspotManager(cm),
@@ -207,6 +208,7 @@ class ManagerFactory:
         # failure, network error, etc.) the exception propagates so callers
         # see a clear error instead of a hang.
         if product == "network":
+            from unifi_core.auth import UniFiAuth
             from unifi_core.network.managers.connection_manager import (
                 ConnectionManager as NetCM,
             )
@@ -218,6 +220,12 @@ class ManagerFactory:
                 port=port,
                 verify_ssl=controller.verify_tls,
             )
+            # Stash a UniFiAuth carrying the controller's API token (if any)
+            # so managers that hit the official integration API (DPI today,
+            # potentially others later) can authenticate. None when the
+            # operator hasn't provided a token; consuming managers handle
+            # that case with a clear error rather than crashing.
+            cm.unifi_auth = UniFiAuth(api_key=creds.get("api_token") or None)
             await cm.initialize()
             return cm
         if product == "protect":
