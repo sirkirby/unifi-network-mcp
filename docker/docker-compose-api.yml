@@ -3,7 +3,11 @@
 # Independent of docker/docker-compose.yml (which stands up the 3 MCP servers).
 # These two compose files can run side-by-side or independently.
 #
-# Quick start (from the repo root):
+# Recommended usage: run `./scripts/start-api.sh` from the repo root. It
+# wraps `docker compose ... up --build -d` plus the post-boot key
+# retrieval and prints the admin URL + key in one shot.
+#
+# Manual equivalent (if you'd rather not use the wrapper):
 #   docker compose -f docker/docker-compose-api.yml up --build -d
 #   docker compose -f docker/docker-compose-api.yml exec \
 #     unifi-api-server cat /var/lib/unifi-api/bootstrap-admin-key

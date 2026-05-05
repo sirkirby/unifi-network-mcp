@@ -6,45 +6,42 @@ read access to UniFi Network, Protect, and Access without speaking MCP.
 
 ## Quickstart
 
-Two paths — pick the one that matches what you have. Both end at the same
-admin login URL with the same key-retrieval recipe. **No `UNIFI_API_DB_KEY` to
-generate, no `.env` file required.** The disk-encryption key and the
-bootstrap admin API key are both auto-generated on first boot and persisted
-inside the container's named volume.
+Two paths — pick the one that matches what you have. Both end with the admin
+URL and the bootstrap key printed in your terminal so you can paste and sign
+in. **No `UNIFI_API_DB_KEY` to generate, no `.env` file, no `docker exec`
+incantations.** The disk-encryption key and the bootstrap admin API key are
+both auto-generated on first boot and persisted inside the container's
+named volume.
 
-### A. Public image (just want to use it)
-
-```bash
-# 1. Start the container. Listens on localhost:8080.
-docker run -d \
-  --name unifi-api-server \
-  -p 8080:8080 \
-  -v unifi-api-state:/var/lib/unifi-api \
-  ghcr.io/sirkirby/unifi-api-server:latest
-
-# 2. Grab the bootstrap admin API key.
-docker exec unifi-api-server cat /var/lib/unifi-api/bootstrap-admin-key
-
-# 3. Open the admin UI and paste the key:
-#    http://localhost:8080/admin/login
-```
-
-### B. Local clone (developing or testing changes)
+### A. Local clone (developing or testing changes)
 
 Uses [`docker/docker-compose-api.yml`](../../docker/docker-compose-api.yml),
 which builds from source and exposes the API on `localhost:8089`.
 
 ```bash
-# 1. Build and start (run from the repo root).
-docker compose -f docker/docker-compose-api.yml up --build -d
-
-# 2. Grab the bootstrap admin API key.
-docker compose -f docker/docker-compose-api.yml exec \
-  unifi-api-server cat /var/lib/unifi-api/bootstrap-admin-key
-
-# 3. Open the admin UI and paste the key:
-#    http://localhost:8089/admin/login
+./scripts/start-api.sh
 ```
+
+That's the whole thing. The script builds, starts, waits for first-boot
+bootstrap + HTTP readiness, then prints the URL and the key. Paste the key
+into <http://localhost:8089/admin/login> and you're in.
+
+### B. Public image (just want to use it)
+
+```bash
+docker run -d --name unifi-api-server -p 8080:8080 \
+  -v unifi-api-state:/var/lib/unifi-api \
+  ghcr.io/sirkirby/unifi-api-server:latest && \
+  until docker exec unifi-api-server \
+    test -f /var/lib/unifi-api/bootstrap-admin-key 2>/dev/null; \
+    do sleep 1; done && \
+  echo "" && \
+  echo "Admin UI:  http://localhost:8080/admin/login" && \
+  echo "Admin key: $(docker exec unifi-api-server cat /var/lib/unifi-api/bootstrap-admin-key)"
+```
+
+Paste that whole block into a terminal. It starts the container, waits for
+first-boot, and prints the URL and key. Open the URL, paste the key, sign in.
 
 ### What's next
 
