@@ -8,6 +8,16 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+# Product libraries are imported by `unifi_core/{network,protect,access}/`
+# manager modules. They live here as extras (rather than required deps or
+# in each consumer's pyproject) so consumers can opt in to the products
+# they need and can't accidentally forget to install one — that failure
+# mode hit prod historically. Versions floor at the lowest tested.
+[project.optional-dependencies]
+network = ["aiounifi>=88"]
+protect = ["uiprotect>=6.0.0"]
+access = ["py-unifi-access>=1.1.1"]
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",

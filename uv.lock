@@ -1886,11 +1886,10 @@ dependencies = [
     { name = "jsonschema" },
     { name = "mcp", extra = ["cli"] },
     { name = "omegaconf" },
-    { name = "py-unifi-access" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "typing-extensions" },
-    { name = "unifi-core" },
+    { name = "unifi-core", extra = ["access"] },
     { name = "unifi-mcp-shared" },
 ]
 
@@ -1910,11 +1909,10 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4.17.0" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.26.0,<2" },
     { name = "omegaconf", specifier = ">=2.3.0" },
-    { name = "py-unifi-access", specifier = ">=1.1.1" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "typing-extensions", specifier = ">=4.4.0" },
-    { name = "unifi-core", editable = "packages/unifi-core" },
+    { name = "unifi-core", extras = ["access"], editable = "packages/unifi-core" },
     { name = "unifi-mcp-shared", editable = "packages/unifi-mcp-shared" },
 ]
 
@@ -1933,22 +1931,19 @@ name = "unifi-api-server"
 source = { editable = "apps/api" }
 dependencies = [
     { name = "aiosqlite" },
-    { name = "aiounifi" },
     { name = "alembic" },
     { name = "argon2-cffi" },
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "jinja2" },
     { name = "omegaconf" },
-    { name = "py-unifi-access" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "strawberry-graphql", extra = ["fastapi"] },
     { name = "typer" },
-    { name = "uiprotect" },
-    { name = "unifi-core" },
+    { name = "unifi-core", extra = ["access", "network", "protect"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -1963,22 +1958,19 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.20.0" },
-    { name = "aiounifi", specifier = ">=88" },
     { name = "alembic", specifier = ">=1.14.0" },
     { name = "argon2-cffi", specifier = ">=23.1.0" },
     { name = "cryptography", specifier = ">=42.0.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "omegaconf", specifier = ">=2.3.0" },
-    { name = "py-unifi-access", specifier = ">=1.1.1" },
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
     { name = "strawberry-graphql", extras = ["fastapi"], specifier = ">=0.310.0,<0.320.0" },
     { name = "typer", specifier = ">=0.13.0" },
-    { name = "uiprotect", specifier = ">=6.0.0" },
-    { name = "unifi-core", editable = "packages/unifi-core" },
+    { name = "unifi-core", extras = ["access", "network", "protect"], editable = "packages/unifi-core" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
 ]
 
@@ -1998,6 +1990,17 @@ dependencies = [
     { name = "pyyaml" },
 ]
 
+[package.optional-dependencies]
+access = [
+    { name = "py-unifi-access" },
+]
+network = [
+    { name = "aiounifi" },
+]
+protect = [
+    { name = "uiprotect" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "aioresponses" },
@@ -2008,8 +2011,12 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.13.4" },
+    { name = "aiounifi", marker = "extra == 'network'", specifier = ">=88" },
+    { name = "py-unifi-access", marker = "extra == 'access'", specifier = ">=1.1.1" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "uiprotect", marker = "extra == 'protect'", specifier = ">=6.0.0" },
 ]
+provides-extras = ["access", "network", "protect"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -2098,14 +2105,13 @@ name = "unifi-network-mcp"
 source = { editable = "apps/network" }
 dependencies = [
     { name = "aiohttp" },
-    { name = "aiounifi" },
     { name = "jsonschema" },
     { name = "mcp", extra = ["cli"] },
     { name = "omegaconf" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "typing-extensions" },
-    { name = "unifi-core" },
+    { name = "unifi-core", extra = ["network"] },
     { name = "unifi-mcp-shared" },
 ]
 
@@ -2122,14 +2128,13 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.13.4" },
-    { name = "aiounifi", specifier = ">=88" },
     { name = "jsonschema", specifier = ">=4.17.0" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.26.0,<2" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "typing-extensions", specifier = ">=4.4.0" },
-    { name = "unifi-core", editable = "packages/unifi-core" },
+    { name = "unifi-core", extras = ["network"], editable = "packages/unifi-core" },
     { name = "unifi-mcp-shared", editable = "packages/unifi-mcp-shared" },
 ]
 
@@ -2154,8 +2159,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "typing-extensions" },
-    { name = "uiprotect" },
-    { name = "unifi-core" },
+    { name = "unifi-core", extra = ["protect"] },
     { name = "unifi-mcp-shared" },
 ]
 
@@ -2178,8 +2182,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "typing-extensions", specifier = ">=4.4.0" },
-    { name = "uiprotect", specifier = ">=6.0.0" },
-    { name = "unifi-core", editable = "packages/unifi-core" },
+    { name = "unifi-core", extras = ["protect"], editable = "packages/unifi-core" },
     { name = "unifi-mcp-shared", editable = "packages/unifi-mcp-shared" },
 ]
 

@@ -5,14 +5,10 @@ description = "UniFi rich HTTP API service"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "unifi-core>=0.2,<0.3",
-    # Product-library runtime deps. unifi-core imports these from inside
-    # network/protect/access manager modules, so any consumer of unifi-core
-    # that registers controllers across all three products has to declare
-    # them. Versions kept in sync with apps/{network,protect,access}.
-    "aiounifi>=88",
-    "uiprotect>=6.0.0",
-    "py-unifi-access>=1.1.1",
+    # API server registers controllers across all three products, so it
+    # needs every product extra. unifi-core's optional extras pull in
+    # aiounifi / uiprotect / py-unifi-access transparently.
+    "unifi-core[network,protect,access]>=0.2,<0.3",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
     "sqlalchemy[asyncio]>=2.0.36",

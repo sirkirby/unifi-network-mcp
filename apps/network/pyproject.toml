@@ -6,10 +6,12 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "unifi-mcp-shared>=0.4,<0.5",
-    "unifi-core>=0.2,<0.3",
+    # Network managers in unifi-core import aiounifi; pull it in via the
+    # [network] extra rather than declaring aiounifi here directly so
+    # there's one source of truth.
+    "unifi-core[network]>=0.2,<0.3",
     "mcp[cli]>=1.26.0,<2",
     "aiohttp>=3.13.4",
-    "aiounifi>=88",
     "pyyaml>=6.0",
     "python-dotenv>=1.2.2",
     "omegaconf>=2.3.0",
