@@ -1933,18 +1933,21 @@ name = "unifi-api-server"
 source = { editable = "apps/api" }
 dependencies = [
     { name = "aiosqlite" },
+    { name = "aiounifi" },
     { name = "alembic" },
     { name = "argon2-cffi" },
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "jinja2" },
     { name = "omegaconf" },
+    { name = "py-unifi-access" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "strawberry-graphql", extra = ["fastapi"] },
     { name = "typer" },
+    { name = "uiprotect" },
     { name = "unifi-core" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -1960,18 +1963,21 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.20.0" },
+    { name = "aiounifi", specifier = ">=88" },
     { name = "alembic", specifier = ">=1.14.0" },
     { name = "argon2-cffi", specifier = ">=23.1.0" },
     { name = "cryptography", specifier = ">=42.0.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "omegaconf", specifier = ">=2.3.0" },
+    { name = "py-unifi-access", specifier = ">=1.1.1" },
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
     { name = "strawberry-graphql", extras = ["fastapi"], specifier = ">=0.310.0,<0.320.0" },
     { name = "typer", specifier = ">=0.13.0" },
+    { name = "uiprotect", specifier = ">=6.0.0" },
     { name = "unifi-core", editable = "packages/unifi-core" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
 ]
