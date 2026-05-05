@@ -4383,6 +4383,13 @@
         "title": "WlanModel",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "description": "Paste your admin / write / read scoped API key (starts with `unifi_live_\u2026` or `unifi_test_\u2026`). Click 'Authorize' once and Swagger UI will send the Bearer header on every request.",
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
@@ -16206,5 +16213,10 @@
         "summary": "Stream Protect Events"
       }
     }
-  }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ]
 }
