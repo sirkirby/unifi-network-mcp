@@ -4,6 +4,7 @@ Tests the integration between ConnectionManager and aiounifi library to verify
 that path overrides work correctly when making actual API requests.
 """
 
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -190,8 +191,12 @@ class TestPathInterception:
                 detection_called.append(True)
                 return None
 
-            # Patch both the environment variable and the detection function
-            with patch("unifi_network_mcp.bootstrap.UNIFI_CONTROLLER_TYPE", "proxy"):
+            # Patch the env var (read by resolve_controller_type) and the
+            # detection function. Previously this patched a module-level
+            # constant in unifi_network_mcp.bootstrap, but connection_manager
+            # now reads via unifi_core.network.controller_type.resolve_controller_type
+            # which calls os.getenv on each invocation.
+            with patch.dict(os.environ, {"UNIFI_CONTROLLER_TYPE": "proxy"}):
                 with patch(
                     "unifi_core.network.managers.connection_manager.detect_unifi_os_proactively",
                     mock_detect,
@@ -253,8 +258,9 @@ class TestPathInterception:
                 detection_called.append(True)
                 return None
 
-            # Patch both the environment variable and the detection function
-            with patch("unifi_network_mcp.bootstrap.UNIFI_CONTROLLER_TYPE", "direct"):
+            # See note on the proxy variant above — patch the env var, not
+            # the now-stale module-level constant.
+            with patch.dict(os.environ, {"UNIFI_CONTROLLER_TYPE": "direct"}):
                 with patch(
                     "unifi_core.network.managers.connection_manager.detect_unifi_os_proactively",
                     mock_detect,
