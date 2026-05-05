@@ -85,7 +85,7 @@ jobs:
         run: uv build --package unifi-api-server --wheel
 
       - name: Upload wheel artifact (for github-release job)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheel
           path: dist/*.whl
@@ -173,7 +173,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: wheel
           path: dist/
