@@ -167,14 +167,31 @@ def create_app(config: ApiConfig) -> FastAPI:
                             session, controller.id, product, "event_manager",
                         )
                     if hasattr(mgr, "start_listening"):
-                        await mgr.start_listening()
-                        _streams_log.info(
-                            "[streams] start_listening ok for %s/%s",
-                            controller.id, product,
+                        # Background-launch: aiounifi's start_websocket awaits
+                        # its own message loop, so awaiting here blocks the
+                        # whole lifespan. The WS subscription is best-effort
+                        # warm-up for SSE consumers; failing it must not
+                        # delay HTTP readiness.
+                        async def _bg_start(c_id: str, p: str, m=mgr) -> None:
+                            try:
+                                await m.start_listening()
+                                _streams_log.info(
+                                    "[streams] start_listening ok for %s/%s",
+                                    c_id, p,
+                                )
+                            except Exception:
+                                _streams_log.warning(
+                                    "[streams] start_listening failed for %s/%s",
+                                    c_id, p, exc_info=True,
+                                )
+
+                        asyncio.create_task(
+                            _bg_start(controller.id, product),
+                            name=f"start_listening:{controller.id}/{product}",
                         )
                 except Exception:
                     _streams_log.warning(
-                        "[streams] start_listening failed for %s/%s",
+                        "[streams] start_listening setup failed for %s/%s",
                         controller.id, product, exc_info=True,
                     )
 
