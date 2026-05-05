@@ -197,6 +197,33 @@ uv run --package unifi-api-server python -m unifi_api.graphql.docgen
 The full project quality gate runs `make pre-commit` (lint + format + sync-skills
 + tests) at the repo root.
 
+### Image-level smoke harness
+
+`scripts/live_api_smoke.py` boots the API in-process via `ASGITransport`,
+which means it cannot detect dep-closure bugs that only manifest in the
+published Docker image (e.g. a missing runtime dependency that gets
+masked by a `uv sync --all-packages` workspace). For that, use
+`scripts/smoke-api-image.sh`:
+
+```bash
+# Optionally point at a real controller so authenticated paths get tested.
+# Without these env vars the sweep still verifies first-boot, auth, and
+# the capability_mismatch / api_key_required error paths.
+export UNIFI_HOST=10.0.0.1
+export UNIFI_USERNAME=svc
+export UNIFI_PASSWORD=...
+export UNIFI_API_TOKEN=...   # optional; required for DPI to return 200
+
+./scripts/smoke-api-image.sh
+```
+
+The script wipes any existing state, rebuilds the image, brings it up,
+registers a controller (when env vars are set), runs
+`scripts/api_image_smoke.py` against every GET endpoint in the schema,
+and fails on any 5xx or network error. Tears down on exit.
+
+This is the harness that should run on every release tag.
+
 ## License
 
 See the repository root [LICENSE](../../LICENSE) file. MIT License, © 2025 Chris Kirby.
