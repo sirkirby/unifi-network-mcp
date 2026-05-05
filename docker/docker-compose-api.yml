@@ -1,27 +1,26 @@
 # Local-dev compose for unifi-api-server.
 #
 # Independent of docker/docker-compose.yml (which stands up the 3 MCP servers).
-# These two compose files can run side-by-side or independently — neither
-# project depends on the other being running.
+# These two compose files can run side-by-side or independently.
 #
-# Usage:
-#   cd docker/
-#   docker compose -f docker-compose-api.yml up --build -d
-#   docker logs unifi-api-server | grep "Initial admin API key"
-#   open http://localhost:8089/v1/docs
+# Quick start (from the repo root):
+#   docker compose -f docker/docker-compose-api.yml up --build -d
+#   docker compose -f docker/docker-compose-api.yml exec \
+#     unifi-api-server cat /var/lib/unifi-api/bootstrap-admin-key
+#   open http://localhost:8089/admin/login
 #
-# State (controller registrations, audit log, admin keys) persists in the
-# named volume `unifi-api-state`. `docker compose down` keeps the volume;
-# `docker compose down -v` wipes it for a clean slate.
+# Both the disk-encryption key (UNIFI_API_DB_KEY) and the bootstrap admin
+# API key are generated on first boot and persisted inside the
+# `unifi-api-state` named volume. No `.env` file or shell exports required
+# for local development.
 #
-# First boot:
-#   - migrate runs, DB created, admin key emitted to logs (save it)
-#   - serve starts, listening on 0.0.0.0:8080 inside the container
-#   - register controllers via POST /v1/controllers or the admin UI at /admin/
+# Production / shared deployments: set UNIFI_API_DB_KEY explicitly via env
+# var or a secret manager. When set, the file-backed fallback is skipped
+# entirely.
 #
-# Bootstrap-from-env (env-driven controller seeding) is a Phase 9 candidate —
-# tracked at https://github.com/sirkirby/unifi-mcp/issues  (TBD on issue
-# creation). For now, controllers are registered post-boot via REST or UI.
+# Wipe and re-bootstrap (regenerates DB key, admin key, registered
+# controllers, audit log):
+#   docker compose -f docker/docker-compose-api.yml down -v
 
 services:
   unifi-api-server:
@@ -34,10 +33,6 @@ services:
       - "8089:8080"
     volumes:
       - unifi-api-state:/var/lib/unifi-api
-    environment:
-      # Required — encrypts controller credentials in the state DB.
-      # Generate once with: openssl rand -hex 32
-      - UNIFI_API_DB_KEY=${UNIFI_API_DB_KEY:?DB encryption key required (set in ../.env)}
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/v1/health"]
       interval: 30s

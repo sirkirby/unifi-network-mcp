@@ -4,7 +4,76 @@ REST + GraphQL HTTP API for UniFi controllers — a standalone HTTP service for
 desktop apps, web dashboards, Pi extensions, and any consumer that wants typed
 read access to UniFi Network, Protect, and Access without speaking MCP.
 
-## Quick start
+## Quickstart
+
+Two paths — pick the one that matches what you have. Both end at the same
+admin login URL with the same key-retrieval recipe. **No `UNIFI_API_DB_KEY` to
+generate, no `.env` file required.** The disk-encryption key and the
+bootstrap admin API key are both auto-generated on first boot and persisted
+inside the container's named volume.
+
+### A. Public image (just want to use it)
+
+```bash
+# 1. Start the container. Listens on localhost:8080.
+docker run -d \
+  --name unifi-api-server \
+  -p 8080:8080 \
+  -v unifi-api-state:/var/lib/unifi-api \
+  ghcr.io/sirkirby/unifi-api-server:latest
+
+# 2. Grab the bootstrap admin API key.
+docker exec unifi-api-server cat /var/lib/unifi-api/bootstrap-admin-key
+
+# 3. Open the admin UI and paste the key:
+#    http://localhost:8080/admin/login
+```
+
+### B. Local clone (developing or testing changes)
+
+Uses [`docker/docker-compose-api.yml`](../../docker/docker-compose-api.yml),
+which builds from source and exposes the API on `localhost:8089`.
+
+```bash
+# 1. Build and start (run from the repo root).
+docker compose -f docker/docker-compose-api.yml up --build -d
+
+# 2. Grab the bootstrap admin API key.
+docker compose -f docker/docker-compose-api.yml exec \
+  unifi-api-server cat /var/lib/unifi-api/bootstrap-admin-key
+
+# 3. Open the admin UI and paste the key:
+#    http://localhost:8089/admin/login
+```
+
+### What's next
+
+Once you're signed in:
+
+- **Register a controller** via the **Controllers** tab (or `POST /v1/controllers`).
+- **Mint your own keys** via the **Keys** tab — pick `read`, `write`, or `admin`
+  scope per consumer. Once you have a personal key saved, revoke
+  `bootstrap-admin` and delete `/var/lib/unifi-api/bootstrap-admin-key`.
+- **Explore the APIs:**
+  - REST playground: `/v1/docs`
+  - GraphQL playground: `/v1/graphql`
+  - OpenAPI spec: `/v1/openapi.json`
+  - Health: `/v1/health`
+
+First GraphQL query:
+
+```bash
+curl -s http://localhost:8089/v1/graphql \
+  -H "Authorization: Bearer $ADMIN_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ network { clients(controller: \"<id>\") { items { mac hostname } } } }"}'
+```
+
+### Production deployments
+
+For shared / production deployments, set `UNIFI_API_DB_KEY` explicitly (e.g.
+from a secret manager) so the encryption key lives outside the container
+volume:
 
 ```bash
 docker run -d \
@@ -13,28 +82,26 @@ docker run -d \
   -e UNIFI_API_DB_KEY=$(openssl rand -hex 32) \
   -v unifi-api-state:/var/lib/unifi-api \
   ghcr.io/sirkirby/unifi-api-server:latest
-
-# Save the admin key shown in the logs.
-docker logs unifi-api-server | grep "Initial admin API key"
 ```
 
-Once running:
-- REST playground: <http://localhost:8080/v1/docs>
-- GraphQL playground: <http://localhost:8080/v1/graphql>
-- OpenAPI spec: <http://localhost:8080/v1/openapi.json>
-- Health: <http://localhost:8080/v1/health>
+When the env var is set, the file-backed fallback is skipped entirely.
 
-First GraphQL query:
+### Reset / lost-key recovery
+
+State (controllers, audit log, admin keys, both encryption and bootstrap key
+files) lives in the `unifi-api-state` volume. `docker compose down` keeps it;
+`docker compose down -v` wipes for a fresh bootstrap.
+
+If you lose the bootstrap admin key file *and* never saved a personal admin
+key, the simplest recovery is to wipe and re-bootstrap:
 
 ```bash
-curl -s http://localhost:8080/v1/graphql \
-  -H "Authorization: Bearer $ADMIN_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"query":"{ network { clients(controller: \"<id>\") { items { mac hostname } } } }"}'
+docker compose -f docker/docker-compose-api.yml down -v
+docker compose -f docker/docker-compose-api.yml up --build -d
 ```
 
-You can register controllers via the admin UI at `/admin/` or the REST endpoint
-`POST /v1/controllers` once you have the admin key.
+Note that wiping also drops registered controller credentials, since they
+were encrypted with the now-discarded DB key.
 
 ## Architecture
 
@@ -70,7 +137,7 @@ standard local install; override only what you need.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `UNIFI_API_DB_KEY` | _(required)_ | Encrypts controller credentials in the state DB. Generate once: `openssl rand -hex 32` |
+| `UNIFI_API_DB_KEY` | _auto-generated on first boot_ | Encrypts controller credentials at rest. Auto-generated and persisted to `<state_dir>/.db_encryption_key` if unset. **Not a login credential** — set explicitly in production via secret manager so the key lives outside the volume. |
 | `UNIFI_API_STATE_DIR` | `/var/lib/unifi-api` | Where the SQLite state DB lives |
 | `UNIFI_API_HTTP_HOST` | `127.0.0.1` | Bind address (set to `0.0.0.0` for non-localhost access) |
 | `UNIFI_API_HTTP_PORT` | `8080` | Listen port |

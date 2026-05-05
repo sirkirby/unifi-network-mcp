@@ -7,7 +7,7 @@ from pathlib import Path
 import typer
 import uvicorn
 
-from unifi_api.config import load_config
+from unifi_api.config import ensure_db_encryption_key, load_config
 from unifi_api.logging import configure_logging
 from unifi_api.server import create_app
 
@@ -33,6 +33,7 @@ def serve(
     """Start the HTTP server."""
     cfg = load_config(config_path)
     configure_logging(cfg.logging.level)
+    ensure_db_encryption_key(cfg.db.path)
     app_instance = create_app(cfg)
     uvicorn.run(app_instance, host=host or cfg.http.host, port=port or cfg.http.port, log_config=None)
 
@@ -56,10 +57,7 @@ def migrate(
     from unifi_api.db.session import get_sessionmaker
 
     cfg = load_config(config_path)
-    db_key = os.environ.get("UNIFI_API_DB_KEY")
-    if not db_key:
-        typer.echo("UNIFI_API_DB_KEY environment variable is required", err=True)
-        raise typer.Exit(code=2)
+    ensure_db_encryption_key(cfg.db.path)
 
     env = dict(os.environ)
     env["UNIFI_API_DB_PATH"] = cfg.db.path
@@ -95,9 +93,30 @@ def migrate(
 
     plaintext = asyncio.run(_maybe_bootstrap())
     if plaintext:
+        bootstrap_file = Path(cfg.db.path).parent / "bootstrap-admin-key"
+        try:
+            bootstrap_file.parent.mkdir(parents=True, exist_ok=True)
+            bootstrap_file.write_text(plaintext, encoding="utf-8")
+            bootstrap_file.chmod(0o600)
+        except OSError:
+            bootstrap_file = None  # best-effort; log line is still authoritative
         typer.echo("=" * 60)
         typer.echo("Initial admin API key (shown once, save it now):")
         typer.echo(plaintext)
+        if bootstrap_file is not None:
+            typer.echo("")
+            typer.echo(f"Also written to: {bootstrap_file}")
+            typer.echo("Retrieve later with:")
+            typer.echo(
+                "  docker compose -f docker/docker-compose-api.yml exec \\"
+            )
+            typer.echo(
+                f"    unifi-api-server cat {bootstrap_file}"
+            )
+            typer.echo(
+                "Delete this file once you've saved the key in your "
+                "password manager."
+            )
         typer.echo("=" * 60)
 
 
@@ -110,7 +129,6 @@ def keys_create(
 ) -> None:
     """Create a new API key. Prints the plaintext exactly once."""
     import asyncio
-    import os
     import uuid
     from datetime import datetime, timezone
 
@@ -120,9 +138,7 @@ def keys_create(
     from unifi_api.db.session import get_sessionmaker
 
     cfg = load_config(config_path)
-    if not os.environ.get("UNIFI_API_DB_KEY"):
-        typer.echo("UNIFI_API_DB_KEY required", err=True)
-        raise typer.Exit(2)
+    ensure_db_encryption_key(cfg.db.path)
 
     async def _create() -> str:
         engine = create_engine(cfg.db.path)

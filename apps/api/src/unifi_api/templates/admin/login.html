@@ -1,10 +1,10 @@
 {% extends "_layout.html" %}
 {% block title %}Sign in — unifi-api admin{% endblock %}
 {% block content %}
-<article style="max-width: 28rem; margin: 4rem auto;">
+<article style="max-width: 32rem; margin: 4rem auto;">
   <header>
     <h2>Sign in</h2>
-    <p>Paste your admin-scoped Bearer key.</p>
+    <p>Paste your admin API key — the <code>unifi_live_…</code> string emitted by the server on first boot.</p>
   </header>
   <form id="login-form" method="post" action="/admin/login">
     <label for="key">Admin API key</label>
@@ -12,6 +12,12 @@
     <p id="login-error" class="error" hidden></p>
     <button type="submit">Sign in</button>
   </form>
+  <footer style="font-size: 0.85em; opacity: 0.75; margin-top: 1rem;">
+    <p style="margin: 0;">Lost it? Retrieve from the container:</p>
+    <pre style="margin: 0.25rem 0; padding: 0.5rem; overflow-x: auto;"><code>docker compose -f docker/docker-compose-api.yml exec \
+  unifi-api-server cat /var/lib/unifi-api/bootstrap-admin-key</code></pre>
+    <p style="margin: 0.5rem 0 0 0;">This is the admin API key, <strong>not</strong> the <code>UNIFI_API_DB_KEY</code> encryption key.</p>
+  </footer>
 </article>
 
 {% if bootstrap_key %}
