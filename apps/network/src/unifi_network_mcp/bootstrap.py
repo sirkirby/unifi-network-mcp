@@ -93,19 +93,16 @@ def load_config(path_override: str | Path | None = None):
 # Controller Type Configuration
 # ---------------------------------------------------------------------------
 
-# Controller type determines API path structure
-# Valid values: "auto" (detect), "proxy" (UniFi OS), "direct" (standard)
-VALID_CONTROLLER_TYPES = {"auto", "proxy", "direct"}
-UNIFI_CONTROLLER_TYPE = os.getenv("UNIFI_CONTROLLER_TYPE", "auto").lower()
+# Controller type determines API path structure. The resolution + validation
+# logic lives in unifi-core so every consumer (network MCP, unifi-api-server,
+# future SDKs) shares one source of truth — see commit history for the bug
+# that motivated extracting it.
+from unifi_core.network.controller_type import (  # noqa: E402
+    VALID_CONTROLLER_TYPES,
+    resolve_controller_type,
+)
 
-# Validate controller type
-if UNIFI_CONTROLLER_TYPE not in VALID_CONTROLLER_TYPES:
-    logger.warning(
-        "Invalid UNIFI_CONTROLLER_TYPE: '%s'. Must be one of: %s. Defaulting to 'auto'.",
-        UNIFI_CONTROLLER_TYPE,
-        ", ".join(sorted(VALID_CONTROLLER_TYPES)),
-    )
-    UNIFI_CONTROLLER_TYPE = "auto"
+UNIFI_CONTROLLER_TYPE = resolve_controller_type()
 
 from unifi_mcp_shared.bootstrap import validate_registration_mode
 

@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
+from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from strawberry.fastapi import GraphQLRouter
@@ -166,14 +167,31 @@ def create_app(config: ApiConfig) -> FastAPI:
                             session, controller.id, product, "event_manager",
                         )
                     if hasattr(mgr, "start_listening"):
-                        await mgr.start_listening()
-                        _streams_log.info(
-                            "[streams] start_listening ok for %s/%s",
-                            controller.id, product,
+                        # Background-launch: aiounifi's start_websocket awaits
+                        # its own message loop, so awaiting here blocks the
+                        # whole lifespan. The WS subscription is best-effort
+                        # warm-up for SSE consumers; failing it must not
+                        # delay HTTP readiness.
+                        async def _bg_start(c_id: str, p: str, m=mgr) -> None:
+                            try:
+                                await m.start_listening()
+                                _streams_log.info(
+                                    "[streams] start_listening ok for %s/%s",
+                                    c_id, p,
+                                )
+                            except Exception:
+                                _streams_log.warning(
+                                    "[streams] start_listening failed for %s/%s",
+                                    c_id, p, exc_info=True,
+                                )
+
+                        asyncio.create_task(
+                            _bg_start(controller.id, product),
+                            name=f"start_listening:{controller.id}/{product}",
                         )
                 except Exception:
                     _streams_log.warning(
-                        "[streams] start_listening failed for %s/%s",
+                        "[streams] start_listening setup failed for %s/%s",
                         controller.id, product, exc_info=True,
                     )
 
@@ -254,6 +272,38 @@ def create_app(config: ApiConfig) -> FastAPI:
         docs_url="/v1/docs",
         lifespan=lifespan,
     )
+
+    # Auth doesn't use FastAPI's HTTPBearer dependency (the middleware reads
+    # the header directly to keep the audit-on-failure path simple), so the
+    # generated OpenAPI schema has no security info — which means Swagger UI
+    # at /v1/docs has no "Authorize" button. Inject a bearer scheme manually
+    # and mark it as the global default so "Try it out" can authenticate.
+    def _custom_openapi():
+        if app.openapi_schema:
+            return app.openapi_schema
+        schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
+        )
+        schema.setdefault("components", {}).setdefault("securitySchemes", {})[
+            "ApiKeyAuth"
+        ] = {
+            "type": "http",
+            "scheme": "bearer",
+            "description": (
+                "Paste your admin / write / read scoped API key "
+                "(starts with `unifi_live_…` or `unifi_test_…`). "
+                "Click 'Authorize' once and Swagger UI will send the "
+                "Bearer header on every request."
+            ),
+        }
+        schema["security"] = [{"ApiKeyAuth": []}]
+        app.openapi_schema = schema
+        return schema
+
+    app.openapi = _custom_openapi
 
     if config.http.cors_origins:
         app.add_middleware(

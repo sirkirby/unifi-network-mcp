@@ -4,7 +4,73 @@ REST + GraphQL HTTP API for UniFi controllers — a standalone HTTP service for
 desktop apps, web dashboards, Pi extensions, and any consumer that wants typed
 read access to UniFi Network, Protect, and Access without speaking MCP.
 
-## Quick start
+## Quickstart
+
+Two paths — pick the one that matches what you have. Both end with the admin
+URL and the bootstrap key printed in your terminal so you can paste and sign
+in. **No `UNIFI_API_DB_KEY` to generate, no `.env` file, no `docker exec`
+incantations.** The disk-encryption key and the bootstrap admin API key are
+both auto-generated on first boot and persisted inside the container's
+named volume.
+
+### A. Local clone (developing or testing changes)
+
+Uses [`docker/docker-compose-api.yml`](../../docker/docker-compose-api.yml),
+which builds from source and exposes the API on `localhost:8089`.
+
+```bash
+./scripts/start-api.sh
+```
+
+That's the whole thing. The script builds, starts, waits for first-boot
+bootstrap + HTTP readiness, then prints the URL and the key. Paste the key
+into <http://localhost:8089/admin/login> and you're in.
+
+### B. Public image (just want to use it)
+
+```bash
+docker run -d --name unifi-api-server -p 8080:8080 \
+  -v unifi-api-state:/var/lib/unifi-api \
+  ghcr.io/sirkirby/unifi-api-server:latest && \
+  until docker exec unifi-api-server \
+    test -f /var/lib/unifi-api/bootstrap-admin-key 2>/dev/null; \
+    do sleep 1; done && \
+  echo "" && \
+  echo "Admin UI:  http://localhost:8080/admin/login" && \
+  echo "Admin key: $(docker exec unifi-api-server cat /var/lib/unifi-api/bootstrap-admin-key)"
+```
+
+Paste that whole block into a terminal. It starts the container, waits for
+first-boot, and prints the URL and key. Open the URL, paste the key, sign in.
+
+### What's next
+
+Once you're signed in:
+
+- **Register a controller** via the **Controllers** tab (or `POST /v1/controllers`).
+- **Mint your own keys** via the **Keys** tab — pick `read`, `write`, or `admin`
+  scope per consumer. Once you have a personal key saved, revoke
+  `bootstrap-admin` and delete `/var/lib/unifi-api/bootstrap-admin-key`.
+- **Explore the APIs:**
+  - REST playground: `/v1/docs`
+  - GraphQL playground: `/v1/graphql`
+  - OpenAPI spec: `/v1/openapi.json`
+  - Health: `/v1/health`
+
+First GraphQL query:
+
+```bash
+curl -s http://localhost:8089/v1/graphql \
+  -H "Authorization: Bearer $ADMIN_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ network { clients(controller: \"<id>\") { items { mac hostname } } } }"}'
+```
+
+### Production deployments
+
+For shared / production deployments, set `UNIFI_API_DB_KEY` explicitly (e.g.
+from a secret manager) so the encryption key lives outside the container
+volume:
 
 ```bash
 docker run -d \
@@ -13,28 +79,26 @@ docker run -d \
   -e UNIFI_API_DB_KEY=$(openssl rand -hex 32) \
   -v unifi-api-state:/var/lib/unifi-api \
   ghcr.io/sirkirby/unifi-api-server:latest
-
-# Save the admin key shown in the logs.
-docker logs unifi-api-server | grep "Initial admin API key"
 ```
 
-Once running:
-- REST playground: <http://localhost:8080/v1/docs>
-- GraphQL playground: <http://localhost:8080/v1/graphql>
-- OpenAPI spec: <http://localhost:8080/v1/openapi.json>
-- Health: <http://localhost:8080/v1/health>
+When the env var is set, the file-backed fallback is skipped entirely.
 
-First GraphQL query:
+### Reset / lost-key recovery
+
+State (controllers, audit log, admin keys, both encryption and bootstrap key
+files) lives in the `unifi-api-state` volume. `docker compose down` keeps it;
+`docker compose down -v` wipes for a fresh bootstrap.
+
+If you lose the bootstrap admin key file *and* never saved a personal admin
+key, the simplest recovery is to wipe and re-bootstrap:
 
 ```bash
-curl -s http://localhost:8080/v1/graphql \
-  -H "Authorization: Bearer $ADMIN_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"query":"{ network { clients(controller: \"<id>\") { items { mac hostname } } } }"}'
+docker compose -f docker/docker-compose-api.yml down -v
+docker compose -f docker/docker-compose-api.yml up --build -d
 ```
 
-You can register controllers via the admin UI at `/admin/` or the REST endpoint
-`POST /v1/controllers` once you have the admin key.
+Note that wiping also drops registered controller credentials, since they
+were encrypted with the now-discarded DB key.
 
 ## Architecture
 
@@ -70,7 +134,7 @@ standard local install; override only what you need.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `UNIFI_API_DB_KEY` | _(required)_ | Encrypts controller credentials in the state DB. Generate once: `openssl rand -hex 32` |
+| `UNIFI_API_DB_KEY` | _auto-generated on first boot_ | Encrypts controller credentials at rest. Auto-generated and persisted to `<state_dir>/.db_encryption_key` if unset. **Not a login credential** — set explicitly in production via secret manager so the key lives outside the volume. |
 | `UNIFI_API_STATE_DIR` | `/var/lib/unifi-api` | Where the SQLite state DB lives |
 | `UNIFI_API_HTTP_HOST` | `127.0.0.1` | Bind address (set to `0.0.0.0` for non-localhost access) |
 | `UNIFI_API_HTTP_PORT` | `8080` | Listen port |
@@ -132,6 +196,33 @@ uv run --package unifi-api-server python -m unifi_api.graphql.docgen
 
 The full project quality gate runs `make pre-commit` (lint + format + sync-skills
 + tests) at the repo root.
+
+### Image-level smoke harness
+
+`scripts/live_api_smoke.py` boots the API in-process via `ASGITransport`,
+which means it cannot detect dep-closure bugs that only manifest in the
+published Docker image (e.g. a missing runtime dependency that gets
+masked by a `uv sync --all-packages` workspace). For that, use
+`scripts/smoke-api-image.sh`:
+
+```bash
+# Optionally point at a real controller so authenticated paths get tested.
+# Without these env vars the sweep still verifies first-boot, auth, and
+# the capability_mismatch / api_key_required error paths.
+export UNIFI_HOST=10.0.0.1
+export UNIFI_USERNAME=svc
+export UNIFI_PASSWORD=...
+export UNIFI_API_TOKEN=...   # optional; required for DPI to return 200
+
+./scripts/smoke-api-image.sh
+```
+
+The script wipes any existing state, rebuilds the image, brings it up,
+registers a controller (when env vars are set), runs
+`scripts/api_image_smoke.py` against every GET endpoint in the schema,
+and fails on any 5xx or network error. Tears down on exit.
+
+This is the harness that should run on every release tag.
 
 ## License
 
