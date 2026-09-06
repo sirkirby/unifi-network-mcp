@@ -27,9 +27,16 @@ The Network server supports server-specific environment variables with the `UNIF
 
 ### Keeping the password out of the client environment
 
-`UNIFI_NETWORK_PASSWORD` and `UNIFI_NETWORK_API_KEY` (and their `UNIFI_*` fallbacks) each accept an indirect spelling, `UNIFI_NETWORK_PASSWORD_FILE=<path>` (and `UNIFI_NETWORK_API_KEY_FILE`), a file whose contents are the value (Docker and systemd secrets convention; trailing newlines dropped), so the secret only ever exists inside the server process.
+`UNIFI_NETWORK_PASSWORD` and `UNIFI_NETWORK_API_KEY` (and their `UNIFI_*` fallbacks) each accept two indirect spellings, so the secret only ever exists inside the server process:
 
-Set exactly one spelling per level: `UNIFI_NETWORK_PASSWORD` next to `UNIFI_NETWORK_PASSWORD_FILE` refuses to start as ambiguous. A missing, unreadable, empty, multi-line or oversized file also refuses to start (exit code 6) with the variable name in the log; the file's contents are never logged. `UNIFI_NETWORK_API_KEY_FILE` behaves the same way.
+| Variable | Value |
+|----------|-------|
+| `UNIFI_NETWORK_PASSWORD_FILE` | Path to a file whose contents are the password (Docker and systemd secrets convention). Trailing newlines dropped. |
+| `UNIFI_NETWORK_PASSWORD_COMMAND` | An absolute argv whose stdout is the password, for example `/usr/bin/pass show unifi/admin`. Run without a shell, in a neutral working directory, with stdin closed and stderr discarded. |
+
+`UNIFI_NETWORK_API_KEY_FILE` and `UNIFI_NETWORK_API_KEY_COMMAND` behave the same way. Set exactly one spelling per level; every failure refuses startup with exit code 6, naming the variable and logging nothing the file or helper produced.
+
+The indirections are honoured only for variables present in the environment the server was started with. [docs/credential-providers.md](../../../docs/credential-providers.md) is the contract: the supported platforms, the executable-resolution rule, the timeout and the process lifecycle.
 
 The server does not discover or load `.env` files, including in its working directory or beside the installed package. Supply settings through exported variables, the MCP client's `env` block, or Docker `environment:` / `env_file:`. Use absolute paths for credential files. The launcher and any configuration files it explicitly loads must be controlled by the operator.
 
