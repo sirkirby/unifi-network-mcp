@@ -73,7 +73,7 @@ All mutations (firewall rules, device changes, client blocking) use a **preview-
 
 ## Configure
 
-Set these environment variables (or create a `.env` file). If you used `/unifi-network:setup`, this is already done.
+Set these variables in the server's process environment. If you used `/unifi-network:setup`, this is already done. The server does not automatically load `.env` or working-directory YAML files; load a trusted env file explicitly in your launcher (Docker `env_file:` is supported), or select custom YAML with an absolute `CONFIG_PATH`. See [configuration](docs/configuration.md) for migration examples.
 
 ```bash
 # Server-specific variables (recommended)

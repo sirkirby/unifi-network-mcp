@@ -14,7 +14,6 @@ import stat
 from pathlib import Path
 from typing import Any, NoReturn, Sequence
 
-from dotenv import load_dotenv
 from unifi_core.redaction import is_sensitive_key, redact_sensitive_fields
 
 # Exit code used when a credential indirection cannot be resolved.
@@ -23,7 +22,7 @@ EXIT_SECRET_UNRESOLVED = 6
 _SECRET_MAX_BYTES = 64 * 1024
 
 # Names of the variables the process was started with, recorded by
-# load_process_env() before any .env file is loaded. ``None`` means no snapshot
+# load_process_env() at startup. ``None`` means no snapshot
 # was taken and the current environment is trusted as is.
 _TRUSTED_VARS: frozenset[str] | None = None
 
@@ -31,12 +30,10 @@ _TRUSTED_VARS: frozenset[str] | None = None
 def snapshot_process_env() -> None:
     """Record the names of the variables the process was started with.
 
-    Call this before ``load_dotenv()`` (:func:`load_process_env` does). Afterwards
+    Call this at startup (:func:`load_process_env` does). Afterwards
     :func:`resolve_env` honours the ``_FILE`` spelling only for variables present
-    in this snapshot, so a ``.env`` in the working directory (which MCP clients
-    set to the user's project) can still supply a value but can never make the
-    server read an arbitrary file. The first call wins; later calls do not widen
-    the snapshot.
+    in this snapshot. The server never discovers or loads project ``.env`` files.
+    The first call wins; later calls do not widen the snapshot.
     """
     global _TRUSTED_VARS
     if _TRUSTED_VARS is None:
@@ -44,16 +41,15 @@ def snapshot_process_env() -> None:
 
 
 def load_process_env() -> None:
-    """Snapshot the real environment, then load ``.env`` files in the usual order.
+    """Record the launcher-supplied environment without discovering config files.
 
-    ``find_dotenv()`` walks up from the calling package, which under an installed
-    wheel never reaches the user's project, so the process working directory
-    (MCP clients spawn servers with the project as cwd) is loaded too. Real
-    environment variables keep precedence over both files.
+    MCP clients may spawn the server in an untrusted project directory. Loading
+    its ``.env`` would let that project choose credential destinations, policy,
+    and even values read later through YAML interpolation. Operators who use an
+    env file must explicitly load a trusted file in their launcher (for example,
+    Docker ``env_file`` or ``uv run --env-file /absolute/trusted.env``).
     """
     snapshot_process_env()
-    load_dotenv()
-    load_dotenv(Path.cwd() / ".env", override=False)
 
 
 _INTERPOLATION_START = re.compile(r"(\\*)(\$\{)")
@@ -177,9 +173,11 @@ def load_server_config(
     """Load YAML config with environment variable substitution.
 
     Order of precedence:
-    1. Environment variable ``CONFIG_PATH``
-    2. Relative path ``config/config.yaml`` in current working directory
-    3. Default ``config.yaml`` bundled within the package
+    1. Explicit absolute path in the process environment variable ``CONFIG_PATH``
+    2. Default ``config.yaml`` bundled within the package
+
+    Never discover configuration in the working directory: an MCP client may
+    choose a project controlled by someone other than the server operator.
 
     Then merges server-specific env vars (e.g. ``UNIFI_NETWORK_HOST``)
     with fallback to shared vars (e.g. ``UNIFI_HOST``) via :func:`resolve_env`.
@@ -203,6 +201,9 @@ def load_server_config(
 
     if config_path_str:
         path = Path(config_path_str).expanduser()
+        if not path.is_absolute():
+            logger.error("CONFIG_PATH must be an absolute path to an operator-controlled YAML file.")
+            raise SystemExit(2)
         if path.exists() and path.is_file():
             resolved_path = path
             logger.info("Using configuration file from CONFIG_PATH: %s", path)
@@ -210,22 +211,17 @@ def load_server_config(
             logger.error("Configuration file specified by CONFIG_PATH not found: %s", path)
             raise SystemExit(2)
     else:
-        relative_path = Path("config/config.yaml")
-        if relative_path.exists() and relative_path.is_file():
-            resolved_path = relative_path
-            logger.info("Using configuration file from relative path: %s", relative_path)
-        else:
-            try:
-                config_file_ref = importlib.resources.files(package_name).joinpath("config.yaml")
-                if config_file_ref.is_file():
-                    resolved_path = Path(str(config_file_ref))
-                    logger.info("Using bundled default configuration: %s", resolved_path)
-                else:
-                    logger.error("Bundled default configuration file could not be accessed (not a file).")
-                    raise SystemExit(3)
-            except Exception as e:
-                logger.error("Could not find or access bundled default configuration: %s", e)
+        try:
+            config_file_ref = importlib.resources.files(package_name).joinpath("config.yaml")
+            if config_file_ref.is_file():
+                resolved_path = Path(str(config_file_ref))
+                logger.info("Using bundled default configuration: %s", resolved_path)
+            else:
+                logger.error("Bundled default configuration file could not be accessed (not a file).")
                 raise SystemExit(3)
+        except Exception as e:
+            logger.error("Could not find or access bundled default configuration: %s", e)
+            raise SystemExit(3)
 
     if resolved_path is None:
         logger.critical("Failed to determine configuration file path.")

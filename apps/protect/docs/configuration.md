@@ -2,7 +2,7 @@
 
 The UniFi Protect MCP server merges settings from three sources (highest priority first):
 
-1. **Environment variables** (or `.env` file)
+1. **Process environment variables** supplied by the launcher
 2. **YAML config file** (`src/unifi_protect_mcp/config/config.yaml`)
 3. **Hardcoded defaults**
 
@@ -27,7 +27,15 @@ The Protect server supports server-specific environment variables with the `UNIF
 
 Set exactly one spelling per level: `UNIFI_PROTECT_PASSWORD` next to `UNIFI_PROTECT_PASSWORD_FILE` refuses to start as ambiguous. A missing, unreadable, empty, multi-line or oversized file also refuses to start (exit code 6) with the variable name in the log; the file's contents are never logged. `UNIFI_PROTECT_API_KEY_FILE` behaves the same way.
 
-One boundary to know about. The indirection is honoured only from the environment the server process was started with (an exported variable, the MCP client's `env` block, Docker `environment:` or `env_file:`), never from a `.env` file the server itself loads from its working directory, so a `.env` inside an untrusted project cannot make the server read an arbitrary file.
+The server does not discover or load `.env` files, including in its working directory or beside the installed package. Supply settings through exported variables, the MCP client's `env` block, or Docker `environment:` / `env_file:`. Use absolute paths for credential files. The launcher and any configuration files it explicitly loads must be controlled by the operator.
+
+If you previously relied on automatic `.env` loading, configure your launcher to load a trusted file explicitly. For example:
+
+```bash
+uv run --env-file /absolute/path/to/trusted.env --with unifi-protect-mcp unifi-protect-mcp
+```
+
+Only select files you trust; explicitly loading a project's malicious env file in the launcher puts those values in the trusted process environment. Docker Compose deployments that already use `env_file:` continue to work.
 
 ## Server Settings
 
@@ -165,4 +173,4 @@ permissions:
     delete: false
 ```
 
-You can override the config file location with `CONFIG_PATH=/path/to/config.yaml`.
+You can override the config file location with `CONFIG_PATH=/absolute/path/to/config.yaml` in the process environment. Relative paths are rejected. The server never automatically loads `config/config.yaml` from the working directory; existing custom YAML deployments must select their trusted file explicitly.

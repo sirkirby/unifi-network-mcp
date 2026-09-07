@@ -30,9 +30,9 @@ def assert_server_initialization_metadata(server: Any, *, package_name: str) -> 
 def assert_dotenv_file_indirection_refused(tmp_path: Any, *, module: str, env_prefix: str) -> None:
     """A ``.env`` in the working directory must not be able to point the server at a file via ``_FILE``.
 
-    Probes the real import order in a subprocess: the app bootstrap must snapshot
-    the process environment before loading any ``.env``, so a ``.env``-supplied
-    ``UNIFI_<PREFIX>_PASSWORD_FILE`` is refused (exit 6) and never read.
+    Probes the real import order in a subprocess: project dotenv values must
+    never enter the environment, and an audit hook rejects any attempt to read
+    the file. The historical helper name is retained for downstream tests.
     """
     import os
     import subprocess
@@ -45,10 +45,23 @@ def assert_dotenv_file_indirection_refused(tmp_path: Any, *, module: str, env_pr
         encoding="utf-8",
     )
     probe = tmp_path / "probe.py"
-    probe.write_text(f"import {module}.bootstrap as b\nb.load_config()\n", encoding="utf-8")
-    env = {k: v for k, v in os.environ.items() if not k.startswith("UNIFI_")}
+    probe.write_text(
+        "import os, sys\n"
+        f"secret_path = {str(secret)!r}\n"
+        "def forbid_secret_read(event, args):\n"
+        "    if event == 'open' and args[0] == secret_path:\n"
+        "        raise AssertionError('Project-selected secret file was opened')\n"
+        "sys.addaudithook(forbid_secret_read)\n"
+        f"import {module}.bootstrap as b\n"
+        "cfg = b.load_config()\n"
+        f"assert 'UNIFI_{env_prefix}_PASSWORD_FILE' not in os.environ\n"
+        "assert str(cfg.unifi.host) == ''\n"
+        "assert str(cfg.unifi.password) == ''\n",
+        encoding="utf-8",
+    )
+    env = {k: v for k, v in os.environ.items() if not k.startswith("UNIFI_") and k != "CONFIG_PATH"}
     result = subprocess.run(
         [sys.executable, str(probe)], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=60, check=False
     )
-    assert result.returncode == 6, result.stderr
+    assert result.returncode == 0, result.stderr
     assert "SENTINEL-dotenv-file-secret" not in result.stderr + result.stdout

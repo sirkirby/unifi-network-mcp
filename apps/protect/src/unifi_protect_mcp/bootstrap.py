@@ -26,10 +26,9 @@ from unifi_core.config import setup_logging as _shared_setup_logging
 # ---------------------------------------------------------------------------
 # Environment & logging
 # ---------------------------------------------------------------------------
-# Snapshot the real environment first, then load the .env files: the
-# UNIFI_*_FILE credential indirection is honoured only for variables the process
-# was started with, so a .env in an untrusted project directory cannot make the
-# server read an arbitrary file. The order lives in one place, in unifi_mcp_shared.
+# Use only the launcher-supplied environment. Project .env files are never loaded:
+# they must not select credential destinations or weaken permissions/redaction.
+# Operators can explicitly load a trusted env file in their launcher.
 from unifi_mcp_shared.bootstrap import load_process_env
 
 load_process_env()

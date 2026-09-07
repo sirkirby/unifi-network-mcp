@@ -199,7 +199,7 @@ All mutations use a **preview-then-confirm** flow — you see exactly what will 
 
 ## Configuration
 
-Set these environment variables (or use a `.env` file):
+Set these variables in the server's process environment (shell exports, the MCP client's `env` block, or Docker `environment:` / `env_file:`):
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -207,12 +207,15 @@ Set these environment variables (or use a `.env` file):
 | `UNIFI_USERNAME` | Yes | Local admin/service account username; do not use a Ubiquiti SSO account |
 | `UNIFI_PASSWORD` | Yes | Password for the local account |
 | `UNIFI_API_KEY` | No | UniFi API key for selected capabilities, including firewall policy ordering and some Protect settings updates |
+| `CONFIG_PATH` | No | Absolute path to an operator-controlled custom YAML file; otherwise uses bundled configuration |
+
+**Startup configuration:** The servers do not automatically load `.env` files or `config/config.yaml` from the working directory. MCP clients may launch servers inside untrusted projects, so project files must not control where credentials are sent or weaken permissions and redaction. If you previously relied on automatic loading, select a trusted env file in your launcher (for example, `uv run --env-file /absolute/path/to/trusted.env --with unifi-network-mcp unifi-network-mcp`) or set an absolute `CONFIG_PATH` for custom YAML. Docker Compose `env_file:` remains supported.
 
 To keep the secret out of the MCP client's environment (and out of every process the client spawns), set `UNIFI_PASSWORD_FILE` to a path whose contents are the password instead. The same `_FILE` suffix works on `UNIFI_API_KEY` and on the per-server variables below. Details are in each server's `docs/configuration.md`.
 
 ### Multi-controller setups
 
-Each server supports its own prefixed environment variables that take priority over the shared `UNIFI_*` variables. This lets you point the Network and Protect servers at different controllers (or different credentials) while keeping a single `.env` file:
+Each server supports its own prefixed environment variables that take priority over the shared `UNIFI_*` variables. This lets you point the Network and Protect servers at different controllers (or different credentials) while keeping a single trusted env file explicitly loaded by the launcher:
 
 | Shared (fallback) | Network server | Protect server | Access server |
 |--------------------|----------------|----------------|---------------|

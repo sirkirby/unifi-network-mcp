@@ -1,4 +1,4 @@
-"""The app bootstrap must snapshot the environment before any .env is loaded (real import order)."""
+"""The app bootstrap must ignore project-selected secret files (real import order)."""
 
 from unifi_mcp_shared.testing import assert_dotenv_file_indirection_refused
 
