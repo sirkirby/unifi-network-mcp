@@ -42,17 +42,60 @@ Both `source` and `destination` are objects with the same shape. The required fi
 | Field | Type | Required For |
 |-------|------|--------------|
 | `zone_id` | string | always — controller zone ID from `unifi_list_firewall_zones` |
-| `matching_target` | enum | always — `ANY`, `IP`, `NETWORK`, or `OBJECT` |
+| `matching_target` | enum | always — `ANY`, `IP`, `NETWORK`, or `CLIENT` (see below) |
 | `matching_target_type` | enum | required when `matching_target` is `IP` or `NETWORK` — `SPECIFIC` (IPs) or `OBJECT` (group/network IDs) |
-| `ips` | array of strings | required when `matching_target_type="SPECIFIC"` — list of IPs/CIDRs |
+| `ips` | array of strings | required when `matching_target="IP"` and `matching_target_type="SPECIFIC"` — list of IPs/CIDRs |
+| `ip_group_id` | string | required when `matching_target="IP"` and `matching_target_type="OBJECT"` — address group from `unifi_list_firewall_groups` |
 | `network_ids` | array of strings | required when `matching_target="NETWORK"` and `matching_target_type="OBJECT"` |
+| `client_macs` | array of strings | required when `matching_target="CLIENT"` — client MAC addresses |
+| `match_opposite_ips` | boolean | optional — invert the IP match (everything **except** `ips` / `ip_group_id`) |
+| `match_opposite_networks` | boolean | optional — invert the network match |
+| `port_matching_type` | enum | optional — `ANY` (default), `SPECIFIC`, or `OBJECT`; see Port Matching |
+| `port` | string | required when `port_matching_type="SPECIFIC"` — `"53"`, `"53,853"`, `"1000-2000"` |
+| `port_group_id` | string | required when `port_matching_type="OBJECT"` — port group from `unifi_list_firewall_groups` |
+| `match_opposite_ports` | boolean | optional — invert the port match |
 
-### `matching_target` Enum (live-probe-confirmed)
+### `matching_target` Enum
+
+Values observed on Network 10.6 controllers (the tools validate these four and pass any other value through unchanged):
 
 - **`ANY`** — match all traffic in the zone. No additional selectors needed.
-- **`IP`** — match specific IPs/CIDRs. Pair with `matching_target_type: "SPECIFIC"` and `ips: [...]`.
+- **`IP`** — match specific IPs/CIDRs. Pair with `matching_target_type: "SPECIFIC"` and `ips: [...]`, or `matching_target_type: "OBJECT"` and `ip_group_id`.
 - **`NETWORK`** — match by network membership. Pair with `matching_target_type: "OBJECT"` and `network_ids: [...]`.
-- **`OBJECT`** — match an IP-group object. Pair with `matching_target_type: "OBJECT"` and the relevant object ID.
+- **`CLIENT`** — match specific clients by MAC. Pair with `client_macs: [...]`.
+
+The Zone-Based Firewall UI also offers App, Domain ("Web") and Region targets. Their V2 field names are not documented here yet; `unifi_list_firewall_policies` with `summary: false` shows the exact shape of any such policy on your controller, and `unifi_update_firewall_policy` passes those fields through.
+
+### Port Matching
+
+Either side can match on destination or source ports. This is how a policy expresses "DNS", "SSH" or "web" instead of "everything between these zones".
+
+| `port_matching_type` | Pair with | Meaning |
+|---|---|---|
+| `ANY` (default) | nothing | all ports |
+| `SPECIFIC` | `port: "53,853"` | comma-separated ports; `low-high` ranges accepted |
+| `OBJECT` | `port_group_id` | a reusable port group from `unifi_list_firewall_groups` |
+
+Set `protocol` to `tcp`, `udp` or `tcp_udp` on a port-matching policy. The controller also stores ports under `protocol: "all"` and existing user policies use that combination; the auditor treats both as port rules.
+
+```json
+{
+  "name": "Block external DNS",
+  "action": "BLOCK",
+  "protocol": "tcp_udp",
+  "source":      { "zone_id": "<internal_zone_id>", "matching_target": "ANY" },
+  "destination": {
+    "zone_id": "<external_zone_id>",
+    "matching_target": "ANY",
+    "port_matching_type": "SPECIFIC",
+    "port": "53,853"
+  }
+}
+```
+
+`match_opposite_ports: true` inverts the match (every port except the listed ones); `match_opposite_ips: true` does the same for `ips` / `ip_group_id`.
+
+Three selectors are only accepted together with the value that activates them: `port` needs `port_matching_type: SPECIFIC`, `port_group_id` needs `OBJECT`, and `client_macs` needs `matching_target: CLIENT`. The controller would accept and silently ignore any other pairing, so the tools reject those three and retire them on update. `ips`, `ip_group_id` and `network_ids` follow the same contract on the controller, but the tools only check that they are present on create — a stale one left under a different `matching_target` is not yet rejected or retired. To turn port matching off on an existing policy, update with `{"destination": {"port_matching_type": "ANY"}}`; the tool retires the stored `port` for you. The same applies when switching between `SPECIFIC` and `OBJECT`, or moving a side off `CLIENT`.
 
 ### Example — any-in-zone to any-in-zone
 
@@ -105,6 +148,7 @@ Always discover IDs at runtime. Never hardcode.
 | `all` | Match all protocols (default). |
 | `tcp` | TCP only. |
 | `udp` | UDP only. |
+| `tcp_udp` | TCP and UDP (the usual choice for port-matching policies). |
 | `icmp` | ICMP only. |
 
 ---
@@ -239,9 +283,9 @@ accepted by `/proxy/network/integration/v1/sites/.../firewall/policies/ordering`
 
 ---
 
-## MAC-Based Targeting (Important Caveat)
+## Client (MAC) Targeting
 
-The V2 zone-based firewall does **not** accept client MAC addresses as a matching target. Source/destination is always zone- + IP/network/object-based. To enforce per-client (MAC-level) blocking, use `unifi_create_acl_rule` with `source_macs=[...]` instead of the firewall surface.
+`matching_target: "CLIENT"` with `client_macs: [...]` matches specific clients on either side of a policy. MACs are lower-cased before they reach the controller. For switch-level (L2) enforcement that does not pass through the gateway, `unifi_create_acl_rule` with `source_macs=[...]` remains the right tool.
 
 ---
 

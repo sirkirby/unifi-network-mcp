@@ -154,7 +154,7 @@ unifi_create_firewall_policy:
     network_ids: [<management network ID>]
 ```
 
-**MAC-based admin allow list:** If the admin sources are identified by client MAC rather than IP, V2 firewall policies cannot match by client MAC — use `unifi_create_acl_rule` instead. The example below restricts management-VLAN access to a specific set of admin workstations by MAC:
+**MAC-based admin allow list:** If the admin sources are identified by client MAC rather than IP, a V2 firewall policy can match them directly with `source.matching_target: CLIENT` and `source.client_macs: [...]` (see the firewall-manager schema reference). Use `unifi_create_acl_rule` instead when the enforcement must happen on the switch (L2, without passing through the gateway). The example below restricts management-VLAN access to a specific set of admin workstations by MAC at the switch:
 
 ```yaml
 # Security intent: only the listed admin MACs may originate traffic on the management VLAN.
@@ -267,7 +267,7 @@ unifi_create_firewall_policy:
 
 **Severity:** warning
 
-**How to fix:** This benchmark cannot be fully enforced through the firewall surface alone. V2 zone-based firewall policies do not match on port, so a literal "block UDP/TCP 53 except to approved resolvers" rule isn't expressible at this layer. The benchmark therefore splits into a **partial firewall fix** (what MCP can do today) and a **manual UniFi UI step** (the rest):
+**How to fix:** V2 zone-based policies *can* match on port (`port_matching_type` `SPECIFIC` with a `port` string, or `OBJECT` with a `port_group_id`), so a "block UDP/TCP 53 except to approved resolvers" rule is expressible at this layer on Network 9.0+ with a UniFi gateway. A full DNS-egress recipe built on that is **not yet published here**: it has not been verified against live traffic on an isolated client, so this benchmark still splits into a **partial firewall fix** (below) and a **manual UniFi UI step** (the rest):
 
 **Part 1 — partial firewall fix (programmatic):** Allow client traffic to reach approved resolver IPs externally. This handles the legitimate-DNS path but does not block port-53 traffic to other destinations.
 

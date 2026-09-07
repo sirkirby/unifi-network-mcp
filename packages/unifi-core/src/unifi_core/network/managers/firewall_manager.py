@@ -15,7 +15,15 @@ from unifi_core.auth import UniFiAuth
 from unifi_core.exceptions import UniFiNotFoundError, UniFiOperationError
 from unifi_core.merge import deep_merge
 from unifi_core.network.managers.connection_manager import ConnectionManager
-from unifi_core.network.models.firewall import _normalize_endpoint_macs, validate_policy_port_targeting
+from unifi_core.network.models.firewall import (
+    RETIRABLE_SELECTORS,
+    _normalize_endpoint_macs,
+    normalize_policy_endpoint_enums,
+    prepare_policy_update,
+    validate_policy_port_targeting,
+    validate_policy_selectors,
+    validate_zone_targeting,
+)
 
 logger = logging.getLogger("unifi-network-mcp")
 
@@ -390,8 +398,24 @@ class FirewallManager:
                 logger.error("Could not get raw data for policy %s. Update aborted.", policy_id)
                 return False
 
+            # Shared MCP/API step: retire the selectors an activation change deactivates and
+            # validate each updated side as merged. Raises ValueError before any PUT.
+            updates = prepare_policy_update(policy_to_update.raw, updates)
+
             # Deep merge preserves nested sub-objects (source, destination, schedule, etc.)
             merged_data = deep_merge(policy_to_update.raw, updates)
+            # A retired selector is carried as None and must be REMOVED from the PUT body,
+            # not sent as null. Only the keys THIS update retired: any other None is the
+            # caller's own (the controller rejects it loudly rather than dropping a field)
+            # or the controller's own, and the PUT is a full document.
+            for side in ("source", "destination"):
+                update_side = updates.get(side)
+                endpoint = merged_data.get(side)
+                if not isinstance(update_side, dict) or not isinstance(endpoint, dict):
+                    continue
+                retired = {k for k, v in update_side.items() if v is None and k in RETIRABLE_SELECTORS}
+                if retired:
+                    merged_data[side] = {k: v for k, v in endpoint.items() if k not in retired}
 
             logger.info("Updating firewall policy %s via single-policy endpoint", policy_id)
 
@@ -407,6 +431,12 @@ class FirewallManager:
 
             logger.info("Successfully submitted update for firewall policy %s.", policy_id)
             return True
+        except ValueError:
+            # Caller input, not a controller failure: it is returned to the caller,
+            # and an operator-facing ERROR with a traceback for a mistyped selector
+            # is noise. create_firewall_policy validates outside its try for the
+            # same reason. The message carries no caller values.
+            raise
         except Exception as e:
             logger.error("Error updating firewall policy %s: %s", policy_id, e, exc_info=True)
             raise
@@ -984,7 +1014,14 @@ class FirewallManager:
         Returns:
             The created FirewallPolicy object, or None if creation failed.
         """
+        # Upper-case the endpoint enums BEFORE validating: both checks compare against
+        # the controller's upper-case spelling, and the MCP tool is the only caller that
+        # normalized first, so a lower-case enum used to skip them on every other path.
+        policy_data = normalize_policy_endpoint_enums(policy_data)
+        if zone_error := validate_zone_targeting(policy_data):
+            raise ValueError(zone_error)
         validate_policy_port_targeting(policy_data)
+        validate_policy_selectors(policy_data)
         if not await self._connection.ensure_connected():
             raise ConnectionError("Not connected to controller")
 
@@ -998,7 +1035,9 @@ class FirewallManager:
         try:
             policy_name = policy_data.get("name", "Unnamed Policy")
             logger.info("Attempting to create firewall policy '%s' via V2 endpoint.", policy_name)
-            logger.debug("Firewall policy create payload: %s", json.dumps(policy_data, indent=2))
+            # No payload dump: a CLIENT endpoint carries client_macs, and MAC addresses
+            # are one of the values this project never writes to a log.
+            logger.debug("Firewall policy create payload fields: %s", sorted(policy_data))
 
             api_request = ApiRequestV2(method="post", path="/firewall-policies", data=policy_data)
 
@@ -1020,11 +1059,13 @@ class FirewallManager:
                 return FirewallPolicy(created_policy_data)
             else:
                 logger.error(
-                    "Failed to create firewall policy '%s'. Unexpected V2 response format: %s", policy_name, response
+                    "Failed to create firewall policy '%s'. Unexpected V2 response type: %s",
+                    policy_name,
+                    type(response).__name__,
                 )
                 raise RuntimeError(
-                    "Unexpected response from controller (no _id in response). Raw: %s"
-                    % json.dumps(response, default=str)
+                    "Unexpected response from controller creating firewall policy '%s' (no _id in the response)."
+                    % policy_name
                 )
 
         except Exception as e:

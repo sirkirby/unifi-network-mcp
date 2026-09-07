@@ -678,11 +678,24 @@ def _translate_list_clients(args: dict[str, Any]) -> tuple[tuple[Any, ...], dict
 
 
 def _translate_create_firewall_policy(args: dict[str, Any]) -> tuple[tuple[Any, ...], dict[str, Any]]:
-    """Apply shared port validation before the API preview/execute split."""
-    from unifi_core.network.models.firewall import validate_policy_port_targeting
+    """Apply shared port and selector validation before the API preview/execute split.
 
-    policy_data = args["policy_data"]
+    Both checks also run in ``FirewallManager.create_firewall_policy``; running them
+    here as well is what gives the API preview the same verdict as its execute, since
+    neither needs stored controller state.
+    """
+    from unifi_core.network.models.firewall import (
+        normalize_policy_endpoint_enums,
+        validate_policy_port_targeting,
+        validate_policy_selectors,
+        validate_zone_targeting,
+    )
+
+    policy_data = normalize_policy_endpoint_enums(args["policy_data"])
+    if zone_error := validate_zone_targeting(policy_data):
+        raise ValueError(zone_error)
     validate_policy_port_targeting(policy_data)
+    validate_policy_selectors(policy_data)
     return (), {"policy_data": policy_data}
 
 

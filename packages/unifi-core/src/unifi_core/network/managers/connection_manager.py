@@ -23,7 +23,7 @@ from aiounifi.errors import (
 from aiounifi.models.api import ApiRequest, ApiRequestV2
 from aiounifi.models.configuration import Configuration
 
-from unifi_core.mac import mask_macs
+from unifi_core.mac import mask_exception_macs, mask_macs
 from unifi_core.redaction import collect_secret_values, sanitize_exception, scrub_secret_values
 from unifi_core.support_bundle import (
     ConnectivityProbe,
@@ -381,12 +381,18 @@ class ConnectionManager:
         key in the request payload, following the exception's cause chain, and
         marks them the way this manager's own credential masking does.
 
-        Returns the secret set so the log sink can scrub the text it is about
+        MAC addresses are masked as well. Returns the secret set so the log sink
+        can scrub the text it is about
         to write: an exception whose ``__str__`` ignores ``args`` (pydantic's
         ValidationError) passes through the rewrite untouched.
         """
         secrets = self._secret_rules(api_request)
         sanitize_exception(error, secrets, marker=_CREDENTIAL_MASK)
+        # A MAC is not a secret-keyed value, so credential scrubbing leaves it in
+        # place, and the record a controller quotes back carries one for every
+        # client-targeting policy, ACL rule, block and rename. The log sink already
+        # masks the text it writes; this brings the re-raised exception in line.
+        mask_exception_macs(error)
         return secrets
 
     def _secret_rules(self, api_request: Any = None) -> dict[str, bool]:

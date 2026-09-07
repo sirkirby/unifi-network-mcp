@@ -36,6 +36,7 @@ __all__ = [
     "normalize_mac_list",
     "canonical_mac",
     "mask_macs",
+    "mask_exception_macs",
 ]
 
 # Six hex pairs separated by ':' or '-', or twelve bare hex digits.
@@ -159,3 +160,47 @@ def normalize_mac_list(values: Any) -> Any:
     if not isinstance(values, list):
         return values
     return [normalize_mac(v) or v for v in values]
+
+
+def _mask_macs_in(value: Any) -> Any:
+    """``mask_macs`` over a decoded controller payload of any shape."""
+    if isinstance(value, str):
+        return mask_macs(value)
+    if isinstance(value, dict):
+        return {k: _mask_macs_in(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        rebuilt = [_mask_macs_in(v) for v in value]
+        return type(value)(rebuilt) if isinstance(value, tuple) else rebuilt
+    return value
+
+
+def mask_exception_macs(error: BaseException) -> BaseException:
+    """Replace every MAC-shaped token inside ``error`` in place, and return it.
+
+    A controller rejection quotes the record it refused, and aiounifi raises with
+    the decoded response as ``args[0]``. A firewall policy that targets clients,
+    an ACL rule, a block or a rename all carry MAC addresses in that record, so
+    the exception reaches the manager log, any caller that formats ``str(e)`` and
+    the API audit row carrying them. Credential scrubbing does not cover a MAC,
+    which is not a secret-keyed value.
+
+    Mutates in place (keeping the exception type and identity) and follows the
+    ``__cause__``/``__context__`` chain, the same way ``sanitize_exception`` does.
+    """
+    seen: set[int] = set()
+    current: Optional[BaseException] = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        current.args = tuple(_mask_macs_in(arg) for arg in current.args)
+        for attr in ("message", "msg", "reason", "detail"):
+            value = getattr(current, attr, None)
+            if isinstance(value, str):
+                try:
+                    setattr(current, attr, mask_macs(value))
+                except (AttributeError, TypeError):
+                    pass  # read-only property; args above already carries the masked text
+        notes = getattr(current, "__notes__", None)
+        if isinstance(notes, list):
+            current.__notes__ = [_mask_macs_in(note) for note in notes]
+        current = current.__cause__ if current.__cause__ is not None else current.__context__
+    return error
