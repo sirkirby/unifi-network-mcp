@@ -13,6 +13,8 @@ established fixture pattern.
 Usage:
     python scripts/live_api_smoke.py --output report.json
     python scripts/live_api_smoke.py --controllers network,protect --retry 3
+    # From a fresh environment containing the published wheel and httpx:
+    python scripts/live_api_smoke.py --installed --output installed-report.json
 """
 
 from __future__ import annotations
@@ -996,6 +998,8 @@ async def run_access_assertions(  # noqa: C901
 async def bootstrap_app_and_controllers(
     env: dict,
     products: list[str],
+    *,
+    installed: bool = False,
 ) -> tuple[Any, str, dict[str, str]]:
     """Boot unifi-api in-process; seed admin key + one Controller row per product.
 
@@ -1003,7 +1007,8 @@ async def bootstrap_app_and_controllers(
     """
     import tempfile
 
-    sys.path.insert(0, str(REPO_ROOT / "apps/api/src"))
+    if not installed:
+        sys.path.insert(0, str(REPO_ROOT / "apps/api/src"))
     from unifi_api.auth.api_key import generate_key, hash_key
     from unifi_api.config import ApiConfig, DbConfig, HttpConfig, LoggingConfig
     from unifi_api.db.crypto import ColumnCipher, derive_key
@@ -1086,54 +1091,62 @@ async def main_async(args: argparse.Namespace) -> int:
     report.started_at = datetime.now(timezone.utc).isoformat()
 
     print(f"Live smoke: products={products} retry={args.retry}")
-    app, key, cids = await bootstrap_app_and_controllers(env, products)
+    app, key, cids = await bootstrap_app_and_controllers(env, products, installed=args.installed)
 
-    # Always-on assertion: the app boots and /v1/health is ok
-    from httpx import ASGITransport, AsyncClient
+    try:
+        # Always-on assertion: the app boots and /v1/health is ok
+        from httpx import ASGITransport, AsyncClient
 
-    async def _health():
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
-            r = await c.get("/v1/health")
-            assert r.status_code == 200, f"/v1/health returned {r.status_code}"
-            assert r.json().get("status") == "ok", r.json()
-            return {"status_code": 200}
+        async def _health():
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+                r = await c.get("/v1/health")
+                assert r.status_code == 200, f"/v1/health returned {r.status_code}"
+                assert r.json().get("status") == "ok", r.json()
+                return {"status_code": 200}
 
-    await _run_assertion(
-        report,
-        "service boots / v1 health",
-        "core",
-        "rest",
-        _health,
-        retry=args.retry,
-    )
-
-    if "network" in products and "network" in cids:
-        await run_network_assertions(
+        await _run_assertion(
             report,
-            env,
-            app,
-            key,
-            cids["network"],
+            "service boots / v1 health",
+            "core",
+            "rest",
+            _health,
             retry=args.retry,
         )
-    if "protect" in products and "protect" in cids:
-        await run_protect_assertions(
-            report,
-            env,
-            app,
-            key,
-            cids["protect"],
-            retry=args.retry,
-        )
-    if "access" in products and "access" in cids:
-        await run_access_assertions(
-            report,
-            env,
-            app,
-            key,
-            cids["access"],
-            retry=args.retry,
-        )
+
+        if "network" in products and "network" in cids:
+            await run_network_assertions(
+                report,
+                env,
+                app,
+                key,
+                cids["network"],
+                retry=args.retry,
+            )
+        if "protect" in products and "protect" in cids:
+            await run_protect_assertions(
+                report,
+                env,
+                app,
+                key,
+                cids["protect"],
+                retry=args.retry,
+            )
+        if "access" in products and "access" in cids:
+            await run_access_assertions(
+                report,
+                env,
+                app,
+                key,
+                cids["access"],
+                retry=args.retry,
+            )
+
+    finally:
+        try:
+            for controller_id in cids.values():
+                await app.state.manager_factory.invalidate_controller(controller_id)
+        finally:
+            await app.state.engine.dispose()
 
     report.finished_at = datetime.now(timezone.utc).isoformat()
     args.output.write_text(
@@ -1166,6 +1179,9 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=Path("smoke-report.json"))
     parser.add_argument("--controllers", default="network,protect,access")
     parser.add_argument("--retry", type=int, default=3)
+    parser.add_argument(
+        "--installed", action="store_true", help="Use the installed API package without adding checkout sources"
+    )
     args = parser.parse_args()
     return asyncio.run(main_async(args))
 
