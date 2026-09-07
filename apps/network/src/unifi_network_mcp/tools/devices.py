@@ -43,7 +43,14 @@ logger = logging.getLogger(__name__)
         "Use search to filter by name, IP, or MAC (case-insensitive). "
         "Set include_details=true for additional per-device fields: by default (summary=true) "
         "compressed radio/port summaries; set summary=false to return the full raw tables "
-        "(radio_table, port_table, network_table, system_stats, wan1/wan2)."
+        "(radio_table, port_table, network_table, system_stats, wan1/wan2). "
+        "Pass an entry's MAC to the device tools as mac_address "
+        "(unifi_get_device_details, unifi_reboot_device, unifi_rename_device, "
+        "unifi_upgrade_device, ...), as device_mac (unifi_get_switch_ports, "
+        "unifi_get_port_stats, unifi_set_switch_port_profile, unifi_locate_device, ...) "
+        "or as ap_mac on the RF tools (unifi_trigger_rf_scan, unifi_get_rf_scan_results), "
+        "which take the access point to scan from; the parameter name differs per tool "
+        "and each tool accepts only its own."
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )

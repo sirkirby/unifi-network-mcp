@@ -270,3 +270,115 @@ def test_loader_treats_tools_without_input_schema_as_zero_arg(
     assert allowed["unifi_partial"] == frozenset()
     assert allowed["unifi_normal"] == frozenset({"x"})
     assert any("had no input schema" in record.message for record in caplog.records)
+
+
+# -----------------------------
+# MAC parameter guidance (#635)
+# -----------------------------
+
+
+@pytest.fixture
+def mac_manifest(tmp_path: pathlib.Path) -> pathlib.Path:
+    """Tools whose MAC parameter is spelled four different ways across the server."""
+    tools = [
+        _make_tool("unifi_get_client_details", {"mac_address": {"type": "string"}}),
+        _make_tool("unifi_get_client_sessions", {"client_mac": {"type": "string"}, "limit": {"type": "integer"}}),
+        _make_tool("unifi_get_switch_ports", {"device_mac": {"type": "string"}}),
+        _make_tool("unifi_recent_events", {"mac": {"type": "string"}}),
+        _make_tool("unifi_list_networks", {"site": {"type": "string"}}),
+        _make_tool("unifi_trigger_rf_scan", {"ap_mac": {"type": "string"}}),
+        _make_tool("unifi_two_macs", {"client_mac": {"type": "string"}, "device_mac": {"type": "string"}}),
+    ]
+    return _write_manifest(tmp_path, tools)
+
+
+@pytest.mark.parametrize(
+    ("tool", "rejected", "canonical"),
+    [
+        ("unifi_get_client_details", "client_mac", "mac_address"),
+        ("unifi_get_client_details", "device_mac", "mac_address"),
+        ("unifi_get_client_details", "mac", "mac_address"),
+        ("unifi_get_client_sessions", "mac_address", "client_mac"),
+        ("unifi_get_switch_ports", "mac_address", "device_mac"),
+        ("unifi_recent_events", "mac_address", "mac"),
+    ],
+)
+async def test_mac_spelling_error_names_the_canonical_parameter(
+    mac_manifest: pathlib.Path, tool: str, rejected: str, canonical: str
+) -> None:
+    """The MAC parameter is spelled differently across tools; the rejection says which one this tool takes."""
+    server = StrictKwargFastMCP("test", tools_manifest_path=mac_manifest)
+    with pytest.raises(ToolError) as excinfo:
+        await server.call_tool(tool, {rejected: "aa:bb:cc:dd:ee:ff"})
+    msg = str(excinfo.value)
+    assert f"unknown arguments {{{rejected}}}" in msg
+    assert f"'{tool}' takes the MAC address as '{canonical}'." in msg
+
+
+async def test_mac_hint_is_absent_for_a_non_mac_argument(mac_manifest: pathlib.Path) -> None:
+    server = StrictKwargFastMCP("test", tools_manifest_path=mac_manifest)
+    with pytest.raises(ToolError) as excinfo:
+        await server.call_tool("unifi_get_client_details", {"hostname": "x"})
+    assert "takes the MAC address as" not in str(excinfo.value)
+
+
+async def test_mac_hint_is_absent_when_the_tool_takes_two_mac_parameters(mac_manifest: pathlib.Path) -> None:
+    """Two candidates and nothing to choose between them; guessing is worse than silence."""
+    server = StrictKwargFastMCP("test", tools_manifest_path=mac_manifest)
+    with pytest.raises(ToolError) as excinfo:
+        await server.call_tool("unifi_two_macs", {"mac_address": "aa:bb:cc:dd:ee:ff"})
+    assert "takes the MAC address as" not in str(excinfo.value)
+
+
+async def test_ap_mac_is_not_treated_as_a_spelling_of_the_subject_mac(mac_manifest: pathlib.Path) -> None:
+    """ap_mac names the access point to scan FROM, not the subject of the call. Pointing
+    a caller at it would turn a rejected call into a wrong answer."""
+    server = StrictKwargFastMCP("test", tools_manifest_path=mac_manifest)
+    with pytest.raises(ToolError) as excinfo:
+        await server.call_tool("unifi_trigger_rf_scan", {"client_mac": "aa:bb:cc:dd:ee:ff"})
+    assert "takes the MAC address as" not in str(excinfo.value)
+
+    with pytest.raises(ToolError) as excinfo:
+        await server.call_tool("unifi_get_client_sessions", {"ap_mac": "aa:bb:cc:dd:ee:ff"})
+    assert "takes the MAC address as" not in str(excinfo.value)
+
+
+async def test_mac_hint_is_absent_when_the_canonical_name_was_already_sent(mac_manifest: pathlib.Path) -> None:
+    """Repeating back a parameter the caller supplied invites a retry that changes nothing."""
+    server = StrictKwargFastMCP("test", tools_manifest_path=mac_manifest)
+    with pytest.raises(ToolError) as excinfo:
+        await server.call_tool(
+            "unifi_get_client_details", {"mac_address": "aa:bb:cc:dd:ee:ff", "client_mac": "11:22:33:44:55:66"}
+        )
+    msg = str(excinfo.value)
+    assert "unknown arguments {client_mac}" in msg
+    assert "takes the MAC address as" not in msg
+
+
+async def test_mac_hint_is_absent_when_the_tool_has_no_mac_parameter(mac_manifest: pathlib.Path) -> None:
+    """A MAC spelling sent to a tool that takes no MAC is still just an unknown argument."""
+    server = StrictKwargFastMCP("test", tools_manifest_path=mac_manifest)
+    with pytest.raises(ToolError) as excinfo:
+        await server.call_tool("unifi_list_networks", {"mac_address": "aa:bb:cc:dd:ee:ff"})
+    assert "takes the MAC address as" not in str(excinfo.value)
+
+
+async def test_mac_hint_does_not_disturb_the_rest_of_the_message(mac_manifest: pathlib.Path) -> None:
+    server = StrictKwargFastMCP("test", tools_manifest_path=mac_manifest)
+    with pytest.raises(ToolError) as excinfo:
+        await server.call_tool("unifi_get_client_sessions", {"mac_address": "aa:bb:cc:dd:ee:ff", "bogus": 1})
+    assert str(excinfo.value) == (
+        "Invalid params for 'unifi_get_client_sessions': "
+        "unknown arguments {bogus, mac_address}. "
+        "Valid arguments: [client_mac, limit]. "
+        "'unifi_get_client_sessions' takes the MAC address as 'client_mac'."
+    )
+
+
+async def test_mac_spelling_is_not_accepted_as_an_alias(mac_manifest: pathlib.Path) -> None:
+    """Guidance only: the canonical contract is unchanged, so the call still fails."""
+    server = StrictKwargFastMCP("test", tools_manifest_path=mac_manifest)
+    with patch.object(FastMCP, "call_tool", new=AsyncMock(return_value=[])) as super_mock:
+        with pytest.raises(ToolError):
+            await server.call_tool("unifi_get_client_details", {"client_mac": "aa:bb:cc:dd:ee:ff"})
+    super_mock.assert_not_awaited()
