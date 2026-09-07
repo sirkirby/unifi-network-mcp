@@ -20,7 +20,8 @@ dependencies = [
     # Firewall index rejection and uncapped client lookup require Core 0.4.44.
     # Shared firewall create-port validation requires Core 0.4.45.
     # Owned event listeners and controller-session cleanup require Core 0.4.49.
-    "unifi-core[network,protect,access]>=0.4.49,<0.5",
+    # Global alarm status aggregation requires Core 0.4.50.
+    "unifi-core[network,protect,access]>=0.4.50,<0.5",
     # The API server is a deployable Network client too. Pin the authentication
     # transport exactly so a released API version has a reproducible login stack
     # even when installed from PyPI without the workspace uv.lock.

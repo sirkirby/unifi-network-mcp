@@ -118,7 +118,7 @@ async def alarm_get_status(
                 session,
                 controller.id,
                 "protect",
-                "alarm_manager",
+                "alarm_facade",
             )
             cm = await factory.get_connection_manager(session, controller.id, "protect")
             await _maybe_set_site(cm, site_id)

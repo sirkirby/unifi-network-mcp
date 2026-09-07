@@ -421,7 +421,7 @@ async def _fetch_alarm_status(ctx: GraphQLContext, controller: str) -> Any:
                 session,
                 controller,
                 "protect",
-                "alarm_manager",
+                "alarm_facade",
             )
             await ctx.manager_factory.get_connection_manager(
                 session,
