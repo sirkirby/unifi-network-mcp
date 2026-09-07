@@ -28,6 +28,7 @@ import time
 from functools import wraps
 from typing import Any, Callable, Dict
 
+from unifi_core.config_helpers import parse_config_bool
 from unifi_core.redaction import redact_sensitive_fields
 
 # Module-level state set by init_diagnostics()
@@ -93,9 +94,9 @@ def _server_diag_cfg_from_config() -> Dict[str, Any]:
         server_cfg = getattr(config, "server", {}) or {}
         diag_cfg = server_cfg.get("diagnostics", {}) or {}
         return {
-            "enabled": bool(diag_cfg.get("enabled", False)),
-            "log_tool_args": bool(diag_cfg.get("log_tool_args", True)),
-            "log_tool_result": bool(diag_cfg.get("log_tool_result", True)),
+            "enabled": parse_config_bool(diag_cfg.get("enabled", False)),
+            "log_tool_args": parse_config_bool(diag_cfg.get("log_tool_args", True), default=True),
+            "log_tool_result": parse_config_bool(diag_cfg.get("log_tool_result", True), default=True),
             "max_payload_chars": int(diag_cfg.get("max_payload_chars", 2000)),
         }
     except Exception:

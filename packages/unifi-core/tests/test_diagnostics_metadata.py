@@ -7,6 +7,15 @@ import pytest
 from unifi_core import diagnostics
 
 
+@pytest.mark.parametrize("value,expected", [("false", False), ("0", False), ("true", True), (False, False)])
+def test_configuration_boolean_strings_are_parsed(monkeypatch, value, expected):
+    from omegaconf import OmegaConf
+
+    config = OmegaConf.create({"server": {"diagnostics": {"enabled": value}}})
+    monkeypatch.setattr(diagnostics, "_config_provider", lambda: config)
+    assert diagnostics.diagnostics_enabled() is expected
+
+
 @pytest.fixture
 def enabled(monkeypatch):
     monkeypatch.setattr(
