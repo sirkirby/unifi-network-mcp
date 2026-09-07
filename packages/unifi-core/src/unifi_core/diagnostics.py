@@ -1,7 +1,8 @@
 """Tool and API diagnostics for MCP servers.
 
 This module provides diagnostic logging for tool calls and API requests,
-with configurable redaction, truncation, and payload limits.
+using operation metadata only. Arguments, controller payloads, request paths,
+and exception messages are never included in diagnostic records.
 
 Servers initialize diagnostics at startup via ``init_diagnostics()``
 to inject their config provider (avoiding circular imports).
@@ -27,7 +28,6 @@ import time
 from functools import wraps
 from typing import Any, Callable, Dict
 
-from unifi_core.log_filters import mask_network_locations
 from unifi_core.redaction import redact_sensitive_fields
 
 # Module-level state set by init_diagnostics()
@@ -130,23 +130,13 @@ def _truncate(text: str, limit: int) -> str:
 
 
 def _safe_json(data: Any, limit: int) -> str:
-    """Serialize *data* for a log line: redacted, address-masked, then truncated.
-
-    Every diagnostics line goes through here, which is why the masking belongs
-    here rather than at each call site. Masking runs on the serialized text, so it
-    reaches an address wherever it sits — a value, a key, a URL inside an error
-    string, a MAC in a request path — and it runs before truncation so the limit
-    still describes what was written.
-    """
+    """Format selected metadata. Callers must exclude controller data first."""
     try:
         redacted = _redact(data)
         as_text = json.dumps(redacted, ensure_ascii=False, default=str)
     except Exception:
-        try:
-            as_text = str(data)
-        except Exception:
-            as_text = "<unserializable>"
-    return _truncate(mask_network_locations(as_text), limit)
+        as_text = "<unserializable>"
+    return _truncate(as_text, limit)
 
 
 # ---------------------------------------------------------------------------
@@ -162,22 +152,19 @@ def log_tool_call(
     duration_ms: float,
     error: Exception | None = None,
 ) -> None:
-    """Log a tool invocation with redaction and truncation."""
+    """Log operation, duration, boolean outcome, and exception class only.
+
+    Legacy argument/result logging flags remain accepted for configuration
+    compatibility but cannot enable payload logging.
+    """
     if not diagnostics_enabled():
         return
     cfg = _diag_cfg()
     parts = {"tool": tool_name, "duration_ms": int(duration_ms)}
-    if cfg.get("log_tool_args", True):
-        try:
-            parts["args"] = args
-            parts["kwargs"] = kwargs
-        except Exception:
-            parts["args"] = "<unserializable>"
-            parts["kwargs"] = "<unserializable>"
     if error is not None:
-        parts["error"] = str(error)
-    elif cfg.get("log_tool_result", True):
-        parts["result"] = result
+        parts["error_type"] = type(error).__name__
+    elif isinstance(result, dict) and isinstance(result.get("success"), bool):
+        parts["success"] = result["success"]
 
     max_chars = int(cfg.get("max_payload_chars", 2000))
     text = _safe_json(parts, max_chars)
@@ -218,17 +205,16 @@ def wrap_tool(func, tool_name: str):
 
 
 def log_api_request(method: str, path: str, payload: Any, response: Any, duration_ms: float, ok: bool) -> None:
-    """Log an API request with redaction and truncation."""
+    """Log method, duration, and outcome without paths or controller payloads."""
     if not diagnostics_enabled():
         return
     cfg = _diag_cfg()
     max_chars = int(cfg.get("max_payload_chars", 2000))
     entry = {
-        "method": method.upper(),
-        "path": path,
+        "method": method.upper()
+        if method.upper() in {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+        else "OTHER",
         "ok": ok,
         "duration_ms": int(duration_ms),
-        "request": json.loads(_safe_json(payload, max_chars)) if payload is not None else None,
-        "response": json.loads(_safe_json(response, max_chars)) if response is not None else None,
     }
     _logger.info("API %s", _safe_json(entry, max_chars))
