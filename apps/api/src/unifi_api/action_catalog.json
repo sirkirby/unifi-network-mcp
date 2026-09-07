@@ -429,7 +429,7 @@
             "type": "string"
           },
           "limit": {
-            "description": "Maximum number of events to return (default 30).",
+            "description": "Maximum number of events to return; must be zero or greater (default 30).",
             "type": "integer"
           },
           "start": {
@@ -1332,7 +1332,7 @@
             "type": "string"
           },
           "limit": {
-            "description": "Maximum number of events to return (default 30).",
+            "description": "Maximum number of events to return; must be zero or greater (default 30).",
             "type": "integer"
           },
           "metadata_fields": {
@@ -4962,7 +4962,7 @@
             "type": "string"
           },
           "limit": {
-            "description": "Maximum number of events to return (default 100)",
+            "description": "Maximum number of events to return; must be zero or greater (default 100)",
             "type": "integer"
           },
           "severities": {
@@ -5416,7 +5416,7 @@
             "type": "string"
           },
           "limit": {
-            "description": "Maximum number of events to return from the buffer. Omit to return all buffered events.",
+            "description": "Maximum number of events to return from the buffer; must be zero or greater. Omit to return all buffered events.",
             "type": "integer"
           },
           "mac": {
