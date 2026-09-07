@@ -351,8 +351,8 @@ class ConnectionManager:
         return f"{proto}://{self.host}:{self.port}"
 
     def _sanitize_connection_error(self, error: BaseException) -> str:
-        """Return a user-facing connection error without configured secrets or addresses."""
-        return self._sanitize_text(str(error) or type(error).__name__)
+        """Return safe failure context for later callers, which may log it verbatim."""
+        return f"{type(error).__name__}: check controller connectivity, credentials, and MFA/TOTP configuration."
 
     def _sanitize_text(self, text: str, extra_secrets: Mapping[str, bool] | Iterable[str] = ()) -> str:
         """Mask MAC addresses, the configured credentials and *extra_secrets* in *text*.
@@ -361,8 +361,8 @@ class ConnectionManager:
         a credential written directly against ``-`` or ``_`` is not covered by
         that rule. ``extra_secrets`` — the values the request itself submitted
         — are matched literally. Both cover the escaped forms a message can
-        quote a value with, so nothing decodable reaches
-        ``last_connection_error`` or a log line.
+        quote a value with. This only covers known secrets; authentication
+        summaries and settings failure logs omit controller text entirely.
         """
         rules = self._secret_rules()
         if isinstance(extra_secrets, Mapping):
@@ -421,7 +421,7 @@ class ConnectionManager:
 
     @property
     def last_connection_error(self) -> Optional[str]:
-        """Return the latest sanitized connection failure, if any."""
+        """Return the latest connection failure class and fixed guidance, if any."""
         return self._last_connection_error
 
     def _not_connected_error(self) -> ConnectionError:
@@ -884,6 +884,12 @@ class ConnectionManager:
         """
         if not logger.isEnabledFor(level):
             return
+        if api_request.path.startswith(("/get/setting/", "/set/setting/")):
+            # Settings can contain controller-only secrets absent from the
+            # submitted payload. Neither redaction by key nor known-value
+            # scrubbing can make arbitrary response text safe to log.
+            logger.log(level, "%s: settings request failed", what)
+            return
         message = f"{what}: %s %s - %s"
         args = [api_request.method.upper(), mask_macs(api_request.path), self._sanitize_text(detail, secrets)]
         if with_traceback:
@@ -991,7 +997,9 @@ class ConnectionManager:
                         await self._discard_connection()
                     raise retry_e from None
             else:
-                raise self._not_connected_error()
+                # The original LoginRequired may quote controller-only secrets.
+                # Callers that log tracebacks must see only the safe auth summary.
+                raise self._not_connected_error() from None
         except (RequestError, ResponseError, aiohttp.ClientError) as e:
             # Classify before scrubbing: the scrub rewrites the message in
             # place, and a submitted value that collides with the status text

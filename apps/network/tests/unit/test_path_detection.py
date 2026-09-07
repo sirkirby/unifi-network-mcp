@@ -451,7 +451,7 @@ class TestPathDetection:
         await manager.cleanup()
 
     @pytest.mark.asyncio
-    async def test_request_includes_last_initialize_error_after_auth_failure(self):
+    async def test_request_includes_safe_initialize_guidance_after_auth_failure(self):
         manager = ConnectionManager("192.168.1.1", "admin", "secret", max_retries=1)
 
         with patch("unifi_core.network.managers.connection_manager.Controller", _FailingLoginController):
@@ -463,7 +463,9 @@ class TestPathDetection:
                     await manager.request(ApiRequest(method="get", path="/stat/sysinfo"))
 
         assert "Not connected to controller" in str(exc_info.value)
-        assert "SSO MFA required but no totp_secret configured" in str(exc_info.value)
+        assert "RequestError" in str(exc_info.value)
+        assert "MFA/TOTP configuration" in str(exc_info.value)
+        assert "SSO MFA required but no totp_secret configured" not in str(exc_info.value)
         await manager.cleanup()
 
     @pytest.mark.asyncio
@@ -490,7 +492,8 @@ class TestPathDetection:
 
         factory.assert_called_once()
         controller.login.assert_awaited_once()
-        assert manager.last_connection_error == str(error)
+        assert type(error).__name__ in manager.last_connection_error
+        assert str(error) not in manager.last_connection_error
         assert manager._cache == {}
         await manager.cleanup()
 
@@ -557,7 +560,8 @@ class TestPathDetection:
         manager._reconnect_block_until = 0.0
         second = manager._block_automatic_reconnect(AuthenticationRateLimitError("429"))
 
-        assert first == second == "429"
+        assert first == second
+        assert "AuthenticationRateLimitError" in first
         assert manager._reconnect_block_count == 2
         # The second cool-down is double the first (base*2), measured from now.
         assert manager._reconnect_block_until > first_deadline
@@ -717,7 +721,8 @@ class TestPathDetection:
 
         assert manager.controller is None
         assert manager.reconnect_blocked is True
-        assert manager._reconnect_block_error == "still expired"
+        assert "LoginRequired" in manager._reconnect_block_error
+        assert "still expired" not in manager._reconnect_block_error
         controller.login.assert_awaited_once()
         assert await manager.ensure_connected() is False
         controller.login.assert_awaited_once()
@@ -765,7 +770,7 @@ class TestPathDetection:
         manager._auth_generation = 1
         manager._unifi_os_override = True
 
-        with pytest.raises(ConnectionError, match="api.err.Invalid"):
+        with pytest.raises(ConnectionError, match="Unauthorized"):
             await manager.request(ApiRequest(method="get", path="/stat/sysinfo"))
 
         assert manager.controller is None
@@ -796,5 +801,6 @@ class TestPathDetection:
         message = str(exc_info.value)
         assert "super-secret-password" not in message
         assert "super-secret-password" not in caplog.text
-        assert "<redacted>" in message
+        assert "RequestError" in message
+        assert "check controller connectivity" in message
         await manager.cleanup()

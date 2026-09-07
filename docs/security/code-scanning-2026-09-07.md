@@ -22,8 +22,8 @@ ignored its rewritten `args`.
 | [78](https://github.com/sirkirby/unifi-mcp/security/code-scanning/78) | `connection_manager.py:864` | Log refresh failure context and exception class. |
 | [79](https://github.com/sirkirby/unifi-mcp/security/code-scanning/79) | `system_manager.py:333` | Omit rejected response bodies; adjacent exception handler logs exception class. |
 
-This follows the existing Network client/device logging pattern. Caller-facing
-error scrubbing, response redaction policy, authentication classification,
+This follows the existing Network client/device logging pattern. Request-error
+scrubbing, response redaction policy, authentication classification,
 reconnect circuit, and retry behavior remain intact. No tools or public schemas
 are added or changed. Auto-backup read/preview/update and DPI MCP error responses
 now include the exception class instead of exception text. Their manager/tool
@@ -32,10 +32,18 @@ reintroduce sensitive content at those downstream logs. This is a focused
 remediation of the listed logging boundaries, not a
 claim that every log or caller-facing exception is free of arbitrary secrets.
 
+Cached connection failures now contain exception class and fixed remediation
+guidance, so later tool calls cannot log cached controller text. Failed
+reauthentication also suppresses the original LoginRequired traceback context.
+Settings failure logging omits controller text inside ConnectionManager before
+the exception reaches the system manager. Other request logging retains its
+existing behavior.
+
 Validation: eight new behavioral regression cases failed before the fix and
 passed afterward; 54 focused credential sanitization, request logging, and
-reauthentication tests passed. Six additional caller-chain regression cases
-reproduced leaks before the follow-up fix and pass afterward: auto-backup read,
-preview, update fetch, update PUT, and both DPI refresh handlers. Full repository and GitHub scan results are
+reauthentication tests passed. Caller-chain regressions exercise real connection
+and domain managers: auto-backup read, preview, update fetch and update PUT with
+opaque, request and response exceptions; both DPI handlers; and tool calls after
+failed initialization or reauthentication. Full repository and GitHub scan results are
 recorded in the associated pull request. Alert closure on main requires the
 change to be merged and scanned; no alerts were manually dismissed.
