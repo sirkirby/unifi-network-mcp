@@ -84,8 +84,8 @@ async def test_event_listener_is_owned_across_rotation(tmp_path, monkeypatch):
         await engine.dispose()
 
 
-def _patch_network_cm(monkeypatch) -> list[_FakeCM]:
-    """Replace the network ConnectionManager with a fake; return the
+def _patch_cm(monkeypatch, module, attr: str) -> list[_FakeCM]:
+    """Replace a product's ConnectionManager with a fake; return the
     instance list so callers can assert against constructions."""
     instances: list[_FakeCM] = []
 
@@ -94,10 +94,20 @@ def _patch_network_cm(monkeypatch) -> list[_FakeCM]:
         instances.append(cm)
         return cm
 
+    monkeypatch.setattr(module, attr, _factory)
+    return instances
+
+
+def _patch_network_cm(monkeypatch) -> list[_FakeCM]:
     from unifi_core.network.managers import connection_manager as cm_module
 
-    monkeypatch.setattr(cm_module, "ConnectionManager", _factory)
-    return instances
+    return _patch_cm(monkeypatch, cm_module, "ConnectionManager")
+
+
+def _patch_protect_cm(monkeypatch) -> list[_FakeCM]:
+    from unifi_core.protect.managers import connection_manager as cm_module
+
+    return _patch_cm(monkeypatch, cm_module, "ProtectConnectionManager")
 
 
 async def _seed(tmp_path: Path, products: list[str] = ["network"]):
@@ -609,4 +619,86 @@ async def test_invalidate_still_closes_the_connection_when_a_listener_fails_to_s
     await factory.invalidate_controller(cid)
 
     assert cm.close_calls == 1
+    await engine.dispose()
+
+
+class _SiblingListener:
+    """Domain manager that owns a subscription, for sibling-eviction tests."""
+
+    def __init__(self, cm):
+        self.stop_listening = AsyncMock()
+        self.unsubscribed = False
+        self._callbacks: list = []
+
+    def add_subscriber(self, callback):
+        self._callbacks.append(callback)
+
+        def _unsub() -> None:
+            self.unsubscribed = True
+            self._callbacks.remove(callback)
+
+        return _unsub
+
+    def emit(self, event: dict) -> None:
+        for callback in list(self._callbacks):
+            callback(event)
+
+
+async def _seed_console(tmp_path: Path, monkeypatch, **factory_kwargs):
+    """A two-product console with a cached connection and listener for each."""
+    _patch_network_cm(monkeypatch)
+    _patch_protect_cm(monkeypatch)
+    engine, sm, cipher, cid = await _seed(tmp_path, products=["network", "protect"])
+    factory = ManagerFactory(sm, cipher, **factory_kwargs)
+    factory._builder_cache["network"] = {"event_manager": _SiblingListener}
+    factory._builder_cache["protect"] = {"event_manager": _SiblingListener}
+    async with sm() as session:
+        net_cm = await factory.get_connection_manager(session, cid, "network")
+        await factory.get_connection_manager(session, cid, "protect")
+        net_mgr = await factory.get_domain_manager(session, cid, "network", "event_manager")
+        protect_mgr = await factory.get_domain_manager(session, cid, "protect", "event_manager")
+    return engine, sm, cid, factory, net_cm, net_mgr, protect_mgr
+
+
+@pytest.mark.asyncio
+async def test_probe_heal_leaves_a_healthy_products_manager_cached(tmp_path: Path, monkeypatch) -> None:
+    """Healing a blocked Network connection must not evict Protect on the same console."""
+    engine, sm, cid, factory, net_cm, net_mgr, protect_mgr = await _seed_console(tmp_path, monkeypatch)
+    net_cm.reconnect_blocked = True
+
+    assert (await factory.probe_controller(cid))["ok"] is True
+
+    net_mgr.stop_listening.assert_awaited_once()
+    protect_mgr.stop_listening.assert_not_awaited()
+    # Still the cached instance: not merely left running, but never rebuilt.
+    async with sm() as session:
+        assert await factory.get_domain_manager(session, cid, "protect", "event_manager") is protect_mgr
+
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_probe_heal_keeps_a_healthy_sibling_stream_delivering(tmp_path: Path, monkeypatch) -> None:
+    """A live Protect stream must survive the healing of a blocked Network connection."""
+    from unifi_api.services.streams import SubscriberPool
+
+    pool = SubscriberPool()
+    engine, _sm, cid, factory, net_cm, net_mgr, protect_mgr = await _seed_console(
+        tmp_path, monkeypatch, on_manager_discard=pool.disconnect_manager
+    )
+
+    sub = await pool.attach(cid, "protect", protect_mgr)
+    protect_mgr.emit({"id": "before"})
+    assert sub.queue.get_nowait() == {"id": "before"}
+
+    net_cm.reconnect_blocked = True
+    assert (await factory.probe_controller(cid))["ok"] is True
+
+    # The healed Network listener is stopped; the untouched Protect one still
+    # carries its subscription and its stream was never terminated.
+    net_mgr.stop_listening.assert_awaited_once()
+    assert protect_mgr.unsubscribed is False
+    protect_mgr.emit({"id": "after"})
+    assert sub.queue.get_nowait() == {"id": "after"}
+
     await engine.dispose()

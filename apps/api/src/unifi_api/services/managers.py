@@ -210,6 +210,12 @@ class ManagerFactory:
             return site or "default"
         return None
 
+    @staticmethod
+    def _connection_key_for(domain_key: tuple[str, str, str, str | None]) -> tuple[str, str, str | None]:
+        """The connection-cache key the domain manager at ``domain_key`` was built on."""
+        controller_id, product, _attr_name, site_scope = domain_key
+        return (controller_id, product, site_scope)
+
     async def _stop_domain_managers(self, managers: list[Any]) -> None:
         """Stop any dropped domain manager that owns a background task.
 
@@ -546,11 +552,15 @@ class ManagerFactory:
             ]
             if not healable:
                 return
-            # Domain managers may be bound to the blocked connections; sweep
-            # them synchronously with the pops (same invariant as
-            # invalidate_controller). Survivors rebuild from cached healthy
-            # connections on next use.
-            dropped = [self._domain_cache.pop(k) for k in [k for k in self._domain_cache if k[0] == controller_id]]
+            # A controller id covers every product and site on one console, so
+            # sweeping by it alone would stop a healthy Protect listener to heal a
+            # blocked Network one. Sweep synchronously with the pops, same
+            # invariant as invalidate_controller.
+            healed = set(healable)
+            dropped = [
+                self._domain_cache.pop(k)
+                for k in [k for k in self._domain_cache if self._connection_key_for(k) in healed]
+            ]
             removed = [self._connection_cache.pop(k) for k in healable]
             await self._stop_domain_managers(dropped)
             logger.info(
