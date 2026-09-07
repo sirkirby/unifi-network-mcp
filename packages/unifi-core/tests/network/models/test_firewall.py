@@ -980,6 +980,22 @@ class TestLegacyFirewallRuleFromController:
         r = legacy_firewall_rule_from_controller({"_id": "r", "enabled": "yes"})
         assert r.enabled is None
 
+    def test_coerces_integer_ports_to_str(self) -> None:
+        """The controller returns a bare port as an int; the field is str."""
+        r = legacy_firewall_rule_from_controller({"_id": "r", "src_port": 8123, "dst_port": 443})
+        assert r.src_port == "8123"
+        assert r.dst_port == "443"
+
+    def test_preserves_string_port_ranges(self) -> None:
+        """A port range already arrives as a string and must be left alone."""
+        r = legacy_firewall_rule_from_controller({"_id": "r", "dst_port": "8000:8100"})
+        assert r.dst_port == "8000:8100"
+
+    def test_empty_and_missing_ports_stay_none_or_empty(self) -> None:
+        r = legacy_firewall_rule_from_controller({"_id": "r", "src_port": ""})
+        assert r.src_port == ""
+        assert r.dst_port is None
+
     def test_handles_empty_dict(self) -> None:
         r = legacy_firewall_rule_from_controller({})
         assert r.id is None
