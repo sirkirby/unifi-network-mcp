@@ -14,6 +14,7 @@ from typing import Any
 
 from unifi_core.network.models.clients import _is_online, client_from_controller
 from unifi_core.network.models.devices import normalize_radio_channel
+from unifi_core.network.models.firewall import SELECTOR_ACTIVATORS, _activator_matches, activator_is_known
 from unifi_core.network.models.firewall import from_controller as firewall_policy_from_controller
 from unifi_core.network.models.networks import from_controller as network_from_controller
 
@@ -783,6 +784,49 @@ def shape_wlan_list(
     }
 
 
+# selector -> (activating enum key, value); a selector under any other value is not shown.
+# The write side validates and retires the three in SELECTOR_ACTIVATORS. The IP and
+# NETWORK selectors below follow the same contract on the controller but are not yet
+# validated or retired, so a stale one is routinely present — and showing `ips` beside
+# `matching_target: ANY` reports a zone-wide rule as if it were address-scoped, which
+# is the reading this summary must never produce.
+_SELECTOR_ACTIVATION = {
+    **{selector: (key, value) for selector, key, value in SELECTOR_ACTIVATORS},
+    "ips": ("matching_target", "IP"),
+    "ip_group_id": ("matching_target", "IP"),
+    "match_opposite_ips": ("matching_target", "IP"),
+    "network_ids": ("matching_target", "NETWORK"),
+    "match_opposite_networks": ("matching_target", "NETWORK"),
+    "match_opposite_ports": ("port_matching_type", "SPECIFIC"),
+}
+
+
+def _selector_is_active(endpoint: dict[str, Any], activator: tuple[str, str]) -> bool:
+    """Whether a stored selector is one the controller acts on, for display purposes."""
+    key, activating = activator
+    value = endpoint.get(key)
+    if value is not None and not activator_is_known(key, value):
+        # A target this project has not seen (App, Web, Region, ...). The controller
+        # may well be enforcing the selector, and reporting a narrow rule as broad is
+        # the worse error on the surface the firewall auditor reads.
+        return True
+    return _activator_matches(value, activating)
+
+
+_FIREWALL_TARGETING_KEYS = (
+    "matching_target_type",
+    "ips",
+    "ip_group_id",
+    "network_ids",
+    "client_macs",
+    "port",
+    "port_group_id",
+    "match_opposite_ips",
+    "match_opposite_networks",
+    "match_opposite_ports",
+)
+
+
 def shape_firewall_policy_list(
     policies: list[Any],
     *,
@@ -819,11 +863,24 @@ def shape_firewall_policy_list(
             "rule_index": shaped.index,
             "description": policy.get("description", policy.get("desc", "")),
         }
+        if shaped.protocol:
+            entry["protocol"] = shaped.protocol
         for direction in ("source", "destination"):
             endpoint = getattr(shaped, direction)
             if endpoint and isinstance(endpoint, dict):
                 targeting = {"zone_id": endpoint.get("zone_id"), "matching_target": endpoint.get("matching_target")}
-                for key in ("matching_target_type", "ips", "network_ids", "client_macs"):
+                port_matching_type = endpoint.get("port_matching_type")
+                if port_matching_type and port_matching_type != "ANY":
+                    targeting["port_matching_type"] = port_matching_type
+                # Selectors and inversion flags, in display order; only set (truthy) values are shown,
+                # and a port selector only under the port_matching_type that activates it.
+                for key in _FIREWALL_TARGETING_KEYS:
+                    activator = _SELECTOR_ACTIVATION.get(key)
+                    if key == "match_opposite_ports" and _activator_matches(port_matching_type, "OBJECT"):
+                        # Inversion also applies to a stored port-group match.
+                        activator = None
+                    if activator and not _selector_is_active(endpoint, activator):
+                        continue
                     if endpoint.get(key):
                         targeting[key] = endpoint[key]
                 entry[direction] = targeting

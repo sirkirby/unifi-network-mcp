@@ -6,6 +6,7 @@ endpoint with deep_merge.
 """
 
 import copy
+import logging
 import os
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -212,6 +213,24 @@ class TestUpdateFirewallPolicyEndpoint:
         # Sibling keys preserved by deep_merge
         assert payload["source"]["matching_target"] == "NETWORK"
         assert payload["source"]["network_ids"] == ["net001"]
+
+    @pytest.mark.asyncio
+    async def test_none_inside_an_endpoint_removes_the_key_from_the_payload(self, firewall_manager, mock_connection):
+        """A retired selector (value None) must not be sent as null; the controller stores selectors only
+        under their activating enum, so the key is dropped from the merged endpoint."""
+        raw = copy.deepcopy(SAMPLE_POLICY_RAW)
+        raw["destination"].update({"port_matching_type": "SPECIFIC", "port": "53"})
+        policy = _make_firewall_policy(raw)
+
+        with patch.object(firewall_manager, "get_firewall_policies", new_callable=AsyncMock, return_value=[policy]):
+            await firewall_manager.update_firewall_policy(
+                "pol001", {"destination": {"port_matching_type": "ANY", "port": None}}
+            )
+
+        payload = mock_connection.request.call_args[0][0].data
+        assert payload["destination"]["port_matching_type"] == "ANY"
+        assert "port" not in payload["destination"]
+        assert payload["destination"]["zone_id"] == "zone-external"
 
     @pytest.mark.asyncio
     async def test_does_not_mutate_cached_policy(self, firewall_manager, mock_connection):
@@ -1297,3 +1316,218 @@ class TestFirewallZoneCrud:
 
         assert zone["_id"] == "znew"
         sleep.assert_awaited_once()
+
+
+class TestUpdateFirewallPolicySelectorPath:
+    """Selector retirement and merged-state validation live in the manager, so every
+    caller (MCP wrapper, API dispatcher, direct Core use) gets the same behaviour."""
+
+    @staticmethod
+    def _stored(destination: dict) -> dict:
+        return {
+            "_id": "pol_zone_001",
+            "name": "disposable",
+            "enabled": False,
+            "action": "BLOCK",
+            "predefined": False,
+            "source": {"zone_id": "z1", "matching_target": "ANY"},
+            "destination": {"zone_id": "z1", "matching_target": "ANY", **destination},
+        }
+
+    @staticmethod
+    def _wire(mock_connection, stored: dict) -> list:
+        sent: list = []
+
+        async def request(api_request, *args, **kwargs):
+            if api_request.method == "get":
+                return [stored]
+            sent.append((api_request.method, api_request.data))
+            return {}
+
+        mock_connection.request = AsyncMock(side_effect=request)
+        return sent
+
+    @pytest.mark.asyncio
+    async def test_activation_change_retires_the_stored_port_in_the_put_body(self, firewall_manager, mock_connection):
+        stored = self._stored({"port_matching_type": "SPECIFIC", "port": "53"})
+        sent = self._wire(mock_connection, stored)
+
+        assert await firewall_manager.update_firewall_policy(
+            "pol_zone_001", {"destination": {"port_matching_type": "ANY"}}
+        )
+
+        assert [method for method, _ in sent] == ["put"]
+        body = sent[0][1]
+        assert body["destination"]["port_matching_type"] == "ANY"
+        assert "port" not in body["destination"]
+        assert body["source"] == stored["source"]
+        assert body["enabled"] is False
+
+    @pytest.mark.asyncio
+    async def test_targeting_error_never_reaches_the_log(self, firewall_manager, mock_connection, caplog):
+        """The error goes back to the caller and, on the API, into a durable audit row.
+        It names the offending position, never the address (AGENTS.md privacy rule)."""
+        stored = self._stored({})
+        stored["source"] = {"zone_id": "z1", "matching_target": "CLIENT", "client_macs": ["aa:bb:cc:dd:ee:ff"]}
+        sent = self._wire(mock_connection, stored)
+
+        with caplog.at_level(logging.DEBUG):
+            with pytest.raises(ValueError) as excinfo:
+                await firewall_manager.update_firewall_policy(
+                    "pol_zone_001", {"source": {"client_macs": ["11:22:33:44:55:66", "not-a-mac"]}}
+                )
+
+        assert sent == []
+        for mac in ("11:22:33:44:55:66", "aa:bb:cc:dd:ee:ff"):
+            assert mac not in caplog.text
+            assert mac not in str(excinfo.value)
+
+    @pytest.mark.asyncio
+    async def test_a_rejected_update_is_not_an_operator_facing_error(self, firewall_manager, mock_connection, caplog):
+        """A mistyped selector is caller input, not a controller failure. create_firewall_policy
+        validates outside its try and logs nothing; the update path must match."""
+        stored = self._stored({"port_matching_type": "OBJECT", "port_group_id": "g1"})
+        self._wire(mock_connection, stored)
+
+        with caplog.at_level(logging.DEBUG):
+            with pytest.raises(ValueError):
+                await firewall_manager.update_firewall_policy(
+                    "pol_zone_001", {"destination": {"port_matching_type": "SPECIFIC"}}
+                )
+
+        assert [r for r in caplog.records if r.levelno >= logging.ERROR] == []
+        assert not any(r.exc_info for r in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_a_caller_supplied_null_outside_the_selectors_still_reaches_the_controller(
+        self, firewall_manager, mock_connection
+    ):
+        """Retirement removes the three selector keys and nothing else. Dropping any other
+        null would turn a request the controller rejects into silent data loss."""
+        stored = self._stored({"port_matching_type": "SPECIFIC", "port": "53"})
+        sent = self._wire(mock_connection, stored)
+
+        assert await firewall_manager.update_firewall_policy(
+            "pol_zone_001", {"destination": {"port_matching_type": "ANY", "zone_id": None}}
+        )
+
+        body = sent[0][1]
+        assert "port" not in body["destination"]
+        assert body["destination"]["zone_id"] is None
+
+    @pytest.mark.asyncio
+    async def test_an_untouched_side_is_not_stripped(self, firewall_manager, mock_connection):
+        stored = self._stored({})
+        stored["source"] = {"zone_id": "z1", "matching_target": "ANY", "client_macs": None}
+        sent = self._wire(mock_connection, stored)
+
+        assert await firewall_manager.update_firewall_policy("pol_zone_001", {"enabled": True})
+
+        assert sent[0][1]["source"] == stored["source"]
+
+    @pytest.mark.asyncio
+    async def test_create_does_not_log_client_macs(self, firewall_manager, mock_connection, caplog):
+        mock_connection.request = AsyncMock(return_value={"_id": "new-policy"})
+
+        with caplog.at_level(logging.DEBUG):
+            await firewall_manager.create_firewall_policy(
+                {
+                    "name": "Admin workstations",
+                    "action": "ALLOW",
+                    "source": {"zone_id": "z1", "matching_target": "CLIENT", "client_macs": ["AA:BB:CC:DD:EE:FF"]},
+                    "destination": {"zone_id": "z2", "matching_target": "ANY"},
+                }
+            )
+
+        assert "aa:bb:cc:dd:ee:ff" not in caplog.text.lower()
+
+    @pytest.mark.asyncio
+    async def test_create_sends_client_macs_in_the_canonical_colon_form(self, firewall_manager, mock_connection):
+        """Validation accepts dashed and bare-hex spellings; the controller reports colons."""
+        mock_connection.request = AsyncMock(return_value={"_id": "new-policy"})
+
+        await firewall_manager.create_firewall_policy(
+            {
+                "name": "Admin workstations",
+                "action": "ALLOW",
+                "source": {
+                    "zone_id": "z1",
+                    "matching_target": "CLIENT",
+                    "client_macs": ["AA-BB-CC-DD-EE-FF", "AABBCCDDEEFF"],
+                },
+            }
+        )
+
+        sent = mock_connection.request.call_args[0][0].data
+        assert sent["source"]["client_macs"] == ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:dd:ee:ff"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("endpoint", "expected"),
+        [
+            ({"matching_target": "any", "port_matching_type": "object"}, "port_group_id"),
+            # Only this one depends on the normalization: the selector table compares
+            # case-insensitively, validate_policy_port_targeting compares exactly.
+            ({"matching_target": "any", "port_matching_type": "specific"}, "destination.port"),
+            ({"matching_target": "client", "client_macs": []}, "client_macs"),
+        ],
+    )
+    async def test_create_validates_a_lower_case_endpoint_enum(
+        self, firewall_manager, mock_connection, endpoint, expected
+    ):
+        """The MCP tool normalizes before validating; every other caller of this manager
+        did not, and a lower-case enum used to skip the checks entirely."""
+        mock_connection.request = AsyncMock(return_value={"_id": "new-policy"})
+
+        with pytest.raises(ValueError, match=expected):
+            await firewall_manager.create_firewall_policy(
+                {"name": "x", "action": "ALLOW", "destination": {"zone_id": "z2", **endpoint}}
+            )
+
+        mock_connection.request.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_an_unexpected_create_response_is_not_quoted_back(self, firewall_manager, mock_connection, caplog):
+        """A V2 create response echoes the policy document, client_macs included; it
+        reaches the tool's error field and the API audit row."""
+        mock_connection.request = AsyncMock(
+            return_value={"meta": {"rc": "error"}, "data": [{"client_macs": ["aa:bb:cc:dd:ee:ff"]}]}
+        )
+
+        with caplog.at_level(logging.DEBUG):
+            with pytest.raises(RuntimeError) as excinfo:
+                await firewall_manager.create_firewall_policy(
+                    {
+                        "name": "Admin only",
+                        "action": "ALLOW",
+                        "source": {"zone_id": "z1", "matching_target": "CLIENT", "client_macs": ["aa:bb:cc:dd:ee:ff"]},
+                    }
+                )
+
+        assert "aa:bb:cc:dd:ee:ff" not in str(excinfo.value)
+        assert "aa:bb:cc:dd:ee:ff" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_a_stored_controller_null_survives_an_unrelated_update(self, firewall_manager, mock_connection):
+        """The PUT is a full document: only the keys this update retired are removed."""
+        stored = self._stored({"port_matching_type": "ANY", "port": None, "ips": None})
+        sent = self._wire(mock_connection, stored)
+
+        assert await firewall_manager.update_firewall_policy("pol_zone_001", {"destination": {"zone_id": "z9"}})
+
+        body = sent[0][1]["destination"]
+        assert body["zone_id"] == "z9"
+        assert body["port"] is None
+        assert body["ips"] is None
+
+    @pytest.mark.asyncio
+    async def test_selector_only_update_on_inactive_enum_is_rejected_before_any_put(
+        self, firewall_manager, mock_connection
+    ):
+        stored = self._stored({"port_matching_type": "ANY"})
+        sent = self._wire(mock_connection, stored)
+
+        with pytest.raises(ValueError, match="port_matching_type"):
+            await firewall_manager.update_firewall_policy("pol_zone_001", {"destination": {"port": "53"}})
+
+        assert sent == []

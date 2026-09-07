@@ -59,6 +59,105 @@ async def test_create_firewall_policy_rejects_invalid_ports_before_preview_or_ma
 @pytest.mark.asyncio
 @pytest.mark.parametrize("confirm", [False, True])
 @pytest.mark.parametrize("direction", ["source", "destination"])
+@pytest.mark.parametrize(
+    ("endpoint", "expected"),
+    [
+        ({"matching_target": "CLIENT"}, "client_macs"),
+        ({"matching_target": "CLIENT", "client_macs": ["nope"]}, "client_macs"),
+        ({"port_matching_type": "OBJECT"}, "port_group_id"),
+        ({"port_matching_type": "ANY", "port": "53"}, "port_matching_type"),
+        ({"matching_target": "ANY", "client_macs": ["aa:bb:cc:dd:ee:ff"]}, "matching_target"),
+    ],
+)
+async def test_create_firewall_policy_rejects_inactive_selectors_before_preview_or_manager(
+    confirm, direction, endpoint, expected
+):
+    """The Core create path rejects these at execution; the API preview must refuse them too,
+    since no stored state is needed to judge them."""
+    factory = MagicMock()
+    factory.get_domain_manager = AsyncMock()
+    data = {"name": "Inactive selector", "action": "ALLOW", direction: endpoint}
+    with pytest.raises(ValueError, match=expected):
+        await dispatch_action(
+            registry=PRODUCTION_REGISTRY,
+            factory=factory,
+            session=MagicMock(),
+            tool_name="unifi_create_firewall_policy",
+            controller_id="cid",
+            controller_products=["network"],
+            site="default",
+            args={"policy_data": data},
+            confirm=confirm,
+        )
+    factory.get_domain_manager.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("confirm", [False, True])
+@pytest.mark.parametrize(
+    ("endpoint", "expected"),
+    [
+        ({"matching_target": "any", "port_matching_type": "specific"}, "port"),
+        ({"matching_target": "any", "port_matching_type": "object"}, "port_group_id"),
+        ({"matching_target": "client", "client_macs": []}, "client_macs"),
+    ],
+)
+async def test_create_firewall_policy_validates_lower_case_endpoint_enums(confirm, endpoint, expected):
+    """The MCP tool upper-cases endpoint enums before validating. Until the API create
+    translator did the same, a lower-case enum turned every one of these checks into a
+    no-op on this surface only."""
+    factory = MagicMock()
+    factory.get_domain_manager = AsyncMock()
+    data = {"name": "Lower case", "action": "ALLOW", "source": {"zone_id": "z1", **endpoint}}
+    with pytest.raises(ValueError, match=expected):
+        await dispatch_action(
+            registry=PRODUCTION_REGISTRY,
+            factory=factory,
+            session=MagicMock(),
+            tool_name="unifi_create_firewall_policy",
+            controller_id="cid",
+            controller_products=["network"],
+            site="default",
+            args={"policy_data": data},
+            confirm=confirm,
+        )
+    factory.get_domain_manager.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("confirm", [False, True])
+@pytest.mark.parametrize(
+    ("endpoint", "expected"),
+    [
+        ({"matching_target": "IP"}, "matching_target_type is required"),
+        ({"matching_target": "NETWORK", "matching_target_type": "OBJECT"}, "network_ids array is required"),
+        ({"matching_target": "IP", "matching_target_type": "OBJECT"}, "ip_group_id is required"),
+    ],
+)
+async def test_create_firewall_policy_rejects_an_incomplete_target(confirm, endpoint, expected):
+    """The completeness rules used to live in the MCP tool, so this surface accepted a
+    target with nothing to match — a BLOCK policy that stops blocking."""
+    factory = MagicMock()
+    factory.get_domain_manager = AsyncMock()
+    data = {"name": "Incomplete", "action": "ALLOW", "source": {"zone_id": "z1", **endpoint}}
+    with pytest.raises(ValueError, match=expected):
+        await dispatch_action(
+            registry=PRODUCTION_REGISTRY,
+            factory=factory,
+            session=MagicMock(),
+            tool_name="unifi_create_firewall_policy",
+            controller_id="cid",
+            controller_products=["network"],
+            site="default",
+            args={"policy_data": data},
+            confirm=confirm,
+        )
+    factory.get_domain_manager.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("confirm", [False, True])
+@pytest.mark.parametrize("direction", ["source", "destination"])
 async def test_create_firewall_policy_valid_port_preserves_payload(confirm, direction):
     import copy
 
@@ -2491,6 +2590,129 @@ async def test_dispatch_update_firewall_policy_rejects_index_before_preview_and_
     factory.get_domain_manager.assert_not_called()
     domain_manager.get_firewall_policies.assert_not_awaited()
     domain_manager.update_firewall_policy.assert_not_awaited()
+
+
+def _live_firewall_manager(stored: dict) -> tuple[object, list]:
+    """A real FirewallManager over a fake connection; returns it and the mutation log."""
+    from unifi_core.network.managers.firewall_manager import FirewallManager
+
+    sent: list = []
+
+    async def request(api_request, *args, **kwargs):
+        if api_request.method == "get":
+            return [stored]
+        sent.append((api_request.method, api_request.data))
+        return {}
+
+    conn = MagicMock()
+    conn.site = "default"
+    conn.ensure_connected = AsyncMock(return_value=True)
+    conn.request = AsyncMock(side_effect=request)
+    conn.get_cached = MagicMock(return_value=None)
+    conn._update_cache = MagicMock()
+    conn._invalidate_cache = MagicMock()
+    return FirewallManager(conn), sent
+
+
+def _stored_policy(destination: dict) -> dict:
+    return {
+        "_id": "pol_zone_001",
+        "name": "disposable",
+        "enabled": False,
+        "action": "BLOCK",
+        "predefined": False,
+        "source": {"zone_id": "z1", "matching_target": "ANY"},
+        "destination": {"zone_id": "z1", "matching_target": "ANY", **destination},
+    }
+
+
+async def _dispatch_update_firewall_policy(manager, update_data: dict, *, confirm: bool):
+    entry = ToolEntry(
+        name="unifi_update_firewall_policy",
+        product="network",
+        category="firewall_policies",
+        manager="",
+        method="",
+    )
+    factory = MagicMock()
+    factory.get_domain_manager = AsyncMock(return_value=manager)
+    factory.get_connection_manager = AsyncMock(return_value=MagicMock(site="default", set_site=AsyncMock()))
+    result = await dispatch_action(
+        registry=_registry_with(entry),
+        factory=factory,
+        session=MagicMock(),
+        tool_name="unifi_update_firewall_policy",
+        controller_id="cid",
+        controller_products=["network"],
+        site="default",
+        args={"policy_id": "pol_zone_001", "update_data": update_data},
+        confirm=confirm,
+        dispatch_table={
+            "unifi_update_firewall_policy": DispatchEntry(
+                manager_attr="firewall_manager", method="update_firewall_policy"
+            ),
+        },
+    )
+    return result, factory
+
+
+@pytest.mark.asyncio
+async def test_dispatch_update_firewall_policy_rejects_selector_only_update_on_inactive_enum() -> None:
+    """API confirmed execution: port on a stored port_matching_type ANY is rejected by the
+    real manager before any PUT (the MCP wrapper already rejected this; the API did not)."""
+    manager, sent = _live_firewall_manager(_stored_policy({"port_matching_type": "ANY"}))
+
+    with pytest.raises(ValueError, match="port_matching_type"):
+        await _dispatch_update_firewall_policy(manager, {"destination": {"port": "53"}}, confirm=True)
+
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_dispatch_update_firewall_policy_activation_change_retires_stored_port() -> None:
+    """API confirmed execution: SPECIFIC/53 → ANY must not carry the stale port to the controller."""
+    stored = _stored_policy({"port_matching_type": "SPECIFIC", "port": "53"})
+    manager, sent = _live_firewall_manager(stored)
+
+    result, _ = await _dispatch_update_firewall_policy(
+        manager, {"destination": {"port_matching_type": "ANY"}}, confirm=True
+    )
+
+    assert result is True
+    assert [method for method, _ in sent] == ["put"]
+    body = sent[0][1]
+    assert body["destination"]["port_matching_type"] == "ANY"
+    assert "port" not in body["destination"]
+    assert body["source"] == stored["source"]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_update_firewall_policy_preview_defers_the_stored_state_verdict() -> None:
+    """Documented bound, pinned so it cannot change unnoticed: dispatch_action builds the
+    API preview before any manager is resolved, so checks that need the stored policy run
+    at execution only. The MCP wrapper reads the policy itself and rejects at preview."""
+    manager, sent = _live_firewall_manager(_stored_policy({"port_matching_type": "ANY"}))
+
+    result, factory = await _dispatch_update_firewall_policy(manager, {"destination": {"port": "53"}}, confirm=False)
+
+    assert isinstance(result, MutationPreview)
+    factory.get_domain_manager.assert_not_awaited()
+    assert sent == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("confirm", [False, True])
+async def test_dispatch_update_firewall_policy_rejects_contradictory_selector_before_manager(confirm: bool) -> None:
+    """A selector paired with a non-activating enum in the same update is rejected statelessly,
+    so the API preview refuses it too, before any manager is resolved."""
+    manager, sent = _live_firewall_manager(_stored_policy({"port_matching_type": "ANY"}))
+
+    with pytest.raises(ValueError, match="port_matching_type"):
+        await _dispatch_update_firewall_policy(
+            manager, {"destination": {"port_matching_type": "ANY", "port": "53"}}, confirm=confirm
+        )
+
+    assert sent == []
 
 
 # ---------------------------------------------------------------------------

@@ -210,9 +210,103 @@ def test_shape_firewall_policy_list_applies_filters_and_shapes() -> None:
     full = shape_firewall_policy_list(policies[:1], site="default", summary=False)
 
     assert result["policies"][0]["id"] == "p1"
+    assert "protocol" not in result["policies"][0]
     assert result["returned_count"] == 1
     assert "source" in full["policies"][0]
     assert shape_firewall_policy_list([], site="default")["note"]
+
+
+def test_shape_firewall_policy_list_summary_surfaces_port_matching() -> None:
+    policies = [
+        {
+            "_id": "p-port",
+            "name": "Block external DNS",
+            "enabled": True,
+            "action": "BLOCK",
+            "index": 1,
+            "protocol": "tcp_udp",
+            "source": {
+                "zone_id": "z1",
+                "matching_target": "IP",
+                "matching_target_type": "OBJECT",
+                "ip_group_id": "resolvers",
+                "match_opposite_ips": True,
+                "port_matching_type": "ANY",
+                "match_opposite_ports": False,
+            },
+            "destination": {
+                "zone_id": "z2",
+                "matching_target": "ANY",
+                "port_matching_type": "SPECIFIC",
+                "port": "53,853",
+                "match_opposite_ports": False,
+            },
+        },
+        {
+            "_id": "p-plain",
+            "name": "Allow all",
+            "enabled": True,
+            "action": "ALLOW",
+            "index": 2,
+            "protocol": "all",
+            "source": {"zone_id": "z1", "matching_target": "ANY", "port_matching_type": "ANY"},
+            "destination": {"zone_id": "z2", "matching_target": "ANY", "port_matching_type": "ANY"},
+        },
+    ]
+
+    result = shape_firewall_policy_list(policies, site="default", summary=True)
+    port_entry, plain_entry = result["policies"]
+
+    assert port_entry["protocol"] == "tcp_udp"
+    assert port_entry["destination"] == {
+        "zone_id": "z2",
+        "matching_target": "ANY",
+        "port_matching_type": "SPECIFIC",
+        "port": "53,853",
+    }
+    assert port_entry["source"]["ip_group_id"] == "resolvers"
+    assert port_entry["source"]["match_opposite_ips"] is True
+    assert "match_opposite_ports" not in port_entry["source"]
+    assert "port_matching_type" not in port_entry["source"]
+
+    assert plain_entry["protocol"] == "all"
+    assert plain_entry["destination"] == {"zone_id": "z2", "matching_target": "ANY"}
+
+
+def test_shape_firewall_policy_list_summary_hides_selectors_the_controller_ignores() -> None:
+    """A residual port under port_matching_type ANY must not read as a port match."""
+    policies = [
+        {
+            "_id": "p-stale",
+            "name": "Stale",
+            "enabled": True,
+            "action": "ALLOW",
+            "index": 1,
+            "source": {"zone_id": "z1", "matching_target": "ANY", "port_matching_type": "ANY", "port": "53"},
+            "destination": {
+                "zone_id": "z2",
+                "matching_target": "ANY",
+                "port_matching_type": "SPECIFIC",
+                "port_group_id": "g1",
+            },
+        },
+        {
+            "_id": "p-no-enum",
+            "name": "No enum at all",
+            "enabled": True,
+            "action": "ALLOW",
+            "index": 2,
+            "source": {"zone_id": "z1", "matching_target": "ANY", "port": "53"},
+            "destination": {"zone_id": "z2", "matching_target": "ANY"},
+        },
+    ]
+
+    entry, no_enum = shape_firewall_policy_list(policies, site="default", summary=True)["policies"]
+
+    assert entry["source"] == {"zone_id": "z1", "matching_target": "ANY"}
+    assert entry["destination"] == {"zone_id": "z2", "matching_target": "ANY", "port_matching_type": "SPECIFIC"}
+    # Every observed controller emits port_matching_type; a port with no enum at all is treated as inert.
+    assert no_enum["source"] == {"zone_id": "z1", "matching_target": "ANY"}
 
 
 def test_shape_rogue_ap_list_applies_filters_pagination_and_shape() -> None:
@@ -270,3 +364,141 @@ def test_shape_device_list_last_seen_is_utc_aware() -> None:
     shaped = shape_device_list([device], site="default")
 
     assert shaped["devices"][0]["last_seen"] == "2023-11-14T22:13:20+00:00"
+
+
+def test_shape_firewall_policy_list_summary_shows_client_and_inversion_selectors() -> None:
+    policies = [
+        {
+            "_id": "p-client",
+            "name": "Admin workstations",
+            "enabled": True,
+            "action": "ALLOW",
+            "index": 1,
+            "source": {
+                "zone_id": "z1",
+                "matching_target": "CLIENT",
+                "client_macs": ["aa:bb:cc:dd:ee:ff"],
+            },
+            "destination": {"zone_id": "z2", "matching_target": "ANY", "client_macs": ["aa:bb:cc:dd:ee:ff"]},
+        }
+    ]
+
+    entry = shape_firewall_policy_list(policies, site="default", summary=True)["policies"][0]
+
+    assert entry["source"]["client_macs"] == ["aa:bb:cc:dd:ee:ff"]
+    assert "client_macs" not in entry["destination"]
+
+
+def test_shape_firewall_policy_list_summary_keeps_selectors_under_an_unknown_target() -> None:
+    """A target this project has not seen may still be enforcing its selector; hiding it
+    would report a narrow rule as if it matched the whole zone."""
+    policies = [
+        {
+            "_id": "p-future",
+            "name": "Future target",
+            "enabled": True,
+            "action": "BLOCK",
+            "index": 1,
+            "source": {"zone_id": "z1", "matching_target": "CLIENT_GROUP", "client_macs": ["aa:bb:cc:dd:ee:ff"]},
+            "destination": {
+                "zone_id": "z2",
+                "matching_target": "ANY",
+                "port_matching_type": "PORT_GROUP",
+                "port_group_id": "g1",
+            },
+        }
+    ]
+
+    entry = shape_firewall_policy_list(policies, site="default", summary=True)["policies"][0]
+
+    assert entry["source"]["client_macs"] == ["aa:bb:cc:dd:ee:ff"]
+    assert entry["destination"]["port_group_id"] == "g1"
+
+
+def test_summary_suppression_covers_exactly_the_write_side_selectors() -> None:
+    """A canary on the write-side table, not a test of the shaper: read_views imports
+    SELECTOR_ACTIVATORS, so adding a row there changes every list response. Fail here
+    and decide deliberately what the summary should do with the new selector."""
+    from unifi_core.network.models.firewall import SELECTOR_ACTIVATORS
+
+    assert {selector for selector, _, _ in SELECTOR_ACTIVATORS} == {"client_macs", "port", "port_group_id"}
+
+
+def test_shape_firewall_policy_list_summary_hides_address_selectors_under_another_target() -> None:
+    """Showing `ips` beside `matching_target: ANY` reports a zone-wide rule as
+    address-scoped — the reading this summary must never produce."""
+    policies = [
+        {
+            "_id": "p-stale-ips",
+            "name": "Zone wide",
+            "enabled": True,
+            "action": "ALLOW",
+            "index": 1,
+            "source": {
+                "zone_id": "zA",
+                "matching_target": "ANY",
+                "matching_target_type": "SPECIFIC",
+                "ips": ["10.0.0.5"],
+                "ip_group_id": "grp-admins",
+                "network_ids": ["net-mgmt"],
+                "match_opposite_ips": True,
+                "port_matching_type": "ANY",
+                "port": "22",
+            },
+            "destination": {
+                "zone_id": "zB",
+                "matching_target": "NETWORK",
+                "matching_target_type": "OBJECT",
+                "network_ids": ["net-iot"],
+                "ips": ["10.0.0.9"],
+            },
+        }
+    ]
+
+    entry = shape_firewall_policy_list(policies, site="default", summary=True)["policies"][0]
+
+    assert entry["source"] == {"zone_id": "zA", "matching_target": "ANY", "matching_target_type": "SPECIFIC"}
+    assert entry["destination"]["network_ids"] == ["net-iot"]
+    assert "ips" not in entry["destination"]
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "shown"),
+    [
+        ({"matching_target": "NETWORK", "network_ids": ["n1"], "match_opposite_networks": True}, True),
+        ({"matching_target": "ANY", "match_opposite_networks": True}, False),
+        (
+            {"matching_target": "ANY", "port_matching_type": "SPECIFIC", "port": "53", "match_opposite_ports": True},
+            True,
+        ),
+        ({"matching_target": "ANY", "port_matching_type": "ANY", "match_opposite_ports": True}, False),
+        (
+            {
+                "matching_target": "ANY",
+                "port_matching_type": "OBJECT",
+                "port_group_id": "ports",
+                "match_opposite_ports": True,
+            },
+            True,
+        ),
+    ],
+)
+def test_shape_firewall_policy_list_summary_gates_the_inversion_flags(endpoint: dict, shown: bool) -> None:
+    """An inversion flag reverses a rule's meaning. Showing one on a rule that does not
+    invert, or hiding one that does, is the same error in opposite directions."""
+    flag = "match_opposite_networks" if "match_opposite_networks" in endpoint else "match_opposite_ports"
+    policies = [
+        {
+            "_id": "p1",
+            "name": "Inversion",
+            "enabled": True,
+            "action": "BLOCK",
+            "index": 1,
+            "source": {"zone_id": "z1", "matching_target": "ANY"},
+            "destination": {"zone_id": "z2", **endpoint},
+        }
+    ]
+
+    entry = shape_firewall_policy_list(policies, site="default", summary=True)["policies"][0]
+
+    assert (flag in entry["destination"]) is shown

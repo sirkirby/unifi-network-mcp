@@ -1,6 +1,8 @@
 """Tests for firewall tool enhancements: zone-based targeting, auto-detection, and delete tool."""
 
 import copy
+import json
+import logging
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -227,7 +229,8 @@ class TestListFirewallPolicies:
     @pytest.mark.asyncio
     async def test_summary_false_returns_full_model_dump(self):
         """summary=False returns the legacy fw_from_controller().model_dump() shape —
-        protocol/ip_version/logging/index present, not narrowed to the curated 6 keys."""
+        ip_version/logging/index present, not narrowed to the curated summary keys
+        (protocol is part of the summary as well)."""
         mock_policy = _make_policy(SAMPLE_ZONE_POLICY_RAW)
         mock_conn = MagicMock()
         mock_conn.site = "default"
@@ -243,7 +246,7 @@ class TestListFirewallPolicies:
 
         # curated path: narrowed 6-key entry + targeting; protocol/logging absent
         cp = curated["policies"][0]
-        assert "protocol" not in cp and "logging" not in cp and "ip_version" not in cp
+        assert "logging" not in cp and "ip_version" not in cp
         # raw path: full model dump fields present
         rp = raw["policies"][0]
         assert rp.get("protocol") == "all"
@@ -809,6 +812,522 @@ class TestCreateZoneTargetingValidation:
 # ---------------------------------------------------------------------------
 # Legacy V1 field migration errors
 # ---------------------------------------------------------------------------
+
+
+class TestCreatePortAndClientTargetingValidation:
+    """CLIENT targeting and the port OBJECT mode, plus the rule that a selector only
+    travels with the enum that activates it. The SPECIFIC port *shape* is Core's
+    validate_policy_port_targeting and is already covered by its own tests."""
+
+    @staticmethod
+    def _policy(**destination):
+        return {
+            "name": "Port matched policy",
+            "action": "BLOCK",
+            "protocol": "tcp_udp",
+            "source": {"zone_id": "internal", "matching_target": "ANY"},
+            "destination": {"zone_id": "external", "matching_target": "ANY", **destination},
+        }
+
+    @pytest.mark.asyncio
+    async def test_specific_port_matching_without_port_fails(self):
+        from unifi_network_mcp.tools.firewall import create_firewall_policy
+
+        result = await create_firewall_policy(policy_data=self._policy(port_matching_type="SPECIFIC"), confirm=True)
+
+        assert result["success"] is False
+        assert "destination.port" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_object_port_matching_without_port_group_id_fails(self):
+        from unifi_network_mcp.tools.firewall import create_firewall_policy
+
+        result = await create_firewall_policy(policy_data=self._policy(port_matching_type="OBJECT"), confirm=True)
+
+        assert result["success"] is False
+        assert "port_group_id" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_port_without_specific_port_matching_fails(self):
+        from unifi_network_mcp.tools.firewall import create_firewall_policy
+
+        result = await create_firewall_policy(
+            policy_data=self._policy(port_matching_type="ANY", port="53"), confirm=True
+        )
+
+        assert result["success"] is False
+        assert "port_matching_type" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_preview_rejects_an_inactive_selector_before_the_manager_is_reached(self):
+        """confirm=False never touches the manager, so the tool layer must run the same
+        selector check the Core create path runs."""
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.create_firewall_policy = AsyncMock(return_value=None)
+
+            from unifi_network_mcp.tools.firewall import create_firewall_policy
+
+            result = await create_firewall_policy(policy_data=self._policy(port_matching_type="OBJECT"), confirm=False)
+
+        assert result["success"] is False
+        assert "port_group_id" in result["error"]
+        mock_fm.create_firewall_policy.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_specific_port_preview_echoes_port_and_upper_cases_enum(self):
+        from unifi_network_mcp.tools.firewall import create_firewall_policy
+
+        result = await create_firewall_policy(
+            policy_data=self._policy(port_matching_type="specific", port="53,853"), confirm=False
+        )
+
+        assert result["success"] is True
+        dumped = json.dumps(result)
+        assert "53,853" in dumped
+        assert '"SPECIFIC"' in dumped
+        assert '"specific"' not in dumped
+
+    @pytest.mark.asyncio
+    async def test_unknown_matching_target_and_port_type_pass_through(self):
+        from unifi_network_mcp.tools.firewall import create_firewall_policy
+
+        result = await create_firewall_policy(
+            policy_data=self._policy(matching_target="APP", app_ids=["app-1"], port_matching_type="FUTURE"),
+            confirm=False,
+        )
+
+        assert result["success"] is True
+        assert "APP" in json.dumps(result)
+
+    @pytest.mark.asyncio
+    async def test_client_target_without_client_macs_fails(self):
+        from unifi_network_mcp.tools.firewall import create_firewall_policy
+
+        policy = self._policy()
+        policy["source"] = {"zone_id": "internal", "matching_target": "CLIENT"}
+        result = await create_firewall_policy(policy_data=policy, confirm=True)
+
+        assert result["success"] is False
+        assert "source.client_macs" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_client_target_with_macs_passes(self):
+        from unifi_network_mcp.tools.firewall import create_firewall_policy
+
+        policy = self._policy()
+        policy["source"] = {"zone_id": "internal", "matching_target": "CLIENT", "client_macs": ["aa:bb:cc:dd:ee:ff"]}
+        result = await create_firewall_policy(policy_data=policy, confirm=False)
+
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_lowercase_enum_still_fails_validation_on_create(self):
+        """Normalization must run before validation, or a lower-case enum would skip the port check."""
+        from unifi_network_mcp.tools.firewall import create_firewall_policy
+
+        result = await create_firewall_policy(policy_data=self._policy(port_matching_type="specific"), confirm=True)
+
+        assert result["success"] is False
+        assert "destination.port" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_zone_targeting_rules_still_apply(self):
+        """The IP/NETWORK requirements stay where main put them; adding selector checks
+        must not displace them."""
+        from unifi_network_mcp.tools.firewall import create_firewall_policy
+
+        result = await create_firewall_policy(policy_data=self._policy(matching_target="IP"), confirm=True)
+
+        assert result["success"] is False
+        assert "matching_target_type" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_update_upper_cases_port_matching_type(self):
+        mock_policy = _make_policy(SAMPLE_ZONE_POLICY_RAW)
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(return_value=[mock_policy])
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"destination": {"port_matching_type": "specific", "port": "53"}},
+                confirm=False,
+            )
+
+        assert result["success"] is True
+        dumped = json.dumps(result)
+        assert '"specific"' not in dumped
+        assert '"port_matching_type": "SPECIFIC"' in dumped
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("update", "expected"),
+        [
+            ({"matching_target": "IP"}, "matching_target_type is required"),
+            ({"matching_target": "NETWORK", "matching_target_type": "OBJECT"}, "network_ids array is required"),
+        ],
+    )
+    async def test_update_rejects_a_target_with_nothing_to_match(self, update, expected):
+        """A BLOCK policy whose source targets IP with no ips matches nothing. The
+        completeness rules used to be checked on create only."""
+        raw = copy.deepcopy(SAMPLE_ZONE_POLICY_RAW)
+        raw["source"] = {"zone_id": "z1", "matching_target": "ANY"}
+        mock_policy = _make_policy(raw)
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(return_value=[mock_policy])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001", update_data={"source": update}, confirm=True
+            )
+
+        assert result["success"] is False
+        assert expected in result["error"]
+        mock_fm.update_firewall_policy.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_update_validates_against_merged_document(self):
+        """A partial update that switches to OBJECT without a port_group_id is rejected."""
+        mock_policy = _make_policy(SAMPLE_ZONE_POLICY_RAW)
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(return_value=[mock_policy])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"destination": {"port_matching_type": "OBJECT"}},
+                confirm=True,
+            )
+
+        assert result["success"] is False
+        assert "port_group_id" in result["error"]
+        mock_fm.update_firewall_policy.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_update_port_without_specific_matching_is_rejected(self):
+        """A port sent to a policy whose stored port_matching_type is ANY would be ignored by the controller."""
+        raw = copy.deepcopy(SAMPLE_ZONE_POLICY_RAW)
+        raw["destination"]["port_matching_type"] = "ANY"
+        mock_policy = _make_policy(raw)
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(return_value=[mock_policy])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"destination": {"port": "53,853"}},
+                confirm=True,
+            )
+
+        assert result["success"] is False
+        assert "port_matching_type" in result["error"]
+        mock_fm.update_firewall_policy.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_update_rejects_non_dict_endpoint(self):
+        mock_policy = _make_policy(SAMPLE_ZONE_POLICY_RAW)
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(return_value=[mock_policy])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(policy_id="pol_zone_001", update_data={"source": "ANY"}, confirm=True)
+
+        assert result["success"] is False
+        assert "source" in result["error"]
+        mock_fm.update_firewall_policy.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_lowercase_enum_still_fails_validation_on_update(self):
+        mock_policy = _make_policy(SAMPLE_ZONE_POLICY_RAW)
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(return_value=[mock_policy])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"destination": {"port_matching_type": "specific"}},
+                confirm=True,
+            )
+
+        assert result["success"] is False
+        assert "port" in result["error"]
+        mock_fm.update_firewall_policy.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_update_does_not_revalidate_untouched_side(self):
+        """An invalid stored source must not block an update that only touches destination."""
+        raw = copy.deepcopy(SAMPLE_ZONE_POLICY_RAW)
+        raw["source"] = {"zone_id": "x", "matching_target": "CLIENT"}
+        mock_policy = _make_policy(raw)
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(return_value=[mock_policy])
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"destination": {"port_matching_type": "SPECIFIC", "port": "53"}},
+                confirm=False,
+            )
+
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_update_does_not_reject_preexisting_targeting_gaps(self):
+        """A controller-stored CLIENT match with an empty MAC list must still accept a port change."""
+        raw = copy.deepcopy(SAMPLE_ZONE_POLICY_RAW)
+        raw["destination"] = {
+            "zone_id": "z2",
+            "matching_target": "CLIENT",
+            "client_macs": [],
+            "port_matching_type": "ANY",
+        }
+        mock_policy = _make_policy(raw)
+        updated = copy.deepcopy(raw)
+        updated["destination"].update({"port_matching_type": "SPECIFIC", "port": "53"})
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(side_effect=[[mock_policy], [_make_policy(updated)]])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"destination": {"port_matching_type": "SPECIFIC", "port": "53"}},
+                confirm=True,
+            )
+
+        assert result["success"] is True
+        mock_fm.update_firewall_policy.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_with_missing_stored_endpoint_validates_the_update_alone(self):
+        raw = copy.deepcopy(SAMPLE_ZONE_POLICY_RAW)
+        raw["destination"] = None
+        mock_policy = _make_policy(raw)
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(return_value=[mock_policy])
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={
+                    "destination": {
+                        "zone_id": "z2",
+                        "matching_target": "ANY",
+                        "port_matching_type": "SPECIFIC",
+                        "port": "53",
+                    }
+                },
+                confirm=False,
+            )
+
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_update_switching_port_matching_to_any_retires_the_stored_port(self):
+        raw = copy.deepcopy(SAMPLE_ZONE_POLICY_RAW)
+        raw["destination"].update({"port_matching_type": "SPECIFIC", "port": "53"})
+        mock_policy = _make_policy(raw)
+        updated = copy.deepcopy(raw)
+        updated["destination"]["port_matching_type"] = "ANY"
+        del updated["destination"]["port"]
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(side_effect=[[mock_policy], [_make_policy(updated)]])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"destination": {"port_matching_type": "ANY"}},
+                confirm=True,
+            )
+
+        assert result["success"] is True
+        sent = mock_fm.update_firewall_policy.call_args[0][1]
+        assert sent["destination"] == {"port_matching_type": "ANY", "port": None}
+
+    @pytest.mark.asyncio
+    async def test_update_merged_document_keeps_existing_port(self):
+        """Changing only the port on an existing SPECIFIC match is still valid after the merge."""
+        raw = copy.deepcopy(SAMPLE_ZONE_POLICY_RAW)
+        raw["destination"].update({"port_matching_type": "SPECIFIC", "port": "53"})
+        mock_policy = _make_policy(raw)
+        updated = copy.deepcopy(raw)
+        updated["destination"]["port"] = "53,853"
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(side_effect=[[mock_policy], [_make_policy(updated)]])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"destination": {"port": "53,853"}},
+                confirm=True,
+            )
+
+        assert result["success"] is True
+
+
+class TestUpdatePreviewAndVerification:
+    """confirm=False must reach the same verdict as confirm=True, and the post-PUT
+    re-read must not read a completed retirement as an unapplied change."""
+
+    @staticmethod
+    def _stored(**destination):
+        raw = copy.deepcopy(SAMPLE_ZONE_POLICY_RAW)
+        raw["destination"] = {"zone_id": "z2", "matching_target": "ANY", **destination}
+        return raw
+
+    @pytest.mark.asyncio
+    async def test_preview_rejects_a_selector_the_stored_enum_does_not_activate(self):
+        mock_policy = _make_policy(self._stored(port_matching_type="ANY"))
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(return_value=[mock_policy])
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001", update_data={"destination": {"port": "53"}}, confirm=False
+            )
+
+        assert result["success"] is False
+        assert "port_matching_type" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_preview_shows_the_retirement_the_confirmed_call_will_perform(self):
+        mock_policy = _make_policy(self._stored(port_matching_type="SPECIFIC", port="53"))
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(return_value=[mock_policy])
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"destination": {"port_matching_type": "ANY"}},
+                confirm=False,
+            )
+
+        assert result["success"] is True
+        assert '"port": null' in json.dumps(result)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("echoed", [{}, {"port": ""}, {"port": None}])
+    async def test_a_retired_selector_the_controller_answers_as_empty_is_applied(self, echoed):
+        """The controller may drop the key or answer with its own empty default; both
+        mean retired, and reporting either as 'not applied' fails a write that landed."""
+        raw = self._stored(port_matching_type="SPECIFIC", port="53")
+        after = copy.deepcopy(raw)
+        after["destination"] = {"zone_id": "z2", "matching_target": "ANY", "port_matching_type": "ANY", **echoed}
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(side_effect=[[_make_policy(raw)], [_make_policy(after)]])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"destination": {"port_matching_type": "ANY"}},
+                confirm=True,
+            )
+
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_a_selector_the_controller_kept_is_still_reported_as_not_applied(self):
+        raw = self._stored(port_matching_type="SPECIFIC", port="53")
+        after = copy.deepcopy(raw)
+        after["destination"]["port_matching_type"] = "ANY"
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(side_effect=[[_make_policy(raw)], [_make_policy(after)]])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            result = await update_firewall_policy(
+                policy_id="pol_zone_001",
+                update_data={"destination": {"port_matching_type": "ANY"}},
+                confirm=True,
+            )
+
+        assert result["success"] is False
+        assert "did not apply changes to: destination" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_a_non_dict_reread_is_reported_without_logging_the_update(self, caplog):
+        """When the controller answers with a non-dict endpoint the comparison falls to the
+        scalar branch, where the whole submitted endpoint used to go to the log."""
+        raw = self._stored(matching_target="CLIENT", client_macs=["aa:bb:cc:dd:ee:ff"])
+        after = copy.deepcopy(raw)
+        after["destination"] = None
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(side_effect=[[_make_policy(raw)], [_make_policy(after)]])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            with caplog.at_level(logging.DEBUG):
+                result = await update_firewall_policy(
+                    policy_id="pol_zone_001",
+                    update_data={"destination": {"client_macs": ["11:22:33:44:55:66"]}},
+                    confirm=True,
+                )
+
+        assert result["success"] is False
+        assert "11:22:33:44:55:66" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_a_client_macs_mismatch_is_reported_without_logging_a_mac(self, caplog):
+        """AGENTS.md: a Network tool logs operation context, never a MAC address."""
+        raw = self._stored(matching_target="CLIENT", client_macs=["aa:bb:cc:dd:ee:ff"])
+        after = copy.deepcopy(raw)
+
+        with patch("unifi_network_mcp.tools.firewall.firewall_manager") as mock_fm:
+            mock_fm.get_firewall_policies = AsyncMock(side_effect=[[_make_policy(raw)], [_make_policy(after)]])
+            mock_fm.update_firewall_policy = AsyncMock(return_value=True)
+
+            from unifi_network_mcp.tools.firewall import update_firewall_policy
+
+            with caplog.at_level(logging.DEBUG):
+                result = await update_firewall_policy(
+                    policy_id="pol_zone_001",
+                    update_data={"destination": {"client_macs": ["11:22:33:44:55:66"]}},
+                    confirm=True,
+                )
+
+        assert result["success"] is False
+        assert "11:22:33:44:55:66" not in caplog.text
+        assert "aa:bb:cc:dd:ee:ff" not in caplog.text
 
 
 class TestLegacyFieldMigration:
