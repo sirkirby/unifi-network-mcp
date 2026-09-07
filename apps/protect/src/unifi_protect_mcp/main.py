@@ -69,7 +69,9 @@ async def main_async():
             logger.info("Global Protect connection initialized successfully from main_async.")
 
             # Start the websocket event listener if enabled and connection succeeded
-            ws_enabled_raw = config.protect.events.get("websocket_enabled", True) if hasattr(config, "protect") else True
+            ws_enabled_raw = (
+                config.protect.events.get("websocket_enabled", True) if hasattr(config, "protect") else True
+            )
             ws_enabled = parse_config_bool(ws_enabled_raw)
             if ws_enabled:
                 try:
