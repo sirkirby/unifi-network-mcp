@@ -341,9 +341,9 @@ class TestGetNetworkHealth:
 
 
 @pytest.mark.asyncio
-async def test_update_settings_scrubs_submitted_secret_from_failure_log(caplog):
+async def test_update_settings_omits_submitted_secret_from_failure_log(caplog):
     """The settings document can carry secrets (SNMPv3 password, SSH password);
-    a controller error that quotes it must reach the log with the value scrubbed."""
+    a controller error that quotes it must log only operation and exception class."""
     import logging
     from unittest.mock import AsyncMock, MagicMock
 
@@ -359,8 +359,11 @@ async def test_update_settings_scrubs_submitted_secret_from_failure_log(caplog):
     manager = SystemManager(conn)
 
     with caplog.at_level(logging.DEBUG, logger="unifi-network-mcp"):
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError) as excinfo:
             await manager.update_settings("snmp", {"x_password": "hunter2"})
 
     assert "hunter2" not in caplog.text
-    assert "rejected: x_password=***REDACTED***" in caplog.text
+    assert "Error updating snmp settings: RuntimeError" in caplog.text
+    assert "rejected: x_password" not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
+    assert str(excinfo.value) == "rejected: x_password=***REDACTED***"
