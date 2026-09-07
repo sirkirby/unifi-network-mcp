@@ -475,7 +475,7 @@ class ConnectionManager:
             "Automatic reconnect blocked after terminal authentication failure: %s. "
             "Correct the credentials or wait for the controller lockout to clear; "
             "the next reconnect attempt is allowed in %.0f seconds.",
-            connection_error,
+            type(error).__name__,
             cooldown,
         )
         return connection_error
@@ -578,10 +578,7 @@ class ConnectionManager:
         """Initialize the controller connection (correct for attached aiounifi version)."""
         blocked = self._reconnect_block_active()
         if blocked:
-            logger.error(
-                "Automatic reconnect remains blocked after authentication failure: %s",
-                blocked,
-            )
+            logger.error("Automatic reconnect remains blocked after authentication failure; waiting for cooldown.")
             return False
         if self._initialized and self.controller and self._aiohttp_session and not self._aiohttp_session.closed:
             return True
@@ -712,8 +709,8 @@ class ConnectionManager:
                         self._block_automatic_reconnect(e)
                         await self._discard_connection()
                         return False
-                    connection_error = self._record_connection_error(e)
-                    logger.warning("Connection attempt %s failed: %s", attempt + 1, connection_error)
+                    self._record_connection_error(e)
+                    logger.warning("Connection attempt %s failed: %s", attempt + 1, type(e).__name__)
                     await self._discard_connection()
                     if attempt < self._max_retries - 1:
                         await asyncio.sleep(self._retry_delay)
@@ -721,7 +718,7 @@ class ConnectionManager:
                         logger.error(
                             "Failed to initialize Unifi controller after %s attempts: %s",
                             self._max_retries,
-                            connection_error,
+                            type(e).__name__,
                         )
                         self._initialized = False
                         return False
@@ -729,10 +726,10 @@ class ConnectionManager:
                     if self._is_terminal_auth_error(e):
                         self._block_automatic_reconnect(e)
                     else:
-                        connection_error = self._record_connection_error(e)
+                        self._record_connection_error(e)
                         logger.error(
                             "Unexpected error during controller initialization: %s",
-                            connection_error,
+                            type(e).__name__,
                         )
                     await self._discard_connection()
                     return False
@@ -789,10 +786,10 @@ class ConnectionManager:
                 await self.controller.login()
             except Exception as error:
                 if self._is_terminal_auth_error(error):
-                    connection_error = self._block_automatic_reconnect(error)
+                    self._block_automatic_reconnect(error)
                 else:
-                    connection_error = self._record_connection_error(error)
-                    logger.error("Controller re-authentication failed: %s", connection_error)
+                    self._record_connection_error(error)
+                    logger.error("Controller re-authentication failed: %s", type(error).__name__)
                 await self._discard_connection()
                 return False
 
@@ -857,11 +854,11 @@ class ConnectionManager:
                 # LoginRequired means the refreshed session was rejected, so
                 # stop here rather than let every later tool call start another
                 # controller login.
-                secrets = self._scrub_error(retry_error)
+                self._scrub_error(retry_error)
                 logger.error(
                     "%s refresh failed even after re-authentication: %s",
                     name,
-                    self._sanitize_text(str(retry_error) or type(retry_error).__name__, secrets),
+                    type(retry_error).__name__,
                 )
                 self._block_automatic_reconnect(retry_error)
                 await self._discard_connection()

@@ -69,6 +69,7 @@ All tools MUST include `annotations=ToolAnnotations(...)` in `@server.tool()`:
 ### Logging
 
 - Network client/device managers and tools log operation context and exception class only; never log MAC/IP addresses, names, update payloads, exception messages, or tracebacks. This is a narrow privacy exception to the ordinary tool `exc_info=True` rule because controller exceptions can embed those values.
+- Network connection authentication/refresh failure logs and system settings update failure logs follow the same operation-and-exception-class pattern. Do not log sanitized exception text or controller response bodies at these boundaries: configured/submitted-secret scrubbing cannot cover controller-only secrets or opaque exception renderers.
 
 - All log output MUST go to stderr (stdout is reserved for JSON-RPC in stdio mode)
 - Use `%s` format strings in logger calls, not f-strings, for lazy evaluation

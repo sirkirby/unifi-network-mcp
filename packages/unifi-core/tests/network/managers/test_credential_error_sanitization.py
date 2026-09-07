@@ -9,6 +9,8 @@ log line and from the exception the caller receives.
 """
 
 import logging
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from urllib.parse import quote
 
 import pytest
@@ -22,6 +24,7 @@ from tests.secret_assertions import ESCAPED_SECRET, assert_unrecoverable
 
 SENTINEL = "SENTINEL-submitted-secret-7f3a"
 LOGIN_SENTINEL = "SENTINEL-login-secret-91c2"
+UNKNOWN_SECRET = "SENTINEL-controller-only-token-49ac"
 
 
 class _Session:
@@ -212,6 +215,95 @@ async def test_system_manager_rejected_response_log_is_scrubbed(caplog):
 
     assert SENTINEL not in caplog.text
     assert "Error updating snmp settings" in caplog.text
+
+
+def _assert_private_failure_logs(caplog, operation):
+    assert operation in caplog.text
+    assert UNKNOWN_SECRET not in caplog.text
+    assert SENTINEL not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
+    assert "Traceback (most recent call last)" not in caplog.text
+
+
+@pytest.mark.parametrize("error_type", [RequestError, RuntimeError, LoginRequired])
+async def test_initialize_logs_no_controller_exception_content(caplog, monkeypatch, error_type):
+    from unifi_core.network.managers import connection_manager as cm_module
+
+    # Fail inside initialization without creating a real session or contacting a controller.
+    def fail_connector(**kwargs):
+        raise error_type(UNKNOWN_SECRET)
+
+    monkeypatch.setattr(cm_module.aiohttp, "TCPConnector", fail_connector)
+    manager = ConnectionManager("192.168.1.1", "admin", LOGIN_SENTINEL)
+    manager._max_retries = 2
+    manager._retry_delay = 0
+    caplog.set_level(logging.DEBUG)
+
+    assert await manager.initialize() is False
+    _assert_private_failure_logs(caplog, "authentication failure" if error_type is LoginRequired else "initializ")
+    assert error_type.__name__ in caplog.text
+    assert manager.last_connection_error  # Caller diagnostics remain available.
+    if error_type is LoginRequired:
+        caplog.clear()
+        assert await manager.initialize() is False
+        _assert_private_failure_logs(caplog, "remains blocked")
+    await manager.cleanup()
+
+
+@pytest.mark.parametrize("error_type", [RequestError, LoginRequired])
+async def test_reauthenticate_logs_no_controller_exception_content(caplog, error_type):
+    controller = _Controller(lambda: ResponseError("unused"))
+    controller.login = AsyncMock(side_effect=error_type(UNKNOWN_SECRET))
+    manager = _manager(controller)
+    caplog.set_level(logging.DEBUG)
+
+    assert await manager.reauthenticate() is False
+    _assert_private_failure_logs(
+        caplog, "authentication failure" if error_type is LoginRequired else "re-authentication"
+    )
+    assert error_type.__name__ in caplog.text
+    assert manager.controller is None
+    await manager.cleanup()
+
+
+async def test_refresh_retry_logs_no_controller_exception_content(caplog):
+    controller = _Controller(lambda: ResponseError("unused"))
+    controller.devices = SimpleNamespace(update=AsyncMock(side_effect=LoginRequired(UNKNOWN_SECRET)))
+    manager = _manager(controller)
+    caplog.set_level(logging.DEBUG)
+
+    with pytest.raises(LoginRequired):
+        await manager.refresh_handler("devices")
+
+    assert controller.devices.update.await_count == 2
+    _assert_private_failure_logs(caplog, "refresh failed even after re-authentication")
+    assert "LoginRequired" in caplog.text
+    assert manager.reconnect_blocked
+    await manager.cleanup()
+
+
+async def test_settings_rejection_does_not_log_unrecognized_response_secrets(caplog):
+    connection = _FakeConnection(response={"meta": {"rc": "error", "msg": UNKNOWN_SECRET}})
+    caplog.set_level(logging.DEBUG)
+
+    assert await SystemManager(connection).update_settings("snmp", {"community": SENTINEL}) is False
+
+    _assert_private_failure_logs(caplog, "Error updating snmp settings")
+
+
+async def test_settings_exception_does_not_log_opaque_exception_content(caplog):
+    class OpaqueError(Exception):
+        def __str__(self):
+            return f"{SENTINEL} {UNKNOWN_SECRET}"
+
+    connection = _FakeConnection(raiser=OpaqueError)
+    caplog.set_level(logging.DEBUG)
+
+    with pytest.raises(OpaqueError):
+        await SystemManager(connection).update_settings("snmp", {"community": SENTINEL})
+
+    _assert_private_failure_logs(caplog, "Error updating snmp settings")
+    assert "OpaqueError" in caplog.text
 
 
 # ---------------------------------------------------------------------------
