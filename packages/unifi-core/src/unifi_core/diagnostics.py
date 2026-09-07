@@ -1,7 +1,8 @@
 """Tool and API diagnostics for MCP servers.
 
 This module provides diagnostic logging for tool calls and API requests,
-with configurable redaction, truncation, and payload limits.
+using operation metadata only. Arguments, controller payloads, request paths,
+and exception messages are never included in diagnostic records.
 
 Servers initialize diagnostics at startup via ``init_diagnostics()``
 to inject their config provider (avoiding circular imports).
@@ -27,6 +28,7 @@ import time
 from functools import wraps
 from typing import Any, Callable, Dict
 
+from unifi_core.config_helpers import parse_config_bool
 from unifi_core.redaction import redact_sensitive_fields
 
 # Module-level state set by init_diagnostics()
@@ -92,9 +94,9 @@ def _server_diag_cfg_from_config() -> Dict[str, Any]:
         server_cfg = getattr(config, "server", {}) or {}
         diag_cfg = server_cfg.get("diagnostics", {}) or {}
         return {
-            "enabled": bool(diag_cfg.get("enabled", False)),
-            "log_tool_args": bool(diag_cfg.get("log_tool_args", True)),
-            "log_tool_result": bool(diag_cfg.get("log_tool_result", True)),
+            "enabled": parse_config_bool(diag_cfg.get("enabled", False)),
+            "log_tool_args": parse_config_bool(diag_cfg.get("log_tool_args", True), default=True),
+            "log_tool_result": parse_config_bool(diag_cfg.get("log_tool_result", True), default=True),
             "max_payload_chars": int(diag_cfg.get("max_payload_chars", 2000)),
         }
     except Exception:
@@ -129,14 +131,12 @@ def _truncate(text: str, limit: int) -> str:
 
 
 def _safe_json(data: Any, limit: int) -> str:
+    """Format selected metadata. Callers must exclude controller data first."""
     try:
         redacted = _redact(data)
         as_text = json.dumps(redacted, ensure_ascii=False, default=str)
     except Exception:
-        try:
-            as_text = str(data)
-        except Exception:
-            as_text = "<unserializable>"
+        as_text = "<unserializable>"
     return _truncate(as_text, limit)
 
 
@@ -153,22 +153,19 @@ def log_tool_call(
     duration_ms: float,
     error: Exception | None = None,
 ) -> None:
-    """Log a tool invocation with redaction and truncation."""
+    """Log operation, duration, boolean outcome, and exception class only.
+
+    Legacy argument/result logging flags remain accepted for configuration
+    compatibility but cannot enable payload logging.
+    """
     if not diagnostics_enabled():
         return
     cfg = _diag_cfg()
     parts = {"tool": tool_name, "duration_ms": int(duration_ms)}
-    if cfg.get("log_tool_args", True):
-        try:
-            parts["args"] = args
-            parts["kwargs"] = kwargs
-        except Exception:
-            parts["args"] = "<unserializable>"
-            parts["kwargs"] = "<unserializable>"
     if error is not None:
-        parts["error"] = str(error)
-    elif cfg.get("log_tool_result", True):
-        parts["result"] = result
+        parts["error_type"] = type(error).__name__
+    elif isinstance(result, dict) and isinstance(result.get("success"), bool):
+        parts["success"] = result["success"]
 
     max_chars = int(cfg.get("max_payload_chars", 2000))
     text = _safe_json(parts, max_chars)
@@ -209,17 +206,16 @@ def wrap_tool(func, tool_name: str):
 
 
 def log_api_request(method: str, path: str, payload: Any, response: Any, duration_ms: float, ok: bool) -> None:
-    """Log an API request with redaction and truncation."""
+    """Log method, duration, and outcome without paths or controller payloads."""
     if not diagnostics_enabled():
         return
     cfg = _diag_cfg()
     max_chars = int(cfg.get("max_payload_chars", 2000))
     entry = {
-        "method": method.upper(),
-        "path": path,
+        "method": method.upper()
+        if method.upper() in {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+        else "OTHER",
         "ok": ok,
         "duration_ms": int(duration_ms),
-        "request": json.loads(_safe_json(payload, max_chars)) if payload is not None else None,
-        "response": json.loads(_safe_json(response, max_chars)) if response is not None else None,
     }
     _logger.info("API %s", _safe_json(entry, max_chars))
