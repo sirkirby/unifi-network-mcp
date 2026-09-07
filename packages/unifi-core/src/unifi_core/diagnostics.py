@@ -27,6 +27,7 @@ import time
 from functools import wraps
 from typing import Any, Callable, Dict
 
+from unifi_core.log_filters import mask_network_locations
 from unifi_core.redaction import redact_sensitive_fields
 
 # Module-level state set by init_diagnostics()
@@ -129,6 +130,14 @@ def _truncate(text: str, limit: int) -> str:
 
 
 def _safe_json(data: Any, limit: int) -> str:
+    """Serialize *data* for a log line: redacted, address-masked, then truncated.
+
+    Every diagnostics line goes through here, which is why the masking belongs
+    here rather than at each call site. Masking runs on the serialized text, so it
+    reaches an address wherever it sits — a value, a key, a URL inside an error
+    string, a MAC in a request path — and it runs before truncation so the limit
+    still describes what was written.
+    """
     try:
         redacted = _redact(data)
         as_text = json.dumps(redacted, ensure_ascii=False, default=str)
@@ -137,7 +146,7 @@ def _safe_json(data: Any, limit: int) -> str:
             as_text = str(data)
         except Exception:
             as_text = "<unserializable>"
-    return _truncate(as_text, limit)
+    return _truncate(mask_network_locations(as_text), limit)
 
 
 # ---------------------------------------------------------------------------
