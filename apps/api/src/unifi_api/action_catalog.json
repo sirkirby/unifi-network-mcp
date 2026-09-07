@@ -818,7 +818,7 @@
       "category": "alarm",
       "permission_action": "read",
       "read_only_hint": true,
-      "manager_attr": "alarm_manager",
+      "manager_attr": "alarm_facade",
       "manager_method": "get_arm_state",
       "input_schema": {
         "properties": {},

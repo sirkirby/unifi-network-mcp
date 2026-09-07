@@ -111,7 +111,7 @@ async def protect_alarm_get_status() -> Dict[str, Any]:
     """Get the current arm status."""
     logger.info("protect_alarm_get_status tool called")
     try:
-        state = await alarm_manager.get_arm_state()
+        state = await alarm_facade.get_arm_state()
         raw = {**state, "profile_count": len(state.get("profiles") or [])}
         shaped = status_from_controller(raw)
         return {

@@ -129,3 +129,17 @@ async def test_update_rule_preview_rejects_empty_actions():
 
     assert result["success"] is False
     assert "actions must be a non-empty list" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_get_status_delegates_to_global_facade():
+    from unifi_protect_mcp.tools.alarm import protect_alarm_get_status
+
+    facade = MagicMock()
+    facade.get_arm_state = AsyncMock(return_value={"armed": True, "status": "breached", "profiles": [{}]})
+    with patch("unifi_protect_mcp.tools.alarm.alarm_facade", facade):
+        result = await protect_alarm_get_status()
+    assert result["success"] is True
+    assert result["data"]["armed"] is True
+    assert result["data"]["status"] == "breached"
+    assert result["data"]["profile_count"] == 1

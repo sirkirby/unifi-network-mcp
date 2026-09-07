@@ -486,9 +486,9 @@ async def test_alarm_get_status_happy_path(tmp_path, monkeypatch) -> None:
     async def fake(self):
         return payload
 
-    from unifi_core.protect.managers.alarm_manager import AlarmManager
+    from unifi_core.protect.managers.alarm_facade import AlarmRulesFacade
 
-    monkeypatch.setattr(AlarmManager, "get_arm_state", fake)
+    monkeypatch.setattr(AlarmRulesFacade, "get_arm_state", fake)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get(
