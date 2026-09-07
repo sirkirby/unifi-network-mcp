@@ -182,7 +182,7 @@ class SystemManager:
                 "autobackup_cloud_enabled": settings.get("autobackup_cloud_enabled", False),
             }
         except Exception as e:
-            logger.error("Error getting auto-backup settings: %s", e, exc_info=True)
+            logger.error("Error getting auto-backup settings: %s", type(e).__name__)
             raise
 
     async def update_autobackup_settings(self, settings: Dict[str, Any]) -> bool:
@@ -198,7 +198,7 @@ class SystemManager:
             # update_settings handles cache invalidation with correct site-qualified key
             return await self.update_settings("super_mgmt", settings)
         except Exception as e:
-            logger.error("Error updating auto-backup settings: %s", e, exc_info=True)
+            logger.error("Error updating auto-backup settings: %s", type(e).__name__)
             raise
 
     async def check_firmware_updates(self) -> Dict[str, Any]:
@@ -277,7 +277,7 @@ class SystemManager:
             self._connection._update_cache(cache_key, settings_list)
             return settings_list
         except Exception as e:
-            logger.error("Error getting %s settings: %s", section, e)
+            logger.error("Error getting %s settings: %s", section, type(e).__name__)
             raise
 
     async def update_settings(self, section: str, settings_data: Dict[str, Any]) -> bool:

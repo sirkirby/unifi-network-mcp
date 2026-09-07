@@ -278,8 +278,8 @@ async def get_dpi_stats() -> Dict[str, Any]:
             "dpi_stats": shaped.model_dump(exclude_none=True),
         }
     except Exception as e:
-        logger.error("Error getting DPI stats: %s", e, exc_info=True)
-        return {"success": False, "error": f"Failed to get DPI stats: {e}"}
+        logger.error("Error getting DPI stats: %s", type(e).__name__)
+        return {"success": False, "error": f"Failed to get DPI stats: {type(e).__name__}"}
 
 
 @server.tool(

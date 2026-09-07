@@ -337,7 +337,7 @@ class StatsManager:
             self._connection._update_cache(cache_key, result, timeout=900)
             return result
         except Exception as e:
-            logger.error("Error getting DPI stats: %s", e)
+            logger.error("Error getting DPI stats: %s", type(e).__name__)
             raise
 
     async def get_alerts(self, include_archived: bool = False) -> List[Dict[str, Any]]:

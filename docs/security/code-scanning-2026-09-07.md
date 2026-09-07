@@ -25,11 +25,17 @@ ignored its rewritten `args`.
 This follows the existing Network client/device logging pattern. Caller-facing
 error scrubbing, response redaction policy, authentication classification,
 reconnect circuit, and retry behavior remain intact. No tools or public schemas
-change. This is a focused remediation of the listed logging boundaries, not a
+are added or changed. Auto-backup read/preview/update and DPI MCP error responses
+now include the exception class instead of exception text. Their manager/tool
+caller chains also omit exception messages and tracebacks, so re-raising cannot
+reintroduce sensitive content at those downstream logs. This is a focused
+remediation of the listed logging boundaries, not a
 claim that every log or caller-facing exception is free of arbitrary secrets.
 
 Validation: eight new behavioral regression cases failed before the fix and
 passed afterward; 54 focused credential sanitization, request logging, and
-reauthentication tests passed. Full repository and GitHub scan results are
+reauthentication tests passed. Six additional caller-chain regression cases
+reproduced leaks before the follow-up fix and pass afterward: auto-backup read,
+preview, update fetch, update PUT, and both DPI refresh handlers. Full repository and GitHub scan results are
 recorded in the associated pull request. Alert closure on main requires the
 change to be merged and scanned; no alerts were manually dismissed.
