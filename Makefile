@@ -33,7 +33,7 @@ help:
 	@echo ""
 	@echo "  make core-test      Run unifi-core tests only"
 	@echo "  make shared-test    Run unifi-mcp-shared tests only"
-	@echo "  make catalog-test   Run generated-catalog and live-harness contract tests"
+	@echo "  make catalog-test   Run the root tests/ suite (generation, release and harness contracts)"
 	@echo "  make protocol-smoke Run MCP protocol conformance smoke tests"
 	@echo "  make worker-build   Install worker deps + typecheck Worker app"
 	@echo "  make worker-check   Run worker CLI tests + TypeScript checks"
@@ -55,7 +55,7 @@ shared-test:
 	uv run --package unifi-mcp-shared pytest packages/unifi-mcp-shared/tests -v
 
 catalog-test:
-	uv run --all-packages pytest tests/test_community_issue_triage_workflow.py tests/test_generate_api_action_catalog.py tests/test_generate_support_skills.py tests/test_live_smoke_harness.py -v
+	uv run --all-packages pytest tests/ -v
 
 docs-test:
 	uv run python -m unittest discover -s tests/docs -p 'test_*.py' -v
