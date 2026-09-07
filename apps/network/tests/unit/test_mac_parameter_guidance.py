@@ -1,4 +1,4 @@
-"""The MAC parameter is spelled four ways across the Network tools (#635).
+"""The MAC parameter is spelled four ways across the Network tools.
 
 The canonical names are not changed and no alias is accepted. Instead the list
 tools that hand a caller a MAC say which parameter the next call takes, so the

@@ -273,7 +273,7 @@ def test_loader_treats_tools_without_input_schema_as_zero_arg(
 
 
 # -----------------------------
-# MAC parameter guidance (#635)
+# MAC parameter guidance
 # -----------------------------
 
 
