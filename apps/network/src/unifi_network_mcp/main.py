@@ -60,48 +60,50 @@ async def main_async():
     check_unknown_policy_env_vars("network", logger, policy_gates(), NETWORK_CATEGORY_MAP)
     assert_credentials_configured(config, plugin_name="unifi-network", env_prefix="NETWORK", logger=logger)
 
-    # Initialize the global Unifi connection
-    logger.info("Initializing global Unifi connection from main_async...")
-    if not await connection_manager.initialize():
-        logger.error("Failed to connect to Unifi Controller from main_async. Tool functionality may be impaired.")
-    else:
-        logger.info("Global Unifi connection initialized successfully from main_async.")
-
-        # Start the websocket event listener if enabled and the connection succeeded.
-        # It feeds unifi_recent_events; without it that buffer can never fill.
-        ws_enabled_raw = config.network.events.get("websocket_enabled", True) if hasattr(config, "network") else True
-        if parse_config_bool(ws_enabled_raw, default=True):
-            try:
-                await event_manager.start_listening()
-            except Exception as ws_exc:
-                logger.error(
-                    "Failed to start event websocket listener: %s. "
-                    "Real-time events will be unavailable; unifi_list_events still works.",
-                    type(ws_exc).__name__,
-                )
-        else:
-            logger.info("Network event websocket disabled via config.")
-
-    # ---- Register tools ----
-    await register_tools_for_mode(
-        mode=UNIFI_TOOL_REGISTRATION_MODE,
-        server=server,
-        original_tool_decorator=_original_tool_decorator,
-        tool_index_handler=tool_index_handler,
-        start_async_tool=start_async_tool,
-        get_job_status=get_job_status,
-        register_tool=register_tool,
-        tool_module_map=TOOL_MODULE_MAP,
-        setup_lazy_loading=setup_lazy_loading,
-        base_package="unifi_network_mcp.tools",
-        config=config,
-        logger=logger,
-        support_bundle_handler=support_bundle_service.generate,
-    )
-
-    # ---- Start transports ----
-    http_enabled, http_transport, host, port = resolve_http_config(config.server, default_port=3000, logger=logger)
     try:
+        # Initialize the global Unifi connection
+        logger.info("Initializing global Unifi connection from main_async...")
+        if not await connection_manager.initialize():
+            logger.error("Failed to connect to Unifi Controller from main_async. Tool functionality may be impaired.")
+        else:
+            logger.info("Global Unifi connection initialized successfully from main_async.")
+
+            # Start the websocket event listener if enabled and the connection succeeded.
+            # It feeds unifi_recent_events; without it that buffer can never fill.
+            ws_enabled_raw = (
+                config.network.events.get("websocket_enabled", True) if hasattr(config, "network") else True
+            )
+            if parse_config_bool(ws_enabled_raw, default=True):
+                try:
+                    await event_manager.start_listening()
+                except Exception as ws_exc:
+                    logger.error(
+                        "Failed to start event websocket listener: %s. "
+                        "Real-time events will be unavailable; unifi_list_events still works.",
+                        type(ws_exc).__name__,
+                    )
+            else:
+                logger.info("Network event websocket disabled via config.")
+
+        # ---- Register tools ----
+        await register_tools_for_mode(
+            mode=UNIFI_TOOL_REGISTRATION_MODE,
+            server=server,
+            original_tool_decorator=_original_tool_decorator,
+            tool_index_handler=tool_index_handler,
+            start_async_tool=start_async_tool,
+            get_job_status=get_job_status,
+            register_tool=register_tool,
+            tool_module_map=TOOL_MODULE_MAP,
+            setup_lazy_loading=setup_lazy_loading,
+            base_package="unifi_network_mcp.tools",
+            config=config,
+            logger=logger,
+            support_bundle_handler=support_bundle_service.generate,
+        )
+
+        # ---- Start transports ----
+        http_enabled, http_transport, host, port = resolve_http_config(config.server, default_port=3000, logger=logger)
         await run_transports(
             server=server,
             http_enabled=http_enabled,
@@ -111,8 +113,10 @@ async def main_async():
             logger=logger,
         )
     finally:
-        # The listener owns a background task; it must not outlive the server.
-        await event_manager.stop_listening()
+        try:
+            await event_manager.stop_listening()
+        finally:
+            await connection_manager.cleanup()
 
 
 def main():

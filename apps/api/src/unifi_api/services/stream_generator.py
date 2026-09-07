@@ -72,6 +72,8 @@ async def sse_event_stream(
         while True:
             try:
                 evt = await asyncio.wait_for(sub.queue.get(), timeout=keepalive_interval)
+                if evt is None:
+                    return
                 yield format_sse_frame(
                     event=evt,
                     product=product,

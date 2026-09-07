@@ -25,7 +25,7 @@ def test_create_app_initializes_subscriber_pool(tmp_path, monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_lifespan_eager_starts_listening_per_controller(tmp_path, monkeypatch) -> None:
-    """Lifespan iterates registered controllers and calls start_listening."""
+    """Lifespan warms event managers; the factory owns listener startup."""
     monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
 
     import uuid
@@ -56,17 +56,12 @@ async def test_lifespan_eager_starts_listening_per_controller(tmp_path, monkeypa
         )
         await session.commit()
 
-    # Stub manager_factory.get_domain_manager to return managers with mock start_listening
+    # Record warm-up requests without starting a second, unowned listener.
     started: list[tuple[str, str]] = []
 
     async def fake_get_domain_manager(session, ctrl_id, product, attr):
-        m = MagicMock()
-
-        async def _start():
-            started.append((ctrl_id, product))
-
-        m.start_listening = _start
-        return m
+        started.append((ctrl_id, product))
+        return MagicMock()
 
     app.state.manager_factory.get_domain_manager = AsyncMock(side_effect=fake_get_domain_manager)
 

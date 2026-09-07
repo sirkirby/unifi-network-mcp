@@ -769,7 +769,7 @@ class TestWebsocketHealth(TestWebsocketLifecycle):
         assert any(r.levelno == logging.ERROR and "RuntimeError" in r.getMessage() for r in caplog.records)
 
     @staticmethod
-    def _closing_socket(cm, outcomes):
+    def _closing_socket(cm, outcomes, *, receive_frame=False):
         import asyncio
 
         block = asyncio.Event()
@@ -779,6 +779,8 @@ class TestWebsocketHealth(TestWebsocketLifecycle):
                 outcome = outcomes.pop(0)
                 if outcome is not None:
                     raise outcome
+                if receive_frame:
+                    TestWebsocketHealth._frame_received(cm.controller)
                 return  # accepted, then closed by the peer without an error
             await block.wait()
 
@@ -794,7 +796,7 @@ class TestWebsocketHealth(TestWebsocketLifecycle):
             clock["now"] += 10.0  # every attachment looks long-lived
             return clock["now"]
 
-        self._closing_socket(cm, [RuntimeError("a"), RuntimeError("b"), None, RuntimeError("c")])
+        self._closing_socket(cm, [RuntimeError("a"), RuntimeError("b"), None, RuntimeError("c")], receive_frame=True)
         sleeps.until = 4
         mgr = EventManager(cm)
         mgr._clock = _monotonic

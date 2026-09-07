@@ -39,6 +39,51 @@ class _FakeCM:
         self.close_calls += 1
 
 
+@pytest.mark.asyncio
+async def test_event_listener_is_owned_across_rotation(tmp_path, monkeypatch):
+    from unifi_api.services.streams import SubscriberPool
+
+    _patch_network_cm(monkeypatch)
+    engine, sm, cipher, cid = await _seed(tmp_path)
+    pool = SubscriberPool()
+    factory = ManagerFactory(sm, cipher, on_manager_discard=pool.disconnect_manager)
+
+    class Listener:
+        def __init__(self, cm):
+            self.started = asyncio.Event()
+            self.cancelled = asyncio.Event()
+            self.stop_listening = AsyncMock()
+
+        async def start_listening(self):
+            self.started.set()
+            try:
+                await asyncio.Future()
+            finally:
+                self.cancelled.set()
+
+        def add_subscriber(self, callback):
+            self.callback = callback
+            return lambda: None
+
+    factory._builder_cache["network"] = {"event_manager": Listener}
+    try:
+        async with sm() as session:
+            old = await factory.get_domain_manager(session, cid, "network", "event_manager")
+            await asyncio.wait_for(old.started.wait(), 1)
+            sub = await pool.attach(cid, "network", old)
+            assert await factory.get_domain_manager(session, cid, "network", "event_manager") is old
+            await factory.invalidate_controller(cid)
+            assert old.cancelled.is_set()
+            old.stop_listening.assert_awaited_once()
+            assert sub.queue.get_nowait() is None
+            replacement = await factory.get_domain_manager(session, cid, "network", "event_manager")
+            assert replacement is not old
+            await asyncio.wait_for(replacement.started.wait(), 1)
+    finally:
+        await factory.invalidate_controller(cid)
+        await engine.dispose()
+
+
 def _patch_network_cm(monkeypatch) -> list[_FakeCM]:
     """Replace the network ConnectionManager with a fake; return the
     instance list so callers can assert against constructions."""

@@ -20,6 +20,10 @@ from unifi_core.network.managers.connection_manager import ConnectionManager
 logger = logging.getLogger("unifi-network-mcp")
 
 
+class _ListenerStateError(ConnectionError):
+    """An internal listener diagnostic constructed only from fixed messages."""
+
+
 # ---------------------------------------------------------------------------
 # EventBuffer
 # ---------------------------------------------------------------------------
@@ -220,7 +224,6 @@ class EventManager:
                         raise
                 except Exception as exc:
                     logger.error("[network-event-mgr] websocket loop ended with %s", type(exc).__name__)
-                    logger.debug("[network-event-mgr] websocket loop failure", exc_info=exc)
         finally:
             self._unsubscribe()
             self._socket_closed()
@@ -241,7 +244,6 @@ class EventManager:
         exc = task.exception()
         if exc is not None:
             logger.error("[network-event-mgr] websocket task died: %s", type(exc).__name__)
-            logger.debug("[network-event-mgr] websocket task failure", exc_info=exc)
 
     def _subscribe(self, controller: Any) -> None:
         """Bind the message subscription to *controller*, releasing any previous one."""
@@ -258,8 +260,8 @@ class EventManager:
         if self._ws_unsub is not None:
             try:
                 self._ws_unsub()
-            except Exception:
-                logger.debug("[network-event-mgr] error unsubscribing", exc_info=True)
+            except Exception as exc:
+                logger.debug("[network-event-mgr] error unsubscribing: %s", type(exc).__name__)
         self._ws_unsub = None
         self._subscribed_controller = None
 
@@ -269,11 +271,10 @@ class EventManager:
 
     @staticmethod
     def _describe(exc: BaseException) -> str:
-        """Class name, plus the HTTP status of a handshake error or the text of
-        our own ConnectionError; never aiounifi's messages, which quote the URL."""
+        """Class name and handshake status; exception messages can contain private data."""
         if isinstance(exc, aiohttp.WSServerHandshakeError):
             return f"{type(exc).__name__} (HTTP {exc.status})"
-        if type(exc) is ConnectionError:
+        if isinstance(exc, _ListenerStateError):
             return f"ConnectionError ({exc})"
         return type(exc).__name__
 
@@ -294,12 +295,12 @@ class EventManager:
                 # stays latched until a login succeeds, so it must not gate
                 # the retry or an expired cool-down would never be tried.
                 if self._cm.reconnect_cooldown_active:
-                    raise ConnectionError("reconnect circuit open")
+                    raise _ListenerStateError("reconnect circuit open")
                 if not await self._cm.ensure_connected():
-                    raise ConnectionError("controller not connected")
+                    raise _ListenerStateError("controller not connected")
                 controller = self._cm.controller
                 if controller is None:
-                    raise ConnectionError("controller not available")
+                    raise _ListenerStateError("controller not available")
                 self._subscribe(controller)
                 self._last_error = None
                 attached_at = self._clock()
@@ -308,14 +309,18 @@ class EventManager:
                 try:
                     await controller.start_websocket()
                 finally:
+                    stable = self.attached and self._clock() - attached_at >= self._STABLE_SECONDS
+                    if stable:
+                        backoff = self._BACKOFF_INITIAL
+                        self._attach_failures = 0
                     # Returned or raised: the socket is closed either way, and
                     # nothing is attached until the next attempt's first frame.
                     self._socket_closed()
                 # Closed by the peer without an error. Only a socket that
                 # stayed up counts as a success; an accept-then-close is a
                 # failed attach and backs off like one.
-                if self._clock() - attached_at < self._STABLE_SECONDS:
-                    raise ConnectionError("closed by the controller before it was stable")
+                if not stable:
+                    raise _ListenerStateError("closed by the controller before it was stable")
                 backoff = self._BACKOFF_INITIAL
                 self._attach_failures = 0
                 logger.info("[network-event-mgr] websocket closed by the controller; reconnecting")
@@ -325,7 +330,6 @@ class EventManager:
                 self._last_error = self._describe(exc)
                 self._attach_failures += 1
                 needs_reauth = self._is_rejected_handshake(exc)
-                logger.debug("[network-event-mgr] websocket attach failed", exc_info=True)
                 if backoff >= self._BACKOFF_MAX and self._attach_failures == self._failures_at_max_backoff():
                     logger.error(
                         "[network-event-mgr] websocket has not attached after %d attempts (%s); "

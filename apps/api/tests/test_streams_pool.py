@@ -66,3 +66,26 @@ async def test_queue_full_drops_event_for_slow_subscriber() -> None:
     captured_cb["cb"]({"id": "e3"})  # this one drops
     items = [sub.queue.get_nowait() for _ in range(sub.queue.qsize())]
     assert [i["id"] for i in items] == ["e1", "e2"]
+
+
+@pytest.mark.asyncio
+async def test_rotation_ends_old_stream_and_new_stream_receives_live_events() -> None:
+    pool = SubscriberPool(queue_maxsize=1)
+    old, new = MagicMock(), MagicMock()
+    previous = await pool.attach("ctrl1", "network", old)
+    previous.queue.put_nowait({"id": "old"})
+    pool.disconnect_manager(old)
+    assert previous.queue.get_nowait() is None
+    old.add_subscriber.return_value.assert_called_once()
+
+    current = await pool.attach("ctrl1", "network", new)
+    # The old generator's finally must not unregister the replacement.
+    await pool.detach("ctrl1", "network", previous)
+    new.add_subscriber.call_args.args[0]({"id": "new"})
+    assert current.queue.get_nowait() == {"id": "new"}
+    new.add_subscriber.return_value.assert_not_called()
+    old.add_subscriber.call_args.args[0]({"id": "stale"})
+    assert current.queue.empty()
+    late = await pool.attach("ctrl1", "network", old)
+    assert late.queue.get_nowait() is None
+    new.add_subscriber.return_value.assert_not_called()

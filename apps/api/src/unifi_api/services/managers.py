@@ -185,6 +185,8 @@ class ManagerFactory:
         self,
         sessionmaker: async_sessionmaker[AsyncSession],
         cipher: ColumnCipher,
+        *,
+        on_manager_discard: Callable[[Any], None] | None = None,
     ) -> None:
         self._sm = sessionmaker
         self._cipher = cipher
@@ -192,6 +194,8 @@ class ManagerFactory:
         self._domain_cache: dict[tuple[str, str, str, str | None], Any] = {}
         self._locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._builder_cache: dict[str, dict[str, Callable[[Any], Any]]] = {}
+        self._listener_tasks: dict[int, asyncio.Task[None]] = {}
+        self._on_manager_discard = on_manager_discard
 
     @staticmethod
     def _site_scope(product: str, site: str | None) -> str | None:
@@ -206,8 +210,7 @@ class ManagerFactory:
             return site or "default"
         return None
 
-    @staticmethod
-    async def _stop_domain_managers(managers: list[Any]) -> None:
+    async def _stop_domain_managers(self, managers: list[Any]) -> None:
         """Stop any dropped domain manager that owns a background task.
 
         The Network EventManager runs a reconnecting websocket task; left
@@ -215,6 +218,12 @@ class ManagerFactory:
         logging in with the old credentials.
         """
         for manager in managers:
+            if self._on_manager_discard is not None:
+                self._on_manager_discard(manager)
+            task = self._listener_tasks.pop(id(manager), None)
+            if task is not None and not task.done():
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
             stop = getattr(manager, "stop_listening", None)
             if stop is None:
                 continue
@@ -223,7 +232,13 @@ class ManagerFactory:
                 if inspect.isawaitable(result):
                     await result
             except Exception as exc:
-                logger.warning("Failed to stop %s listener: %s", type(manager).__name__, exc)
+                logger.warning("Failed to stop %s listener: %s", type(manager).__name__, type(exc).__name__)
+
+    async def _start_listener(self, manager: Any) -> None:
+        try:
+            await manager.start_listening()
+        except Exception as exc:
+            logger.warning("Failed to start event listener: %s", type(exc).__name__)
 
     @staticmethod
     async def _close_connection_manager(cm: Any) -> None:
@@ -398,9 +413,8 @@ class ManagerFactory:
         site scope. Does NOT take the per-controller lock here —
         get_connection_manager already serializes the slow path
         (initialize()), and the rest of this function is a synchronous builder
-        call where a brief race on first-use produces last-writer-wins on the
-        cache, which is harmless because builders are pure and share the
-        cached connection manager for the same site.
+        call. Recheck the domain cache after awaiting the connection so concurrent
+        first-use callers share one manager and one listener startup task.
 
         Acquiring the lock here would deadlock — it's non-reentrant and
         get_connection_manager acquires the same lock.
@@ -420,8 +434,17 @@ class ManagerFactory:
             product,
             site=site_scope,
         )
+        # Another waiter may have populated the domain cache while connection
+        # initialization yielded. Reuse it before creating a background owner.
+        cached = self._domain_cache.get(key)
+        if cached is not None:
+            return cached
         instance = builder(cm)
         self._domain_cache[key] = instance
+        if attr_name == "event_manager" and callable(getattr(instance, "start_listening", None)):
+            self._listener_tasks[id(instance)] = asyncio.create_task(
+                self._start_listener(instance), name="api-event-listener"
+            )
         return instance
 
     async def probe_controller(self, controller_id: str) -> dict:
