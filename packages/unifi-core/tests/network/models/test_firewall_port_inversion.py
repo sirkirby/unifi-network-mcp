@@ -1,7 +1,6 @@
 """Controller-supported transitions for inverted port matches."""
 
 import pytest
-
 from unifi_core.network.models.firewall import (
     normalize_policy_update,
     prepare_policy_update,
