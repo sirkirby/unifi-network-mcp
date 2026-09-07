@@ -564,6 +564,7 @@ _SELECTOR_OWNER_KEYS: Dict[str, frozenset[str]] = {
     "client_macs": frozenset({"client_macs", "matching_target"}),
     "port": frozenset({"port", "ports", "port_matching_type"}),
     "port_group_id": frozenset({"port_group_id", "port_matching_type"}),
+    "match_opposite_ports": frozenset({"match_opposite_ports", "port_matching_type"}),
 }
 
 # The enum values this project has observed. A value outside its set is a controller
@@ -704,6 +705,10 @@ def _selector_activator_errors(
                     % (direction, selector, direction, activator_key, shown, direction, activator_key, activator_value),
                 )
             )
+    if _activator_matches(ep.get("port_matching_type"), "ANY") and ep.get("match_opposite_ports"):
+        leftover.append(
+            ("match_opposite_ports", "%s.match_opposite_ports must be false when port_matching_type is 'ANY'." % direction)
+        )
     # What the chosen enum is missing comes first. Told "port_matching_type must be
     # 'SPECIFIC'" when they asked for OBJECT, a caller undoes the change they meant.
     return activated + leftover
@@ -748,6 +753,12 @@ def retire_stale_selectors(stored: Any, update: Any) -> Any:
     if not isinstance(stored, dict) or not isinstance(update, dict):
         return update
     retired = dict(update)
+    if (
+        _activator_matches(update.get("port_matching_type"), "ANY")
+        and "match_opposite_ports" not in update
+        and stored.get("match_opposite_ports")
+    ):
+        retired["match_opposite_ports"] = False
     for selector, activator_key, activator_value in SELECTOR_ACTIVATORS:
         if activator_key not in update or selector in update:
             continue

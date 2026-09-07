@@ -472,6 +472,15 @@ def test_shape_firewall_policy_list_summary_hides_address_selectors_under_anothe
             True,
         ),
         ({"matching_target": "ANY", "port_matching_type": "ANY", "match_opposite_ports": True}, False),
+        (
+            {
+                "matching_target": "ANY",
+                "port_matching_type": "OBJECT",
+                "port_group_id": "ports",
+                "match_opposite_ports": True,
+            },
+            True,
+        ),
     ],
 )
 def test_shape_firewall_policy_list_summary_gates_the_inversion_flags(endpoint: dict, shown: bool) -> None:

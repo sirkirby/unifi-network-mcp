@@ -876,6 +876,9 @@ def shape_firewall_policy_list(
                 # and a port selector only under the port_matching_type that activates it.
                 for key in _FIREWALL_TARGETING_KEYS:
                     activator = _SELECTOR_ACTIVATION.get(key)
+                    if key == "match_opposite_ports" and _activator_matches(port_matching_type, "OBJECT"):
+                        # Inversion also applies to a stored port-group match.
+                        activator = None
                     if activator and not _selector_is_active(endpoint, activator):
                         continue
                     if endpoint.get(key):
