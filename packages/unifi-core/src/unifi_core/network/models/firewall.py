@@ -707,7 +707,10 @@ def _selector_activator_errors(
             )
     if _activator_matches(ep.get("port_matching_type"), "ANY") and ep.get("match_opposite_ports"):
         leftover.append(
-            ("match_opposite_ports", "%s.match_opposite_ports must be false when port_matching_type is 'ANY'." % direction)
+            (
+                "match_opposite_ports",
+                "%s.match_opposite_ports must be false when port_matching_type is 'ANY'." % direction,
+            )
         )
     # What the chosen enum is missing comes first. Told "port_matching_type must be
     # 'SPECIFIC'" when they asked for OBJECT, a caller undoes the change they meant.
