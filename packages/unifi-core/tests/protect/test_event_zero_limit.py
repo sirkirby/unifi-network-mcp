@@ -1,7 +1,6 @@
 """Zero event limits are local empty results across Protect query paths."""
 
 import pytest
-
 from unifi_core.protect.managers.event_manager import EventManager
 
 
