@@ -663,6 +663,11 @@ class EventManager:
         delegates to the existing uiprotect path for full backwards
         compatibility.
         """
+        # The controller requires limit=1..100 when no time range is supplied.
+        # Zero requests no results and must not turn into an invalid or uncapped
+        # remote query on either the SDK or raw metadata path.
+        if limit == 0:
+            return []
         use_raw_path = bool(camera_id) or bool(metadata_fields)
 
         if use_raw_path:
