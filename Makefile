@@ -90,10 +90,10 @@ manifest:
 	$(MAKE) server-manifests
 
 api-action-catalog:
-	uv run python scripts/generate_api_action_catalog.py
+	uv run --package unifi-api-server python scripts/generate_api_action_catalog.py
 
 check-api-action-catalog:
-	uv run python scripts/generate_api_action_catalog.py --check
+	uv run --package unifi-api-server python scripts/generate_api_action_catalog.py --check
 
 server-manifests:
 	$(MAKE) -C apps/network server-manifest
