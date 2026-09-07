@@ -501,3 +501,72 @@ async def test_delete_rule_accepts_legacy_id_with_new_suffix():
     assert complete is False
     facade._service.delete_rule.assert_not_called()
     facade._legacy.delete_rule.assert_awaited_once_with(_LEGACY_NEW_ID)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "status,armed",
+    [
+        ("armed", True),
+        ("arming", True),
+        ("breached", True),
+        ("future-state", True),
+        ("disarmed", False),
+        ("disabled", False),
+        ("off", False),
+        ("inactive", False),
+    ],
+)
+async def test_global_status_uses_profile_state(status, armed):
+    facade = _facade(service_list=[{**_RAW_V2_PROFILE, "state": status}])
+    state = await facade.get_arm_state()
+    assert state["armed"] is armed
+    assert state["status"] == (status if armed else "disarmed")
+    assert state["armed_at"] == (_RAW_V2_PROFILE["state_set_at"] if status == "armed" else None)
+    assert state["breach_detected_at"] == (_RAW_V2_PROFILE["state_set_at"] if status == "breached" else None)
+    assert state["breach_event_count"] is None
+    assert state["will_be_armed_at"] is None
+    facade._legacy.get_arm_state.assert_not_called()
+    facade._legacy.list_arm_profiles.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_global_status_any_active_and_deterministic_selection():
+    profiles = [
+        {**_RAW_V2_PROFILE, "id": str(i), "state": s}
+        for i, s in enumerate(["disarmed", "armed", "arming", "future-state", "breached"])
+    ]
+    facade = _facade(service_list=profiles)
+    first = await facade.get_arm_state()
+    facade._service.list_profiles.return_value = list(reversed(profiles))
+    second = await facade.get_arm_state()
+    assert first["armed"] is second["armed"] is True
+    assert first["status"] == second["status"] == "breached"
+    assert first["active_profile_id"] == second["active_profile_id"] == "4"
+    assert len(first["profiles"]) == 5
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [None, "", " "])
+async def test_global_status_missing_state_is_not_disarmed(status):
+    facade = _facade(service_list=[{**_RAW_V2_PROFILE, "state": status}])
+    with pytest.raises(ValueError, match="state is missing"):
+        await facade.get_arm_state()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("error", [None, BadRequest("unsupported"), AlarmManagerPermissionError("requires SuperAdmin")])
+async def test_status_fallback_preserves_legacy_response(error):
+    facade = _facade(service_list=[], legacy_list=[_RAW_LEGACY_PROFILE], list_exc=error)
+    expected = {"armed": True, "status": "breached", "breach_event_count": 7, "profiles": [_RAW_LEGACY_PROFILE]}
+    facade._legacy.get_arm_state = AsyncMock(return_value=expected)
+    assert await facade.get_arm_state() is expected
+    facade._legacy.get_arm_state.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_status_does_not_hide_v2_outage():
+    facade = _facade(list_exc=NvrError("unavailable"))
+    with pytest.raises(NvrError):
+        await facade.get_arm_state()
+    facade._legacy.get_arm_state.assert_not_called()
