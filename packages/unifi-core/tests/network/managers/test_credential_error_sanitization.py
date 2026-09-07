@@ -83,7 +83,7 @@ def _manager(controller, password=LOGIN_SENTINEL):
 def _put_with_secret():
     return ApiRequest(
         method="put",
-        path="/set/setting/snmp",
+        path="/rest/wlan/wlan-1",
         data={"enabled": True, "x_password": SENTINEL, "nested": {"community": SENTINEL}},
     )
 
@@ -122,7 +122,7 @@ async def test_request_read_error_is_scrubbed_of_login_password(caplog):
     caplog.set_level(logging.DEBUG)
 
     with pytest.raises(ResponseError) as excinfo:
-        await manager.request(ApiRequest(method="get", path="/get/setting/snmp"))
+        await manager.request(ApiRequest(method="get", path="/stat/sta"))
 
     assert LOGIN_SENTINEL not in str(excinfo.value)
     assert LOGIN_SENTINEL not in caplog.text
@@ -318,7 +318,7 @@ async def test_settings_exception_does_not_log_opaque_exception_content(caplog):
 async def test_request_write_error_scrubs_escaped_credential(caplog):
     manager = _manager(_Controller(lambda: ResponseError(f"controller rejected {{'x_password': {ESCAPED_SECRET!r}}}")))
     caplog.set_level(logging.DEBUG)
-    request = ApiRequest(method="put", path="/set/setting/snmp", data={"x_password": ESCAPED_SECRET})
+    request = ApiRequest(method="put", path="/rest/wlan/wlan-1", data={"x_password": ESCAPED_SECRET})
 
     with pytest.raises(ResponseError) as excinfo:
         await manager.request(request)
@@ -337,7 +337,7 @@ async def test_request_read_error_scrubs_escaped_login_password(caplog):
     caplog.set_level(logging.DEBUG)
 
     with pytest.raises(ResponseError) as excinfo:
-        await manager.request(ApiRequest(method="get", path="/get/setting/snmp"))
+        await manager.request(ApiRequest(method="get", path="/stat/sta"))
 
     assert_unrecoverable(str(excinfo.value), ESCAPED_SECRET)
     assert_unrecoverable(caplog.text, ESCAPED_SECRET)

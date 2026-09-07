@@ -72,6 +72,7 @@ All tools MUST include `annotations=ToolAnnotations(...)` in `@server.tool()`:
 - Network connection authentication/refresh failure logs and system settings update failure logs follow the same operation-and-exception-class pattern. Do not log sanitized exception text or controller response bodies at these boundaries: configured/submitted-secret scrubbing cannot cover controller-only secrets or opaque exception renderers.
 - Carry this privacy rule through the auto-backup settings read/preview/update and DPI refresh caller chains, including manager logs and MCP error responses. Catching a safely logged but re-raised exception must not reintroduce its message or traceback.
 - Cached Network authentication failures contain exception class and fixed guidance only, since later tool calls may log them. ConnectionManager settings request failure logs omit controller text and tracebacks before the exception reaches a domain manager.
+- ConnectionManager translates failed `/get/setting/` and `/set/setting/` requests into a new `RequestError` with fixed operation context and the original exception class, suppressing original traceback context. This protects all settings callers, including those that log the received exception.
 
 - All log output MUST go to stderr (stdout is reserved for JSON-RPC in stdio mode)
 - Use `%s` format strings in logger calls, not f-strings, for lazy evaluation

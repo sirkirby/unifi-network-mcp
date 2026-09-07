@@ -85,8 +85,46 @@ async def test_autobackup_tool_manager_chain_omits_private_errors(phase, error_k
         else:
             result = await module.update_autobackup_settings({"autobackup_enabled": True}, confirm=phase != "preview")
 
-    _assert_no_private_failure(caplog, result, private, type(error).__name__)
+    _assert_no_private_failure(caplog, result, private, "RequestError")
     assert controller.request.await_count == (2 if phase == "update_put" else 1)
+    await connection.cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tool_name", ["get_mgmt_settings", "get_site_settings", "get_gateway_settings"])
+async def test_other_settings_callers_receive_only_safe_transport_errors(tool_name, monkeypatch, caplog):
+    from unifi_core.network.managers.connection_manager import ConnectionManager
+    from unifi_core.network.managers.gateway_settings_manager import GatewaySettingsManager
+    from unifi_core.network.managers.system_manager import SystemManager
+    from unifi_network_mcp import runtime
+
+    private = "controller-only-settings-token-81a5"
+
+    class OpaqueError(Exception):
+        def __str__(self):
+            return private
+
+    connection = ConnectionManager("127.0.0.1", "test", "test")
+    controller = MagicMock()
+    controller.connectivity.config.session = SimpleNamespace(closed=False, close=AsyncMock())
+    controller.request = AsyncMock(side_effect=OpaqueError())
+    connection.controller = controller
+    connection._aiohttp_session = controller.connectivity.config.session
+    connection._initialized = True
+    gateway = tool_name == "get_gateway_settings"
+    manager_name = "gateway_settings_manager" if gateway else "system_manager"
+    manager = GatewaySettingsManager(connection) if gateway else SystemManager(connection)
+    monkeypatch.setattr(runtime, manager_name, manager)
+    module = importlib.import_module(f"unifi_network_mcp.tools.{'gateway_settings' if gateway else 'system'}")
+    monkeypatch.setattr(module, manager_name, manager)
+
+    with caplog.at_level(logging.ERROR):
+        result = await getattr(module, tool_name)()
+
+    assert result["success"] is False
+    assert private not in repr(result)
+    assert private not in caplog.text
+    assert "settings request failed" in caplog.text
     await connection.cleanup()
 
 

@@ -35,15 +35,19 @@ claim that every log or caller-facing exception is free of arbitrary secrets.
 Cached connection failures now contain exception class and fixed remediation
 guidance, so later tool calls cannot log cached controller text. Failed
 reauthentication also suppresses the original LoginRequired traceback context.
-Settings failure logging omits controller text inside ConnectionManager before
-the exception reaches the system manager. Other request logging retains its
-existing behavior.
+Settings failure logging omits controller text inside ConnectionManager, which
+then translates the failure into a new RequestError containing fixed context
+and the original exception class. Original traceback context is suppressed.
+This protects every settings caller, including management/site/gateway tools
+that log exceptions. Other request error types and logging retain their existing
+behavior.
 
 Validation: eight new behavioral regression cases failed before the fix and
 passed afterward; 54 focused credential sanitization, request logging, and
 reauthentication tests passed. Caller-chain regressions exercise real connection
 and domain managers: auto-backup read, preview, update fetch and update PUT with
 opaque, request and response exceptions; both DPI handlers; and tool calls after
-failed initialization or reauthentication. Full repository and GitHub scan results are
+failed initialization or reauthentication; and management/site/gateway settings
+callers that log tracebacks. Full repository and GitHub scan results are
 recorded in the associated pull request. Alert closure on main requires the
 change to be merged and scanned; no alerts were manually dismissed.

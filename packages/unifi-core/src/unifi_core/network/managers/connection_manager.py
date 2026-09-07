@@ -903,6 +903,20 @@ class ConnectionManager:
         return logging.INFO if api_request.method.lower() == "get" else logging.WARNING
 
     async def request(self, api_request: ApiRequest | ApiRequestV2, return_raw: bool = False) -> Any:
+        """Request controller data, keeping settings failures safe for every caller."""
+        try:
+            return await self._request_with_reauthentication(api_request, return_raw=return_raw)
+        except Exception as error:
+            if api_request.path.startswith(("/get/setting/", "/set/setting/")):
+                # Domain managers and tools may log the returned error and its
+                # traceback. An opaque exception cannot reliably be rewritten,
+                # so expose a new safe error without its original cause/context.
+                raise RequestError(f"Controller settings request failed ({type(error).__name__}).") from None
+            raise
+
+    async def _request_with_reauthentication(
+        self, api_request: ApiRequest | ApiRequestV2, return_raw: bool = False
+    ) -> Any:
         """Make a request to the controller API, handling raw responses."""
         if not await self.ensure_connected() or not self.controller:
             raise self._not_connected_error()
