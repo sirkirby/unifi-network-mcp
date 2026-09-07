@@ -108,7 +108,8 @@ async def test_event_tools_reject_negative_limit_before_controller_io(monkeypatc
 
     result = await getattr(events_module, tool_name)(limit=-1)
 
-    assert result == {"success": False, "error": "limit must be zero or greater"}
+    operation = "list events" if tool_name == "list_events" else "get recent events"
+    assert result == {"success": False, "error": f"Failed to {operation}: limit must be zero or greater"}
 
 
 @pytest.mark.asyncio

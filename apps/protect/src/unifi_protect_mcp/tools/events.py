@@ -109,7 +109,7 @@ async def protect_list_events(
 ) -> Dict[str, Any]:
     """List events from the NVR."""
     if limit < 0:
-        return {"success": False, "error": "limit must be zero or greater"}
+        return {"success": False, "error": "Failed to list events: limit must be zero or greater"}
     logger.info(
         "protect_list_events called (type=%s, camera=%s, limit=%s, compact=%s)", event_type, camera_id, limit, compact
     )

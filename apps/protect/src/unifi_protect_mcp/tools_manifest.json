@@ -3027,7 +3027,7 @@
               "type": "string"
             },
             "limit": {
-              "description": "Maximum number of events to return (default 30).",
+              "description": "Maximum number of events to return; must be zero or greater (default 30).",
               "type": "integer"
             },
             "metadata_fields": {

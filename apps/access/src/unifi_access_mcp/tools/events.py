@@ -69,7 +69,7 @@ async def access_list_events(
 ) -> Dict[str, Any]:
     """List access events."""
     if limit < 0:
-        return {"success": False, "error": "limit must be zero or greater"}
+        return {"success": False, "error": "Failed to list events: limit must be zero or greater"}
     logger.info("access_list_events tool called (topic=%s, door=%s, user=%s, limit=%s)", topic, door_id, user_id, limit)
     try:
         raw_events = await event_manager.list_events(

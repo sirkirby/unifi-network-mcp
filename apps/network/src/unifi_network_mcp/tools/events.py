@@ -72,7 +72,7 @@ async def list_events(
 ) -> Dict[str, Any]:
     """List events with optional filtering."""
     if limit < 0:
-        return {"success": False, "error": "limit must be zero or greater"}
+        return {"success": False, "error": "Failed to list events: limit must be zero or greater"}
     try:
         event_manager = _get_event_manager()
         events = await event_manager.get_events(
@@ -172,7 +172,7 @@ async def unifi_recent_events(
 ) -> Dict[str, Any]:
     """Return recent events from the websocket ring buffer."""
     if limit is not None and limit < 0:
-        return {"success": False, "error": "limit must be zero or greater"}
+        return {"success": False, "error": "Failed to get recent events: limit must be zero or greater"}
     logger.info("unifi_recent_events called (type=%s, mac=%s)", event_type, mac)
     mgr = _get_event_manager()
     events = mgr.get_recent_from_buffer(event_type=event_type, mac=mac, limit=limit)

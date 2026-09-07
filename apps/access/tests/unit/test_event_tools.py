@@ -43,7 +43,7 @@ async def test_list_events_rejects_negative_limit_before_controller_io() -> None
 
         result = await access_list_events(limit=-1)
 
-    assert result == {"success": False, "error": "limit must be zero or greater"}
+    assert result == {"success": False, "error": "Failed to list events: limit must be zero or greater"}
     manager.list_events.assert_not_awaited()
 
 

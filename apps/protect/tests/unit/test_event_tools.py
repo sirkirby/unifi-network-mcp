@@ -47,7 +47,7 @@ class TestProtectListEvents:
         mock_event_manager.list_events = AsyncMock()
         result = await protect_list_events(limit=-1)
 
-        assert result == {"success": False, "error": "limit must be zero or greater"}
+        assert result == {"success": False, "error": "Failed to list events: limit must be zero or greater"}
         mock_event_manager.list_events.assert_not_awaited()
 
     @pytest.mark.asyncio
