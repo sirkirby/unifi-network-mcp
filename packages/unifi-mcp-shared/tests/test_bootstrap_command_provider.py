@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
+import signal
 import subprocess
 import sys
 import textwrap
@@ -336,7 +337,15 @@ def test_a_helper_that_leaves_a_detached_descendant_still_refuses(helper, tmp_pa
     helper here SUCCEEDS and exits 0 -- only its detached child holds stdout --
     which is the shape docs/credential-providers.md explicitly contemplates.
     """
-    script = helper("setsid sleep 30 &\nprintf %s the-password", name="detached.sh")
+    # os.setsid() rather than the setsid(1) binary, which util-linux ships and
+    # macOS does not: without it the detached child never starts, the helper
+    # succeeds, and the test asserts a refusal that cannot happen.
+    pidfile = tmp_path / "detached.pid"
+    detach = f"import os, time; os.setsid(); open({str(pidfile)!r}, 'w').write(str(os.getpid())); time.sleep(600)"
+    script = helper(
+        f"'{sys.executable}' -c \"{detach}\" &\nprintf %s the-password",
+        name="detached.sh",
+    )
     probe = tmp_path / "probe.py"
     probe.write_text(
         textwrap.dedent(f"""
@@ -353,9 +362,15 @@ def test_a_helper_that_leaves_a_detached_descendant_still_refuses(helper, tmp_pa
         """),
         encoding="utf-8",
     )
-    result = subprocess.run([sys.executable, str(probe)], capture_output=True, timeout=30, check=False)
-
-    assert result.returncode == 6, f"expected a refusal, got {result.returncode}: {result.stderr[-400:]!r}"
+    try:
+        result = subprocess.run([sys.executable, str(probe)], capture_output=True, timeout=30, check=False)
+        assert result.returncode == 6, f"expected a refusal, got {result.returncode}: {result.stderr[-400:]!r}"
+        assert pidfile.exists(), "the detached descendant never started"
+    finally:
+        # It left the helper's session deliberately, so nothing in the provider
+        # can reach it; this test owns it.
+        with contextlib.suppress(Exception):
+            os.kill(int(pidfile.read_text()), signal.SIGKILL)
 
 
 def test_the_helper_is_reaped_rather_than_left_a_zombie(monkeypatch, caplog, helper):
@@ -457,3 +472,142 @@ def test_nothing_the_helper_writes_reaches_the_servers_own_streams(helper, tmp_p
     assert SENTINEL.encode() not in blob, f"helper {stream} reached the server's own streams"
     # The refusal itself must still be there, naming the variable.
     assert b"UNIFI_NETWORK_PASSWORD_COMMAND" in blob
+
+
+def test_the_threaded_reader_accumulates_a_helper_that_writes_in_bursts(helper):
+    """Popen uses bufsize=0, so one read() returns only what is already there.
+
+    A helper that writes, pauses, then writes again must yield the whole
+    credential. Reading once accepts the first burst as complete, which is a
+    silently truncated secret rather than an error.
+    """
+    script = helper("printf %s first\nsleep 0.4\nprintf %s second\n", name="bursts.sh")
+    proc = subprocess.Popen(
+        [str(script)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        bufsize=0,
+        cwd="/",
+        start_new_session=True,
+    )
+    try:
+        # os_name="nt" selects the threaded reader on any platform.
+        data, reason = bootstrap._read_capped(proc, 10.0, os_name="nt")
+    finally:
+        with contextlib.suppress(Exception):
+            proc.kill()
+            proc.wait(timeout=5)
+
+    assert reason == "eof"
+    assert data == b"firstsecond"
+
+
+def test_a_term_resistant_descendant_is_killed_before_reporting_success(tmp_path):
+    """Reaping the direct helper is not the same as terminating its group.
+
+    The helper's child ignores SIGTERM and stays in the same process group. If
+    the direct child's exit is taken as whole-tree termination, that descendant
+    survives a reported success.
+    """
+    marker = tmp_path / "descendant-alive"
+    # A shell's `trap "" TERM` does not protect the `sleep` it forks: killpg
+    # reaps that and the shell then exits on its own. The descendant has to
+    # ignore the signal in its own handler to be genuinely TERM-resistant.
+    ignore_term = (
+        "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+        f"open({str(marker)!r}, 'w').close(); time.sleep(600)"
+    )
+    parent = tmp_path / "parent.sh"
+    parent.write_text(
+        f"#!/bin/sh\n'{sys.executable}' -c \"{ignore_term}\" &\nsleep 600\n",
+        encoding="utf-8",
+    )
+    parent.chmod(0o755)
+
+    proc = subprocess.Popen(
+        [str(parent)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        bufsize=0,
+        cwd="/",
+        start_new_session=True,
+    )
+    group = os.getpgid(proc.pid)
+    deadline = time.monotonic() + 10
+    while not marker.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert marker.exists(), "the TERM-resistant descendant never started"
+
+    try:
+        result = bootstrap._terminate_process_tree(
+            proc, "UNIFI_NETWORK_PASSWORD_COMMAND", "parent.sh", logging.getLogger("t")
+        )
+        # Whatever it reports, the group must not still hold members.
+        with pytest.raises(ProcessLookupError):
+            os.killpg(group, 0)
+        assert result is True
+    finally:
+        with contextlib.suppress(Exception):
+            os.killpg(group, 9)
+        with contextlib.suppress(Exception):
+            proc.wait(timeout=5)
+
+
+def test_an_unsignalable_survivor_is_not_reported_as_a_terminated_tree(tmp_path, monkeypatch):
+    """EPERM on the escalation must not inherit the direct child's exit.
+
+    A descendant that changed uid leaves a group we may no longer signal. The
+    child being reaped says nothing about it, and reporting a terminated tree
+    there is the same mistake as reporting one from the child's exit.
+    """
+    marker = tmp_path / "survivor-ready"
+    ignore_term = (
+        "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+        f"open({str(marker)!r}, 'w').close(); time.sleep(600)"
+    )
+    parent = tmp_path / "parent.sh"
+    parent.write_text(
+        f"#!/bin/sh\n'{sys.executable}' -c \"{ignore_term}\" &\nsleep 600\n",
+        encoding="utf-8",
+    )
+    parent.chmod(0o755)
+
+    proc = subprocess.Popen(
+        [str(parent)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        cwd="/",
+        start_new_session=True,
+    )
+    group = os.getpgid(proc.pid)
+    # The handler must be installed before the first signal, or the descendant
+    # dies to SIGTERM and there is no survivor to detect.
+    deadline = time.monotonic() + 10
+    while not marker.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert marker.exists(), "the TERM-ignoring descendant never started"
+    real_killpg = os.killpg
+    calls: list[int] = []
+
+    def _killpg(pgid, sig):
+        calls.append(sig)
+        if sig == signal.SIGKILL:  # the uid-changed survivor we may not signal
+            raise PermissionError(1, "Operation not permitted")
+        return real_killpg(pgid, sig)
+
+    monkeypatch.setattr(os, "killpg", _killpg)
+    try:
+        result = bootstrap._terminate_process_tree(
+            proc, "UNIFI_NETWORK_PASSWORD_COMMAND", "parent.sh", logging.getLogger("t")
+        )
+        assert signal.SIGKILL in calls, "the escalation never ran"
+        assert result is False, "a survivor we cannot signal was reported as a terminated tree"
+    finally:
+        monkeypatch.setattr(os, "killpg", real_killpg)
+        with contextlib.suppress(Exception):
+            real_killpg(group, signal.SIGKILL)
+        with contextlib.suppress(Exception):
+            proc.wait(timeout=5)

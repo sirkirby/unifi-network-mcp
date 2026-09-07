@@ -229,13 +229,25 @@ def _warn_if_others_can_write(var: str, executable: str, logger: logging.Logger)
 
 
 def _terminate_process_tree(proc: subprocess.Popen, var: str, name: str, logger: logging.Logger) -> bool:
-    """Terminate the helper and everything it started. True if the child was reaped.
+    """Terminate the helper and everything it started. True if the tree is gone.
 
     The helper is its own session leader (POSIX) or process-group root
     (Windows), so a background descendant holding the output pipe open is killed
     with it -- unless that descendant left the session on its own, which no
     signal here can reach. The caller words its message on the return value
     rather than asserting a termination that may not have happened.
+
+    Reaping the direct child is not evidence about the group: a descendant that
+    ignores SIGTERM outlives its parent. True therefore means the child was
+    reaped *and* the group is empty.
+
+    Two limits are known and deliberately not worked around. An unreaped zombie
+    still answers ``killpg``, so where this process is PID 1 with no init reaping
+    orphans (a container without ``init: true``) a dead tree can be reported as
+    surviving -- a false negative on a path that refuses startup either way.
+    And the group id is the reaped child's pid, so a full pid wrap inside the
+    grace period could aim the second signal elsewhere; at default ``pid_max``
+    that needs millions of forks in two seconds.
     """
     if os.name == "nt":
         # Absolute path and a neutral cwd for the same reason the helper gets
@@ -273,22 +285,64 @@ def _terminate_process_tree(proc: subprocess.Popen, var: str, name: str, logger:
         return _reap(proc, _SECRET_COMMAND_REAP_S)
     except OSError:
         return _reap(proc, _SECRET_COMMAND_GRACE_S)
-    # SIGTERM gets the grace period; SIGKILL needs only long enough for the
-    # kernel to finish tearing the group down. A descendant that re-parented
-    # itself out of the session is reached by neither.
-    for sig, grace in ((signal.SIGTERM, _SECRET_COMMAND_GRACE_S), (signal.SIGKILL, _SECRET_COMMAND_GRACE_S)):
+    # A descendant that re-parented itself out of the session is reached by
+    # neither signal.
+    #
+    # The direct child exiting is not the tree dying: a descendant that ignores
+    # SIGTERM stays in the group after its parent is reaped. Reap the child so
+    # its own membership stops answering, then ask the group whether anything is
+    # left, and only stop escalating once nothing is.
+    reaped = False
+    for sig in (signal.SIGTERM, signal.SIGKILL):
         try:
             os.killpg(group, sig)
         except ProcessLookupError:
-            return _reap(proc, _SECRET_COMMAND_REAP_S)
+            return reaped or _reap(proc, _SECRET_COMMAND_REAP_S)
         except OSError:
             # EPERM: a helper that changed uid (sudo, doas, pkexec). Nothing to
             # signal, but startup must still refuse with the credential exit
-            # code rather than a traceback.
-            return _reap(proc, _SECRET_COMMAND_GRACE_S)
-        if _reap(proc, grace):
-            return True
+            # code rather than a traceback. The group is still consulted: a
+            # survivor we may not signal is exactly the case that must not be
+            # reported as a terminated tree.
+            reaped = reaped or _reap(proc, _SECRET_COMMAND_GRACE_S)
+            return reaped and not _group_has_members(group)
+        if not reaped:
+            reaped = _reap(proc, _SECRET_COMMAND_GRACE_S)
+        if _await_group_exit(group, _SECRET_COMMAND_GRACE_S):
+            return reaped
     return False
+
+
+def _group_has_members(group: int) -> bool:
+    """Whether any process is still in *group*. EPERM counts as yes.
+
+    Signal 0 delivers nothing and only reports reachability, so this asks the
+    kernel rather than inferring group state from the processes we know about.
+    """
+    try:
+        os.killpg(group, 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        # EPERM: members exist, we simply may not signal them.
+        return True
+    return True
+
+
+def _await_group_exit(group: int, timeout: float) -> bool:
+    """Wait, bounded, for the group to empty.
+
+    A signalled descendant stays visible until its parent reaps it, and the
+    helper that would have done so is already gone -- so the group can hold a
+    zombie for as long as init takes. Polling avoids reporting a survivor that
+    is merely slow to disappear.
+    """
+    deadline = time.monotonic() + timeout
+    while _group_has_members(group):
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.02)
+    return True
 
 
 def _reap(proc: subprocess.Popen, timeout: float) -> bool:
@@ -443,12 +497,28 @@ def _read_capped_threaded(proc: subprocess.Popen, deadline: float) -> tuple[byte
     A reader thread is the only portable option, so it reads at most one byte
     past the cap and its pipe is never closed from this thread -- closing under
     a blocked reader is what makes the buffer lock unreleasable.
+
+    Popen is given ``bufsize=0``, so stdout is a raw stream and one ``read(n)``
+    returns only what has already arrived. A helper that writes, pauses, then
+    writes again would otherwise have its first burst accepted as the whole
+    credential -- a silent truncation rather than a refusal -- so read until EOF
+    or the cap.
     """
     captured: list[bytes] = []
 
     def _drain() -> None:
         assert proc.stdout is not None
-        captured.append(proc.stdout.read(_SECRET_MAX_BYTES + 1))
+        chunks: list[bytes] = []
+        remaining = _SECRET_MAX_BYTES + 1
+        while remaining > 0:
+            chunk = proc.stdout.read(remaining)
+            if chunk is None:  # would-block on a non-blocking fd, not EOF
+                continue
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        captured.append(b"".join(chunks))
 
     reader = threading.Thread(target=_drain, daemon=True)
     reader.start()
