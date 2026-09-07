@@ -10943,7 +10943,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Lists clients/devices currently blocked from the network. Each entry includes mac, hostname, name, last_seen, blocked.",
+      "description": "Lists clients/devices currently blocked from the network. Each entry includes mac, hostname, name, last_seen, blocked. Pass an entry's mac to unifi_unblock_client as mac_address.",
       "name": "unifi_list_blocked_clients",
       "schema": {
         "input": {
@@ -11111,7 +11111,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Returns connected clients with mac, name, hostname, ip, status (online/offline), connection type (wired/wireless), and for wireless clients: ssid, signal_dbm, channel, radio. Filter by filter_type (all/wired/wireless), set include_offline=true for historical clients. Use search to filter by name/hostname/IP/MAC (case-insensitive). For a single client's full raw object, use unifi_get_client_details. For IP-to-client lookup, use unifi_lookup_by_ip.",
+      "description": "Returns connected clients with mac, name, hostname, ip, status (online/offline), connection type (wired/wireless), and for wireless clients: ssid, signal_dbm, channel, radio. Filter by filter_type (all/wired/wireless), set include_offline=true for historical clients. Use search to filter by name/hostname/IP/MAC (case-insensitive). For a single client's full raw object, use unifi_get_client_details. For IP-to-client lookup, use unifi_lookup_by_ip. Pass an entry's mac to the client tools as mac_address (unifi_get_client_details, unifi_block_client, unifi_rename_client, ...), as client_mac (unifi_get_client_sessions, unifi_get_client_dpi_traffic, unifi_get_client_wifi_details) or as mac (unifi_recent_events); the parameter name differs per tool and each tool accepts only its own.",
       "name": "unifi_list_clients",
       "schema": {
         "input": {
@@ -11300,7 +11300,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Returns adopted device inventory with MAC, name, model, IP, firmware version, uptime, status (online/offline/upgrading/etc), device_category (ap/switch/gateway/pdu), upgradable flag, connection_network, uplink topology, load_avg, mem_pct, and model_eol. Filter by device_type (ap/switch/gateway/pdu) and status (online/offline/pending/upgrading). Note: device_type=ap correctly excludes USP Smart Power strips. Use search to filter by name, IP, or MAC (case-insensitive). Set include_details=true for additional per-device fields: by default (summary=true) compressed radio/port summaries; set summary=false to return the full raw tables (radio_table, port_table, network_table, system_stats, wan1/wan2).",
+      "description": "Returns adopted device inventory with MAC, name, model, IP, firmware version, uptime, status (online/offline/upgrading/etc), device_category (ap/switch/gateway/pdu), upgradable flag, connection_network, uplink topology, load_avg, mem_pct, and model_eol. Filter by device_type (ap/switch/gateway/pdu) and status (online/offline/pending/upgrading). Note: device_type=ap correctly excludes USP Smart Power strips. Use search to filter by name, IP, or MAC (case-insensitive). Set include_details=true for additional per-device fields: by default (summary=true) compressed radio/port summaries; set summary=false to return the full raw tables (radio_table, port_table, network_table, system_stats, wan1/wan2). Pass an entry's MAC to the device tools as mac_address (unifi_get_device_details, unifi_reboot_device, unifi_rename_device, unifi_upgrade_device, ...), as device_mac (unifi_get_switch_ports, unifi_get_port_stats, unifi_set_switch_port_profile, unifi_locate_device, ...) or as ap_mac on the RF tools (unifi_trigger_rf_scan, unifi_get_rf_scan_results), which take the access point to scan from; the parameter name differs per tool and each tool accepts only its own.",
       "name": "unifi_list_devices",
       "schema": {
         "input": {

@@ -71,7 +71,12 @@ async def lookup_by_ip(
         "include_offline=true for historical clients. Use search to filter by "
         "name/hostname/IP/MAC (case-insensitive). For a single client's full raw "
         "object, use unifi_get_client_details. For IP-to-client lookup, use "
-        "unifi_lookup_by_ip."
+        "unifi_lookup_by_ip. Pass an entry's mac to the client tools as "
+        "mac_address (unifi_get_client_details, unifi_block_client, "
+        "unifi_rename_client, ...), as client_mac (unifi_get_client_sessions, "
+        "unifi_get_client_dpi_traffic, unifi_get_client_wifi_details) or as mac "
+        "(unifi_recent_events); the parameter name differs per tool and each tool "
+        "accepts only its own."
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
@@ -168,7 +173,11 @@ async def get_client_details(
 
 @server.tool(
     name="unifi_list_blocked_clients",
-    description="Lists clients/devices currently blocked from the network. Each entry includes mac, hostname, name, last_seen, blocked.",
+    description=(
+        "Lists clients/devices currently blocked from the network. Each entry includes "
+        "mac, hostname, name, last_seen, blocked. Pass an entry's mac to "
+        "unifi_unblock_client as mac_address."
+    ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )
 async def list_blocked_clients() -> Dict[str, Any]:

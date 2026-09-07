@@ -9,6 +9,8 @@ This subclass overrides :meth:`call_tool` to diff incoming ``arguments`` keys
 against the tool's declared input schema (loaded from ``tools_manifest.json``)
 BEFORE pydantic sees them. Unknown keys raise ``ToolError`` with a structured
 message naming the offending key(s) and the valid set so an LLM can self-correct.
+When a rejected key is another spelling of this tool's MAC parameter, the message
+also names the parameter to use — guidance only; the key itself stays invalid.
 
 Operates as composition (no FastMCP internals patched). Self-retires once
 upstream lands ``extra="forbid"`` — the override becomes a no-op guard.
@@ -26,6 +28,35 @@ from mcp.server.mcpserver.exceptions import ToolError
 from unifi_core.redaction import redaction_marker_paths
 
 logger = logging.getLogger(__name__)
+
+# The same value — the MAC of the thing the call is about — is spelled four ways
+# across the Network tools (``mac_address``, ``client_mac``, ``device_mac``,
+# ``mac``), so a caller that carries the spelling from one tool to the next gets a
+# bare "unknown argument" and no way to tell which one this tool wants. The
+# canonical contract does not change: the call still fails, the message just says
+# what to send instead.
+#
+# ``ap_mac`` is deliberately absent. It names a different thing — the access point
+# to scan from, not the subject of the call — so telling a caller holding a client
+# MAC to resend it as ``ap_mac`` would turn a rejected call into a wrong answer,
+# which is what this module exists to prevent.
+_MAC_ARGUMENT_SPELLINGS = frozenset({"mac", "mac_address", "client_mac", "device_mac"})
+
+
+def _mac_parameter_hint(tool_name: str, unknown: set[str], allowed: frozenset[str], arguments: dict[str, Any]) -> str:
+    """Name this tool's MAC parameter when a rejected key is another spelling of it.
+
+    Empty string when no rejected key is a MAC spelling, when the tool takes no MAC
+    parameter or more than one (then there is nothing to point at), or when the
+    caller already sent the right one — repeating it back invites a retry that
+    changes nothing.
+    """
+    if not unknown & _MAC_ARGUMENT_SPELLINGS:
+        return ""
+    canonical = sorted(allowed & _MAC_ARGUMENT_SPELLINGS)
+    if len(canonical) != 1 or canonical[0] in arguments:
+        return ""
+    return " '%s' takes the MAC address as '%s'." % (tool_name, canonical[0])
 
 
 class StrictKwargFastMCP(MCPServer):
@@ -81,8 +112,10 @@ class StrictKwargFastMCP(MCPServer):
             if unknown:
                 unknown_str = ", ".join(sorted(unknown))
                 valid_str = ", ".join(sorted(allowed))
+                hint = _mac_parameter_hint(name, unknown, allowed, arguments)
                 raise ToolError(
-                    f"Invalid params for '{name}': unknown arguments {{{unknown_str}}}. Valid arguments: [{valid_str}]."
+                    f"Invalid params for '{name}': unknown arguments {{{unknown_str}}}. "
+                    f"Valid arguments: [{valid_str}].{hint}"
                 )
         marker_paths = redaction_marker_paths(arguments)
         if marker_paths:
