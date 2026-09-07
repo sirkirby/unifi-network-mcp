@@ -101,7 +101,7 @@ class ProtectConnectionManager:
         )
 
         async def _connect() -> None:
-            self._client = ProtectApiClient(
+            client = ProtectApiClient(
                 host=self.host,
                 port=self.port,
                 username=self.username,
@@ -110,7 +110,14 @@ class ProtectConnectionManager:
                 verify_ssl=self.verify_ssl,
             )
             # update() authenticates + fetches the full bootstrap (NVR, cameras, etc.)
-            await self._client.update()
+            try:
+                await client.update()
+            except BaseException:
+                # A failed or cancelled bootstrap must not orphan the SDK's
+                # session when a later retry creates another client.
+                await self._dispose_client(client)
+                raise
+            self._client = client
 
         self._support_attempt = connection_attempt_started()
         try:
@@ -135,6 +142,14 @@ class ProtectConnectionManager:
             self._initialized = False
             return False
 
+    @staticmethod
+    async def _dispose_client(client: ProtectApiClient) -> None:
+        for operation in ("async_disconnect_ws", "close_session"):
+            try:
+                await getattr(client, operation)()
+            except Exception as exc:
+                logger.debug("[protect-cm] %s failed: %s", operation, type(exc).__name__)
+
     async def close(self) -> None:
         """Gracefully shut down websocket, client session, and API session."""
         if self._ws_unsub is not None:
@@ -145,14 +160,7 @@ class ProtectConnectionManager:
             self._ws_unsub = None
 
         if self._client is not None:
-            try:
-                await self._client.async_disconnect_ws()
-            except Exception:
-                logger.debug("[protect-cm] Error disconnecting websocket", exc_info=True)
-            try:
-                await self._client.close_session()
-            except Exception:
-                logger.debug("[protect-cm] Error closing client session", exc_info=True)
+            await self._dispose_client(self._client)
             self._client = None
 
         if self._api_session is not None and not self._api_session.closed:

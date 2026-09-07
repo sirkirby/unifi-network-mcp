@@ -60,69 +60,75 @@ async def main_async():
     check_unknown_policy_env_vars("protect", logger, policy_gates(), PROTECT_CATEGORY_MAP)
     assert_credentials_configured(config, plugin_name="unifi-protect", env_prefix="PROTECT", logger=logger)
 
-    # Initialize the global Protect connection
-    logger.info("Initializing global Protect connection from main_async...")
-    if not await connection_manager.initialize():
-        logger.error("Failed to connect to UniFi Protect. Tool functionality may be impaired.")
-    else:
-        logger.info("Global Protect connection initialized successfully from main_async.")
-
-        # Start the websocket event listener if enabled and connection succeeded
-        ws_enabled_raw = config.protect.events.get("websocket_enabled", True) if hasattr(config, "protect") else True
-        ws_enabled = parse_config_bool(ws_enabled_raw)
-        if ws_enabled:
-            try:
-                event_manager.set_server(server)
-                await event_manager.start_listening()
-                logger.info("Protect event websocket listener started.")
-            except Exception as ws_exc:
-                logger.error(
-                    "Failed to start event websocket listener: %s. "
-                    "Real-time events will be unavailable; REST queries still work.",
-                    ws_exc,
-                    exc_info=True,
-                )
-        else:
-            logger.info("Protect event websocket disabled via config.")
-
-    # ---- Register MCP resources ----
     try:
-        import unifi_protect_mcp.resources.events  # noqa: F401
-        import unifi_protect_mcp.resources.snapshots  # noqa: F401
+        # Initialize the global Protect connection
+        logger.info("Initializing global Protect connection from main_async...")
+        if not await connection_manager.initialize():
+            logger.error("Failed to connect to UniFi Protect. Tool functionality may be impaired.")
+        else:
+            logger.info("Global Protect connection initialized successfully from main_async.")
 
-        logger.info("MCP resources registered (events, snapshots).")
-    except Exception as res_exc:
-        logger.error("Failed to register MCP resources: %s", res_exc, exc_info=True)
+            # Start the websocket event listener if enabled and connection succeeded
+            ws_enabled_raw = config.protect.events.get("websocket_enabled", True) if hasattr(config, "protect") else True
+            ws_enabled = parse_config_bool(ws_enabled_raw)
+            if ws_enabled:
+                try:
+                    event_manager.set_server(server)
+                    await event_manager.start_listening()
+                    logger.info("Protect event websocket listener started.")
+                except Exception as ws_exc:
+                    logger.error(
+                        "Failed to start event websocket listener: %s. "
+                        "Real-time events will be unavailable; REST queries still work.",
+                        ws_exc,
+                        exc_info=True,
+                    )
+            else:
+                logger.info("Protect event websocket disabled via config.")
 
-    # ---- Register tools ----
-    await register_tools_for_mode(
-        mode=UNIFI_TOOL_REGISTRATION_MODE,
-        server=server,
-        original_tool_decorator=_original_tool_decorator,
-        tool_index_handler=tool_index_handler,
-        start_async_tool=start_async_tool,
-        get_job_status=get_job_status,
-        register_tool=register_tool,
-        tool_module_map=TOOL_MODULE_MAP,
-        setup_lazy_loading=setup_lazy_loading,
-        base_package="unifi_protect_mcp.tools",
-        config=config,
-        logger=logger,
-        support_bundle_handler=support_bundle_service.generate,
-        prefix="protect",
-        server_label="UniFi Protect",
-    )
+        # ---- Register MCP resources ----
+        try:
+            import unifi_protect_mcp.resources.events  # noqa: F401
+            import unifi_protect_mcp.resources.snapshots  # noqa: F401
 
-    # ---- Start transports ----
-    http_enabled, http_transport, host, port = resolve_http_config(config.server, default_port=3001, logger=logger)
-    await run_transports(
-        server=server,
-        http_enabled=http_enabled,
-        host=host,
-        port=port,
-        http_transport=http_transport,
-        logger=logger,
-    )
+            logger.info("MCP resources registered (events, snapshots).")
+        except Exception as res_exc:
+            logger.error("Failed to register MCP resources: %s", res_exc, exc_info=True)
+
+        # ---- Register tools ----
+        await register_tools_for_mode(
+            mode=UNIFI_TOOL_REGISTRATION_MODE,
+            server=server,
+            original_tool_decorator=_original_tool_decorator,
+            tool_index_handler=tool_index_handler,
+            start_async_tool=start_async_tool,
+            get_job_status=get_job_status,
+            register_tool=register_tool,
+            tool_module_map=TOOL_MODULE_MAP,
+            setup_lazy_loading=setup_lazy_loading,
+            base_package="unifi_protect_mcp.tools",
+            config=config,
+            logger=logger,
+            support_bundle_handler=support_bundle_service.generate,
+            prefix="protect",
+            server_label="UniFi Protect",
+        )
+
+        # ---- Start transports ----
+        http_enabled, http_transport, host, port = resolve_http_config(config.server, default_port=3001, logger=logger)
+        await run_transports(
+            server=server,
+            http_enabled=http_enabled,
+            host=host,
+            port=port,
+            http_transport=http_transport,
+            logger=logger,
+        )
+    finally:
+        try:
+            await event_manager.stop_listening()
+        finally:
+            await connection_manager.close()
 
 
 def main():
