@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from unifi_core.mac import canonical_mac, looks_like_mac, normalize_mac
 from unifi_core.merge import deep_merge
@@ -434,6 +434,18 @@ class LegacyFirewallRule(BaseModel):
         description="Controller-defined rule that cannot be deleted",
         json_schema_extra={"mutable": False},
     )
+
+    @field_validator("src_port", "dst_port", mode="before")
+    @classmethod
+    def _coerce_port_to_str(cls, v: Any) -> Any:
+        """Accept the controller's integer ports on a string field.
+
+        ``/rest/firewallrule`` returns a bare port as an int (e.g. ``8123``)
+        but a range as a string (e.g. ``"8000:8100"``). Pydantic v2 will not
+        coerce int to str, so an int here failed the whole list. Stringify an
+        int/float and leave everything else - strings, None, bool - untouched.
+        """
+        return str(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else v
 
 
 LEGACYFIREWALLRULE_MUTABLE_FIELDS: frozenset[str] = frozenset()
