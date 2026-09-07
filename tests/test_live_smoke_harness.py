@@ -198,7 +198,19 @@ def test_support_child_cannot_import_pythonpath_shadow_package(monkeypatch, tmp_
     result = subprocess.run(
         [sys.executable, "-c", "import unifi_network_mcp"], env=env, cwd=shadow, capture_output=True
     )
-    assert result.returncode == 0
+    # The shadow's sentinel, not the exit status: a non-zero status also means "the real
+    # package is not installed in this interpreter", which is true of any venv a
+    # `uv run --package <one>` has pruned, and says nothing about the shadow. CI runs
+    # `--all-packages` and never sees the difference.
+    assert b"shadow app imported" not in result.stderr
+    # And the guard is what does it: the same child with PYTHONPATH restored imports the
+    # shadow, so a green assertion above cannot be green by accident.
+    unguarded = {**env, "PYTHONPATH": str(shadow)}
+    del unguarded["PYTHONSAFEPATH"]
+    leaked = subprocess.run(
+        [sys.executable, "-c", "import unifi_network_mcp"], env=unguarded, cwd=shadow, capture_output=True
+    )
+    assert b"shadow app imported" in leaked.stderr
 
 
 @pytest.mark.parametrize("secret", ['quoted"password', r"back\slash", "café-秘密", "unifi"])
