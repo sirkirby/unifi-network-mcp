@@ -17,18 +17,78 @@ sys.modules[_spec.name] = _mod
 _spec.loader.exec_module(_mod)
 
 MetadataSmokeError = _mod.MetadataSmokeError
-ServerSpec = _mod.ServerSpec
+PROJECT_WEBSITE_URL = _mod.PROJECT_WEBSITE_URL
+SERVER_SPECS = _mod.SERVER_SPECS
 validate_icons = _mod.validate_icons
 validate_server_metadata = _mod.validate_server_metadata
-validate_tool_titles = _mod.validate_tool_titles
+validate_meta_tool_surface = _mod.validate_meta_tool_surface
 smoke_env = _mod.smoke_env
 selected_server_names = _mod.selected_server_names
+
+NETWORK_SPEC = SERVER_SPECS["network"]
+
+EXPECTED_SURFACE = frozenset(
+    {
+        "MetadataSmokeError",
+        "PROJECT_WEBSITE_URL",
+        "SERVER_SPECS",
+        "ServerSpec",
+        "parse_meta_tool_result",
+        "selected_server_names",
+        "smoke_env",
+        "smoke_server",
+        "validate_connection",
+        "validate_icons",
+        "validate_index_catalog",
+        "validate_meta_tool_surface",
+        "validate_mode_tools",
+        "validate_server_metadata",
+        "validate_tool_schema",
+    }
+)
+
+
+def _meta_tools(spec, **overrides):
+    """A tools/list payload that passes every check in validate_meta_tool_surface."""
+    index_tool = SimpleNamespace(
+        name=spec.index_tool,
+        title=spec.expected_index_title,
+        description="Index of available tools.",
+        inputSchema={"type": "object"},
+        annotations=SimpleNamespace(readOnlyHint=True, openWorldHint=False),
+    )
+    for key, value in overrides.items():
+        setattr(index_tool, key, value)
+    return [
+        index_tool,
+        SimpleNamespace(name=f"{spec.prefix}_execute"),
+        SimpleNamespace(name=f"{spec.prefix}_batch"),
+        SimpleNamespace(name=f"{spec.prefix}_batch_status"),
+    ]
+
+
+def test_module_public_surface_is_stable() -> None:
+    """Name every helper the smoke script owes this file, so a rename reports all gaps at once."""
+    assert EXPECTED_SURFACE <= set(vars(_mod)), sorted(EXPECTED_SURFACE - set(vars(_mod)))
+
 
 PNG_DATA_URI = "data:image/png;base64," + base64.b64encode(b"\x89PNG\r\n\x1a\npayload").decode()
 
 
 def _icon(size: str = "48x48"):
     return SimpleNamespace(src=PNG_DATA_URI, mimeType="image/png", sizes=[size])
+
+
+def _server_info(**overrides):
+    """An initialize.serverInfo payload that passes every check."""
+    fields = {
+        "name": NETWORK_SPEC.expected_name,
+        "websiteUrl": PROJECT_WEBSITE_URL,
+        "version": "1.2.3",
+        "icons": [_icon("48x48"), _icon("96x96"), _icon("192x192")],
+    }
+    fields.update(overrides)
+    return SimpleNamespace(**fields)
 
 
 def test_validate_icons_accepts_three_png_data_uri_sizes() -> None:
@@ -45,56 +105,65 @@ def test_validate_icons_rejects_non_png_data() -> None:
 
 
 def test_validate_server_metadata_checks_name_website_and_icons() -> None:
-    spec = ServerSpec(
-        package="unifi-network-mcp",
-        command="unifi-network-mcp",
-        expected_name="unifi-network-mcp",
-        index_tool="unifi_tool_index",
-        expected_index_title="UniFi Network Tool Index",
-    )
-    server_info = SimpleNamespace(
-        name="unifi-network-mcp",
-        websiteUrl="https://github.com/sirkirby/unifi-mcp",
-        version="1.2.3",
-        icons=[_icon("48x48"), _icon("96x96"), _icon("192x192")],
-    )
-
-    validate_server_metadata(spec, server_info)
+    validate_server_metadata(NETWORK_SPEC, _server_info())
 
 
-def test_validate_tool_titles_requires_expected_title() -> None:
-    spec = ServerSpec(
-        package="unifi-network-mcp",
-        command="unifi-network-mcp",
-        expected_name="unifi-network-mcp",
-        index_tool="unifi_tool_index",
-        expected_index_title="UniFi Network Tool Index",
-    )
-    tools = [
-        SimpleNamespace(name="unifi_tool_index", title="Wrong Title"),
-    ]
+@pytest.mark.parametrize(
+    ("field", "value", "expected"),
+    [
+        ("name", "unifi-wrong-mcp", "expected server name"),
+        ("websiteUrl", "https://example.invalid/other", "expected websiteUrl"),
+        ("version", "", "missing server version"),
+    ],
+)
+def test_validate_server_metadata_rejects_each_bad_field(field, value, expected) -> None:
+    with pytest.raises(MetadataSmokeError, match=expected):
+        validate_server_metadata(NETWORK_SPEC, _server_info(**{field: value}))
+
+
+def test_validate_meta_tool_surface_accepts_a_complete_lazy_surface() -> None:
+    validate_meta_tool_surface(NETWORK_SPEC, _meta_tools(NETWORK_SPEC))
+
+
+def test_validate_meta_tool_surface_requires_expected_index_title() -> None:
+    tools = _meta_tools(NETWORK_SPEC, title="Wrong Title")
 
     with pytest.raises(MetadataSmokeError, match="expected title"):
-        validate_tool_titles(spec, tools)
+        validate_meta_tool_surface(NETWORK_SPEC, tools)
+
+
+def test_validate_meta_tool_surface_requires_every_meta_tool() -> None:
+    tools = [tool for tool in _meta_tools(NETWORK_SPEC) if not tool.name.endswith("_batch_status")]
+
+    with pytest.raises(MetadataSmokeError, match="missing meta-tools"):
+        validate_meta_tool_surface(NETWORK_SPEC, tools)
 
 
 def test_smoke_env_defaults_to_offline_metadata_credentials(monkeypatch) -> None:
     monkeypatch.setenv("UNIFI_HOST", "10.0.0.1")
     monkeypatch.setenv("UNIFI_NETWORK_HOST", "10.0.0.2")
+    monkeypatch.setenv("UNIFI_TOOL_REGISTRATION_MODE", "meta_only")
+    monkeypatch.setenv("UNIFI_MCP_HTTP_ENABLED", "true")
 
-    env = smoke_env(use_current_env=False)
+    env = smoke_env(registration_mode="lazy", use_current_env=False)
 
     assert env["UNIFI_HOST"] == "127.0.0.1"
     assert env["UNIFI_NETWORK_HOST"] == "127.0.0.1"
     assert env["UNIFI_USERNAME"] == "metadata-smoke"
+    assert env["UNIFI_TOOL_REGISTRATION_MODE"] == "lazy"
+    assert env["UNIFI_MCP_HTTP_ENABLED"] == "false"
 
 
 def test_smoke_env_can_preserve_current_controller_env(monkeypatch) -> None:
     monkeypatch.setenv("UNIFI_HOST", "10.0.0.1")
+    monkeypatch.setenv("UNIFI_TOOL_REGISTRATION_MODE", "meta_only")
+    monkeypatch.setenv("UNIFI_MCP_HTTP_ENABLED", "true")
 
-    env = smoke_env(use_current_env=True)
+    env = smoke_env(registration_mode="eager", use_current_env=True)
 
     assert env["UNIFI_HOST"] == "10.0.0.1"
+    assert env["UNIFI_TOOL_REGISTRATION_MODE"] == "eager"
+    assert env["UNIFI_MCP_HTTP_ENABLED"] == "false"
 
 
 def test_selected_server_names_skips_access_for_default_offline_smoke() -> None:
