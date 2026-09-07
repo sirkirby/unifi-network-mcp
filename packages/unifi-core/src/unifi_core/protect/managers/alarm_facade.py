@@ -110,6 +110,43 @@ class AlarmRulesFacade:
             raise permission_error
         return [], False
 
+    async def get_arm_state(self) -> dict[str, Any]:
+        """Read Global profile states, or preserve the legacy local status.
+
+        Any non-disarmed profile makes the aggregate armed. Prefer a breached
+        profile, then an unknown state, arming, and armed; ties use profile ID
+        so controller ordering cannot change the selected profile. All raw
+        states and transition timestamps remain available in ``profiles``.
+        """
+        profiles, complete = await self.list_profiles()
+        if not complete:
+            return await self._legacy.get_arm_state()
+        if not profiles or any(not (p.get("state") or "").strip() for p in profiles):
+            raise ValueError(
+                "Cannot determine Global alarm status: a v2 profile state is missing. Retry the status read."
+            )
+
+        active = [p for p in profiles if AlarmManager._is_armed_status(p["state"])]
+        precedence = {"breached": 0, "arming": 2, "armed": 3}
+        selected = min(
+            active,
+            key=lambda p: (precedence.get(p["state"].lower(), 1), p.get("id") or ""),
+            default=None,
+        )
+        status = selected["state"] if selected else "disarmed"
+        transition = selected.get("state_set_at") if selected else None
+        return {
+            "armed": bool(active),
+            "status": status,
+            "active_profile_id": selected.get("id") if selected else None,
+            "active_profile_name": selected.get("name") if selected else None,
+            "armed_at": transition if status.lower() == "armed" else None,
+            "will_be_armed_at": None,
+            "breach_detected_at": transition if status.lower() == "breached" else None,
+            "breach_event_count": None,
+            "profiles": profiles,
+        }
+
     async def get_rule(self, rule_id: str) -> tuple[dict[str, Any], bool]:
         """Return ``(rule, complete)`` for one rule by id.
 
