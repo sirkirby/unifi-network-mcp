@@ -232,7 +232,7 @@ async def test_protect_alarm_status(tmp_path, monkeypatch):
     stub_managers(
         monkeypatch,
         {
-            ("protect", "alarm_manager", "get_arm_state"): {
+            ("protect", "alarm_facade", "get_arm_state"): {
                 "armed": True,
                 "status": "armed_away",
                 "active_profile_id": "prof1",
