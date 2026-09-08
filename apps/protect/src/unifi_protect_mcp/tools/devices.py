@@ -67,9 +67,10 @@ async def protect_list_lights() -> Dict[str, Any]:
         "Updates light settings such as on/off state, LED brightness level (1-6), "
         "PIR motion sensitivity (0-100), motion-triggered duration (15-900 seconds), "
         "status indicator light, and device name. Requires confirm=True to apply. "
-        "Supported keys: light_on, led_level, sensitivity, duration_seconds, status_light, name."
+        "Power, brightness, sensitivity and duration require UNIFI_PROTECT_API_KEY or UNIFI_API_KEY. "
+        "Supported keys: light_on (alias is_light_on), led_level, sensitivity, duration_seconds, status_light, name."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
     permission_category="light",
     permission_action="update",
 )
@@ -118,6 +119,12 @@ async def protect_update_light(
 
         # Apply the changes
         result = await light_manager.apply_light_settings(light_id, filtered)
+        if result.get("errors"):
+            return {
+                "success": False,
+                "error": "Failed to update light settings: " + "; ".join(result["errors"]),
+                "data": result,
+            }
         return {"success": True, "data": result}
     except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}

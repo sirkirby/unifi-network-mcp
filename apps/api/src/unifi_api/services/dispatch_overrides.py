@@ -149,7 +149,7 @@ DISPATCH_OVERRIDES: dict[str, tuple[str, str]] = {
     "protect_reboot_camera": ("camera_manager", "apply_reboot_camera"),
     "protect_toggle_recording": ("camera_manager", "apply_toggle_recording"),
     "protect_toggle_rtsp": ("camera_manager", "apply_toggle_rtsp"),
-    "protect_update_camera_settings": ("camera_manager", "update_camera_settings"),
+    "protect_update_camera_settings": ("camera_manager", "apply_camera_settings"),
     "protect_update_sensor_settings": ("sensor_manager", "apply_sensor_settings"),
     "protect_update_chime": ("chime_manager", "apply_chime_settings"),
     "protect_update_light": ("light_manager", "apply_light_settings"),
@@ -609,6 +609,24 @@ def _delete_recording_result(result: Any, _args: dict[str, Any], _manager: Any) 
 # ---------------------------------------------------------------------------
 # The MCP tool validates agent-facing settings and translates nested
 # snake_case keys to the public API payload before calling the manager.
+
+
+def _translate_camera_settings_update(args: dict[str, Any]) -> tuple[tuple[Any, ...], dict[str, Any]]:
+    from unifi_core.protect.models.cameras import to_controller_update
+
+    settings = to_controller_update(args.get("settings") or {})
+    if not settings:
+        raise ValueError("No supported camera settings provided")
+    return (), {"camera_id": args["camera_id"], "settings": settings}
+
+
+def _translate_light_settings_update(args: dict[str, Any]) -> tuple[tuple[Any, ...], dict[str, Any]]:
+    from unifi_core.protect.models.lights import to_controller_update
+
+    settings = to_controller_update(args.get("settings") or {})
+    if not settings:
+        raise ValueError("No supported light settings provided")
+    return (), {"light_id": args["light_id"], "settings": settings}
 
 
 def _translate_sensor_settings_update(args: dict[str, Any]) -> tuple[tuple[Any, ...], dict[str, Any]]:
@@ -1574,6 +1592,8 @@ DISPATCH_ARG_TRANSLATORS: dict[str, ArgTranslatorSpec] = {
     "access_unlock_door": _spec(_translate_access_unlock, "door_id", "duration"),
     "protect_delete_recording": _spec(_translate_delete_recording, "camera_id", "start", "end"),
     "protect_update_chime": _spec(_translate_chime_update, "chime_id", "settings"),
+    "protect_update_camera_settings": _spec(_translate_camera_settings_update, "camera_id", "settings"),
+    "protect_update_light": _spec(_translate_light_settings_update, "light_id", "settings"),
     "protect_update_sensor_settings": _spec(_translate_sensor_settings_update, "sensor_id", "settings"),
     # Network — client mutations: tool uses mac_address, manager uses client_mac
     "unifi_block_client": _spec(_rename_mac_address_to_client_mac, "client_mac"),

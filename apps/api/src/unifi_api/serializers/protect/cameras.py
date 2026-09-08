@@ -35,8 +35,14 @@ def _get(obj: Any, key: str, default: Any = None) -> Any:
     },
 )
 class CameraMutationAckSerializer(Serializer):
-    """Generic ack for camera-side mutations. Manager methods here return
-    ``Dict[str, Any]`` (preview shape); bool fallback for completeness."""
+    """Camera mutation acknowledgments, including partial settings failures."""
+
+    def serialize_action(self, result, *, tool_name: str, redact_sensitive: bool = True) -> dict:
+        envelope = super().serialize_action(result, tool_name=tool_name, redact_sensitive=redact_sensitive)
+        if tool_name == "protect_update_camera_settings" and isinstance(result, dict) and result.get("errors"):
+            envelope["success"] = False
+            envelope["error"] = "Failed to update Protect settings: " + "; ".join(result["errors"])
+        return envelope
 
     @staticmethod
     def serialize(obj) -> dict:

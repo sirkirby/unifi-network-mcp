@@ -5,6 +5,7 @@ from enum import Enum
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from uiprotect.data.types import PublicHdrMode
 
 from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.redaction import REDACTED
@@ -170,8 +171,8 @@ def _make_camera(**overrides):
     cam.get_rtsps_streams = AsyncMock(return_value=overrides.get("rtsps_streams", None))
     cam.get_ptz_presets = AsyncMock(return_value=overrides.get("ptz_presets", []))
     cam.set_ir_led_model = AsyncMock()
-    cam.set_hdr_mode = AsyncMock()
-    cam.set_mic_volume = AsyncMock()
+    cam.set_hdr_mode_public = AsyncMock()
+    cam.set_mic_volume_public = AsyncMock()
     cam.set_status_light = AsyncMock()
     cam.set_speaker_volume = AsyncMock()
     cam.set_name = AsyncMock()
@@ -204,6 +205,7 @@ def mock_cm():
     """Create a mock ProtectConnectionManager with a mocked client.bootstrap."""
     cm = MagicMock()
     cm.host = "192.168.1.1"
+    cm.validate_public_id_portability = AsyncMock()
     cam = _make_camera()
     cm.client.bootstrap = _make_bootstrap(cameras={"cam-001": cam})
     cm.client.api_request = AsyncMock(return_value={"success": True})
@@ -215,6 +217,7 @@ def mock_cm_multiple_cameras():
     """CM with multiple cameras."""
     cm = MagicMock()
     cm.host = "192.168.1.1"
+    cm.validate_public_id_portability = AsyncMock()
     cam1 = _make_camera(id="cam-001", name="Front Door")
     cam2 = _make_camera(id="cam-002", name="Back Yard", is_recording=False, recording_mode=_FakeRecordingMode.NEVER)
     cam3 = _make_camera(id="cam-003", name="Garage", is_connected=False, state=_FakeStateType.DISCONNECTED)
@@ -459,7 +462,7 @@ class TestCameraManagerApplyCameraSettings:
         cam = mock_cm.client.bootstrap.cameras["cam-001"]
         result = await mgr.apply_camera_settings("cam-001", {"mic_volume": 50})
         assert "mic_volume=50" in result["applied"]
-        cam.set_mic_volume.assert_awaited_once_with(50)
+        cam.set_mic_volume_public.assert_awaited_once_with(50)
 
     @pytest.mark.asyncio
     async def test_apply_error_handling(self, mock_cm):
@@ -480,11 +483,11 @@ class TestCameraManagerApplyCameraSettings:
         cam = mock_cm.client.bootstrap.cameras["cam-001"]
         result = await mgr.apply_camera_settings("cam-001", {"hdr_mode": "superHdr"})
         assert "hdr_mode=always" in result["applied"]
-        cam.set_hdr_mode.assert_awaited_once_with("always")
+        cam.set_hdr_mode_public.assert_awaited_once_with(PublicHdrMode.ON)
 
     @pytest.mark.asyncio
     async def test_apply_hdr_bool_false_turns_off(self, mock_cm):
-        # Regression: set_hdr_mode(False) does NOT turn HDR off because
+        # Regression: set_hdr_mode_public(False) does NOT turn HDR off because
         # ``False == "off"`` is false; we must normalize to the "off" literal.
         from unifi_core.protect.managers.camera_manager import CameraManager
 
@@ -492,7 +495,7 @@ class TestCameraManagerApplyCameraSettings:
         cam = mock_cm.client.bootstrap.cameras["cam-001"]
         result = await mgr.apply_camera_settings("cam-001", {"hdr_mode": False})
         assert "hdr_mode=off" in result["applied"]
-        cam.set_hdr_mode.assert_awaited_once_with("off")
+        cam.set_hdr_mode_public.assert_awaited_once_with("off")
 
     @pytest.mark.asyncio
     async def test_apply_hdr_bool_true_is_auto(self, mock_cm):
@@ -501,16 +504,15 @@ class TestCameraManagerApplyCameraSettings:
         mgr = CameraManager(mock_cm)
         cam = mock_cm.client.bootstrap.cameras["cam-001"]
         await mgr.apply_camera_settings("cam-001", {"hdr_mode": True})
-        cam.set_hdr_mode.assert_awaited_once_with("auto")
+        cam.set_hdr_mode_public.assert_awaited_once_with("auto")
 
     @pytest.mark.asyncio
     async def test_apply_hdr_invalid_value(self, mock_cm):
         from unifi_core.protect.managers.camera_manager import CameraManager
 
         mgr = CameraManager(mock_cm)
-        result = await mgr.apply_camera_settings("cam-001", {"hdr_mode": "ultra"})
-        assert "errors" in result
-        assert any("Invalid hdr_mode" in e for e in result["errors"])
+        with pytest.raises(ValueError, match="Invalid hdr_mode"):
+            await mgr.apply_camera_settings("cam-001", {"hdr_mode": "ultra"})
 
 
 class TestNormalizeHdrMode:
@@ -1248,3 +1250,18 @@ class TestProtectRebootCameraTool:
         mock_camera_manager.reboot_camera = AsyncMock(side_effect=RuntimeError("failed"))
         result = await protect_reboot_camera("cam-001", confirm=False)
         assert result["success"] is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("applied", [[], ["name=new"]])
+async def test_settings_failure_is_not_success(mock_camera_manager, applied):
+    from unifi_protect_mcp.tools.cameras import protect_update_camera_settings
+
+    mock_camera_manager.update_camera_settings = AsyncMock(return_value={})
+    mock_camera_manager.apply_camera_settings = AsyncMock(
+        return_value={"applied": applied, "errors": ["setting failed"]}
+    )
+    result = await protect_update_camera_settings("device", {"mic_volume": 51}, confirm=True)
+    assert result["success"] is False
+    assert "setting failed" in result["error"]
+    assert result["data"]["applied"] == applied

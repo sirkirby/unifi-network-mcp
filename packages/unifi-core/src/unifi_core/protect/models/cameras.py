@@ -6,6 +6,43 @@ from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
+_HDR_MODE_ALIASES = {
+    # off
+    "off": "off",
+    "false": "off",
+    "none": "off",
+    "disabled": "off",
+    # auto: HDR on, normal dynamic range (ISP hdr_mode == "normal")
+    "auto": "auto",
+    "on": "auto",
+    "true": "auto",
+    "normal": "auto",
+    # always-on / super HDR: highest quality (ISP hdr_mode == "superHdr")
+    "always": "always",
+    "super": "always",
+    "superhdr": "always",
+    "super_hdr": "always",
+}
+
+
+def normalize_hdr_mode(value: Any) -> str:
+    """Map a user-supplied hdr_mode value to a uiprotect literal.
+
+    Returns one of "off", "auto", or "always". Raises ``ValueError`` for
+    unrecognised values so the error surfaces during preview, before any
+    mutation is applied.
+    """
+    if isinstance(value, bool):
+        return "auto" if value else "off"
+    if isinstance(value, str):
+        normalized = _HDR_MODE_ALIASES.get(value.strip().lower())
+        if normalized is not None:
+            return normalized
+    raise ValueError(
+        f"Invalid hdr_mode {value!r}. Use one of: off, auto, always "
+        "(aliases: true=auto, false=off, on, normal, super/superHdr=always)."
+    )
+
 
 class Camera(BaseModel):
     """Canonical Protect camera model.
@@ -109,4 +146,12 @@ def to_controller_update(fields: Dict[str, Any]) -> Dict[str, Any]:
     this helper centralises mutability enforcement so callers cannot
     silently include read-only field names.
     """
-    return {k: v for k, v in fields.items() if k in MUTABLE_FIELDS and v is not None}
+    filtered = {k: v for k, v in fields.items() if k in MUTABLE_FIELDS and v is not None}
+    if "hdr_mode" in filtered:
+        filtered["hdr_mode"] = normalize_hdr_mode(filtered["hdr_mode"])
+    validated = Camera.model_validate(filtered).model_dump(exclude_unset=True)
+    # Zero can appear in existing controller state, but the public write API
+    # accepts 1-100 only. Never silently clamp it or disable the microphone.
+    if validated.get("mic_volume") == 0:
+        raise ValueError("Cannot update mic_volume to 0: the Protect public API accepts 1-100.")
+    return {key: validated[key] for key in filtered}

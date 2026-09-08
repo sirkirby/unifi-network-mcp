@@ -74,9 +74,11 @@ def to_controller_update(fields: Dict[str, Any]) -> Dict[str, Any]:
     Renames model-side field names that differ from controller-side keys
     (currently only ``is_light_on`` → ``light_on``).
     """
-    out: Dict[str, Any] = {}
-    for k, v in fields.items():
-        if k not in MUTABLE_FIELDS or v is None:
-            continue
-        out[_CONTROLLER_KEY_MAP.get(k, k)] = v
-    return out
+    fields = dict(fields)
+    if "light_on" in fields:
+        if "is_light_on" in fields and fields["is_light_on"] != fields["light_on"]:
+            raise ValueError("Conflicting light_on and is_light_on settings")
+        fields["is_light_on"] = fields.pop("light_on")
+    filtered = {k: v for k, v in fields.items() if k in MUTABLE_FIELDS and v is not None}
+    validated = Light.model_validate(filtered).model_dump(exclude_unset=True)
+    return {_CONTROLLER_KEY_MAP.get(k, k): validated[k] for k in filtered}

@@ -85,10 +85,10 @@ def _make_light(**overrides):
     light.light_mode_settings = ms
 
     # Async methods
-    light.set_light = AsyncMock()
-    light.set_led_level = AsyncMock()
-    light.set_sensitivity = AsyncMock()
-    light.set_duration = AsyncMock()
+    light.set_light_public = AsyncMock()
+    light.set_led_level_public = AsyncMock()
+    light.set_sensitivity_public = AsyncMock()
+    light.set_duration_public = AsyncMock()
     light.set_status_light = AsyncMock()
     light.set_name = AsyncMock()
 
@@ -253,6 +253,7 @@ def _make_bootstrap(lights=None, sensors=None, chimes=None):
 @pytest.fixture
 def mock_cm_lights():
     cm = MagicMock()
+    cm.validate_public_id_portability = AsyncMock()
     light = _make_light()
     cm.client.bootstrap = _make_bootstrap(lights={"light-001": light})
     return cm
@@ -356,7 +357,7 @@ class TestLightManagerApply:
         light = mock_cm_lights.client.bootstrap.lights["light-001"]
         result = await mgr.apply_light_settings("light-001", {"light_on": True})
         assert "light_on=True" in result["applied"]
-        light.set_light.assert_awaited_once_with(True)
+        light.set_light_public.assert_awaited_once_with(True)
 
     @pytest.mark.asyncio
     async def test_apply_led_level(self, mock_cm_lights):
@@ -366,7 +367,7 @@ class TestLightManagerApply:
         light = mock_cm_lights.client.bootstrap.lights["light-001"]
         result = await mgr.apply_light_settings("light-001", {"led_level": 3})
         assert "led_level=3" in result["applied"]
-        light.set_led_level.assert_awaited_once_with(3)
+        light.set_led_level_public.assert_awaited_once_with(3)
 
     @pytest.mark.asyncio
     async def test_apply_duration(self, mock_cm_lights):
@@ -376,14 +377,14 @@ class TestLightManagerApply:
         light = mock_cm_lights.client.bootstrap.lights["light-001"]
         result = await mgr.apply_light_settings("light-001", {"duration_seconds": 60})
         assert "duration_seconds=60" in result["applied"]
-        light.set_duration.assert_awaited_once_with(timedelta(seconds=60))
+        light.set_duration_public.assert_awaited_once_with(timedelta(seconds=60))
 
     @pytest.mark.asyncio
     async def test_apply_error(self, mock_cm_lights):
         from unifi_core.protect.managers.light_manager import LightManager
 
         light = mock_cm_lights.client.bootstrap.lights["light-001"]
-        light.set_light = AsyncMock(side_effect=RuntimeError("API error"))
+        light.set_light_public = AsyncMock(side_effect=RuntimeError("API error"))
         mgr = LightManager(mock_cm_lights)
         result = await mgr.apply_light_settings("light-001", {"light_on": True})
         assert "errors" in result
@@ -1295,3 +1296,16 @@ class TestProtectTriggerChimeTool:
         mock_chime_manager.trigger_chime = AsyncMock(side_effect=RuntimeError("network error"))
         result = await protect_trigger_chime("chime-001", confirm=True)
         assert result["success"] is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("applied", [[], ["name=new"]])
+async def test_settings_failure_is_not_success(mock_light_manager, applied):
+    from unifi_protect_mcp.tools.devices import protect_update_light
+
+    mock_light_manager.update_light = AsyncMock(return_value={})
+    mock_light_manager.apply_light_settings = AsyncMock(return_value={"applied": applied, "errors": ["setting failed"]})
+    result = await protect_update_light("device", {"led_level": 4}, confirm=True)
+    assert result["success"] is False
+    assert "setting failed" in result["error"]
+    assert result["data"]["applied"] == applied

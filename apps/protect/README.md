@@ -84,10 +84,29 @@ UNIFI_PROTECT_HOST=192.168.1.1      # Controller IP or hostname
 UNIFI_PROTECT_USERNAME=admin         # Local admin username
 UNIFI_PROTECT_PASSWORD=your-password # Admin password
 # Optional:
-# UNIFI_PROTECT_API_KEY=             # UniFi Protect API key for selected settings capabilities
+# UNIFI_PROTECT_API_KEY=             # Required for camera HDR/mic volume and light power/brightness/PIR settings
 # UNIFI_PROTECT_PORT=443             # Controller HTTPS port
 # UNIFI_PROTECT_VERIFY_SSL=false     # SSL certificate verification
 ```
+
+Camera HDR and microphone volume, plus floodlight power, brightness, PIR sensitivity,
+and duration now use the Protect public Integration API with `uiprotect` 16.x.
+Set `UNIFI_PROTECT_API_KEY` (or the shared fallback `UNIFI_API_KEY`) and restart
+the server before using these settings. Session credentials remain required for
+other Protect operations. Missing keys or incompatible public device IDs fail
+before any settings in the request are written.
+
+Microphone volume updates accept **1–100**; zero is rejected by the public API.
+Existing HDR aliases are preserved: `true`/`on`/`normal` mean `auto`, `false`
+means `off`, and `always`/`superHdr` select public HDR `on`. Light brightness
+remains 1–6, sensitivity 0–100, and duration 15–900 seconds. `light_on` and
+`is_light_on` are equivalent inputs and control forced illumination; turning
+forced illumination off does not disable motion-triggered lighting.
+
+Settings updates retain preview/confirmation and policy gates. Requests are
+validated before writing; controller failures can still leave a partial update.
+Failed updates return an error with the settings that applied, so callers can
+inspect the current state before retrying.
 
 **Fallback:** The shared `UNIFI_*` variables (e.g., `UNIFI_HOST`) also work. The server checks for `UNIFI_PROTECT_*` first and falls back to `UNIFI_*` if the server-specific variable is not set. For single-controller setups, the shared variables are all you need.
 
