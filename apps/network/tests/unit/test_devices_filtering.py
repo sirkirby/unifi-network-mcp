@@ -1,11 +1,14 @@
 """Tests for list_devices compression and get_device_details section selection."""
 
 import os
+from copy import deepcopy
 from inspect import signature
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import TypeAdapter, ValidationError
+
+from unifi_core.redaction import REDACTED
 
 os.environ.setdefault("UNIFI_HOST", "127.0.0.1")
 os.environ.setdefault("UNIFI_USERNAME", "test")
@@ -77,6 +80,52 @@ def _detail_mock(raw):
     d = MagicMock()
     d.raw = raw
     return d
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("redact", [True, False])
+async def test_device_details_redacts_credentials_at_response_boundary(monkeypatch, redact):
+    monkeypatch.setenv("UNIFI_NETWORK_REDACT_SENSITIVE_FIELDS", str(redact).lower())
+    keys = ["x_authkey", "x_vwirekey", "syslog_key", "guest_token", "x_inform_authkey", "x_ssh_sha512passwd"]
+    secrets = dict.fromkeys(keys, "synthetic-device-secret")
+    raw = {**deepcopy(SWITCH_RAW), **secrets, "nested": [secrets.copy()], "x_ssh_hostkey_fingerprint": "public"}
+    original = deepcopy(raw)
+    with patch("unifi_network_mcp.tools.devices.device_manager") as manager:
+        manager.get_device_details = AsyncMock(return_value=_detail_mock(raw))
+        manager._connection = _mock_conn()
+        from unifi_network_mcp.tools.devices import get_device_details
+
+        result = await get_device_details(raw["mac"])
+
+    assert result["success"] is True
+    for key in keys:
+        expected = REDACTED if redact else secrets[key]
+        assert result["device"][key] == expected
+        assert result["device"]["nested"][0][key] == expected
+    assert result["device"]["x_ssh_hostkey_fingerprint"] == "public"
+    assert result["device"]["mac"] == raw["mac"]
+    assert raw == original
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("redact", [True, False])
+async def test_device_list_redacts_nested_raw_tables(monkeypatch, redact):
+    monkeypatch.setenv("UNIFI_NETWORK_REDACT_SENSITIVE_FIELDS", str(redact).lower())
+    raw = deepcopy(GATEWAY_RAW)
+    raw["network_table"] = [{"name": "VPN", "x_ca_key": "synthetic-vpn-key", "x_ca_crt": "public"}]
+    original = deepcopy(raw)
+    with patch("unifi_network_mcp.tools.devices.device_manager") as manager:
+        manager.get_devices = AsyncMock(return_value=[raw])
+        manager._connection = _mock_conn()
+        from unifi_network_mcp.tools.devices import list_devices
+
+        result = await list_devices(include_details=True, summary=False)
+
+    assert result["success"] is True
+    network = result["devices"][0]["network_table"][0]
+    assert network["x_ca_key"] == (REDACTED if redact else "synthetic-vpn-key")
+    assert network["x_ca_crt"] == "public"
+    assert raw == original
 
 
 @pytest.mark.asyncio

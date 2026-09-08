@@ -76,6 +76,46 @@ class _FakeClient:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("redact", [True, False])
+@pytest.mark.parametrize("domain", ["device", "network"])
+async def test_action_endpoint_redacts_controller_private_keys(tmp_path, monkeypatch, redact, domain):
+    monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
+    app, key, cid = await _bootstrap(tmp_path, redact_sensitive_fields=redact)
+    raw = {
+        "mac": "aa:bb:cc:00:00:10",
+        "_id": "vpn",
+        "name": "fixture",
+        "x_authkey": "synthetic-device-key",
+        "x_ca_key": "synthetic-vpn-key",
+        "nested": [{"syslog_key": "synthetic-syslog-key"}],
+        "x_ca_crt": "public",
+    }
+    manager = MagicMock()
+    manager._connection.site = "default"
+    manager.get_device_details = AsyncMock(return_value=_FakeClient(raw))
+    manager.get_network_details = AsyncMock(return_value=raw)
+    factory = MagicMock()
+    factory.get_domain_manager = AsyncMock(return_value=manager)
+    app.state.manager_factory = factory
+    args = {"mac_address": raw["mac"]} if domain == "device" else {"network_id": "vpn"}
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            f"/v1/actions/unifi_get_{domain}_details",
+            headers={"Authorization": f"Bearer {key}"},
+            json={"site": "default", "controller": cid, "args": args, "confirm": False},
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["x_authkey"] == ("***REDACTED***" if redact else raw["x_authkey"])
+    assert body["data"]["x_ca_key"] == ("***REDACTED***" if redact else raw["x_ca_key"])
+    assert body["data"]["nested"][0]["syslog_key"] == ("***REDACTED***" if redact else raw["nested"][0]["syslog_key"])
+    assert body["data"]["x_ca_crt"] == "public"
+    assert raw["x_authkey"] == "synthetic-device-key"
+    await app.state.engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_action_endpoint_enforces_confirmation_before_manager_interaction(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("UNIFI_API_DB_KEY", "k")
     app, key, cid = await _bootstrap(tmp_path, product_kinds="access")

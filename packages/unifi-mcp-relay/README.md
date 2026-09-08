@@ -81,7 +81,7 @@ Before running the relay, you need:
    ```
    This deploys the relay gateway and generates your authentication tokens.
 
-2. **Local MCP servers** running with HTTP transport enabled (`UNIFI_MCP_HTTP_ENABLED=true`)
+2. **Local MCP servers** running with HTTP transport enabled (`UNIFI_MCP_HTTP_ENABLED=true`). HTTP is unauthenticated: keep the backend on loopback or a trusted container network. Docker Compose publishes backend ports on host loopback while the relay uses service names on the container network. Only the authenticated Worker gateway should be reachable by remote clients; see the [transport security model](../../SECURITY.md#mcp-transport-trust-boundary).
 
 ## Multi-Location Support
 

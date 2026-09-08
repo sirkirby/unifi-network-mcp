@@ -98,7 +98,7 @@ HTTP is disabled by default. The stdio transport is recommended for most use cas
 |----------|---------|-------------|
 | `UNIFI_MCP_HTTP_ENABLED` | `false` | Enable HTTP transport |
 | `UNIFI_MCP_HTTP_TRANSPORT` | `streamable-http` | `streamable-http` (recommended) or `sse` (legacy) |
-| `UNIFI_MCP_HOST` | `0.0.0.0` | HTTP bind address |
+| `UNIFI_MCP_HOST` | `127.0.0.1` | HTTP bind address; remote access requires an authenticated proxy or relay |
 | `UNIFI_MCP_PORT` | `3000` | HTTP bind port |
 | `UNIFI_MCP_HTTP_FORCE` | `false` | Force HTTP in non-container environments |
 
@@ -177,7 +177,7 @@ unifi:
   api_key: ${oc.env:UNIFI_API_KEY,""}
 
 server:
-  host: ${oc.env:UNIFI_MCP_HOST,0.0.0.0}
+  host: ${oc.env:UNIFI_MCP_HOST,127.0.0.1}
   port: ${oc.env:UNIFI_MCP_PORT,3000}
   log_level: INFO
   tool_registration_mode: ${oc.env:UNIFI_TOOL_REGISTRATION_MODE,lazy}
