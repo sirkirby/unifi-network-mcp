@@ -26,6 +26,7 @@ access = ["py-unifi-access>=1.6.1"]
 
 [dependency-groups]
 dev = [
+    "omegaconf>=2.3.0",
     "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",
     "aioresponses>=0.7.9",
