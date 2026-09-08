@@ -7,7 +7,7 @@ from aiounifi.models.api import ApiRequest
 from aiounifi.models.site import Site  # Import Site model
 
 from unifi_core.network.managers.connection_manager import ConnectionManager
-from unifi_core.redaction import collect_secret_values, redact_sensitive_fields, sanitize_exception, scrub_secret_values
+from unifi_core.redaction import collect_secret_values, sanitize_exception
 
 logger = logging.getLogger("unifi-network-mcp")
 
@@ -182,7 +182,7 @@ class SystemManager:
                 "autobackup_cloud_enabled": settings.get("autobackup_cloud_enabled", False),
             }
         except Exception as e:
-            logger.error("Error getting auto-backup settings: %s", e, exc_info=True)
+            logger.error("Error getting auto-backup settings: %s", type(e).__name__)
             raise
 
     async def update_autobackup_settings(self, settings: Dict[str, Any]) -> bool:
@@ -198,7 +198,7 @@ class SystemManager:
             # update_settings handles cache invalidation with correct site-qualified key
             return await self.update_settings("super_mgmt", settings)
         except Exception as e:
-            logger.error("Error updating auto-backup settings: %s", e, exc_info=True)
+            logger.error("Error updating auto-backup settings: %s", type(e).__name__)
             raise
 
     async def check_firmware_updates(self) -> Dict[str, Any]:
@@ -277,7 +277,7 @@ class SystemManager:
             self._connection._update_cache(cache_key, settings_list)
             return settings_list
         except Exception as e:
-            logger.error("Error getting %s settings: %s", section, e)
+            logger.error("Error getting %s settings: %s", section, type(e).__name__)
             raise
 
     async def update_settings(self, section: str, settings_data: Dict[str, Any]) -> bool:
@@ -325,19 +325,16 @@ class SystemManager:
             if success:
                 logger.info("%s settings updated successfully", section)
             else:
-                # A rejected write can echo the submitted record (x_password,
-                # community, ...). Redact by key and scrub the submitted values
-                # before the log line.
-                secrets = collect_secret_values(settings_data)
-                safe_response = scrub_secret_values(str(redact_sensitive_fields(response)), secrets)
-                logger.error("Error updating %s settings: %s", section, safe_response)
+                # Controller-only secrets in a response cannot be scrubbed using
+                # the submitted values. Keep the response out of logs entirely.
+                logger.error("Error updating %s settings: controller rejected update", section)
 
             return success
         except Exception as e:
             # The transport scrubs its own errors; repeat here so the manager
             # holds the contract on its own.
             sanitize_exception(e, collect_secret_values(settings_data))
-            logger.error("Error updating %s settings: %s", section, e)
+            logger.error("Error updating %s settings: %s", section, type(e).__name__)
             raise
 
     async def get_network_health(self) -> List[Dict[str, Any]]:

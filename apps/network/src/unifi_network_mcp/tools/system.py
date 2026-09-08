@@ -381,8 +381,8 @@ async def get_autobackup_settings() -> Dict[str, Any]:
             "autobackup_settings": settings,
         }
     except Exception as e:
-        logger.error("Error getting auto-backup settings: %s", e, exc_info=True)
-        return {"success": False, "error": f"Failed to get auto-backup settings: {e}"}
+        logger.error("Error getting auto-backup settings: %s", type(e).__name__)
+        return {"success": False, "error": f"Failed to get auto-backup settings: {type(e).__name__}"}
 
 
 @server.tool(
@@ -420,8 +420,8 @@ async def update_autobackup_settings(
         try:
             current = await system_manager.get_autobackup_settings()
         except Exception as e:
-            logger.error("Error preparing auto-backup settings preview: %s", e, exc_info=True)
-            return {"success": False, "error": f"Failed to prepare auto-backup settings preview: {e}"}
+            logger.error("Error preparing auto-backup settings preview: %s", type(e).__name__)
+            return {"success": False, "error": f"Failed to prepare auto-backup settings preview: {type(e).__name__}"}
         return update_preview(
             resource_type="autobackup_settings",
             resource_id="super_mgmt",
@@ -440,5 +440,5 @@ async def update_autobackup_settings(
             }
         return {"success": False, "error": "Failed to update auto-backup settings."}
     except Exception as e:
-        logger.error("Error updating auto-backup settings: %s", e, exc_info=True)
-        return {"success": False, "error": f"Failed to update auto-backup settings: {e}"}
+        logger.error("Error updating auto-backup settings: %s", type(e).__name__)
+        return {"success": False, "error": f"Failed to update auto-backup settings: {type(e).__name__}"}

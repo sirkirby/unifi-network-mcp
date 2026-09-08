@@ -24,6 +24,7 @@ from tests.test_action_endpoint import _bootstrap
 
 SENTINEL = "SENTINEL-community-secret-c0de"
 LOGIN_SENTINEL = "SENTINEL-login-secret-5a5a"
+CONTROLLER_SENTINEL = "SENTINEL-controller-only-secret-092c"
 INT_SENTINEL = 987654321987
 
 
@@ -57,9 +58,9 @@ class _Controller:
     async def request(self, api_request):
         if api_request.method == "get":
             if self._fail_reads:
-                raise ResponseError(f"auth failed for admin:{LOGIN_SENTINEL}")
+                raise ResponseError(f"auth failed for admin:{LOGIN_SENTINEL} {CONTROLLER_SENTINEL}")
             return {"data": [{"_id": "snmp-1", "key": "snmp", "enabled": False}]}
-        raise ResponseError(f"controller rejected {api_request.data!r}")
+        raise ResponseError(f"controller rejected {api_request.data!r} {CONTROLLER_SENTINEL}")
 
 
 def _real_system_manager(*, fail_reads: bool = False) -> SystemManager:
@@ -110,7 +111,10 @@ async def test_write_error_audit_detail_is_scrubbed(tmp_path, monkeypatch, caplo
     rows = await _audit_rows(app, "unifi_update_snmp_settings")
     assert len(rows) == 1
     assert rows[0].outcome == "error"
-    assert rows[0].error_kind == "ResponseError"
+    assert rows[0].error_kind == "RequestError"
+    assert rows[0].detail == "Controller settings request failed (ResponseError)."
+    assert CONTROLLER_SENTINEL not in response.text
+    assert CONTROLLER_SENTINEL not in caplog.text
     assert SENTINEL not in (rows[0].detail or "")
     await manager._connection.cleanup()
 
@@ -129,6 +133,9 @@ async def test_read_error_audit_detail_is_scrubbed(tmp_path, monkeypatch, caplog
     assert len(rows) == 1
     assert rows[0].outcome == "error"
     assert LOGIN_SENTINEL not in (rows[0].detail or "")
+    assert CONTROLLER_SENTINEL not in response.text
+    assert CONTROLLER_SENTINEL not in caplog.text
+    assert CONTROLLER_SENTINEL not in (rows[0].detail or "")
     await manager._connection.cleanup()
 
 

@@ -351,8 +351,8 @@ class ConnectionManager:
         return f"{proto}://{self.host}:{self.port}"
 
     def _sanitize_connection_error(self, error: BaseException) -> str:
-        """Return a user-facing connection error without configured secrets or addresses."""
-        return self._sanitize_text(str(error) or type(error).__name__)
+        """Return safe failure context for later callers, which may log it verbatim."""
+        return f"{type(error).__name__}: check controller connectivity, credentials, and MFA/TOTP configuration."
 
     def _sanitize_text(self, text: str, extra_secrets: Mapping[str, bool] | Iterable[str] = ()) -> str:
         """Mask MAC addresses, the configured credentials and *extra_secrets* in *text*.
@@ -361,8 +361,8 @@ class ConnectionManager:
         a credential written directly against ``-`` or ``_`` is not covered by
         that rule. ``extra_secrets`` — the values the request itself submitted
         — are matched literally. Both cover the escaped forms a message can
-        quote a value with, so nothing decodable reaches
-        ``last_connection_error`` or a log line.
+        quote a value with. This only covers known secrets; authentication
+        summaries and settings failure logs omit controller text entirely.
         """
         rules = self._secret_rules()
         if isinstance(extra_secrets, Mapping):
@@ -421,7 +421,7 @@ class ConnectionManager:
 
     @property
     def last_connection_error(self) -> Optional[str]:
-        """Return the latest sanitized connection failure, if any."""
+        """Return the latest connection failure class and fixed guidance, if any."""
         return self._last_connection_error
 
     def _not_connected_error(self) -> ConnectionError:
@@ -475,7 +475,7 @@ class ConnectionManager:
             "Automatic reconnect blocked after terminal authentication failure: %s. "
             "Correct the credentials or wait for the controller lockout to clear; "
             "the next reconnect attempt is allowed in %.0f seconds.",
-            connection_error,
+            type(error).__name__,
             cooldown,
         )
         return connection_error
@@ -578,10 +578,7 @@ class ConnectionManager:
         """Initialize the controller connection (correct for attached aiounifi version)."""
         blocked = self._reconnect_block_active()
         if blocked:
-            logger.error(
-                "Automatic reconnect remains blocked after authentication failure: %s",
-                blocked,
-            )
+            logger.error("Automatic reconnect remains blocked after authentication failure; waiting for cooldown.")
             return False
         if self._initialized and self.controller and self._aiohttp_session and not self._aiohttp_session.closed:
             return True
@@ -712,8 +709,8 @@ class ConnectionManager:
                         self._block_automatic_reconnect(e)
                         await self._discard_connection()
                         return False
-                    connection_error = self._record_connection_error(e)
-                    logger.warning("Connection attempt %s failed: %s", attempt + 1, connection_error)
+                    self._record_connection_error(e)
+                    logger.warning("Connection attempt %s failed: %s", attempt + 1, type(e).__name__)
                     await self._discard_connection()
                     if attempt < self._max_retries - 1:
                         await asyncio.sleep(self._retry_delay)
@@ -721,7 +718,7 @@ class ConnectionManager:
                         logger.error(
                             "Failed to initialize Unifi controller after %s attempts: %s",
                             self._max_retries,
-                            connection_error,
+                            type(e).__name__,
                         )
                         self._initialized = False
                         return False
@@ -729,10 +726,10 @@ class ConnectionManager:
                     if self._is_terminal_auth_error(e):
                         self._block_automatic_reconnect(e)
                     else:
-                        connection_error = self._record_connection_error(e)
+                        self._record_connection_error(e)
                         logger.error(
                             "Unexpected error during controller initialization: %s",
-                            connection_error,
+                            type(e).__name__,
                         )
                     await self._discard_connection()
                     return False
@@ -789,10 +786,10 @@ class ConnectionManager:
                 await self.controller.login()
             except Exception as error:
                 if self._is_terminal_auth_error(error):
-                    connection_error = self._block_automatic_reconnect(error)
+                    self._block_automatic_reconnect(error)
                 else:
-                    connection_error = self._record_connection_error(error)
-                    logger.error("Controller re-authentication failed: %s", connection_error)
+                    self._record_connection_error(error)
+                    logger.error("Controller re-authentication failed: %s", type(error).__name__)
                 await self._discard_connection()
                 return False
 
@@ -824,6 +821,14 @@ class ConnectionManager:
         await self.cleanup()
 
     async def refresh_handler(self, name: str) -> Any:
+        """Refresh a collection while exposing only safe failure context to callers."""
+        try:
+            return await self._refresh_handler_with_reauthentication(name)
+        except Exception as error:
+            logger.error("Controller collection refresh failed: %s", type(error).__name__)
+            raise RequestError(f"Controller collection refresh failed ({type(error).__name__}).") from None
+
+    async def _refresh_handler_with_reauthentication(self, name: str) -> Any:
         """Refresh an aiounifi handler collection, recovering an expired session.
 
         ``request()`` is not the only way this project reaches the controller:
@@ -857,11 +862,11 @@ class ConnectionManager:
                 # LoginRequired means the refreshed session was rejected, so
                 # stop here rather than let every later tool call start another
                 # controller login.
-                secrets = self._scrub_error(retry_error)
+                self._scrub_error(retry_error)
                 logger.error(
                     "%s refresh failed even after re-authentication: %s",
                     name,
-                    self._sanitize_text(str(retry_error) or type(retry_error).__name__, secrets),
+                    type(retry_error).__name__,
                 )
                 self._block_automatic_reconnect(retry_error)
                 await self._discard_connection()
@@ -887,6 +892,12 @@ class ConnectionManager:
         """
         if not logger.isEnabledFor(level):
             return
+        if api_request.path.startswith(("/get/setting/", "/set/setting/")):
+            # Settings can contain controller-only secrets absent from the
+            # submitted payload. Neither redaction by key nor known-value
+            # scrubbing can make arbitrary response text safe to log.
+            logger.log(level, "%s: settings request failed", what)
+            return
         message = f"{what}: %s %s - %s"
         args = [api_request.method.upper(), mask_macs(api_request.path), self._sanitize_text(detail, secrets)]
         if with_traceback:
@@ -900,6 +911,20 @@ class ConnectionManager:
         return logging.INFO if api_request.method.lower() == "get" else logging.WARNING
 
     async def request(self, api_request: ApiRequest | ApiRequestV2, return_raw: bool = False) -> Any:
+        """Request controller data, keeping settings failures safe for every caller."""
+        try:
+            return await self._request_with_reauthentication(api_request, return_raw=return_raw)
+        except Exception as error:
+            if api_request.path.startswith(("/get/setting/", "/set/setting/")):
+                # Domain managers and tools may log the returned error and its
+                # traceback. An opaque exception cannot reliably be rewritten,
+                # so expose a new safe error without its original cause/context.
+                raise RequestError(f"Controller settings request failed ({type(error).__name__}).") from None
+            raise
+
+    async def _request_with_reauthentication(
+        self, api_request: ApiRequest | ApiRequestV2, return_raw: bool = False
+    ) -> Any:
         """Make a request to the controller API, handling raw responses."""
         if not await self.ensure_connected() or not self.controller:
             raise self._not_connected_error()
@@ -994,7 +1019,9 @@ class ConnectionManager:
                         await self._discard_connection()
                     raise retry_e from None
             else:
-                raise self._not_connected_error()
+                # The original LoginRequired may quote controller-only secrets.
+                # Callers that log tracebacks must see only the safe auth summary.
+                raise self._not_connected_error() from None
         except (RequestError, ResponseError, aiohttp.ClientError) as e:
             # Classify before scrubbing: the scrub rewrites the message in
             # place, and a submitted value that collides with the status text

@@ -9,6 +9,8 @@ log line and from the exception the caller receives.
 """
 
 import logging
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from urllib.parse import quote
 
 import pytest
@@ -22,6 +24,7 @@ from tests.secret_assertions import ESCAPED_SECRET, assert_unrecoverable
 
 SENTINEL = "SENTINEL-submitted-secret-7f3a"
 LOGIN_SENTINEL = "SENTINEL-login-secret-91c2"
+UNKNOWN_SECRET = "SENTINEL-controller-only-token-49ac"
 
 
 class _Session:
@@ -80,7 +83,7 @@ def _manager(controller, password=LOGIN_SENTINEL):
 def _put_with_secret():
     return ApiRequest(
         method="put",
-        path="/set/setting/snmp",
+        path="/rest/wlan/wlan-1",
         data={"enabled": True, "x_password": SENTINEL, "nested": {"community": SENTINEL}},
     )
 
@@ -119,7 +122,7 @@ async def test_request_read_error_is_scrubbed_of_login_password(caplog):
     caplog.set_level(logging.DEBUG)
 
     with pytest.raises(ResponseError) as excinfo:
-        await manager.request(ApiRequest(method="get", path="/get/setting/snmp"))
+        await manager.request(ApiRequest(method="get", path="/stat/sta"))
 
     assert LOGIN_SENTINEL not in str(excinfo.value)
     assert LOGIN_SENTINEL not in caplog.text
@@ -214,6 +217,102 @@ async def test_system_manager_rejected_response_log_is_scrubbed(caplog):
     assert "Error updating snmp settings" in caplog.text
 
 
+def _assert_private_failure_logs(caplog, operation):
+    assert operation in caplog.text
+    assert UNKNOWN_SECRET not in caplog.text
+    assert SENTINEL not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
+    assert "Traceback (most recent call last)" not in caplog.text
+
+
+@pytest.mark.parametrize("error_type", [RequestError, RuntimeError, LoginRequired])
+async def test_initialize_logs_no_controller_exception_content(caplog, monkeypatch, error_type):
+    from unifi_core.network.managers import connection_manager as cm_module
+
+    # Fail inside initialization without creating a real session or contacting a controller.
+    def fail_connector(**kwargs):
+        raise error_type(UNKNOWN_SECRET)
+
+    monkeypatch.setattr(cm_module.aiohttp, "TCPConnector", fail_connector)
+    manager = ConnectionManager("192.168.1.1", "admin", LOGIN_SENTINEL)
+    manager._max_retries = 2
+    manager._retry_delay = 0
+    caplog.set_level(logging.DEBUG)
+
+    assert await manager.initialize() is False
+    _assert_private_failure_logs(caplog, "authentication failure" if error_type is LoginRequired else "initializ")
+    assert error_type.__name__ in caplog.text
+    assert manager.last_connection_error  # Caller diagnostics remain available.
+    if error_type is LoginRequired:
+        caplog.clear()
+        assert await manager.initialize() is False
+        _assert_private_failure_logs(caplog, "remains blocked")
+    await manager.cleanup()
+
+
+@pytest.mark.parametrize("error_type", [RequestError, LoginRequired])
+async def test_reauthenticate_logs_no_controller_exception_content(caplog, error_type):
+    controller = _Controller(lambda: ResponseError("unused"))
+    controller.login = AsyncMock(side_effect=error_type(UNKNOWN_SECRET))
+    manager = _manager(controller)
+    caplog.set_level(logging.DEBUG)
+
+    assert await manager.reauthenticate() is False
+    _assert_private_failure_logs(
+        caplog, "authentication failure" if error_type is LoginRequired else "re-authentication"
+    )
+    assert error_type.__name__ in caplog.text
+    assert manager.controller is None
+    await manager.cleanup()
+
+
+@pytest.mark.parametrize("handler", ["devices", "clients", "dpi_apps", "dpi_groups"])
+@pytest.mark.parametrize("error_type", [LoginRequired, RuntimeError])
+async def test_refresh_retry_logs_no_controller_exception_content(caplog, handler, error_type):
+    import traceback
+
+    controller = _Controller(lambda: ResponseError("unused"))
+    update = AsyncMock(side_effect=error_type(UNKNOWN_SECRET))
+    setattr(controller, handler, SimpleNamespace(update=update))
+    manager = _manager(controller)
+    caplog.set_level(logging.DEBUG)
+
+    with pytest.raises(RequestError) as excinfo:
+        await manager.refresh_handler(handler)
+
+    assert update.await_count == (2 if error_type is LoginRequired else 1)
+    _assert_private_failure_logs(caplog, "Controller collection refresh failed")
+    assert error_type.__name__ in caplog.text
+    assert UNKNOWN_SECRET not in str(excinfo.value)
+    assert UNKNOWN_SECRET not in "".join(traceback.format_exception(excinfo.value))
+    assert manager.reconnect_blocked is (error_type is LoginRequired)
+    await manager.cleanup()
+
+
+async def test_settings_rejection_does_not_log_unrecognized_response_secrets(caplog):
+    connection = _FakeConnection(response={"meta": {"rc": "error", "msg": UNKNOWN_SECRET}})
+    caplog.set_level(logging.DEBUG)
+
+    assert await SystemManager(connection).update_settings("snmp", {"community": SENTINEL}) is False
+
+    _assert_private_failure_logs(caplog, "Error updating snmp settings")
+
+
+async def test_settings_exception_does_not_log_opaque_exception_content(caplog):
+    class OpaqueError(Exception):
+        def __str__(self):
+            return f"{SENTINEL} {UNKNOWN_SECRET}"
+
+    connection = _FakeConnection(raiser=OpaqueError)
+    caplog.set_level(logging.DEBUG)
+
+    with pytest.raises(OpaqueError):
+        await SystemManager(connection).update_settings("snmp", {"community": SENTINEL})
+
+    _assert_private_failure_logs(caplog, "Error updating snmp settings")
+    assert "OpaqueError" in caplog.text
+
+
 # ---------------------------------------------------------------------------
 # Encoded representations
 #
@@ -226,7 +325,7 @@ async def test_system_manager_rejected_response_log_is_scrubbed(caplog):
 async def test_request_write_error_scrubs_escaped_credential(caplog):
     manager = _manager(_Controller(lambda: ResponseError(f"controller rejected {{'x_password': {ESCAPED_SECRET!r}}}")))
     caplog.set_level(logging.DEBUG)
-    request = ApiRequest(method="put", path="/set/setting/snmp", data={"x_password": ESCAPED_SECRET})
+    request = ApiRequest(method="put", path="/rest/wlan/wlan-1", data={"x_password": ESCAPED_SECRET})
 
     with pytest.raises(ResponseError) as excinfo:
         await manager.request(request)
@@ -245,7 +344,7 @@ async def test_request_read_error_scrubs_escaped_login_password(caplog):
     caplog.set_level(logging.DEBUG)
 
     with pytest.raises(ResponseError) as excinfo:
-        await manager.request(ApiRequest(method="get", path="/get/setting/snmp"))
+        await manager.request(ApiRequest(method="get", path="/stat/sta"))
 
     assert_unrecoverable(str(excinfo.value), ESCAPED_SECRET)
     assert_unrecoverable(caplog.text, ESCAPED_SECRET)

@@ -69,6 +69,12 @@ All tools MUST include `annotations=ToolAnnotations(...)` in `@server.tool()`:
 ### Logging
 
 - Network client/device managers and tools log operation context and exception class only; never log MAC/IP addresses, names, update payloads, exception messages, or tracebacks. This is a narrow privacy exception to the ordinary tool `exc_info=True` rule because controller exceptions can embed those values.
+- Network connection authentication/refresh failure logs and system settings update failure logs follow the same operation-and-exception-class pattern. Do not log sanitized exception text or controller response bodies at these boundaries: configured/submitted-secret scrubbing cannot cover controller-only secrets or opaque exception renderers.
+- Carry this privacy rule through the auto-backup settings read/preview/update and DPI refresh caller chains, including manager logs and MCP error responses. Catching a safely logged but re-raised exception must not reintroduce its message or traceback.
+- Cached Network authentication failures contain exception class and fixed guidance only, since later tool calls may log them. ConnectionManager settings request failure logs omit controller text and tracebacks before the exception reaches a domain manager.
+- ConnectionManager translates failed `/get/setting/` and `/set/setting/` requests into a new `RequestError` with fixed operation context and the original exception class, suppressing original traceback context. This protects all settings callers, including those that log the received exception.
+- StatsManager DPI refresh failures use the same safe-error translation before leaving the core manager; REST and GraphQL bypass the MCP tool wrapper.
+- ConnectionManager handler refresh failures are translated to safe RequestError instances after reauthentication/circuit handling. All collection callers, including clients and devices, must receive safe text and suppressed original traceback context.
 
 - All log output MUST go to stderr (stdout is reserved for JSON-RPC in stdio mode)
 - Use `%s` format strings in logger calls, not f-strings, for lazy evaluation
