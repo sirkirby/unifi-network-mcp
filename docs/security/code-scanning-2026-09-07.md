@@ -42,12 +42,17 @@ This protects every settings caller, including management/site/gateway tools
 that log exceptions. Other request error types and logging retain their existing
 behavior.
 
+DPI refresh failures also become safe RequestError instances at StatsManager,
+with original traceback context suppressed. REST and GraphQL use this manager
+directly, so the safe error must be established before the MCP boundary.
+
 Validation: eight new behavioral regression cases failed before the fix and
 passed afterward; 54 focused credential sanitization, request logging, and
 reauthentication tests passed. Caller-chain regressions exercise real connection
 and domain managers: auto-backup read, preview, update fetch and update PUT with
 opaque, request and response exceptions; both DPI handlers; and tool calls after
 failed initialization or reauthentication; and management/site/gateway settings
-callers that log tracebacks. Full repository and GitHub scan results are
+callers that log tracebacks. REST and GraphQL DPI regressions exercise both
+handlers through the real manager/connection chain. Full repository and GitHub scan results are
 recorded in the associated pull request. Alert closure on main requires the
 change to be merged and scanned; no alerts were manually dismissed.

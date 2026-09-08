@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from aiounifi.errors import RequestError
 from aiounifi.models.api import ApiRequest, ApiRequestV2
 from aiounifi.models.dpi_restriction_app import DPIRestrictionApp  # Import DPIApp model
 from aiounifi.models.dpi_restriction_group import (
@@ -338,7 +339,9 @@ class StatsManager:
             return result
         except Exception as e:
             logger.error("Error getting DPI stats: %s", type(e).__name__)
-            raise
+            # REST/GraphQL call this manager directly and may log tracebacks.
+            # Keep the original controller text out of every caller surface.
+            raise RequestError(f"DPI stats refresh failed ({type(e).__name__}).") from None
 
     async def get_alerts(self, include_archived: bool = False) -> List[Dict[str, Any]]:
         """Get alerts from the controller."""

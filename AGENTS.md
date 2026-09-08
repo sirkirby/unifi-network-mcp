@@ -73,6 +73,7 @@ All tools MUST include `annotations=ToolAnnotations(...)` in `@server.tool()`:
 - Carry this privacy rule through the auto-backup settings read/preview/update and DPI refresh caller chains, including manager logs and MCP error responses. Catching a safely logged but re-raised exception must not reintroduce its message or traceback.
 - Cached Network authentication failures contain exception class and fixed guidance only, since later tool calls may log them. ConnectionManager settings request failure logs omit controller text and tracebacks before the exception reaches a domain manager.
 - ConnectionManager translates failed `/get/setting/` and `/set/setting/` requests into a new `RequestError` with fixed operation context and the original exception class, suppressing original traceback context. This protects all settings callers, including those that log the received exception.
+- StatsManager DPI refresh failures use the same safe-error translation before leaving the core manager; REST and GraphQL bypass the MCP tool wrapper.
 
 - All log output MUST go to stderr (stdout is reserved for JSON-RPC in stdio mode)
 - Use `%s` format strings in logger calls, not f-strings, for lazy evaluation
