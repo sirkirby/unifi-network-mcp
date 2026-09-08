@@ -14,6 +14,7 @@ Key API surface on ``Light``:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from typing import Any, Dict, List
@@ -30,6 +31,9 @@ class LightManager:
 
     def __init__(self, connection_manager: ProtectConnectionManager) -> None:
         self._cm = connection_manager
+        # Public SDK setters copy the complete light_device_settings object.
+        # Serialize writes so concurrent requests cannot send stale sibling fields.
+        self._settings_lock = asyncio.Lock()
 
     # ------------------------------------------------------------------
     # Helpers
@@ -172,6 +176,10 @@ class LightManager:
 
     async def apply_light_settings(self, light_id: str, settings: Dict[str, Any]) -> Dict[str, Any]:
         """Apply light settings after confirmation."""
+        async with self._settings_lock:
+            return await self._apply_light_settings(light_id, settings)
+
+    async def _apply_light_settings(self, light_id: str, settings: Dict[str, Any]) -> Dict[str, Any]:
         light = self._get_light(light_id)
         settings = await self._validate_settings(settings)
         applied: List[str] = []

@@ -1,5 +1,6 @@
 """Exercise real SDK setters, mocking only the controller transport boundary."""
 
+import asyncio
 from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -184,3 +185,25 @@ async def test_hdr_off_preview_does_not_report_normal_isp_mode(devices):
     assert result["current_state"]["hdr_mode"] == "off"
     assert result["proposed_changes"]["hdr_mode"] == "auto"
     api.update_camera_public.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_light_updates_preserve_both_settings(devices):
+    cm, api, _, light = devices
+    manager = LightManager(cm)
+    writes = []
+
+    async def controller_update(device_id, **kwargs):
+        writes.append(kwargs["light_device_settings"].model_dump())
+        await asyncio.sleep(0)
+
+    api.update_light_public.side_effect = controller_update
+    results = await asyncio.gather(
+        manager.apply_light_settings(light.id, {"led_level": 4}),
+        manager.apply_light_settings(light.id, {"sensitivity": 51}),
+    )
+    assert all(not result.get("errors") for result in results)
+    assert writes[-1]["led_level"] == 4
+    assert writes[-1]["pir_sensitivity"] == 51
+    assert light.light_device_settings.led_level == 4
+    assert light.light_device_settings.pir_sensitivity == 51
