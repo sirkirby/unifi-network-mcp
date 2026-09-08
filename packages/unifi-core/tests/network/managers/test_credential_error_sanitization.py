@@ -266,19 +266,26 @@ async def test_reauthenticate_logs_no_controller_exception_content(caplog, error
     await manager.cleanup()
 
 
-async def test_refresh_retry_logs_no_controller_exception_content(caplog):
+@pytest.mark.parametrize("handler", ["devices", "clients", "dpi_apps", "dpi_groups"])
+@pytest.mark.parametrize("error_type", [LoginRequired, RuntimeError])
+async def test_refresh_retry_logs_no_controller_exception_content(caplog, handler, error_type):
+    import traceback
+
     controller = _Controller(lambda: ResponseError("unused"))
-    controller.devices = SimpleNamespace(update=AsyncMock(side_effect=LoginRequired(UNKNOWN_SECRET)))
+    update = AsyncMock(side_effect=error_type(UNKNOWN_SECRET))
+    setattr(controller, handler, SimpleNamespace(update=update))
     manager = _manager(controller)
     caplog.set_level(logging.DEBUG)
 
-    with pytest.raises(LoginRequired):
-        await manager.refresh_handler("devices")
+    with pytest.raises(RequestError) as excinfo:
+        await manager.refresh_handler(handler)
 
-    assert controller.devices.update.await_count == 2
-    _assert_private_failure_logs(caplog, "refresh failed even after re-authentication")
-    assert "LoginRequired" in caplog.text
-    assert manager.reconnect_blocked
+    assert update.await_count == (2 if error_type is LoginRequired else 1)
+    _assert_private_failure_logs(caplog, "Controller collection refresh failed")
+    assert error_type.__name__ in caplog.text
+    assert UNKNOWN_SECRET not in str(excinfo.value)
+    assert UNKNOWN_SECRET not in "".join(traceback.format_exception(excinfo.value))
+    assert manager.reconnect_blocked is (error_type is LoginRequired)
     await manager.cleanup()
 
 

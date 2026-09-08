@@ -16,7 +16,7 @@ fail against that first fix and pass against the handler-refresh recovery.
 """
 
 import pytest
-from aiounifi.errors import LoginRequired
+from aiounifi.errors import LoginRequired, RequestError
 
 from unifi_core.network.managers.connection_manager import ConnectionManager
 from unifi_core.network.managers.device_manager import DeviceManager
@@ -116,7 +116,7 @@ async def test_handler_refresh_does_not_log_in_when_the_session_is_valid():
 
 @pytest.mark.asyncio
 async def test_handler_refresh_reraises_when_reauthentication_fails():
-    """A login that cannot succeed must surface the original error, not mask it."""
+    """A failed login surfaces safe failure context while preserving retry behavior."""
     controller = _Controller()
 
     async def _failing_login():
@@ -126,7 +126,7 @@ async def test_handler_refresh_reraises_when_reauthentication_fails():
     controller.login = _failing_login
     manager = _manager(controller)
 
-    with pytest.raises(LoginRequired):
+    with pytest.raises(RequestError, match="refresh failed.*LoginRequired"):
         await manager.refresh_handler("devices")
 
     assert controller.login_calls == 1
@@ -150,7 +150,7 @@ async def test_persistent_login_required_after_refresh_opens_the_auth_circuit():
     controller.login = _login_that_is_not_accepted
     manager = _manager(controller)
 
-    with pytest.raises(LoginRequired):
+    with pytest.raises(RequestError, match="refresh failed.*LoginRequired"):
         await manager.refresh_handler("devices")
 
     assert controller.login_calls == 1

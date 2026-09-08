@@ -74,6 +74,7 @@ All tools MUST include `annotations=ToolAnnotations(...)` in `@server.tool()`:
 - Cached Network authentication failures contain exception class and fixed guidance only, since later tool calls may log them. ConnectionManager settings request failure logs omit controller text and tracebacks before the exception reaches a domain manager.
 - ConnectionManager translates failed `/get/setting/` and `/set/setting/` requests into a new `RequestError` with fixed operation context and the original exception class, suppressing original traceback context. This protects all settings callers, including those that log the received exception.
 - StatsManager DPI refresh failures use the same safe-error translation before leaving the core manager; REST and GraphQL bypass the MCP tool wrapper.
+- ConnectionManager handler refresh failures are translated to safe RequestError instances after reauthentication/circuit handling. All collection callers, including clients and devices, must receive safe text and suppressed original traceback context.
 
 - All log output MUST go to stderr (stdout is reserved for JSON-RPC in stdio mode)
 - Use `%s` format strings in logger calls, not f-strings, for lazy evaluation

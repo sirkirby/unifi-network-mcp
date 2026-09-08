@@ -45,6 +45,9 @@ behavior.
 DPI refresh failures also become safe RequestError instances at StatsManager,
 with original traceback context suppressed. REST and GraphQL use this manager
 directly, so the safe error must be established before the MCP boundary.
+ConnectionManager applies safe RequestError translation to all handler refresh
+failures after authentication/circuit handling, protecting client and device
+callers as well as DPI callers.
 
 Validation: eight new behavioral regression cases failed before the fix and
 passed afterward; 54 focused credential sanitization, request logging, and

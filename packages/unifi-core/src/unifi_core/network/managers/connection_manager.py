@@ -821,6 +821,14 @@ class ConnectionManager:
         await self.cleanup()
 
     async def refresh_handler(self, name: str) -> Any:
+        """Refresh a collection while exposing only safe failure context to callers."""
+        try:
+            return await self._refresh_handler_with_reauthentication(name)
+        except Exception as error:
+            logger.error("Controller collection refresh failed: %s", type(error).__name__)
+            raise RequestError(f"Controller collection refresh failed ({type(error).__name__}).") from None
+
+    async def _refresh_handler_with_reauthentication(self, name: str) -> Any:
         """Refresh an aiounifi handler collection, recovering an expired session.
 
         ``request()`` is not the only way this project reaches the controller:
