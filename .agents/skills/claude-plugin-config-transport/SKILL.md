@@ -58,12 +58,14 @@ Before modifying any plugin configuration or transport code:
 ```yaml
 # apps/network/src/unifi_network_mcp/config/config.yaml  (same pattern in protect, access)
 http:
-  enabled: ${oc.env:UNIFI_MCP_HTTP_ENABLED,true}
+  enabled: ${oc.env:UNIFI_MCP_HTTP_ENABLED,false}
   force: ${oc.env:UNIFI_MCP_HTTP_FORCE,false}
   transport: ${oc.env:UNIFI_MCP_HTTP_TRANSPORT,streamable-http}
 ```
 
 **The safe default is `false` (or unset).** Never set `UNIFI_MCP_HTTP_FORCE=true` in a uvx-launched context (non-PID-1). Setting it to `true` forces an HTTP bind attempt that is unavailable in the uvx sandbox.
+
+HTTP is separately opt-in through `UNIFI_MCP_HTTP_ENABLED=true` and binds to loopback by default. Remote access requires an authenticated TLS proxy or Cloud Relay; do not restore an enabled-by-default or wildcard listener in packaged configuration.
 
 ### Why `UNIFI_MCP_HTTP_FORCE=true` silently destroys all MCP tools
 
