@@ -1785,6 +1785,49 @@ def test_sensitive_explicit_reference_stops_with_candidate_metadata_only(kind: s
     assert bundle["candidates"][0]["data"] is None
 
 
+@pytest.mark.parametrize("field", ["title", "description"])
+@pytest.mark.parametrize("scope", ["target", "candidate"])
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        pytest.param("UNIFI_PASSWORD=hunter22", "sensitive_stop", id="sensitive"),
+        pytest.param("x" * (256 * 1024 + 1), "byte trusted evidence limit", id="oversize"),
+    ],
+)
+def test_milestone_text_obeys_sensitive_and_size_boundaries(
+    field: str,
+    scope: str,
+    value: str,
+    expected: str,
+):
+    milestone = {
+        "number": 7,
+        "title": "vNext",
+        "state": "open",
+        "description": "Tracking fixes",
+        "due_on": "2026-06-01T00:00:00Z",
+    }
+    target = _issue(TARGET_NUMBER)
+    candidate = _issue(225)
+    issue = target if scope == "target" else candidate
+    issue["milestone"] = milestone
+    issue["milestone"][field] = value
+    payload = _snapshot_payload(candidates=[candidate])
+    payload["issues"][str(TARGET_NUMBER)] = target
+
+    result = _run_contract(payload)
+
+    if expected == "sensitive_stop":
+        assert result.returncode == 0, result.stderr
+        bundle = json.loads(result.stdout)["bundle"]
+        assert bundle["status"] == "sensitive_stop"
+        assert bundle["sensitivity"] == {"scope": scope}
+        assert bundle["content_persisted"] is False
+    else:
+        assert result.returncode != 0
+        assert expected in result.stderr
+
+
 def test_explicit_reference_assessments_are_concrete_in_trusted_public_output():
     referenced_issue = _issue(635, title="Earlier issue")
     referenced_pr = _issue(649, title="Implementation pull request")
@@ -2965,6 +3008,112 @@ def test_freshness_accepts_exact_snapshot_and_refetches_all_evidence():
     assert calls["get"] == [TARGET_NUMBER, 225]
     assert calls["comments"][0]["issue_number"] == TARGET_NUMBER
     assert calls["timeline"][0]["issue_number"] == TARGET_NUMBER
+
+
+def test_freshness_accepts_updated_at_only_target_metadata_drift():
+    payload = _snapshot_payload()
+    created = _create_snapshot(payload)
+    payload.update({"op": "freshness", "bundle": created["bundle"]})
+    payload["issues"][str(TARGET_NUMBER)]["updated_at"] = "2026-05-10T15:31:00Z"
+
+    result = _run_contract(payload)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_freshness_accepts_updated_at_only_candidate_metadata_drift():
+    candidate = _issue(225)
+    payload = _snapshot_payload(candidates=[candidate])
+    created = _create_snapshot(payload)
+    payload.update({"op": "freshness", "bundle": created["bundle"]})
+    payload["issues"]["225"]["updated_at"] = "2026-05-10T15:31:00Z"
+
+    result = _run_contract(payload)
+
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("assignees", [{"login": "maintainer"}]),
+        ("milestone", {"number": 7, "title": "vNext", "state": "open"}),
+        ("locked", True),
+        ("active_lock_reason", "resolved"),
+        ("state_reason", "completed"),
+    ],
+)
+@pytest.mark.parametrize("scope", ["target", "candidate"])
+def test_freshness_rejects_semantic_issue_metadata_drift(scope: str, field: str, value: object):
+    candidate = _issue(225)
+    payload = _snapshot_payload(candidates=[candidate])
+    created = _create_snapshot(payload)
+    payload.update({"op": "freshness", "bundle": created["bundle"]})
+    issue_number = TARGET_NUMBER if scope == "target" else 225
+    payload["issues"][str(issue_number)][field] = value
+    payload["issues"][str(issue_number)]["updated_at"] = "2026-05-10T15:31:00Z"
+
+    result = _run_contract(payload)
+
+    assert result.returncode != 0
+    assert "changed after the trusted snapshot" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("number", 8),
+        ("title", "Revised milestone"),
+        ("state", "closed"),
+        ("description", "Revised scope"),
+        ("due_on", "2026-07-01T00:00:00Z"),
+    ],
+)
+@pytest.mark.parametrize("scope", ["target", "candidate"])
+def test_freshness_rejects_milestone_field_drift(scope: str, field: str, value: object):
+    milestone = {
+        "number": 7,
+        "title": "vNext",
+        "state": "open",
+        "description": "Tracking fixes",
+        "due_on": "2026-06-01T00:00:00Z",
+    }
+    target = _issue(TARGET_NUMBER)
+    target["milestone"] = copy.deepcopy(milestone)
+    candidate = _issue(225)
+    candidate["milestone"] = copy.deepcopy(milestone)
+    payload = _snapshot_payload(candidates=[candidate])
+    payload["issues"][str(TARGET_NUMBER)] = target
+    created = _create_snapshot(payload)
+    payload.update({"op": "freshness", "bundle": created["bundle"]})
+    issue_number = TARGET_NUMBER if scope == "target" else 225
+    payload["issues"][str(issue_number)]["milestone"][field] = value
+    payload["issues"][str(issue_number)]["updated_at"] = "2026-05-10T15:31:00Z"
+
+    result = _run_contract(payload)
+
+    assert result.returncode != 0
+    assert "changed after the trusted snapshot" in result.stderr
+
+
+@pytest.mark.parametrize("scope", ["target", "candidate"])
+def test_freshness_accepts_assignee_order_only_drift(scope: str):
+    assignees = [{"login": "maintainer-a"}, {"login": "maintainer-b"}]
+    target = _issue(TARGET_NUMBER)
+    target["assignees"] = copy.deepcopy(assignees)
+    candidate = _issue(225)
+    candidate["assignees"] = copy.deepcopy(assignees)
+    payload = _snapshot_payload(candidates=[candidate])
+    payload["issues"][str(TARGET_NUMBER)] = target
+    created = _create_snapshot(payload)
+    payload.update({"op": "freshness", "bundle": created["bundle"]})
+    issue_number = TARGET_NUMBER if scope == "target" else 225
+    payload["issues"][str(issue_number)]["assignees"].reverse()
+    payload["issues"][str(issue_number)]["updated_at"] = "2026-05-10T15:31:00Z"
+
+    result = _run_contract(payload)
+
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.parametrize("drift", ["target", "comments", "candidate", "deleted_candidate"])
