@@ -29,6 +29,11 @@ class SSEEchoResult(BaseModel):
 class TestResolveHttpConfig:
     """Tests for resolve_http_config utility."""
 
+    def test_missing_config_defaults_to_disabled_loopback(self):
+        enabled, _, host, _ = resolve_http_config({}, logger=logging.getLogger("test"))
+        assert enabled is False
+        assert host == "127.0.0.1"
+
     def _make_server_cfg(self, **overrides):
         cfg = {
             "host": "0.0.0.0",

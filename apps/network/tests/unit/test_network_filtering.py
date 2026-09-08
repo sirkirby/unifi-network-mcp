@@ -23,6 +23,32 @@ def _mock_conn():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("redact", [True, False])
+@pytest.mark.parametrize("summary", [True, False])
+async def test_network_details_redacts_openvpn_private_keys(monkeypatch, redact, summary):
+    monkeypatch.setenv("UNIFI_NETWORK_REDACT_SENSITIVE_FIELDS", str(redact).lower())
+    keys = ["x_ca_key", "x_server_key", "x_shared_client_key", "x_auth_key"]
+    raw = {"_id": "vpn", "name": "VPN", "purpose": "remote-user-vpn", "x_ca_crt": "public"}
+    raw.update(dict.fromkeys(keys, "synthetic-vpn-private-key"))
+    with patch("unifi_network_mcp.tools.network.network_manager") as manager:
+        manager.get_network_details = AsyncMock(return_value=raw)
+        manager._connection = _mock_conn()
+        from unifi_network_mcp.tools.network import get_network_details
+
+        result = await get_network_details("vpn", summary=summary, include="all")
+
+    assert result["success"] is True
+    for key in keys:
+        if summary:
+            assert key not in result["details"]
+        else:
+            assert result["details"][key] == ("***REDACTED***" if redact else raw[key])
+        assert raw[key] == "synthetic-vpn-private-key"
+    if not summary:
+        assert result["details"]["x_ca_crt"] == "public"
+
+
+@pytest.mark.asyncio
 async def test_list_networks_purpose_and_fields():
     with patch("unifi_network_mcp.tools.network.network_manager") as mock_nm:
         mock_nm.get_networks = AsyncMock(return_value=list(NETWORKS))

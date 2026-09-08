@@ -25,9 +25,10 @@ from unifi_core.network.models._actions import (
 )
 from unifi_core.network.models.devices import validate_radio_update
 from unifi_core.network.read_views import shape_device_details, shape_device_list, shape_rogue_ap_list
+from unifi_core.redaction import redact_sensitive_fields
 
 # Import the global FastMCP server instance, config, and managers
-from unifi_network_mcp.runtime import device_manager, server
+from unifi_network_mcp.runtime import device_manager, server, should_redact_sensitive_fields
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ async def list_devices(
     """Implementation for listing devices."""
     try:
         devices = await device_manager.get_devices()
-        return shape_device_list(
+        result = shape_device_list(
             devices,
             site=device_manager._connection.site,
             device_type=device_type,
@@ -106,6 +107,7 @@ async def list_devices(
             include_details=include_details,
             summary=summary,
         )
+        return redact_sensitive_fields(result, redact_sensitive=should_redact_sensitive_fields())
     except Exception as e:
         logger.error("Error listing devices: %s", type(e).__name__)
         return {"success": False, "error": f"Failed to list devices: {e}"}
@@ -153,13 +155,14 @@ async def get_device_details(
     """Implementation for getting device details."""
     try:
         device = await device_manager.get_device_details(mac_address)
-        return shape_device_details(
+        result = shape_device_details(
             device,
             site=device_manager._connection.site,
             mac_address=mac_address,
             include=include,
             summary=summary,
         )
+        return redact_sensitive_fields(result, redact_sensitive=should_redact_sensitive_fields())
     except UniFiNotFoundError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:

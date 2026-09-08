@@ -54,9 +54,16 @@ UniFi MCP is designed with a **secure-by-default** posture:
 - API key authentication is supported as an experimental additive option
 - The relay sidecar connects to a Cloudflare Worker via token-scoped WebSocket — no inbound ports are exposed
 
+### MCP Transport Trust Boundary
+
+- MCP HTTP does not authenticate callers. Anyone who can reach it can invoke the enabled tools using the server's controller credentials. Allowed Host/Origin checks protect against DNS rebinding; they do not authenticate a network peer.
+- Package defaults disable HTTP and use a loopback bind address when enabled. Docker Compose explicitly enables HTTP inside its container network and publishes ports 3000–3002 on host `127.0.0.1` only.
+- Remote MCP clients must use the authenticated Cloud Relay gateway or an authenticated TLS reverse proxy. Restrict direct backend access to that proxy; never publish the backend on a LAN/public interface. Trust every process/container with backend access.
+- Use Docker Engine 28.0.0 or newer with ordinary NAT bridge networking. Older Docker engines can expose localhost-published ports to peers on the same network; direct-routing, host-network, and custom firewall configurations require separate access restrictions. See [Docker port publishing](https://docs.docker.com/engine/network/port-publishing/).
+
 ### Permission System
 
-- **Confirm-by-default** for all mutations (create, update, delete) — human approval required before execution
+- **Confirm-by-default** for all mutations (create, update, delete) — the client must explicitly request execution
 - **Policy gates** (`UNIFI_POLICY_*` env vars) provide hard boundaries to disable specific actions when needed
 - Read-only operations are always allowed
 - All tools are always visible and discoverable in the tool index — authorization is enforced at call time
@@ -67,6 +74,7 @@ UniFi MCP is designed with a **secure-by-default** posture:
 - All state-changing operations use a two-step flow: preview first, then confirm
 - Default call returns a preview of what would change
 - Explicit `confirm=True` is required to execute the mutation
+- The server does not verify human approval or require a previous preview. A client can supply `confirm=True` directly. Human approval must be enforced by the MCP client; `confirm` is an execution guard, not caller authentication or a prompt-injection defense.
 - `UNIFI_TOOL_PERMISSION_MODE=bypass` can bypass this for automation workflows
 
 ### No Persistent Storage

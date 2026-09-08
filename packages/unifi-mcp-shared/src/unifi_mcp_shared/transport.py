@@ -37,7 +37,7 @@ def resolve_http_config(
     applied (invalid transport falls back to ``streamable-http``, PID-1 check
     may disable HTTP).
     """
-    host = server_cfg.get("host", "0.0.0.0")
+    host = server_cfg.get("host", "127.0.0.1")
     port = int(server_cfg.get("port", default_port))
     http_cfg = server_cfg.get("http", {})
     http_enabled = parse_config_bool(http_cfg.get("enabled", False))

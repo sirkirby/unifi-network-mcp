@@ -85,7 +85,7 @@ class TestServerConfigFromActualFile:
         config_path = Path(__file__).parent.parent.parent / "src" / "unifi_network_mcp" / "config" / "config.yaml"
         content = config_path.read_text()
 
-        assert "${oc.env:UNIFI_MCP_HOST,0.0.0.0}" in content, (
+        assert "${oc.env:UNIFI_MCP_HOST,127.0.0.1}" in content, (
             "config.yaml should use OmegaConf env interpolation for host"
         )
         assert "${oc.env:UNIFI_MCP_PORT,3000}" in content, "config.yaml should use OmegaConf env interpolation for port"

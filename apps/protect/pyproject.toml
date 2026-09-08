@@ -5,7 +5,7 @@ description = "UniFi Protect MCP Server"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "unifi-mcp-shared>=0.6.17,<0.7",
+    "unifi-mcp-shared>=0.6.18,<0.7",
     # Protect managers in unifi-core import uiprotect; pull it in via the
     # [protect] extra rather than declaring uiprotect here directly. Camera
     # detail fields require Core 0.4.35; explicit zero event limits require
@@ -13,7 +13,8 @@ dependencies = [
     # Local zero-limit event handling requires Core 0.4.48.
     # Owned event listeners and controller-session cleanup require Core 0.4.49.
     # Global alarm status aggregation requires Core 0.4.50.
-    "unifi-core[protect]>=0.4.50,<0.5",
+    # Controller credential redaction requires Core 0.4.51.
+    "unifi-core[protect]>=0.4.51,<0.5",
     "mcp[cli]>=2.1.1,<3",
     # Published wheels do not consume uv.lock; keep MCP transitive security
     # floors explicit so upgrades cannot retain vulnerable installed versions.
@@ -70,7 +71,7 @@ dev = [
     "pytest-xdist>=3.6.0",
     "aioresponses>=0.7.9",
     "pytest-cov>=4.0.0",
-    "ruff>=0.16.1",
+    "ruff>=0.16.6",
 ]
 
 [tool.rye]
@@ -80,7 +81,7 @@ dev-dependencies = [
     "pytest-asyncio>=0.21.0",
     "aioresponses>=0.7.9",
     "pytest-cov>=4.0.0",
-    "ruff>=0.16.1",
+    "ruff>=0.16.6",
 ]
 
 [project.scripts]

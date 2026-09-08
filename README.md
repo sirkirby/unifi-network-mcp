@@ -46,6 +46,16 @@ See [`apps/api/README.md`](apps/api/README.md) for quick-start and deployment pa
 
 UniFi MCP is a collection of [Model Context Protocol](https://modelcontextprotocol.io/) servers that let AI assistants and automation tools interact with Ubiquiti UniFi controllers. Each server targets a specific UniFi application (Network, Protect, Access) and exposes its functionality as MCP tools — queryable, composable, and safe by default.
 
+## MCP HTTP Access
+
+MCP HTTP is unauthenticated and intended for trusted local clients. HTTP is disabled by default; when enabled, packages bind to loopback. Docker Compose enables it on the container network and publishes ports 3000–3002 on host `127.0.0.1`. Use an authenticated TLS proxy or Cloud Relay for remote access, and prevent direct access to the backend. See the [transport security model](SECURITY.md#mcp-transport-trust-boundary) and [HTTP setup and migration](apps/network/docs/transports.md#http-deployment-security).
+
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| `UNIFI_MCP_HTTP_ENABLED` | `false` | Opt into HTTP transport |
+| `UNIFI_MCP_HOST` | `127.0.0.1` | Bind address; Compose explicitly uses `0.0.0.0` inside containers |
+| `UNIFI_MCP_HTTP_FORCE` | `false` | Allow HTTP outside container PID 1 |
+
 ## MCP Discovery
 
 UniFi MCP keeps the standard MCP path primary: capable clients discover currently registered tools with `tools/list` and invoke them with `tools/call`. The default `lazy` mode keeps initial context small by exposing meta-tools first, while `eager` mode registers all selected domain tools directly for clients that prefer a full standard tool list.
