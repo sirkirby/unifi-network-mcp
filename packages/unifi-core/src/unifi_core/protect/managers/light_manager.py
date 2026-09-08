@@ -4,23 +4,24 @@ Provides methods to list and update UniFi Protect floodlight devices
 via the uiprotect bootstrap data.
 
 Key API surface on ``Light``:
-- ``set_light(enabled, led_level=None)`` -- turn on/off, optionally set level
-- ``set_led_level(level)`` -- set LED brightness (1-6)
-- ``set_sensitivity(sensitivity)`` -- set PIR motion sensitivity (0-100)
-- ``set_duration(duration)`` -- set motion-triggered on duration (timedelta)
-- ``set_light_settings(mode, enable_at, duration, sensitivity)`` -- bulk update
+- ``set_light_public(enabled, led_level=None)`` -- turn on/off, optionally set level
+- ``set_led_level_public(level)`` -- set LED brightness (1-6)
+- ``set_sensitivity_public(sensitivity)`` -- set PIR motion sensitivity (0-100)
+- ``set_duration_public(duration)`` -- set motion-triggered on duration (timedelta)
 - ``set_status_light(enabled)`` -- toggle the status indicator LED
 - ``set_name(name)`` -- rename the device
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from typing import Any, Dict, List
 
 from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.protect.managers.connection_manager import ProtectConnectionManager
+from unifi_core.protect.models.lights import to_controller_update
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,9 @@ class LightManager:
 
     def __init__(self, connection_manager: ProtectConnectionManager) -> None:
         self._cm = connection_manager
+        # Public SDK setters copy the complete light_device_settings object.
+        # Serialize writes so concurrent requests cannot send stale sibling fields.
+        self._settings_lock = asyncio.Lock()
 
     # ------------------------------------------------------------------
     # Helpers
@@ -106,6 +110,17 @@ class LightManager:
     # Mutation methods (preview / apply)
     # ------------------------------------------------------------------
 
+    async def _validate_settings(self, settings: Dict[str, Any]) -> Dict[str, Any]:
+        settings = to_controller_update(settings)
+        if not settings:
+            raise ValueError("No supported light settings provided")
+        if settings.keys() & {"light_on", "led_level", "sensitivity", "duration_seconds"}:
+            self._cm.require_public_api_key("update light power, brightness, sensitivity or duration")
+            await self._cm.validate_public_id_portability(
+                resource_type="lights", bootstrap_collection="lights", public_list_method="get_lights_public"
+            )
+        return settings
+
     async def update_light(self, light_id: str, settings: Dict[str, Any]) -> Dict[str, Any]:
         """Return current and proposed light state for preview.
 
@@ -118,13 +133,14 @@ class LightManager:
         - name: str -- device name
         """
         light = self._get_light(light_id)
+        settings = await self._validate_settings(settings)
 
         current_state: Dict[str, Any] = {}
         proposed_changes: Dict[str, Any] = {}
 
         for key, value in settings.items():
             if key == "light_on":
-                current_state["light_on"] = light.is_light_on
+                current_state["light_on"] = light.light_on_settings.is_led_force_on
                 proposed_changes["light_on"] = value
             elif key == "led_level":
                 current_led = light.light_device_settings.led_level if light.light_device_settings else None
@@ -160,23 +176,28 @@ class LightManager:
 
     async def apply_light_settings(self, light_id: str, settings: Dict[str, Any]) -> Dict[str, Any]:
         """Apply light settings after confirmation."""
+        async with self._settings_lock:
+            return await self._apply_light_settings(light_id, settings)
+
+    async def _apply_light_settings(self, light_id: str, settings: Dict[str, Any]) -> Dict[str, Any]:
         light = self._get_light(light_id)
+        settings = await self._validate_settings(settings)
         applied: List[str] = []
         errors: List[str] = []
 
         for key, value in settings.items():
             try:
                 if key == "light_on":
-                    await light.set_light(bool(value))
+                    await light.set_light_public(bool(value))
                     applied.append(f"light_on={value}")
                 elif key == "led_level":
-                    await light.set_led_level(int(value))
+                    await light.set_led_level_public(int(value))
                     applied.append(f"led_level={value}")
                 elif key == "sensitivity":
-                    await light.set_sensitivity(int(value))
+                    await light.set_sensitivity_public(int(value))
                     applied.append(f"sensitivity={value}")
                 elif key == "duration_seconds":
-                    await light.set_duration(timedelta(seconds=int(value)))
+                    await light.set_duration_public(timedelta(seconds=int(value)))
                     applied.append(f"duration_seconds={value}")
                 elif key == "status_light":
                     await light.set_status_light(bool(value))
@@ -187,7 +208,7 @@ class LightManager:
                 else:
                     errors.append(f"Unknown setting: {key}")
             except Exception as exc:
-                logger.error("Error applying light setting %s=%s: %s", key, value, exc, exc_info=True)
+                logger.error("Failed to apply light setting %s (%s)", key, type(exc).__name__)
                 errors.append(f"{key}: {exc}")
 
         result: Dict[str, Any] = {

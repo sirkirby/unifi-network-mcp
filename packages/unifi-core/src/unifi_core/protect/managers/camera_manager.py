@@ -10,59 +10,17 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
-from uiprotect.data.types import IRLEDMode, RecordingMode
+from uiprotect.data.types import IRLEDMode, PublicHdrMode, RecordingMode
 
 from unifi_core.exceptions import UniFiNotFoundError
 from unifi_core.protect.managers.connection_manager import ProtectConnectionManager
+from unifi_core.protect.models.cameras import normalize_hdr_mode, to_controller_update
 
 logger = logging.getLogger(__name__)
 
 PTZ_MIN_SPEED = -1000
 PTZ_MAX_SPEED = 1000
 PTZ_MAX_DURATION_MS = 5000
-
-# uiprotect's Camera.set_hdr_mode accepts the literals "off", "auto" and
-# "always". "always" maps to ISP HDRMode.ALWAYS_ON ("superHdr"), the highest
-# quality HDR. We accept booleans and the controller-facing value names as
-# aliases so callers can request superHdr explicitly and so that passing
-# ``false`` reliably turns HDR off (``set_hdr_mode(False)`` does NOT, because
-# ``False == "off"`` is false in Python).
-_HDR_MODE_ALIASES = {
-    # off
-    "off": "off",
-    "false": "off",
-    "none": "off",
-    "disabled": "off",
-    # auto: HDR on, normal dynamic range (ISP hdr_mode == "normal")
-    "auto": "auto",
-    "on": "auto",
-    "true": "auto",
-    "normal": "auto",
-    # always-on / super HDR: highest quality (ISP hdr_mode == "superHdr")
-    "always": "always",
-    "super": "always",
-    "superhdr": "always",
-    "super_hdr": "always",
-}
-
-
-def normalize_hdr_mode(value: Any) -> str:
-    """Map a user-supplied hdr_mode value to a uiprotect literal.
-
-    Returns one of "off", "auto", or "always". Raises ``ValueError`` for
-    unrecognised values so the error surfaces during preview, before any
-    mutation is applied.
-    """
-    if isinstance(value, bool):
-        return "auto" if value else "off"
-    if isinstance(value, str):
-        normalized = _HDR_MODE_ALIASES.get(value.strip().lower())
-        if normalized is not None:
-            return normalized
-    raise ValueError(
-        f"Invalid hdr_mode {value!r}. Use one of: off, auto, always "
-        "(aliases: true=auto, false=off, on, normal, super/superHdr=always)."
-    )
 
 
 class CameraManager:
@@ -362,6 +320,23 @@ class CameraManager:
     # Mutation methods
     # ------------------------------------------------------------------
 
+    async def _validate_settings(self, camera, settings: Dict[str, Any]) -> Dict[str, Any]:
+        settings = to_controller_update(settings)
+        if not settings:
+            raise ValueError("No supported camera settings provided")
+        if "ir_led_mode" in settings:
+            IRLEDMode(settings["ir_led_mode"])
+        if "hdr_mode" in settings and not camera.feature_flags.has_hdr:
+            raise ValueError("Cannot update HDR: this camera does not support HDR")
+        if "mic_volume" in settings and not camera.feature_flags.has_mic:
+            raise ValueError("Cannot update microphone volume: this camera has no microphone")
+        if settings.keys() & {"hdr_mode", "mic_volume"}:
+            self._cm.require_public_api_key("update camera HDR or microphone volume")
+            await self._cm.validate_public_id_portability(
+                resource_type="cameras", bootstrap_collection="cameras", public_list_method="get_cameras_public"
+            )
+        return settings
+
     async def update_camera_settings(self, camera_id: str, settings: Dict[str, Any]) -> Dict[str, Any]:
         """Update camera settings. Returns dict with current and proposed state.
 
@@ -369,13 +344,14 @@ class CameraManager:
         - ir_led_mode: str (auto, on, off, autoFilterOnly)
         - hdr_mode: str (auto, off, always)
         - mic_enabled: bool
-        - mic_volume: int (0-100)
+        - mic_volume: int (1-100; public API requires an API key)
         - status_light_on: bool
         - speaker_volume: int (0-100)
         - name: str
         - motion_detection: bool
         """
         camera = self._get_camera(camera_id)
+        settings = await self._validate_settings(camera, settings)
 
         current_state: Dict[str, Any] = {}
         proposed_changes: Dict[str, Any] = {}
@@ -386,7 +362,13 @@ class CameraManager:
                 proposed_changes["ir_led_mode"] = value
             elif key == "hdr_mode":
                 current_isp_hdr = camera.isp_settings.hdr_mode
-                current_state["hdr_mode"] = str(current_isp_hdr.value) if current_isp_hdr else None
+                current_state["hdr_mode"] = (
+                    "off"
+                    if not camera.hdr_mode
+                    else normalize_hdr_mode(current_isp_hdr.value)
+                    if current_isp_hdr
+                    else None
+                )
                 # Normalize so the preview shows what will actually be applied
                 # (and rejects invalid values before confirmation).
                 proposed_changes["hdr_mode"] = normalize_hdr_mode(value)
@@ -425,6 +407,7 @@ class CameraManager:
         Calls the appropriate pyunifiprotect setter methods.
         """
         camera = self._get_camera(camera_id)
+        settings = await self._validate_settings(camera, settings)
         applied: List[str] = []
         errors: List[str] = []
 
@@ -436,17 +419,16 @@ class CameraManager:
                     applied.append(f"ir_led_mode={value}")
                 elif key == "hdr_mode":
                     mode = normalize_hdr_mode(value)
-                    await camera.set_hdr_mode(mode)
+                    await camera.set_hdr_mode_public(PublicHdrMode.ON if mode == "always" else PublicHdrMode(mode))
                     applied.append(f"hdr_mode={mode}")
                 elif key == "mic_enabled":
-                    # There's no direct set_mic_enabled; adjust mic volume to 0 for disable
-                    # or use set_privacy for full mic control. Use save_device pattern.
+                    # Microphone enablement remains a separate session-auth setting.
                     data_before = camera.dict_with_excludes()
                     camera.is_mic_enabled = value
                     await camera.save_device(data_before)
                     applied.append(f"mic_enabled={value}")
                 elif key == "mic_volume":
-                    await camera.set_mic_volume(int(value))
+                    await camera.set_mic_volume_public(value)
                     applied.append(f"mic_volume={value}")
                 elif key == "status_light_on":
                     await camera.set_status_light(bool(value))
@@ -463,7 +445,7 @@ class CameraManager:
                 else:
                     errors.append(f"Unknown setting: {key}")
             except Exception as exc:
-                logger.error("Error applying camera setting %s=%s: %s", key, value, exc, exc_info=True)
+                logger.error("Failed to apply camera setting %s (%s)", key, type(exc).__name__)
                 errors.append(f"{key}: {exc}")
 
         result: Dict[str, Any] = {

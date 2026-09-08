@@ -1899,7 +1899,7 @@
       "permission_action": "update",
       "read_only_hint": false,
       "manager_attr": "camera_manager",
-      "manager_method": "update_camera_settings",
+      "manager_method": "apply_camera_settings",
       "input_schema": {
         "properties": {
           "camera_id": {
@@ -1907,7 +1907,7 @@
             "type": "string"
           },
           "settings": {
-            "description": "Dictionary of settings to update. Supported keys: ir_led_mode (auto, on, autoFilterOnly), hdr_mode (off, auto, or always; always = superHdr highest quality. Booleans accepted: true=auto, false=off), mic_enabled (true/false), mic_volume (0-100), status_light_on (true/false), speaker_volume (0-100), name (string), motion_detection (true/false).",
+            "description": "Dictionary of settings to update. Supported keys: ir_led_mode (auto, on, autoFilterOnly), hdr_mode (off, auto, or always; always = superHdr highest quality. Booleans accepted: true=auto, false=off), mic_enabled (true/false), mic_volume (1-100; zero is not supported by the public API), status_light_on (true/false), speaker_volume (0-100), name (string), motion_detection (true/false).",
             "type": "object"
           }
         },

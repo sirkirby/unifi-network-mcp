@@ -202,10 +202,11 @@ async def protect_get_camera_analytics(
     description=(
         "Updates camera settings such as IR LED mode, HDR mode, mic/speaker volume, "
         "status light, and motion detection. Requires confirm=True to apply. "
+        "HDR and microphone volume require UNIFI_PROTECT_API_KEY or UNIFI_API_KEY. "
         "Supported keys: ir_led_mode, hdr_mode, mic_enabled, mic_volume, "
         "status_light_on, speaker_volume, name, motion_detection."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
     permission_category="camera",
     permission_action="update",
 )
@@ -219,7 +220,7 @@ async def protect_update_camera_settings(
                 "ir_led_mode (auto, on, autoFilterOnly), "
                 "hdr_mode (off, auto, or always; always = superHdr highest quality. "
                 "Booleans accepted: true=auto, false=off), "
-                "mic_enabled (true/false), mic_volume (0-100), "
+                "mic_enabled (true/false), mic_volume (1-100; zero is not supported by the public API), "
                 "status_light_on (true/false), speaker_volume (0-100), "
                 "name (string), motion_detection (true/false)."
             )
@@ -254,6 +255,12 @@ async def protect_update_camera_settings(
 
         # Apply the changes
         result = await camera_manager.apply_camera_settings(camera_id, filtered)
+        if result.get("errors"):
+            return {
+                "success": False,
+                "error": "Failed to update camera settings: " + "; ".join(result["errors"]),
+                "data": result,
+            }
         return {"success": True, "data": result}
     except (UniFiNotFoundError, ValueError) as e:
         return {"success": False, "error": str(e)}
