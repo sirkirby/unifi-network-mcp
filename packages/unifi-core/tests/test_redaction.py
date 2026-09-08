@@ -14,6 +14,49 @@ from unifi_core.redaction import (
 from tests.secret_assertions import ESCAPED_SECRET, assert_unrecoverable
 
 
+@pytest.mark.parametrize(
+    "key",
+    [
+        "x_authkey",
+        "x_auth_key",
+        "x_inform_authkey",
+        "x_vwirekey",
+        "syslog_key",
+        "x_mgmt_key",
+        "x_ssh_sha512passwd",
+        "x_adopt_password",
+        "guest_token",
+        "x_ca_key",
+        "x_server_key",
+        "x_shared_client_key",
+        "xAuthkey",
+        "xInformAuthkey",
+        "xVwirekey",
+        "syslogKey",
+        "xCaKey",
+        "xServerKey",
+        "xSharedClientKey",
+    ],
+)
+def test_controller_credentials_are_redacted_and_reject_marker_writeback(key: str) -> None:
+    payload = {"nested": [{key: "synthetic-controller-secret"}]}
+    assert is_sensitive_key(key)
+    assert is_sensitive_key(key.upper())
+    redacted = redact_sensitive_fields(payload)
+    assert redacted == {"nested": [{key: REDACTED}]}
+    assert redaction_marker_paths(redacted) == [f"nested[0].{key}"]
+    assert redact_sensitive_fields(payload, redact_sensitive=False) == payload
+    assert payload["nested"][0][key] == "synthetic-controller-secret"
+
+
+def test_device_public_keys_and_vpn_certificates_remain_visible() -> None:
+    payload = dict.fromkeys(
+        ["x_ssh_hostkey_fingerprint", "x_ca_crt", "x_server_crt", "x_shared_client_crt", "public_key"],
+        "public-material",
+    )
+    assert redact_sensitive_fields(payload) == payload
+
+
 def test_redacts_exact_and_compound_sensitive_keys() -> None:
     payload = {
         "x_passphrase": "wifi-secret",
