@@ -1215,6 +1215,33 @@ function normalizeLabels(labels) {
     .sort((left, right) => left.localeCompare(right));
 }
 
+function normalizeAssignees(assignees) {
+  if (!Array.isArray(assignees)) return [];
+  return assignees
+    .map(normalizeAuthor)
+    .filter((assignee) => typeof assignee === "string")
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function normalizeMilestone(milestone) {
+  if (milestone === null || milestone === undefined) return null;
+  if (typeof milestone !== "object" || Array.isArray(milestone)) fail("GitHub returned an invalid issue milestone");
+  const number = assertSafePositiveInteger(milestone.number, "issue milestone number");
+  const state = String(milestone.state || "").toLowerCase();
+  if (state !== "open" && state !== "closed") fail(`issue milestone #${number} has an invalid state`);
+  return {
+    number,
+    title: normalizeNullableText(milestone.title),
+    state,
+    description: milestone.description === null || milestone.description === undefined
+      ? null
+      : normalizeNullableText(milestone.description),
+    due_on: milestone.due_on === null || milestone.due_on === undefined
+      ? null
+      : normalizeNullableText(milestone.due_on),
+  };
+}
+
 export function normalizeIssue(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) fail("GitHub returned an invalid issue");
   const number = assertSafePositiveInteger(raw.number, "issue number");
@@ -1235,6 +1262,15 @@ export function normalizeIssue(raw) {
       ? raw.author_association.toUpperCase()
       : "",
     labels: normalizeLabels(raw.labels),
+    assignees: normalizeAssignees(raw.assignees),
+    milestone: normalizeMilestone(raw.milestone),
+    locked: raw.locked === true,
+    active_lock_reason: raw.active_lock_reason === null || raw.active_lock_reason === undefined
+      ? null
+      : normalizeNullableText(raw.active_lock_reason),
+    state_reason: raw.state_reason === null || raw.state_reason === undefined
+      ? null
+      : normalizeNullableText(raw.state_reason),
     kind: raw.kind === "pull_request" || raw.pull_request ? "pull_request" : "issue",
   };
 }
@@ -1404,6 +1440,14 @@ export function canonicalStringify(value) {
 
 export function canonicalDigest(value) {
   return createHash("sha256").update(canonicalStringify(value), "utf8").digest("hex");
+}
+
+function issueEvidenceDigest(issue) {
+  // GitHub advances updated_at for cross-references and assignments even when
+  // the issue evidence available to the agent is unchanged.
+  const evidence = {...issue};
+  delete evidence.updated_at;
+  return canonicalDigest(evidence);
 }
 
 function receiptFactory(randomBytes) {
@@ -1610,10 +1654,17 @@ async function scanCandidates(github, owner, repo, target) {
 }
 
 function issueTextItems(issue, prefix) {
-  return [
+  const items = [
     {name: `${prefix} title`, value: issue.title},
     {name: `${prefix} body`, value: issue.body},
   ];
+  if (issue.milestone !== null) {
+    items.push({name: `${prefix} milestone title`, value: issue.milestone.title});
+    if (issue.milestone.description !== null) {
+      items.push({name: `${prefix} milestone description`, value: issue.milestone.description});
+    }
+  }
+  return items;
 }
 
 function commentsTextItems(comments) {
@@ -1722,7 +1773,7 @@ export async function createTrustedSnapshot({
     fail("target has multiple existing priority labels");
   }
   const targetReceipt = nextReceipt();
-  const targetDigest = canonicalDigest(target);
+  const targetDigest = issueEvidenceDigest(target);
   const bundle = baseBundle({
     repository,
     runId: normalizedRunId,
@@ -1795,7 +1846,7 @@ export async function createTrustedSnapshot({
       kind: candidate.kind,
       source: candidate.source,
       receipt: nextReceipt(),
-      digest: canonicalDigest(data),
+      digest: issueEvidenceDigest(data),
       data,
     });
   }
@@ -1886,7 +1937,7 @@ export function validateBundle(bundle) {
     if (!bundle.content_persisted || bundle.sensitivity !== null || bundle.comments === null) fail("normal snapshot content flags are invalid");
     if (bundle.target.data === null || bundle.comments.data === null || bundle.candidates.some((candidate) => candidate.data === null)) fail("normal snapshot is missing evidence content");
     const target = normalizeIssue(bundle.target.data);
-    if (target.number !== bundle.target_number || canonicalDigest(target) !== bundle.target.digest) fail("snapshot target digest does not match its content");
+    if (target.number !== bundle.target_number || issueEvidenceDigest(target) !== bundle.target.digest) fail("snapshot target digest does not match its content");
     if (!Array.isArray(bundle.comments.data) || bundle.comments.data.length !== bundle.comments.count) fail("snapshot comments do not match their count");
     const comments = bundle.comments.data.map(normalizeComment).sort((left, right) => left.id - right.id);
     if (canonicalDigest(comments) !== bundle.comments.digest) fail("snapshot comment digest does not match its content");
@@ -1894,7 +1945,7 @@ export function validateBundle(bundle) {
       const data = normalizeIssue(candidate.data);
       if (
         data.number !== candidate.number || data.state !== candidate.state ||
-        data.kind !== candidate.kind || canonicalDigest(data) !== candidate.digest
+        data.kind !== candidate.kind || issueEvidenceDigest(data) !== candidate.digest
       ) fail(`snapshot candidate #${candidate.number} digest does not match its content`);
     }
     const inspection = inspectEvidence([
@@ -1993,7 +2044,7 @@ export async function verifyFreshness({github, bundle, owner, repo}) {
   if (bundle.repository !== normalizeRepository(owner, repo)) fail("freshness repository binding mismatch");
   const target = await fetchIssue(github, owner, repo, bundle.target_number);
   inspectEvidence(issueTextItems(target, "target"));
-  if (canonicalDigest(target) !== bundle.target.digest) fail("target evidence changed after the trusted snapshot");
+  if (issueEvidenceDigest(target) !== bundle.target.digest) fail("target evidence changed after the trusted snapshot");
   if (bundle.sensitivity?.scope === "target") return createMetadataEnvelope(bundle);
 
   const comments = await fetchBoundedComments(github, owner, repo, bundle.target_number);
@@ -2025,7 +2076,7 @@ export async function verifyFreshness({github, bundle, owner, repo}) {
   const candidates = [];
   for (const candidate of bundle.candidates) {
     const current = await fetchCandidate(github, owner, repo, candidate.number);
-    if (current.state !== candidate.state || current.kind !== candidate.kind || canonicalDigest(current) !== candidate.digest) {
+    if (current.state !== candidate.state || current.kind !== candidate.kind || issueEvidenceDigest(current) !== candidate.digest) {
       fail(`candidate #${candidate.number} changed after the trusted snapshot`);
     }
     candidates.push(current);
