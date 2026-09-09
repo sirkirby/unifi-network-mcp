@@ -555,6 +555,56 @@ def test_a_term_resistant_descendant_is_killed_before_reporting_success(tmp_path
             proc.wait(timeout=5)
 
 
+@pytest.mark.parametrize("reap_leader", [False, True])
+def test_an_exited_helper_does_not_leave_its_process_group_running(tmp_path, monkeypatch, reap_leader):
+    """The group survives its leader, including after that leader is reaped."""
+    ready = tmp_path / "descendant-ready"
+    descendant = (
+        "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+        f"open({str(ready)!r}, 'w').close(); time.sleep(600)"
+    )
+    parent = (
+        "import subprocess, sys, time\nfrom pathlib import Path\n"
+        f"subprocess.Popen([sys.executable, '-c', {descendant!r}])\n"
+        f"while not Path({str(ready)!r}).exists(): time.sleep(.01)\n"
+    )
+    proc = subprocess.Popen(
+        [sys.executable, "-c", parent],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        bufsize=0,
+        cwd="/",
+        start_new_session=True,
+    )
+    group = proc.pid
+    monkeypatch.setattr(bootstrap, "_SECRET_COMMAND_GRACE_S", 0.2)
+    try:
+        deadline = time.monotonic() + 10
+        while not ready.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert ready.exists(), "the TERM-resistant descendant never started"
+        if reap_leader:
+            proc.wait(timeout=5)
+
+        # Only the descendant holds stdout after the helper exits. The normal
+        # reader reaches its deadline without reaping the helper on this path.
+        _, reason = bootstrap._read_capped(proc, 0.3)
+        assert reason == "deadline"
+        result = bootstrap._terminate_process_tree(proc, "V", "exited-helper", logging.getLogger("t"))
+
+        with pytest.raises(ProcessLookupError):
+            os.killpg(group, 0)
+        assert result is True
+        assert proc.returncode == 0
+    finally:
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(group, signal.SIGKILL)
+        proc.wait(timeout=5)
+        if proc.stdout is not None:
+            proc.stdout.close()
+
+
 def test_an_unsignalable_survivor_is_not_reported_as_a_terminated_tree(tmp_path, monkeypatch):
     """EPERM on the escalation must not inherit the direct child's exit.
 

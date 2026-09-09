@@ -48,7 +48,6 @@ UniFi MCP is designed with a **secure-by-default** posture:
 ### Local-First Authentication
 
 - Credentials (username/password) are used to authenticate directly with your local UniFi controller
-- Credentials never leave your network — they are not sent to any external service
 - Credentials are sent to the controller explicitly configured by the operator; the launcher and its configuration must be trusted
 - Credentials can be kept out of the MCP client's environment with `UNIFI_<SERVER>_PASSWORD_FILE` or `UNIFI_<SERVER>_PASSWORD_COMMAND`; both indirections are honoured only for variables present in the environment the server was started with. The command provider's platform, executable-resolution and process-lifecycle contract is in [docs/credential-providers.md](docs/credential-providers.md)
 - MCP servers never automatically load `.env` files or working-directory YAML. Custom YAML requires an explicit absolute `CONFIG_PATH` in the process environment. Load any trusted env file explicitly in the launcher; Docker Compose `env_file:` continues to work.

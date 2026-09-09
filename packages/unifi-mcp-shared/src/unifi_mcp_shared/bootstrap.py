@@ -279,12 +279,10 @@ def _terminate_process_tree(proc: subprocess.Popen, var: str, name: str, logger:
             with contextlib.suppress(OSError):
                 proc.kill()
         return _reap(proc, _SECRET_COMMAND_GRACE_S)
-    try:
-        group = os.getpgid(proc.pid)
-    except ProcessLookupError:
-        return _reap(proc, _SECRET_COMMAND_REAP_S)
-    except OSError:
-        return _reap(proc, _SECRET_COMMAND_GRACE_S)
+    # Popen(start_new_session=True) makes the helper's PID its process-group
+    # ID. Keep targeting that group after the leader exits: getpgid(pid) can
+    # fail for an exited leader while its descendants still hold stdout open.
+    group = proc.pid
     # A descendant that re-parented itself out of the session is reached by
     # neither signal.
     #

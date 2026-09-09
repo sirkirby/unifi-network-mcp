@@ -28,15 +28,15 @@ which executes a program and therefore needs its boundaries written down.
 | Platform | Status | Basis |
 |----------|--------|-------|
 | Linux | Supported | Verified end to end against a real provider, GnuPG 2.4.4: server start, controller authentication, one read-only call, and the failure cases below. |
-| macOS | Unverified | Expected to work; `security find-generic-password -w` is the intended provider and the POSIX session and signal handling are the same as Linux. Nobody has run it. |
-| Windows | Unverified | Process-tree termination takes a different path (`taskkill /T /F` on a new process group) that no test exercises. The server logs a warning naming the variable when the command provider is used there, and `UNIFI_<VAR>_FILE` is the tested option on Windows. |
+| macOS | Provider acceptance unverified | Synthetic-helper tests cover output, startup isolation, and process-group cleanup, including an exited group leader. Keychain-backed controller authentication has not been verified. |
+| Windows | Unverified | The threaded reader is tested with real pipes on POSIX, but native path handling and process-tree termination (`taskkill /T /F`) remain unverified. The server logs a warning naming the variable when the command provider is used there, and `UNIFI_<VAR>_FILE` is the tested option on Windows. |
 
 "Unverified" is a statement about evidence, not a prediction of failure. Report a
 platform that works and it moves up; the failure modes are all fail-closed, so a
 platform that does not work refuses startup rather than running with a wrong
 credential. macOS and Windows differ in kind, not just in degree: macOS runs the
-same POSIX code path as Linux, whereas Windows has branches of its own that no
-test covers, which is why only Windows warns at runtime.
+same POSIX code path as Linux, whereas Windows has native process and path handling
+that these tests do not exercise, which is why only Windows warns at runtime.
 
 A provider that prompts interactively is not supported on any platform. The
 helper's stdin is closed, so a helper that needs a passphrase, a PIN or a touch
@@ -112,8 +112,9 @@ your MCP client happened to export, which is often not your shell's `PATH`.
   output as well as running it. On expiry the helper's session is terminated,
   not just the process that was started: it runs in its own session on POSIX
   and its own process group on Windows, so a descendant it left in the
-  background is killed with it. `SIGTERM` is followed by `SIGKILL` after a
-  short grace period. A descendant that left the session on its own -- by
+  background is killed with it. POSIX cleanup retains the original process-group
+  ID even when the helper has already exited or been reaped. `SIGTERM` is followed
+  by `SIGKILL` after a short grace period. A descendant that left the session on its own -- by
   calling `setsid`, as a daemonising agent does -- is reached by neither
   signal, and may still be running when startup is refused; the refusal message
   says which of the two happened rather than claiming a termination that did
