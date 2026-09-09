@@ -50,6 +50,9 @@ export UNIFI_TOOL_REGISTRATION_MODE=lazy  # default, recommended
 #### [Sanitized Support Bundles](support-bundles.md)
 Generate, review, and share privacy-bounded Network, Protect, or Access troubleshooting evidence without treating ordinary diagnostic logs as public-safe.
 
+#### [Credential Providers](credential-providers.md)
+Keep the controller password and API key out of the MCP client's environment with the `_FILE` and `_COMMAND` spellings, and the contract the command provider runs under: supported platforms, executable resolution, and process lifecycle.
+
 #### [Context Optimization Comparison](context-optimization-comparison.md)
 Visual guide comparing eager vs lazy vs meta-only modes:
 - Side-by-side token usage diagrams
@@ -108,7 +111,7 @@ UNIFI_TOOL_REGISTRATION_MODE=lazy  # lazy (default), eager, meta_only
 # UniFi controller connection
 UNIFI_HOST=192.168.1.1
 UNIFI_USERNAME=admin
-UNIFI_PASSWORD=your-password   # or UNIFI_PASSWORD_FILE=<path>
+UNIFI_PASSWORD=your-password   # or UNIFI_PASSWORD_FILE=<path> / UNIFI_PASSWORD_COMMAND=<absolute argv>
 UNIFI_PORT=443
 UNIFI_SITE=default
 
@@ -119,6 +122,8 @@ UNIFI_CONTROLLER_TYPE=auto  # auto (default), proxy, direct
 UNIFI_MCP_HTTP_ENABLED=false
 UNIFI_MCP_DIAGNOSTICS=false
 ```
+
+The `_FILE` and `_COMMAND` spellings keep the secret out of the MCP client's environment; their trust boundary, and the command provider's platform, executable-resolution and process-lifecycle contract, are in [credential-providers.md](credential-providers.md).
 
 Full Network server defaults are in [config.yaml](../apps/network/src/unifi_network_mcp/config/config.yaml). Protect and Access keep their own defaults under `apps/protect/` and `apps/access/`.
 
@@ -168,6 +173,7 @@ See [CLAUDE.md](../CLAUDE.md) for project development guidelines.
 
 ### Core Documentation (docs/)
 - [context-optimization-comparison.md](context-optimization-comparison.md) - Mode comparison
+- [credential-providers.md](credential-providers.md) - Credential indirection contract
 - [support-bundles.md](support-bundles.md) - Sanitized support-bundle workflow and privacy contract
 - [tool-index.md](tool-index.md) - Tool index documentation
 - [sponsor/](sponsor/) - Sponsorship landing page

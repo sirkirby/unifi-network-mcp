@@ -63,7 +63,7 @@ For username/password, ask for:
 
 For API key, ask for the key and include `UNIFI_ACCESS_API_KEY`.
 
-If the user would rather not store a secret in the client's settings (where every process the client spawns inherits it), offer the indirect form instead: `UNIFI_ACCESS_PASSWORD_FILE=<path>` or `UNIFI_ACCESS_API_KEY_FILE=<path>` for a file holding the value (Docker and systemd secrets convention). Set exactly one spelling per secret; the server refuses to start if both are set. On the Claude target `set-env.sh` only adds keys, so if a plain `UNIFI_ACCESS_PASSWORD` or `UNIFI_ACCESS_API_KEY` was saved earlier, remove it from `.claude/settings.local.json` before switching; the Codex and OpenClaw targets replace the whole server entry.
+If the user would rather not store a secret in the client's settings (where every process the client spawns inherits it), offer the indirect form instead: `UNIFI_ACCESS_PASSWORD_FILE=<path>` or `UNIFI_ACCESS_API_KEY_FILE=<path>` for a file holding the value, or the `_COMMAND` suffix for a helper whose stdout is the value (for example a Keychain, `pass` or 1Password lookup; give the helper's absolute path, it is not run through a shell, and it must not prompt). Set exactly one spelling per secret; the server refuses to start if two are set. On the Claude target `set-env.sh` only adds keys, so if a plain `UNIFI_ACCESS_PASSWORD` or `UNIFI_ACCESS_API_KEY` was saved earlier, remove it from `.claude/settings.local.json` before switching; the Codex and OpenClaw targets replace the whole server entry.
 
 At least one auth path is required.
 

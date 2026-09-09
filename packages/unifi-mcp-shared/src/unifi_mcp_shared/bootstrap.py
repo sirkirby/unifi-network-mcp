@@ -6,11 +6,20 @@ that all servers (network, protect, access) share.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.resources
 import logging
 import os
 import re
+import selectors
+import shlex
+import shutil
+import signal
 import stat
+import subprocess
+import threading
+import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NoReturn, Sequence
 
@@ -20,6 +29,14 @@ from unifi_core.redaction import is_sensitive_key, redact_sensitive_fields
 EXIT_SECRET_UNRESOLVED = 6
 
 _SECRET_MAX_BYTES = 64 * 1024
+
+# How long a credential helper may take, and how long its process tree gets to
+# die after SIGTERM before SIGKILL.
+_SECRET_COMMAND_TIMEOUT_S = 30
+_SECRET_COMMAND_GRACE_S = 2
+# SIGKILL delivery is asynchronous: a zero wait always races the kernel's
+# teardown and loses, leaving a zombie and returncode None.
+_SECRET_COMMAND_REAP_S = 0.2
 
 # Names of the variables the process was started with, recorded by
 # load_process_env() at startup. ``None`` means no snapshot
@@ -31,8 +48,9 @@ def snapshot_process_env() -> None:
     """Record the names of the variables the process was started with.
 
     Call this at startup (:func:`load_process_env` does). Afterwards
-    :func:`resolve_env` honours the ``_FILE`` spelling only for variables present
-    in this snapshot. The server never discovers or loads project ``.env`` files.
+    :func:`resolve_env` honours the indirect spellings (``_FILE``, ``_COMMAND``)
+    only for variables present in this snapshot. The server never discovers or
+    loads project ``.env`` files, so this is a second line rather than the first.
     The first call wins; later calls do not widen the snapshot.
     """
     global _TRUSTED_VARS
@@ -117,6 +135,420 @@ def _read_secret_file(var: str, path_str: str, logger: logging.Logger) -> str:
         _fail_secret(logger, "%s points at %s, which is not valid UTF-8.", var, path)
 
 
+def _trusted_environ() -> dict[str, str]:
+    """The environment restricted to the names the process was started with.
+
+    The helper is handed only the names the process was started with. Any name
+    introduced after startup could be a loader variable such as ``PYTHONPATH`` or
+    ``LD_PRELOAD`` that would run code inside the helper, so the snapshot bounds
+    what the helper inherits rather than trusting the live environment wholesale.
+    With no snapshot taken the whole environment is trusted, which is what a plain
+    ``dict(os.environ)`` says.
+    """
+    if _TRUSTED_VARS is None:
+        return dict(os.environ)
+    return {name: value for name, value in os.environ.items() if name in _TRUSTED_VARS}
+
+
+def _neutral_working_directory(os_name: str = os.name) -> str:
+    """The helper's working directory: anywhere but the project the client opened.
+
+    Python puts the working directory on ``sys.path``, so inheriting it lets that
+    project decide what ``python -m helper`` imports. See "Process lifecycle" in
+    ``docs/credential-providers.md``.
+    """
+    if os_name == "nt":
+        return os.environ.get("SystemRoot") or "C:\\"
+    return "/"
+
+
+def _resolve_executable(var: str, argv0: str, env: dict[str, str], logger: logging.Logger) -> str:
+    """Resolve the helper to an absolute path under the executable contract.
+
+    Absolute paths are taken as given. A bare name is looked up on the trusted
+    ``PATH``. Anything else names a location relative to a working directory the
+    operator did not choose, so it is refused rather than guessed.
+    """
+    if os.path.isabs(argv0):
+        return argv0
+    if os.path.dirname(argv0):
+        _fail_secret(
+            logger,
+            "%s: %r is a relative path. Give the helper's absolute path, or a bare name found on PATH.",
+            var,
+            argv0,
+        )
+    # "" not None: shutil.which treats path=None as "read os.environ['PATH']",
+    # which would bypass the trusted-name filter applied to build ``env``.
+    found = shutil.which(argv0, path=env.get("PATH", ""))
+    if found is None:
+        _fail_secret(
+            logger,
+            "%s: %r was not found on PATH. Give the helper's absolute path.",
+            var,
+            argv0,
+        )
+    if not os.path.isabs(found):
+        # An empty or "." PATH element resolves against the working directory
+        # the MCP client chose; on Windows which() prepends it outright.
+        _fail_secret(
+            logger,
+            "%s: %r resolved to %r, which is relative to the working directory. Give the helper's absolute path.",
+            var,
+            argv0,
+            found,
+        )
+    return found
+
+
+def _warn_if_others_can_write(var: str, executable: str, logger: logging.Logger) -> None:
+    """Warn when anyone but the owner can rewrite the helper.
+
+    The file provider warns about a secret others can read; a helper others can
+    write is worse, because it runs as the server on every start.
+    """
+    if os.name == "nt":
+        return
+    for path in (executable, os.path.dirname(executable)):
+        try:
+            mode = os.stat(path).st_mode
+        except OSError:
+            continue
+        if stat.S_ISDIR(mode) and mode & stat.S_ISVTX:
+            # Sticky: only the owner can replace what is inside, so a 1777
+            # directory such as /tmp is not an exposure here.
+            continue
+        if mode & 0o022:
+            logger.warning(
+                "[credentials] %s runs %s, which is writable by other users (mode %04o); "
+                "anyone who can write it chooses what runs as this server.",
+                var,
+                path,
+                mode & 0o777,
+            )
+
+
+def _terminate_process_tree(proc: subprocess.Popen, var: str, name: str, logger: logging.Logger) -> bool:
+    """Terminate the helper and everything it started. True if the tree is gone.
+
+    The helper is its own session leader (POSIX) or process-group root
+    (Windows), so a background descendant holding the output pipe open is killed
+    with it -- unless that descendant left the session on its own, which no
+    signal here can reach. The caller words its message on the return value
+    rather than asserting a termination that may not have happened.
+
+    Reaping the direct child is not evidence about the group: a descendant that
+    ignores SIGTERM outlives its parent. True therefore means the child was
+    reaped *and* the group is empty.
+
+    Two limits are known and deliberately not worked around. An unreaped zombie
+    still answers ``killpg``, so where this process is PID 1 with no init reaping
+    orphans (a container without ``init: true``) a dead tree can be reported as
+    surviving -- a false negative on a path that refuses startup either way.
+    And the group id is the reaped child's pid, so a full pid wrap inside the
+    grace period could aim the second signal elsewhere; at default ``pid_max``
+    that needs millions of forks in two seconds.
+    """
+    if os.name == "nt":
+        # Absolute path and a neutral cwd for the same reason the helper gets
+        # them: Windows searches the working directory ahead of PATH, and that
+        # directory is the project the MCP client opened.
+        taskkill = os.path.join(os.environ.get("SystemRoot", "C:\\Windows"), "System32", "taskkill.exe")
+        try:
+            subprocess.run(
+                [taskkill, "/T", "/F", "/PID", str(proc.pid)],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                cwd=_neutral_working_directory(),
+                timeout=_SECRET_COMMAND_GRACE_S,
+            )
+        except subprocess.TimeoutExpired:
+            pass
+        except OSError as exc:
+            # taskkill missing or blocked by policy. Kill the direct child at
+            # least, rather than letting an OSError escape as something other
+            # than the credential exit code.
+            logger.warning(
+                "[credentials] %s: could not run taskkill for %s (%s); killing the helper only.",
+                var,
+                name,
+                exc.strerror or type(exc).__name__,
+            )
+            with contextlib.suppress(OSError):
+                proc.kill()
+        return _reap(proc, _SECRET_COMMAND_GRACE_S)
+    # Popen(start_new_session=True) makes the helper's PID its process-group
+    # ID. Keep targeting that group after the leader exits: getpgid(pid) can
+    # fail for an exited leader while its descendants still hold stdout open.
+    group = proc.pid
+    # A descendant that re-parented itself out of the session is reached by
+    # neither signal.
+    #
+    # The direct child exiting is not the tree dying: a descendant that ignores
+    # SIGTERM stays in the group after its parent is reaped. Reap the child so
+    # its own membership stops answering, then ask the group whether anything is
+    # left, and only stop escalating once nothing is.
+    reaped = False
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(group, sig)
+        except ProcessLookupError:
+            return reaped or _reap(proc, _SECRET_COMMAND_REAP_S)
+        except OSError:
+            # EPERM: a helper that changed uid (sudo, doas, pkexec). Nothing to
+            # signal, but startup must still refuse with the credential exit
+            # code rather than a traceback. The group is still consulted: a
+            # survivor we may not signal is exactly the case that must not be
+            # reported as a terminated tree.
+            reaped = reaped or _reap(proc, _SECRET_COMMAND_GRACE_S)
+            return reaped and not _group_has_members(group)
+        if not reaped:
+            reaped = _reap(proc, _SECRET_COMMAND_GRACE_S)
+        if _await_group_exit(group, _SECRET_COMMAND_GRACE_S):
+            return reaped
+    return False
+
+
+def _group_has_members(group: int) -> bool:
+    """Whether any process is still in *group*. EPERM counts as yes.
+
+    Signal 0 delivers nothing and only reports reachability, so this asks the
+    kernel rather than inferring group state from the processes we know about.
+    """
+    try:
+        os.killpg(group, 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        # EPERM: members exist, we simply may not signal them.
+        return True
+    return True
+
+
+def _await_group_exit(group: int, timeout: float) -> bool:
+    """Wait, bounded, for the group to empty.
+
+    A signalled descendant stays visible until its parent reaps it, and the
+    helper that would have done so is already gone -- so the group can hold a
+    zombie for as long as init takes. Polling avoids reporting a survivor that
+    is merely slow to disappear.
+    """
+    deadline = time.monotonic() + timeout
+    while _group_has_members(group):
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.02)
+    return True
+
+
+def _reap(proc: subprocess.Popen, timeout: float) -> bool:
+    """Wait for the child, without touching its pipe.
+
+    ``wait`` is ``waitpid``: a held-open pipe cannot block it, and closing the
+    read end here would block instead whenever a reader still holds the buffer
+    lock.
+    """
+    try:
+        proc.wait(timeout=timeout)
+        return True
+    except subprocess.TimeoutExpired:
+        return False
+
+
+def _warn_unverified_platform(var: str, logger: logging.Logger, os_name: str = os.name) -> None:
+    """Say at runtime what the platform table says on paper."""
+    if os_name == "nt":
+        logger.warning(
+            "[credentials] %s: the command provider is unverified on Windows. Its process-group cleanup and "
+            "path handling have not been exercised there; UNIFI_<VAR>_FILE is the tested option on Windows.",
+            var,
+        )
+
+
+def _run_secret_command(var: str, command: str, logger: logging.Logger) -> str:
+    """Run *command* as an argv (no shell) and return its stdout.
+
+    Nothing the helper writes is ever logged: it may print the credential to
+    either stream, and a failing helper often does. The full contract is in
+    ``docs/credential-providers.md``.
+    """
+    try:
+        argv = shlex.split(command)
+    except ValueError:
+        _fail_secret(logger, "%s could not be parsed as a command line (check the quoting).", var)
+    if not argv:
+        _fail_secret(logger, "%s is set but contains no command.", var)
+
+    env = _trusted_environ()
+    executable = _resolve_executable(var, argv[0], env, logger)
+    name = os.path.basename(executable)
+    _warn_if_others_can_write(var, executable, logger)
+
+    _warn_unverified_platform(var, logger)
+    platform_kwargs: dict[str, Any] = (
+        {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
+        if os.name == "nt"
+        else {"start_new_session": True}
+    )
+    try:
+        # No shell is involved. stdin is closed because under stdio transport it
+        # is the MCP client's JSON-RPC pipe and a prompting helper must not read
+        # it. stderr is discarded rather than captured; see the docstring.
+        proc = subprocess.Popen(  # noqa: S603 -- argv from the operator's own environment, never a shell
+            [executable, *argv[1:]],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            bufsize=0,
+            stderr=subprocess.DEVNULL,
+            cwd=_neutral_working_directory(),
+            env=env,
+            **platform_kwargs,
+        )
+    except OSError as exc:
+        _fail_secret(logger, "%s: could not run %s (%s).", var, name, exc.strerror or type(exc).__name__)
+
+    stdout, reason = _read_capped(proc, _SECRET_COMMAND_TIMEOUT_S)
+    if reason == "deadline" or reason.startswith("error"):
+        reaped = _terminate_process_tree(proc, var, name, logger)
+        if reason.startswith("error"):
+            _fail_secret(
+                logger,
+                "%s: could not read the output of %s (%s); its process tree %s.",
+                var,
+                name,
+                reason.partition(":")[2] or "unknown",
+                "was terminated" if reaped else "could not be fully terminated and may still be running",
+            )
+        _fail_secret(
+            logger,
+            "%s: %s did not finish within %ss; its process tree %s.",
+            var,
+            name,
+            _SECRET_COMMAND_TIMEOUT_S,
+            "was terminated" if reaped else "could not be fully terminated and may still be running",
+        )
+    if reason == "overrun":
+        # Killed at the moment it overran rather than after the full timeout:
+        # a helper writing without end would otherwise buffer until the server
+        # is out of memory, long before it could refuse startup.
+        _terminate_process_tree(proc, var, name, logger)
+        _fail_secret(logger, "%s: %s produced more than %d bytes.", var, name, _SECRET_MAX_BYTES)
+
+    if proc.returncode != 0:
+        _fail_secret(
+            logger,
+            "%s: %s exited with status %s. Its output is not logged; run the helper yourself to see why.",
+            var,
+            name,
+            proc.returncode,
+        )
+    try:
+        # utf-8-sig drops a BOM left by editors that save "UTF-8 with BOM".
+        return stdout.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        _fail_secret(logger, "%s: %s produced output that is not valid UTF-8.", var, name)
+
+
+def _read_capped(proc: subprocess.Popen, timeout: float, os_name: str = os.name) -> tuple[bytes | None, str]:
+    """Read the helper's stdout under a deadline and a size cap.
+
+    Returns ``(data, reason)`` where reason is ``eof`` (complete), ``overrun``
+    (past the cap), ``deadline`` or ``error``. The cap is enforced while the
+    helper runs rather than after it finishes, on every platform: a helper
+    writing without end would otherwise buffer until the server is out of
+    memory, long before the size check could refuse startup.
+    """
+    if proc.stdout is None:  # pragma: no cover - Popen was given stdout=PIPE
+        return None, "error"
+    deadline = time.monotonic() + timeout
+    if os_name == "nt":
+        return _read_capped_threaded(proc, deadline)
+    fd = proc.stdout.fileno()
+    captured = bytearray()
+    with selectors.DefaultSelector() as selector:
+        selector.register(fd, selectors.EVENT_READ)
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not selector.select(remaining):
+                return None, "deadline"
+            try:
+                chunk = os.read(fd, 65536)
+            except OSError as exc:
+                return None, f"error:{exc.strerror or type(exc).__name__}"
+            if not chunk:
+                break
+            captured.extend(chunk)
+            if len(captured) > _SECRET_MAX_BYTES:
+                return bytes(captured), "overrun"
+    # EOF is not exit: spend what is left of the same budget reaping, rather
+    # than opening a second one.
+    if not _reap(proc, max(0.0, deadline - time.monotonic())):
+        return None, "deadline"
+    return bytes(captured), "eof"
+
+
+def _read_capped_threaded(proc: subprocess.Popen, deadline: float) -> tuple[bytes | None, str]:
+    """The Windows read: selectors cannot wait on a pipe there.
+
+    A reader thread is the only portable option, so it reads at most one byte
+    past the cap and its pipe is never closed from this thread -- closing under
+    a blocked reader is what makes the buffer lock unreleasable.
+
+    Popen is given ``bufsize=0``, so stdout is a raw stream and one ``read(n)``
+    returns only what has already arrived. A helper that writes, pauses, then
+    writes again would otherwise have its first burst accepted as the whole
+    credential -- a silent truncation rather than a refusal -- so read until EOF
+    or the cap.
+    """
+    captured: list[bytes] = []
+
+    def _drain() -> None:
+        assert proc.stdout is not None
+        chunks: list[bytes] = []
+        remaining = _SECRET_MAX_BYTES + 1
+        while remaining > 0:
+            chunk = proc.stdout.read(remaining)
+            if chunk is None:  # would-block on a non-blocking fd, not EOF
+                continue
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        captured.append(b"".join(chunks))
+
+    reader = threading.Thread(target=_drain, daemon=True)
+    reader.start()
+    reader.join(max(0.0, deadline - time.monotonic()))
+    if reader.is_alive() or not captured:
+        return None, "deadline"
+    if len(captured[0]) > _SECRET_MAX_BYTES:
+        return captured[0], "overrun"
+    if not _reap(proc, max(0.0, deadline - time.monotonic())):
+        return None, "deadline"
+    return captured[0], "eof"
+
+
+_SecretReader = Callable[[str, str, logging.Logger], str]
+
+# Indirect spellings for a secret key, in the order they are reported.
+_SECRET_READERS: tuple[tuple[str, _SecretReader], ...] = (
+    ("_FILE", _read_secret_file),
+    ("_COMMAND", _run_secret_command),
+)
+
+
+def _listed(names: list[str]) -> str:
+    """``A and B are both``; ``A, B and C are all`` -- the subject and its verb agreement.
+
+    Two names is the case that existed before the command provider, so it keeps
+    upstream's exact sentence.
+    """
+    joined = " and ".join([", ".join(names[:-1]), names[-1]])
+    return f"{joined} are both" if len(names) == 2 else f"{joined} are all"
+
+
 def resolve_env(key: str, *, env_prefix: str, logger: logging.Logger) -> str | None:
     """Resolve one config key from the environment.
 
@@ -126,9 +558,14 @@ def resolve_env(key: str, *, env_prefix: str, logger: logging.Logger) -> str | N
     the shared level.
 
     Secret keys (by :func:`unifi_core.redaction.is_sensitive_key`: ``password``,
-    ``api_key``) also accept ``<VAR>_FILE``, a path whose contents are the value
-    (trailing newlines dropped). Setting both spellings at one level, or a file
-    that cannot be read, refuses startup with :data:`EXIT_SECRET_UNRESOLVED`.
+    ``api_key``) also accept two indirect spellings, whose value is the resolved
+    secret with trailing newlines dropped:
+
+    * ``<VAR>_FILE``     a path whose contents are the value
+    * ``<VAR>_COMMAND``  an argv, run without a shell, whose stdout is the value
+
+    Setting more than one spelling at one level, or an indirection that cannot be
+    resolved, refuses startup with :data:`EXIT_SECRET_UNRESOLVED`.
 
     Returns:
         The resolved value, or ``None`` when nothing is set at either level.
@@ -137,28 +574,34 @@ def resolve_env(key: str, *, env_prefix: str, logger: logging.Logger) -> str | N
     secret = is_sensitive_key(key)
     for base in (f"UNIFI_{env_prefix}_{upper}", f"UNIFI_{upper}"):
         plain = os.getenv(base)
-        file_var = f"{base}_FILE"
-        path = os.getenv(file_var) if secret else None
-        if plain and path:
-            _fail_secret(logger, "%s and %s are both set; keep exactly one of them.", _origin(base), _origin(file_var))
+        indirect: list[tuple[str, str, _SecretReader]] = []
+        if secret:
+            for suffix, reader in _SECRET_READERS:
+                indirect_var = f"{base}{suffix}"
+                if raw := os.getenv(indirect_var):
+                    indirect.append((indirect_var, raw, reader))
+        spellings = ([base] if plain else []) + [var for var, _, _ in indirect]
+        if len(spellings) > 1:
+            _fail_secret(logger, "%s set; keep exactly one of them.", _listed([_origin(v) for v in spellings]))
         if plain:
             return plain
-        if not path:
+        if not indirect:
             continue
-        if _TRUSTED_VARS is not None and file_var not in _TRUSTED_VARS:
+        var, raw, reader = indirect[0]
+        if _TRUSTED_VARS is not None and var not in _TRUSTED_VARS:
             _fail_secret(
                 logger,
                 "%s was supplied by a .env file, not by the environment the server was started with; "
                 "credential indirection is only honoured from the process environment.",
-                file_var,
+                var,
             )
-        value = _read_secret_file(file_var, path, logger).rstrip("\r\n")
+        value = reader(var, raw, logger).rstrip("\r\n")
         if not value:
-            _fail_secret(logger, "%s resolved to an empty value.", file_var)
+            _fail_secret(logger, "%s resolved to an empty value.", var)
         if "\n" in value:
             # A second line is not part of the secret; a wrong value accepted here
             # would surface later as an unexplained 401.
-            _fail_secret(logger, "%s holds %d lines; expected exactly one.", file_var, value.count("\n") + 1)
+            _fail_secret(logger, "%s holds %d lines; expected exactly one.", var, value.count("\n") + 1)
         return value
     return None
 
@@ -181,7 +624,7 @@ def load_server_config(
 
     Then merges server-specific env vars (e.g. ``UNIFI_NETWORK_HOST``)
     with fallback to shared vars (e.g. ``UNIFI_HOST``) via :func:`resolve_env`.
-    Secret keys may also be supplied as ``..._FILE``.
+    Secret keys may also be supplied as ``..._FILE`` or ``..._COMMAND``.
 
     Args:
         package_name: Dotted package name for importlib.resources

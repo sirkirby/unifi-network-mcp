@@ -91,7 +91,10 @@ class TestResolveEnv:
     """Tests for resolve_env: plain and _FILE spellings."""
 
     _ALL = [
-        f"UNIFI_{p}{k}{s}" for p in ("NETWORK_", "") for k in ("PASSWORD", "API_KEY", "PORT") for s in ("", "_FILE")
+        f"UNIFI_{p}{k}{s}"
+        for p in ("NETWORK_", "")
+        for k in ("PASSWORD", "API_KEY", "PORT")
+        for s in ("", "_FILE", "_COMMAND")
     ]
 
     @pytest.fixture(autouse=True)
@@ -303,7 +306,7 @@ class TestLoadServerConfigSecrets:
         f"UNIFI_{p}{k.upper()}{s}"
         for p in ("NETWORK_", "")
         for k in ("host", "username", "password", "port", "site", "verify_ssl", "api_key")
-        for s in ("", "_FILE")
+        for s in ("", "_FILE", "_COMMAND")
     ]
 
     @pytest.fixture(autouse=True)
