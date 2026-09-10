@@ -25,8 +25,8 @@ router = APIRouter()
 class ControllerIn(BaseModel):
     name: str
     base_url: str
-    username: str
-    password: str
+    username: str = ""
+    password: str = ""
     api_token: str | None = None
     product_kinds: list[str]
     verify_tls: bool = True
